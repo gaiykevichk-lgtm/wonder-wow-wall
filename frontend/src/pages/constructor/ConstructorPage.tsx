@@ -10,9 +10,11 @@ import {
   AppstoreOutlined,
   DragOutlined,
   InfoCircleOutlined,
+  CrownOutlined,
 } from '@ant-design/icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { products, PANEL_SIZES, BASE_PANEL_PRICES, DESIGN_OVERLAY_PRICE } from '../../shared/data/products';
+import { useSubscriptionStore } from '../../shared/store/subscriptionStore';
 import { useCartStore } from '../../shared/store/cartStore';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -96,6 +98,9 @@ export default function ConstructorPage() {
 
   const wallRef = useRef<HTMLDivElement>(null);
   const { addItem } = useCartStore();
+  const hasSub = useSubscriptionStore((s) => s.hasSubscription);
+  const activePlan = useSubscriptionStore((s) => s.getActivePlan);
+  const openSubModal = useSubscriptionStore((s) => s.openModal);
 
   const selectedDesign = products.find((p) => p.id === selectedDesignId) || products[0];
   const selectedColor = selectedDesign.colors[selectedColorIdx] || selectedDesign.colors[0];
@@ -108,6 +113,8 @@ export default function ConstructorPage() {
 
   // ─── Calculations ──────────────────────────────────────────────────────────
 
+  const isSubscriber = hasSub();
+
   const costs = useMemo(() => {
     const panelCount = placedPanels.length;
     let totalBase = 0;
@@ -116,7 +123,7 @@ export default function ConstructorPage() {
     for (const p of placedPanels) {
       const baseKey = p.sizeMm === '30×30 см' ? '300x300' : p.sizeMm === '30×60 см' ? '300x600' : '600x600';
       totalBase += BASE_PANEL_PRICES[baseKey] || 0;
-      totalOverlay += DESIGN_OVERLAY_PRICE;
+      totalOverlay += isSubscriber ? 0 : DESIGN_OVERLAY_PRICE;
     }
 
     const totalArea = placedPanels.reduce((sum, p) => {
@@ -128,7 +135,7 @@ export default function ConstructorPage() {
     const wallArea = (wallWidthMm * wallHeightMm) / 1_000_000;
 
     return { panelCount, totalBase, totalOverlay, total: totalBase + totalOverlay, totalArea, wallArea };
-  }, [placedPanels, wallWidthMm, wallHeightMm]);
+  }, [placedPanels, wallWidthMm, wallHeightMm, isSubscriber]);
 
   // ─── Grid occupancy ────────────────────────────────────────────────────────
 
@@ -603,9 +610,9 @@ export default function ConstructorPage() {
                 <span>├ Базовые панели:</span>
                 <span>{costs.totalBase.toLocaleString('ru-RU')} ₽</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#9CA3AF' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: isSubscriber ? '#4CAF50' : '#9CA3AF' }}>
                 <span>└ Накладки (дизайн):</span>
-                <span>{costs.totalOverlay.toLocaleString('ru-RU')} ₽</span>
+                <span>{isSubscriber ? '0 ₽ (подписка)' : `${costs.totalOverlay.toLocaleString('ru-RU')} ₽`}</span>
               </div>
             </div>
 
@@ -652,12 +659,23 @@ export default function ConstructorPage() {
             </div>
           </Card>
 
-          {/* Info */}
-          <div style={{ padding: '12px 14px', background: '#EEF7EE', borderRadius: 10, fontSize: 12, color: '#2E7D32', lineHeight: 1.5 }}>
-            <InfoCircleOutlined style={{ marginRight: 6 }} />
-            <strong>Как это работает:</strong> Базовая панель крепится на стену. Сверху на магнитах — накладка с дизайном.
-            Меняйте дизайн когда захотите! Стоимость любой накладки — {DESIGN_OVERLAY_PRICE.toLocaleString('ru-RU')} ₽.
-          </div>
+          {/* Subscription banner or info */}
+          {isSubscriber ? (
+            <div style={{ padding: '12px 14px', background: '#E8F5E9', borderRadius: 10, fontSize: 12, color: '#2E7D32', lineHeight: 1.6, border: '1px solid #C8E6C9' }}>
+              <CrownOutlined style={{ marginRight: 6, fontSize: 14 }} />
+              <strong>Подписка «{activePlan()?.name}»</strong> — накладки включены в план! Вы платите только за базовые панели.
+              {activePlan()?.overlaysPerMonth ? ` Осталось ${activePlan()!.overlaysPerMonth} накладок в этом месяце.` : ' Безлимитные накладки.'}
+            </div>
+          ) : (
+            <div
+              onClick={() => openSubModal()}
+              style={{ padding: '12px 14px', background: '#FFF8E1', borderRadius: 10, fontSize: 12, color: '#F57F17', lineHeight: 1.6, cursor: 'pointer', border: '1px solid #FFE082', transition: 'background 0.2s' }}
+            >
+              <InfoCircleOutlined style={{ marginRight: 6 }} />
+              <strong>Оформите подписку</strong> — и накладки будут бесплатны! Планы от {(4900).toLocaleString('ru-RU')} ₽/мес.
+              <span style={{ textDecoration: 'underline', marginLeft: 4 }}>Подробнее</span>
+            </div>
+          )}
         </div>
 
         {/* ─── RIGHT - Wall Canvas ──────────────────────────────────────────── */}

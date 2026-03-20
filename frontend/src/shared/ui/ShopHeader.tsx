@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Badge, Button, Drawer } from 'antd';
+import { Badge, Button, Drawer, Tag } from 'antd';
 import {
   ShoppingOutlined,
   HeartOutlined,
   UserOutlined,
   MenuOutlined,
   CloseOutlined,
+  CrownOutlined,
 } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useCartStore } from '../store/cartStore';
+import { useSubscriptionStore } from '../store/subscriptionStore';
 
 const NAV_ITEMS = [
   { path: '/catalog', label: 'Каталог' },
@@ -26,6 +28,8 @@ export function ShopHeader() {
   const navigate = useNavigate();
   const setCartOpen = useCartStore((s) => s.setOpen);
   const totalItems = useCartStore((s) => s.totalItems);
+  const activePlan = useSubscriptionStore((s) => s.getActivePlan);
+  const openSubModal = useSubscriptionStore((s) => s.openModal);
   const isHome = location.pathname === '/';
 
   useEffect(() => {
@@ -131,6 +135,40 @@ export function ShopHeader() {
 
           {/* Actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {activePlan() ? (
+              <Tag
+                icon={<CrownOutlined />}
+                color="#4CAF50"
+                style={{
+                  borderRadius: 20,
+                  fontWeight: 600,
+                  fontSize: 11,
+                  padding: '2px 10px',
+                  cursor: 'pointer',
+                  margin: 0,
+                }}
+                onClick={() => openSubModal()}
+              >
+                {activePlan()!.name}
+              </Tag>
+            ) : (
+              <Button
+                size="small"
+                onClick={() => openSubModal()}
+                className="sub-btn-desktop"
+                style={{
+                  borderRadius: 20,
+                  border: `1px solid ${scrolled || !isHome ? '#4CAF50' : 'rgba(255,255,255,0.6)'}`,
+                  color: scrolled || !isHome ? '#4CAF50' : '#fff',
+                  background: 'transparent',
+                  fontWeight: 600,
+                  fontSize: 12,
+                  transition: 'all 0.3s',
+                }}
+              >
+                Подписка
+              </Button>
+            )}
             <Button
               type="text"
               icon={<HeartOutlined style={{ fontSize: 20 }} />}
