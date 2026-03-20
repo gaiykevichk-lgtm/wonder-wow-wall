@@ -16,6 +16,7 @@ import { useAuthStore } from '../../domains/auth/model/authStore';
 const NAV_ITEMS = [
   { path: '/catalog', label: 'Каталог' },
   { path: '/constructor', label: 'Конструктор' },
+  { path: '/visualizer', label: 'Фото-редактор' },
   { path: '/how-it-works', label: 'Как это работает' },
   { path: '/portfolio', label: 'Портфолио' },
   { path: '/about', label: 'О нас' },

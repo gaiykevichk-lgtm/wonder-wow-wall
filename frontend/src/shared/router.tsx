@@ -17,6 +17,9 @@ const PricingPage = lazy(() => import('../domains/subscription/ui/PricingPage'))
 // ─── Domain: Constructor ────────────────────────────────────────────────────
 const ConstructorPage = lazy(() => import('../domains/constructor/ui/ConstructorPage'));
 
+// ─── Domain: Visualizer ─────────────────────────────────────────────────────
+const PhotoEditorPage = lazy(() => import('../domains/visualizer/ui/PhotoEditorPage'));
+
 // ─── Domain: Content ────────────────────────────────────────────────────────
 const HomePage = lazy(() => import('../domains/content/ui/HomePage'));
 const AboutPage = lazy(() => import('../domains/content/ui/AboutPage'));
@@ -55,6 +58,7 @@ export function AppRouter() {
           <Route path="/catalog" element={<CatalogPage />} />
           <Route path="/product/:id" element={<ProductPage />} />
           <Route path="/constructor" element={<ConstructorPage />} />
+          <Route path="/visualizer" element={<PhotoEditorPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/contacts" element={<ContactsPage />} />
