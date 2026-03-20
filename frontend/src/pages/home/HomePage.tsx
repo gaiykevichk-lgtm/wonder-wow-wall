@@ -69,14 +69,6 @@ const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }
         style={{ display: 'flex', flexDirection: 'column', gap: 28 }}
       >
         <motion.div variants={fadeUpVariants} custom={0}>
-          <img
-            src="/logo-black.png"
-            alt="Wonder Wow Wall"
-            style={{ height: 80, marginBottom: 8 }}
-          />
-        </motion.div>
-
-        <motion.div variants={fadeUpVariants} custom={0.5}>
           <Tag
             style={{
               background: GREEN,
