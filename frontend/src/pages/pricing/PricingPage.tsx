@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Card, Button, Tag } from 'antd';
-import { CheckOutlined } from '@ant-design/icons';
+import { CheckOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { BASE_PANEL_PRICES, DESIGN_OVERLAY_PRICE } from '../../shared/data/products';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
@@ -25,76 +27,87 @@ const stagger = {
   visible: { transition: { staggerChildren: 0.1 } },
 };
 
-// ─── Purchase mode data ───────────────────────────────────────────────────────
+// ─── Panel pricing data ──────────────────────────────────────────────────────
 
-const purchaseCategories = [
-  { name: 'МДФ-панели', range: '1 700 — 3 200 ₽/м²', desc: 'Лёгкий монтаж, широкая палитра, идеально для квартир' },
-  { name: '3D-гипс', range: '2 400 — 4 800 ₽/м²', desc: 'Фактурные поверхности, ручная работа, эксклюзивный вид' },
-  { name: 'Деревянный шпон', range: '3 100 — 6 500 ₽/м²', desc: 'Натуральное дерево, тёплая атмосфера, долговечность' },
-  { name: 'Каменный декор', range: '2 800 — 5 200 ₽/м²', desc: 'Имитация натурального камня, устойчивость к влаге' },
-  { name: 'Акустические панели', range: '4 200 — 8 900 ₽/м²', desc: 'Поглощение звука, профессиональные студии и офисы' },
-  { name: 'Монтаж (работа)', range: '600 — 1 200 ₽/м²', desc: 'Зависит от сложности и региона, включает вывоз мусора' },
+const panelPricing = [
+  {
+    size: '30×30 см',
+    basePrice: BASE_PANEL_PRICES['300x300'],
+    overlayPrice: DESIGN_OVERLAY_PRICE,
+    desc: 'Компактная панель — идеально для акцентов и небольших зон',
+  },
+  {
+    size: '30×60 см',
+    basePrice: BASE_PANEL_PRICES['300x600'],
+    overlayPrice: DESIGN_OVERLAY_PRICE,
+    desc: 'Самый популярный размер — баланс эстетики и покрытия',
+  },
+  {
+    size: '60×60 см',
+    basePrice: BASE_PANEL_PRICES['600x600'],
+    overlayPrice: DESIGN_OVERLAY_PRICE,
+    desc: 'Крупный формат — для максимального эффекта, меньше стыков',
+  },
 ];
 
-// ─── Subscription plans ───────────────────────────────────────────────────────
+// ─── Subscription plans ──────────────────────────────────────────────────────
 
 const plans = [
   {
     name: 'Стартовый',
-    area: '15 м²',
-    price: 7000,
+    desc: 'Обновление до 10 накладок',
+    price: 4900,
     period: 'мес',
     popular: false,
     features: [
-      'До 15 м² обновления в месяц',
-      'Все базовые коллекции',
-      'Стандартный монтаж',
-      'Доставка по Москве',
+      'До 10 накладок в месяц (любой размер)',
+      'Все дизайны из каталога',
+      'Бесплатная доставка по Москве',
+      'Замена повреждённых накладок',
       'Поддержка 9:00–18:00',
-      'Один активный проект',
     ],
     cta: 'Выбрать план',
   },
   {
     name: 'Популярный',
-    area: '30 м²',
-    price: 12000,
+    desc: 'Обновление до 25 накладок',
+    price: 9900,
     period: 'мес',
     popular: true,
     features: [
-      'До 30 м² обновления в месяц',
-      'Все коллекции включая премиум',
-      'Ускоренный монтаж (приоритет)',
+      'До 25 накладок в месяц (любой размер)',
+      'Все дизайны + эксклюзивные коллекции',
       'Бесплатная доставка по РФ',
+      'Приоритетная замена повреждённых',
       'Поддержка 8:00–22:00',
-      'До 3 активных проектов',
       'Персональный дизайнер',
+      'Сохранение до 5 проектов',
     ],
     cta: 'Выбрать план',
   },
   {
     name: 'Бизнес',
-    area: '50 м²',
-    price: 18000,
+    desc: 'Безлимитные обновления',
+    price: 19900,
     period: 'мес',
     popular: false,
     features: [
-      'До 50 м² обновления в месяц',
-      'Эксклюзивные и кастомные коллекции',
-      'VIP-монтаж в удобное время',
-      'Бесплатная доставка по всей РФ',
+      'Безлимитные накладки (любой размер)',
+      'Эксклюзивные и кастомные дизайны',
+      'VIP-доставка по всей РФ',
+      'Замена в течение 24 часов',
       'Поддержка 24/7',
-      'Без ограничений на проекты',
       'Персональный менеджер',
-      'Скидка 15% на доп. материалы',
+      'Безлимитные проекты',
+      'Скидка 20% на базовые панели',
     ],
     cta: 'Связаться с нами',
   },
 ];
 
-// ─── PlanCard ─────────────────────────────────────────────────────────────────
+// ─── PlanCard ────────────────────────────────────────────────────────────────
 
-const PlanCard: React.FC<{ plan: typeof plans[0]; index: number }> = ({ plan, index }) => (
+const PlanCard: React.FC<{ plan: (typeof plans)[0]; index: number }> = ({ plan, index }) => (
   <motion.div variants={fadeUp} custom={index} style={{ position: 'relative' }}>
     <Card
       style={{
@@ -106,7 +119,6 @@ const PlanCard: React.FC<{ plan: typeof plans[0]; index: number }> = ({ plan, in
       }}
       styles={{ body: { padding: '36px 28px' } }}
     >
-      {/* Popular badge */}
       {plan.popular && (
         <Tag
           style={{
@@ -129,83 +141,37 @@ const PlanCard: React.FC<{ plan: typeof plans[0]; index: number }> = ({ plan, in
         </Tag>
       )}
 
-      {/* Plan name */}
       <div style={{ marginBottom: 24 }}>
-        <h3
-          style={{
-            fontFamily: FONT,
-            fontSize: 20,
-            fontWeight: 700,
-            color: plan.popular ? '#fff' : DARK,
-            margin: '0 0 6px',
-          }}
-        >
+        <h3 style={{ fontFamily: FONT, fontSize: 20, fontWeight: 700, color: plan.popular ? '#fff' : DARK, margin: '0 0 6px' }}>
           {plan.name}
         </h3>
-        <span
-          style={{
-            fontFamily: FONT,
-            fontSize: 13,
-            color: plan.popular ? 'rgba(255,255,255,0.65)' : GRAY_TEXT,
-          }}
-        >
-          {plan.area} ежемесячного обновления
+        <span style={{ fontFamily: FONT, fontSize: 13, color: plan.popular ? 'rgba(255,255,255,0.65)' : GRAY_TEXT }}>
+          {plan.desc}
         </span>
       </div>
 
-      {/* Price */}
       <div style={{ marginBottom: 28 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-          <span
-            style={{
-              fontFamily: FONT,
-              fontSize: 42,
-              fontWeight: 800,
-              color: plan.popular ? '#fff' : DARK,
-              lineHeight: 1,
-            }}
-          >
+          <span style={{ fontFamily: FONT, fontSize: 42, fontWeight: 800, color: plan.popular ? '#fff' : DARK, lineHeight: 1 }}>
             {plan.price.toLocaleString('ru-RU')} ₽
           </span>
         </div>
-        <span
-          style={{
-            fontFamily: FONT,
-            fontSize: 14,
-            color: plan.popular ? 'rgba(255,255,255,0.55)' : GRAY_TEXT,
-          }}
-        >
+        <span style={{ fontFamily: FONT, fontSize: 14, color: plan.popular ? 'rgba(255,255,255,0.55)' : GRAY_TEXT }}>
           / {plan.period}
         </span>
       </div>
 
-      {/* Features */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 32 }}>
         {plan.features.map((feat) => (
           <div key={feat} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-            <CheckOutlined
-              style={{
-                color: plan.popular ? GREEN : GREEN,
-                fontSize: 13,
-                marginTop: 3,
-                flexShrink: 0,
-              }}
-            />
-            <span
-              style={{
-                fontFamily: FONT,
-                fontSize: 14,
-                color: plan.popular ? 'rgba(255,255,255,0.85)' : DARK,
-                lineHeight: 1.5,
-              }}
-            >
+            <CheckOutlined style={{ color: GREEN, fontSize: 13, marginTop: 3, flexShrink: 0 }} />
+            <span style={{ fontFamily: FONT, fontSize: 14, color: plan.popular ? 'rgba(255,255,255,0.85)' : DARK, lineHeight: 1.5 }}>
               {feat}
             </span>
           </div>
         ))}
       </div>
 
-      {/* CTA */}
       <Button
         size="large"
         style={{
@@ -226,10 +192,11 @@ const PlanCard: React.FC<{ plan: typeof plans[0]; index: number }> = ({ plan, in
   </motion.div>
 );
 
-// ─── PricingPage ──────────────────────────────────────────────────────────────
+// ─── PricingPage ─────────────────────────────────────────────────────────────
 
 const PricingPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'purchase' | 'subscription'>('purchase');
+  const navigate = useNavigate();
 
   const tabBtn = (key: 'purchase' | 'subscription', label: string) => (
     <button
@@ -265,54 +232,28 @@ const PricingPage: React.FC = () => {
             <motion.span
               variants={fadeUp}
               custom={0}
-              style={{
-                fontFamily: FONT,
-                fontSize: 12,
-                fontWeight: 600,
-                color: GRAY_TEXT,
-                textTransform: 'uppercase',
-                letterSpacing: '2px',
-              }}
+              style={{ fontSize: 12, fontWeight: 600, color: GRAY_TEXT, textTransform: 'uppercase', letterSpacing: '2px' }}
             >
               Прозрачное ценообразование
             </motion.span>
             <motion.h1
               variants={fadeUp}
               custom={1}
-              style={{
-                fontFamily: FONT,
-                fontSize: 'clamp(36px, 4vw, 52px)',
-                fontWeight: 800,
-                color: DARK,
-                margin: 0,
-                lineHeight: 1.15,
-                letterSpacing: '-0.5px',
-              }}
+              style={{ fontSize: 'clamp(36px, 4vw, 52px)', fontWeight: 800, color: DARK, margin: 0, lineHeight: 1.15, letterSpacing: '-0.5px' }}
             >
-              Тарифы и цены
+              Панели + Накладки
             </motion.h1>
             <motion.p
               variants={fadeUp}
               custom={2}
-              style={{
-                fontFamily: FONT,
-                fontSize: 17,
-                color: GRAY_TEXT,
-                margin: 0,
-                maxWidth: 520,
-                lineHeight: 1.65,
-              }}
+              style={{ fontSize: 17, color: GRAY_TEXT, margin: 0, maxWidth: 560, lineHeight: 1.65 }}
             >
-              Купите разово или подпишитесь для регулярного обновления интерьера —
-              выберите формат, который подходит именно вам.
+              Базовая панель крепится на стену. Сверху — магнитная накладка с любым дизайном.
+              Стоимость всех дизайнов одинакова: {DESIGN_OVERLAY_PRICE.toLocaleString('ru-RU')} ₽ за накладку.
+              Купите разово или оформите подписку для регулярного обновления.
             </motion.p>
 
-            {/* Tabs */}
-            <motion.div
-              variants={fadeUp}
-              custom={3}
-              style={{ display: 'flex', gap: 8, marginTop: 8 }}
-            >
+            <motion.div variants={fadeUp} custom={3} style={{ display: 'flex', gap: 8, marginTop: 8 }}>
               {tabBtn('purchase', 'Покупка')}
               {tabBtn('subscription', 'Подписка')}
             </motion.div>
@@ -324,86 +265,67 @@ const PricingPage: React.FC = () => {
       <section style={{ background: '#fff', padding: '72px 24px 96px' }}>
         <div style={{ ...MAX_WIDTH }}>
           {activeTab === 'purchase' ? (
-            <motion.div
-              key="purchase"
-              variants={stagger}
-              initial="hidden"
-              animate="visible"
-              style={{ display: 'flex', flexDirection: 'column', gap: 40 }}
-            >
+            <motion.div key="purchase" variants={stagger} initial="hidden" animate="visible" style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
+              {/* How it works */}
               <motion.div variants={fadeUp} custom={0}>
-                <h2
-                  style={{
-                    fontFamily: FONT,
-                    fontSize: 'clamp(24px, 2.5vw, 30px)',
-                    fontWeight: 800,
-                    color: DARK,
-                    margin: '0 0 8px',
-                  }}
-                >
-                  Цены на материалы и монтаж
+                <h2 style={{ fontSize: 'clamp(24px, 2.5vw, 30px)', fontWeight: 800, color: DARK, margin: '0 0 8px' }}>
+                  Как формируется цена
                 </h2>
-                <p style={{ fontFamily: FONT, fontSize: 15, color: GRAY_TEXT, margin: 0 }}>
-                  Окончательная стоимость рассчитывается в конструкторе с учётом вашей площади и выбранных панелей.
+                <p style={{ fontSize: 15, color: GRAY_TEXT, margin: 0, maxWidth: 600 }}>
+                  Стоимость = панель + накладка. Панель покупается один раз. Накладки можно менять сколько угодно.
                 </p>
               </motion.div>
 
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-                  gap: 20,
-                }}
-              >
-                {purchaseCategories.map((cat, i) => (
-                  <motion.div key={cat.name} variants={fadeUp} custom={i + 1}>
+              {/* Panel sizes grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
+                {panelPricing.map((item, i) => (
+                  <motion.div key={item.size} variants={fadeUp} custom={i + 1}>
                     <Card
-                      style={{
-                        borderRadius: 14,
-                        border: '1px solid #E5E7EB',
-                        boxShadow: 'none',
-                        height: '100%',
-                      }}
-                      styles={{ body: { padding: '24px' } }}
+                      style={{ borderRadius: 16, border: '1px solid #E5E7EB', height: '100%' }}
+                      styles={{ body: { padding: '28px' } }}
                     >
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        <h3
-                          style={{
-                            fontFamily: FONT,
-                            fontSize: 16,
-                            fontWeight: 700,
-                            color: DARK,
-                            margin: 0,
-                          }}
-                        >
-                          {cat.name}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        <h3 style={{ fontSize: 22, fontWeight: 800, color: DARK, margin: 0 }}>
+                          {item.size}
                         </h3>
-                        <div
-                          style={{
-                            fontFamily: FONT,
-                            fontSize: 20,
-                            fontWeight: 800,
-                            color: DARK,
-                          }}
-                        >
-                          {cat.range}
-                        </div>
-                        <p style={{ fontFamily: FONT, fontSize: 13, color: GRAY_TEXT, margin: 0, lineHeight: 1.6 }}>
-                          {cat.desc}
+                        <p style={{ fontSize: 13, color: GRAY_TEXT, margin: 0, lineHeight: 1.5 }}>
+                          {item.desc}
                         </p>
+
+                        <div style={{ background: '#F9FAFB', borderRadius: 10, padding: '14px 16px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 6 }}>
+                            <span style={{ color: GRAY_TEXT }}>Базовая панель:</span>
+                            <span style={{ fontWeight: 600, color: DARK }}>{item.basePrice.toLocaleString('ru-RU')} ₽</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 8 }}>
+                            <span style={{ color: GRAY_TEXT }}>Накладка (любой дизайн):</span>
+                            <span style={{ fontWeight: 600, color: DARK }}>{item.overlayPrice.toLocaleString('ru-RU')} ₽</span>
+                          </div>
+                          <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 8, display: 'flex', justifyContent: 'space-between', fontSize: 16 }}>
+                            <span style={{ fontWeight: 700, color: DARK }}>Итого:</span>
+                            <span style={{ fontWeight: 800, color: DARK }}>
+                              {(item.basePrice + item.overlayPrice).toLocaleString('ru-RU')} ₽
+                            </span>
+                          </div>
+                        </div>
+
+                        <div style={{ fontSize: 12, color: GREEN, fontWeight: 500 }}>
+                          Замена накладки — только {item.overlayPrice.toLocaleString('ru-RU')} ₽
+                        </div>
                       </div>
                     </Card>
                   </motion.div>
                 ))}
               </div>
 
+              {/* CTA banner */}
               <motion.div
                 variants={fadeUp}
-                custom={7}
+                custom={5}
                 style={{
-                  background: '#F5F5F5',
-                  borderRadius: 14,
-                  padding: '24px 28px',
+                  background: DARK,
+                  borderRadius: 16,
+                  padding: '28px 32px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
@@ -412,31 +334,24 @@ const PricingPage: React.FC = () => {
                 }}
               >
                 <div>
-                  <p
-                    style={{
-                      fontFamily: FONT,
-                      fontSize: 15,
-                      fontWeight: 600,
-                      color: DARK,
-                      margin: '0 0 4px',
-                    }}
-                  >
-                    Нужен точный расчёт?
+                  <p style={{ fontSize: 17, fontWeight: 700, color: '#fff', margin: '0 0 4px' }}>
+                    Рассчитайте стоимость вашей стены
                   </p>
-                  <p style={{ fontFamily: FONT, fontSize: 14, color: GRAY_TEXT, margin: 0 }}>
-                    Используйте наш конструктор — введите размеры стен и получите итоговую смету.
+                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', margin: 0 }}>
+                    Используйте конструктор — укажите размеры, выберите дизайн, получите точную смету.
                   </p>
                 </div>
                 <Button
                   size="large"
+                  icon={<ArrowRightOutlined />}
+                  onClick={() => navigate('/constructor')}
                   style={{
-                    background: DARK,
+                    background: GREEN,
                     color: '#fff',
                     border: 'none',
                     borderRadius: 10,
                     height: 48,
                     padding: '0 28px',
-                    fontFamily: FONT,
                     fontWeight: 600,
                     flexShrink: 0,
                   }}
@@ -444,44 +359,64 @@ const PricingPage: React.FC = () => {
                   Открыть конструктор
                 </Button>
               </motion.div>
+
+              {/* Key advantage */}
+              <motion.div variants={fadeUp} custom={6} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+                {[
+                  { title: 'Единая цена дизайна', text: 'Любая накладка — одна цена. Никаких сюрпризов.' },
+                  { title: 'Магнитное крепление', text: 'Смена дизайна за 5 минут без инструментов.' },
+                  { title: 'Монтаж за 2 часа', text: 'Профессиональная установка базовых панелей.' },
+                  { title: '100+ дизайнов', text: 'Дерево, камень, абстракция, геометрия и другие.' },
+                ].map((item) => (
+                  <div
+                    key={item.title}
+                    style={{
+                      padding: '20px',
+                      borderRadius: 12,
+                      border: '1px solid #E5E7EB',
+                    }}
+                  >
+                    <h4 style={{ fontSize: 15, fontWeight: 700, color: DARK, margin: '0 0 6px' }}>{item.title}</h4>
+                    <p style={{ fontSize: 13, color: GRAY_TEXT, margin: 0, lineHeight: 1.5 }}>{item.text}</p>
+                  </div>
+                ))}
+              </motion.div>
             </motion.div>
           ) : (
-            <motion.div
-              key="subscription"
-              variants={stagger}
-              initial="hidden"
-              animate="visible"
-              style={{ display: 'flex', flexDirection: 'column', gap: 48 }}
-            >
+            <motion.div key="subscription" variants={stagger} initial="hidden" animate="visible" style={{ display: 'flex', flexDirection: 'column', gap: 48 }}>
               <motion.div variants={fadeUp} custom={0}>
-                <h2
-                  style={{
-                    fontFamily: FONT,
-                    fontSize: 'clamp(24px, 2.5vw, 30px)',
-                    fontWeight: 800,
-                    color: DARK,
-                    margin: '0 0 8px',
-                  }}
-                >
-                  Подписка на обновление интерьера
+                <h2 style={{ fontSize: 'clamp(24px, 2.5vw, 30px)', fontWeight: 800, color: DARK, margin: '0 0 8px' }}>
+                  Подписка на обновление накладок
                 </h2>
-                <p style={{ fontFamily: FONT, fontSize: 15, color: GRAY_TEXT, margin: 0 }}>
-                  Регулярно меняйте панели и обновляйте атмосферу без больших разовых затрат.
+                <p style={{ fontSize: 15, color: GRAY_TEXT, margin: 0, maxWidth: 600 }}>
+                  Базовые панели покупаются один раз. По подписке вы регулярно получаете новые накладки — меняйте дизайн когда захотите.
                 </p>
               </motion.div>
 
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                  gap: 24,
-                  alignItems: 'start',
-                }}
-              >
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, alignItems: 'start' }}>
                 {plans.map((plan, i) => (
                   <PlanCard key={plan.name} plan={plan} index={i} />
                 ))}
               </div>
+
+              {/* FAQ-style note */}
+              <motion.div variants={fadeUp} custom={4} style={{ background: '#F9FAFB', borderRadius: 14, padding: '24px 28px' }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: DARK, margin: '0 0 12px' }}>Как работает подписка?</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {[
+                    '1. Установите базовые панели на стену (разовая покупка)',
+                    '2. Выберите план подписки исходя из количества накладок',
+                    '3. Каждый месяц получайте новые накладки с любым дизайном',
+                    '4. Меняйте накладки самостоятельно за 5 минут — магнитное крепление',
+                    '5. Отмена подписки в любой момент без штрафов',
+                  ].map((step) => (
+                    <div key={step} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: DARK }}>
+                      <CheckOutlined style={{ color: GREEN, fontSize: 12, flexShrink: 0 }} />
+                      {step}
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
             </motion.div>
           )}
         </div>

@@ -288,7 +288,7 @@ export default function ProductPage() {
                 {product.price.toLocaleString('ru-RU')} ₽
               </span>
               <span style={{ fontSize: 16, color: '#9CA3AF', fontWeight: 400 }}>
-                /м²
+                {product.priceUnit}
               </span>
             </div>
 
@@ -644,7 +644,7 @@ export default function ProductPage() {
                           marginLeft: 4,
                         }}
                       >
-                        /м²
+                        {related.priceUnit}
                       </span>
                     </div>
                   </div>
