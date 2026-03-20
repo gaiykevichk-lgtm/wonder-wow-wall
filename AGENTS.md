@@ -156,7 +156,8 @@ wonder-wow-wall/
 - [x] Авторизация — вход, регистрация, восстановление пароля, protected routes
 - [x] Личный кабинет — профиль, заказы, проекты, конструктор, избранное, подписка
 - [x] Фото-редактор стен (Visualizer MVP) — загрузка фото, маски, размещение панелей, расчёт стоимости, корзина
-- [x] Тестовое покрытие — 156 тестов (vitest): 4 стора, pricing, visualizer libs/store/UI
+- [x] Backend API (FastAPI + DDD) — 4 bounded contexts, 29 маршрутов, JWT auth, in-memory repos
+- [x] Тестовое покрытие — Frontend: 156 тестов (vitest), Backend: 97 тестов (pytest)
 
 ## Дальнейшая документация
 
