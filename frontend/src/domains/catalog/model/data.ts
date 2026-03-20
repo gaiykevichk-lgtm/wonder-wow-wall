@@ -1,24 +1,5 @@
-import type { PanelProduct, Category, Review } from '../types';
-
-// ─── Panel sizes (fixed for all products) ────────────────────────────────────
-// Базовые панели бывают только 3 размеров: 30×30, 30×60, 60×60 см
-// К панели крепится накладка с дизайном — стоимость дизайна всегда одинаковая
-
-export const PANEL_SIZES = [
-  { width: 300, height: 300, label: '30×30 см', labelShort: '30×30' },
-  { width: 300, height: 600, label: '30×60 см', labelShort: '30×60' },
-  { width: 600, height: 600, label: '60×60 см', labelShort: '60×60' },
-] as const;
-
-// Стоимость базовой панели (без накладки)
-export const BASE_PANEL_PRICES: Record<string, number> = {
-  '300x300': 890,
-  '300x600': 1490,
-  '600x600': 2490,
-};
-
-// Стоимость накладки с дизайном — единая для всех дизайнов
-export const DESIGN_OVERLAY_PRICE = 1200; // ₽ за штуку, не зависит от дизайна
+import type { PanelProduct, Category, Review } from './types';
+import { PANEL_SIZES, DESIGN_OVERLAY_PRICE } from '../../../shared/config/constants';
 
 export const categories: Category[] = [
   { key: 'all', label: 'Все дизайны', image: '', count: 0 },

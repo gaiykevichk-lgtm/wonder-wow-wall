@@ -3,9 +3,9 @@ import { Card, Rate, Tag, Input, Select, Slider, Button } from 'antd';
 import { SearchOutlined, FilterOutlined, AppstoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { products, categories } from '../../shared/data/products';
-import { useCartStore } from '../../shared/store/cartStore';
-import type { PanelProduct } from '../../shared/types';
+import { products, categories } from '../model/data';
+import { useCartStore } from '../../order/model/cartStore';
+import type { PanelProduct } from '../model/types';
 
 type SortKey = 'popular' | 'price-asc' | 'price-desc' | 'rating';
 type ViewMode = 'grid' | 'list';

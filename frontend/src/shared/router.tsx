@@ -3,17 +3,26 @@ import { Suspense, lazy } from 'react';
 import { Spin } from 'antd';
 import { ShopLayout } from './ui/ShopLayout';
 
-const HomePage = lazy(() => import('../pages/home/HomePage'));
-const CatalogPage = lazy(() => import('../pages/catalog/CatalogPage'));
-const ProductPage = lazy(() => import('../pages/product/ProductPage'));
-const ConstructorPage = lazy(() => import('../pages/constructor/ConstructorPage'));
-const CheckoutPage = lazy(() => import('../pages/checkout/CheckoutPage'));
-const AboutPage = lazy(() => import('../pages/about/AboutPage'));
-const ContactsPage = lazy(() => import('../pages/contacts/ContactsPage'));
-const HowItWorksPage = lazy(() => import('../pages/how-it-works/HowItWorksPage'));
-const PortfolioPage = lazy(() => import('../pages/portfolio/PortfolioPage'));
-const PricingPage = lazy(() => import('../pages/pricing/PricingPage'));
-const FaqPage = lazy(() => import('../pages/faq/FaqPage'));
+// ─── Domain: Catalog ────────────────────────────────────────────────────────
+const CatalogPage = lazy(() => import('../domains/catalog/ui/CatalogPage'));
+const ProductPage = lazy(() => import('../domains/catalog/ui/ProductPage'));
+
+// ─── Domain: Order ──────────────────────────────────────────────────────────
+const CheckoutPage = lazy(() => import('../domains/order/ui/CheckoutPage'));
+
+// ─── Domain: Subscription ───────────────────────────────────────────────────
+const PricingPage = lazy(() => import('../domains/subscription/ui/PricingPage'));
+
+// ─── Domain: Constructor ────────────────────────────────────────────────────
+const ConstructorPage = lazy(() => import('../domains/constructor/ui/ConstructorPage'));
+
+// ─── Domain: Content ────────────────────────────────────────────────────────
+const HomePage = lazy(() => import('../domains/content/ui/HomePage'));
+const AboutPage = lazy(() => import('../domains/content/ui/AboutPage'));
+const ContactsPage = lazy(() => import('../domains/content/ui/ContactsPage'));
+const HowItWorksPage = lazy(() => import('../domains/content/ui/HowItWorksPage'));
+const PortfolioPage = lazy(() => import('../domains/content/ui/PortfolioPage'));
+const FaqPage = lazy(() => import('../domains/content/ui/FaqPage'));
 
 const Loading = () => (
   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>

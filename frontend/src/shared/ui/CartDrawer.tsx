@@ -1,6 +1,6 @@
 import { Drawer, Button, InputNumber, Empty } from 'antd';
 import { DeleteOutlined, ShoppingOutlined } from '@ant-design/icons';
-import { useCartStore } from '../store/cartStore';
+import { useCartStore } from '../../domains/order/model/cartStore';
 import { useNavigate } from 'react-router-dom';
 
 export function CartDrawer() {

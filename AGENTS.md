@@ -1,6 +1,7 @@
 # Wonder Wow Wall
 
 > B2C веб-приложение — интернет-магазин модульных стеновых панелей с конструктором и подпиской.
+> Архитектура: **Domain-Driven Design (DDD)** с Bounded Contexts.
 
 ## Быстрый старт
 
@@ -25,8 +26,31 @@ uvicorn app.main:app --reload     # → http://localhost:8080
 | State | Zustand 5 (cart, subscription) |
 | Routing | React Router 7 (11 маршрутов, lazy-loading) |
 | Data Fetching | TanStack Query 5 (подготовлено для API) |
-| Backend | FastAPI + SQLAlchemy + PostgreSQL (планируется) |
+| Backend | FastAPI + SQLAlchemy + PostgreSQL (планируется, DDD-архитектура) |
 | Deploy | Docker + Nginx |
+
+## Архитектура: Domain-Driven Design
+
+Проект организован по принципам **DDD** — код сгруппирован по бизнес-доменам (Bounded Contexts), а не по техническим слоям.
+
+### Bounded Contexts (ограниченные контексты)
+
+| Домен | Описание | Aggregate Root |
+|-------|---------|----------------|
+| **Catalog** | Дизайны накладок, категории, отзывы | Design |
+| **Order** | Корзина, оформление, история заказов | Order |
+| **Subscription** | Планы подписки, управление, лимиты накладок | Subscription |
+| **Constructor** | Snap-to-grid размещение, визуализация, расчёт стоимости | — |
+| **Content** | Информационные страницы (О нас, FAQ, Портфолио и др.) | — |
+| **User** | Регистрация, авторизация, профиль (backend) | User |
+
+### Ubiquitous Language (единый язык)
+
+- **Накладка** (overlay) — сменный дизайн на магнитном креплении
+- **Панель** (panel) — базовая стеновая пластина (30×30, 30×60, 60×60 см)
+- **Дизайн** (design) — визуальное оформление накладки
+- **Подписка** (subscription) — ежемесячное обновление накладок
+- **Конструктор** (constructor) — визуальный редактор стены
 
 ## Структура проекта
 
@@ -39,25 +63,65 @@ wonder-wow-wall/
 │   │   └── DESIGN-SYSTEM.md     # Дизайн-система: цвета, шрифты, компоненты
 │   └── exec-plans/
 │       ├── active/
-│       │   └── PLAN-MVP.md      # 10-фазный план разработки
+│       │   └── PLAN-MVP.md      # 12-фазный план разработки
 │       └── completed/           # Завершённые планы
-├── frontend/                    # React SPA
+│
+├── frontend/                    # React SPA (DDD-структура)
 │   ├── README.md                # Документация фронтенда
 │   ├── CONVENTIONS.md           # Конвенции кода фронтенда
 │   └── src/
-│       ├── pages/               # 11 страниц (lazy-loaded)
-│       ├── shared/
-│       │   ├── ui/              # Layout, Header, Footer, Cart, SubscriptionModal
-│       │   ├── store/           # Zustand: cartStore, subscriptionStore
-│       │   ├── data/            # Моковые данные (products, categories)
-│       │   ├── types/           # TypeScript интерфейсы
+│       ├── app/                 # Application layer (routing, providers)
+│       │   ├── App.tsx
+│       │   └── main.tsx
+│       ├── domains/             # Bounded Contexts (бизнес-домены)
+│       │   ├── catalog/         # Каталог дизайнов
+│       │   │   ├── model/       # Типы, данные
+│       │   │   └── ui/          # Страницы каталога
+│       │   ├── order/           # Заказы
+│       │   │   ├── model/       # CartItem, cartStore
+│       │   │   └── ui/          # CheckoutPage
+│       │   ├── subscription/    # Подписка
+│       │   │   ├── model/       # SubscriptionPlan, subscriptionStore
+│       │   │   └── ui/          # PricingPage
+│       │   ├── constructor/     # Конструктор стен
+│       │   │   ├── model/       # ConstructorPanel
+│       │   │   └── ui/          # ConstructorPage
+│       │   └── content/         # Информационные страницы
+│       │       └── ui/          # Home, About, FAQ, Portfolio...
+│       ├── shared/              # Cross-cutting concerns
+│       │   ├── ui/              # Layout, Header, Footer, CartDrawer, SubscriptionModal
+│       │   ├── config/          # Константы (цены, размеры)
 │       │   ├── router.tsx       # Маршрутизация
-│       │   └── theme.ts        # Ant Design тема
+│       │   └── theme.ts         # Ant Design тема
 │       └── index.css            # Глобальные стили
-└── backend/                     # FastAPI (планируется)
+│
+└── backend/                     # FastAPI (планируется, DDD-архитектура)
     ├── README.md
-    └── CONVENTIONS.md
+    ├── CONVENTIONS.md
+    └── app/
+        ├── domain/              # Domain Layer (чистая бизнес-логика)
+        │   ├── catalog/         # Entities, Value Objects, Repositories (ABC)
+        │   ├── order/
+        │   ├── subscription/
+        │   └── user/
+        ├── application/         # Application Layer (use cases)
+        │   ├── catalog/
+        │   ├── order/
+        │   ├── subscription/
+        │   └── user/
+        └── infrastructure/      # Infrastructure Layer (БД, API, JWT)
+            ├── persistence/     # SQLAlchemy, реализации репозиториев
+            ├── api/             # FastAPI роутеры
+            └── security/        # JWT, хеширование
 ```
+
+## Принципы DDD
+
+- **Bounded Contexts**: каждый домен изолирован, общается через чёткие интерфейсы
+- **Domain Layer**: чистая бизнес-логика без зависимостей от фреймворков
+- **Application Layer**: use cases координируют доменную логику
+- **Infrastructure Layer**: реализации (БД, API, внешние сервисы) зависят от домена, а не наоборот
+- **Dependency Rule**: domain ← application ← infrastructure (зависимости направлены внутрь)
 
 ## Бизнес-модель
 

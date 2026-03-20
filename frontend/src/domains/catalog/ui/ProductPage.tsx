@@ -9,8 +9,8 @@ import {
   ShareAltOutlined,
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
-import { products } from '../../shared/data/products';
-import { useCartStore } from '../../shared/store/cartStore';
+import { products } from '../model/data';
+import { useCartStore } from '../../order/model/cartStore';
 
 export default function ProductPage() {
   const { id } = useParams<{ id: string }>();

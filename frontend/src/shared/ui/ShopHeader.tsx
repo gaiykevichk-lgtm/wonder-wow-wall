@@ -9,8 +9,8 @@ import {
   CrownOutlined,
 } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useCartStore } from '../store/cartStore';
-import { useSubscriptionStore } from '../store/subscriptionStore';
+import { useCartStore } from '../../domains/order/model/cartStore';
+import { useSubscriptionStore } from '../../domains/subscription/model/subscriptionStore';
 
 const NAV_ITEMS = [
   { path: '/catalog', label: 'Каталог' },

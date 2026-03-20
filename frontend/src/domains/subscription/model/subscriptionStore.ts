@@ -1,16 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-
-export interface SubscriptionPlan {
-  id: string;
-  name: string;
-  desc: string;
-  price: number;
-  period: string;
-  overlaysPerMonth: number; // 0 = unlimited
-  features: string[];
-  popular: boolean;
-}
+import type { SubscriptionPlan } from './types';
 
 export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
@@ -69,17 +59,14 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
 ];
 
 interface SubscriptionState {
-  // Active subscription
   activePlanId: string | null;
   subscribedAt: string | null;
   overlaysUsedThisMonth: number;
 
-  // Modal
   isModalOpen: boolean;
   selectedPlanId: string | null;
   modalStep: 'select' | 'form' | 'success';
 
-  // Actions
   openModal: (planId?: string) => void;
   closeModal: () => void;
   setModalStep: (step: 'select' | 'form' | 'success') => void;
@@ -88,11 +75,10 @@ interface SubscriptionState {
   cancelSubscription: () => void;
   useOverlay: (count: number) => boolean;
 
-  // Getters
   getActivePlan: () => SubscriptionPlan | null;
   getRemainingOverlays: () => number;
   hasSubscription: () => boolean;
-  getOverlayDiscount: () => number; // 0 to 1
+  getOverlayDiscount: () => number;
 }
 
 export const useSubscriptionStore = create<SubscriptionState>()(

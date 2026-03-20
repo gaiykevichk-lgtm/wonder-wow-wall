@@ -20,19 +20,6 @@ export interface PanelProduct {
   room: string[];
 }
 
-export interface CartItem {
-  id: string;
-  productId: string;
-  name: string;
-  image: string;
-  price: number;
-  quantity: number;
-  area: number;
-  color: string;
-  colorName: string;
-  size: string;
-}
-
 export interface Category {
   key: string;
   label: string;
@@ -47,17 +34,4 @@ export interface Review {
   text: string;
   date: string;
   avatar?: string;
-}
-
-export interface ConstructorPanel {
-  id: string;
-  productId: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  color: string;
-  name: string;
-  price: number;
-  image: string;
 }

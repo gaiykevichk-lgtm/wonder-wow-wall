@@ -17,7 +17,7 @@ import {
   ShoppingCartOutlined,
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
-import { useCartStore } from '../../shared/store/cartStore';
+import { useCartStore } from '../model/cartStore';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 

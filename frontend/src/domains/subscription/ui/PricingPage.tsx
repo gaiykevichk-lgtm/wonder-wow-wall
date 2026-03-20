@@ -3,8 +3,8 @@ import { Card, Button, Tag } from 'antd';
 import { CheckOutlined, ArrowRightOutlined, CrownOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { BASE_PANEL_PRICES, DESIGN_OVERLAY_PRICE } from '../../shared/data/products';
-import { useSubscriptionStore, SUBSCRIPTION_PLANS } from '../../shared/store/subscriptionStore';
+import { BASE_PANEL_PRICES, DESIGN_OVERLAY_PRICE } from '../../../shared/config/constants';
+import { useSubscriptionStore, SUBSCRIPTION_PLANS } from '../model/subscriptionStore';
 
 const GREEN = '#4CAF50';
 const DARK = '#2D2D2D';

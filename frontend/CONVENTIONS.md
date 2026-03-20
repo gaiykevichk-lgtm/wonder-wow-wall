@@ -1,43 +1,101 @@
 # Frontend — Конвенции кода
 
+## Архитектура: Domain-Driven Design (DDD)
+
+### Структура доменов (`src/domains/`)
+
+Каждый домен (Bounded Context) — это изолированная папка с двумя подпапками:
+
+```
+domains/{domain-name}/
+├── model/                    # Бизнес-логика домена
+│   ├── types.ts              # Типы, интерфейсы (entities, value objects)
+│   ├── data.ts               # Моковые данные (заменятся на API)
+│   └── {name}Store.ts        # Zustand store (если нужен)
+└── ui/                       # UI-компоненты домена
+    └── {PageName}Page.tsx    # Страницы домена
+```
+
+### Границы доменов (Bounded Context Boundaries)
+
+| Домен | Содержит | Не содержит |
+|-------|---------|-------------|
+| `catalog` | Дизайны, категории, отзывы | Логику корзины, подписки |
+| `order` | Корзина, оформление заказа | Список дизайнов, подписки |
+| `subscription` | Планы, управление подпиской | Заказы, каталог |
+| `constructor` | Визуальный редактор стены | Хранение заказов |
+| `content` | Информационные страницы | Бизнес-логику |
+
+### Правила импортов между доменами
+
+```tsx
+// ПРАВИЛЬНО: домен импортирует типы из другого домена
+import type { PanelProduct } from '@/domains/catalog/model/types';
+
+// ПРАВИЛЬНО: домен импортирует из shared
+import { DESIGN_OVERLAY_PRICE } from '@/shared/config/constants';
+
+// ПРАВИЛЬНО: shared/ui импортирует из доменов (кросс-доменная интеграция)
+import { useCartStore } from '@/domains/order/model/cartStore';
+
+// НЕПРАВИЛЬНО: домен импортирует UI из другого домена
+import { CatalogPage } from '@/domains/catalog/ui/CatalogPage'; // ❌
+
+// НЕПРАВИЛЬНО: домен импортирует store другого домена (кроме через shared)
+import { useSubscriptionStore } from '@/domains/subscription/model/subscriptionStore'; // ❌ внутри catalog
+```
+
+**Исключения** (допустимые кросс-доменные зависимости):
+- `constructor` → `catalog` (типы дизайнов), `order` (добавление в корзину), `subscription` (проверка подписки)
+- `content/HomePage` → `catalog` (популярные дизайны для главной)
+
+### Кросс-доменные компоненты (`src/shared/ui/`)
+
+Компоненты, работающие с несколькими доменами, живут в `shared/ui/`:
+- **CartDrawer** — объединяет данные order + catalog
+- **SubscriptionModal** — работает с subscription store
+- **ShopHeader** — показывает данные из order (корзина) и subscription (бейдж)
+
+### Application layer (`src/app/`)
+
+- `main.tsx` — точка входа: провайдеры (BrowserRouter, ConfigProvider, QueryClient)
+- `App.tsx` — рендер роутера
+- Только инфраструктурная логика, без бизнес-логики
+
 ## Структура файлов
 
-### Страницы (`src/pages/`)
-- Одна папка на страницу: `pages/catalog/CatalogPage.tsx`
+### Модели доменов (`domains/{domain}/model/`)
+- Типы и интерфейсы: `types.ts`
+- Моковые данные: `data.ts`
+- Zustand store: `{name}Store.ts`
+- Каждый домен инкапсулирует свои данные
+
+### Страницы доменов (`domains/{domain}/ui/`)
+- Одна страница = один файл: `CatalogPage.tsx`
 - Экспорт по умолчанию: `export default function CatalogPage()`
 - Все подкомпоненты страницы — внутри того же файла как `const SectionName: React.FC<Props>`
-- Lazy-loading через `React.lazy()` в `router.tsx`
+- Lazy-loading через `React.lazy()` в `shared/router.tsx`
 
 ### Shared-компоненты (`src/shared/ui/`)
 - Именованный экспорт: `export function ShopHeader()`
 - Без папок-обёрток — один файл = один компонент
 
-### Stores (`src/shared/store/`)
-- Одно хранилище = один файл: `cartStore.ts`, `subscriptionStore.ts`
-- Хук: `export const useCartStore = create<CartState>(...)`
-- Персистентные сторы: `zustand/middleware` → `persist`
-- Ключ localStorage: `wow-wall-*`
-
-### Типы (`src/shared/types/`)
-- Все интерфейсы в `index.ts`
-- Только `export interface`, без `type` aliases (если не необходимо)
-
-### Данные (`src/shared/data/`)
-- Моковые данные с типизацией: `products.ts`
-- Константы (цены, размеры) — именованные экспорты: `PANEL_SIZES`, `BASE_PANEL_PRICES`
+### Конфигурация (`src/shared/config/`)
+- Бизнес-константы: `constants.ts` (PANEL_SIZES, BASE_PANEL_PRICES, DESIGN_OVERLAY_PRICE)
+- Используются всеми доменами
 
 ## Стилизация
 
 ### Inline styles (основной подход)
 ```tsx
-// ✅ Правильно: inline style objects
+// ПРАВИЛЬНО: inline style objects
 <div style={{ padding: 24, background: '#F5F5F5', borderRadius: 12 }}>
 
-// ✅ Правильно: вынесенные константы стилей
+// ПРАВИЛЬНО: вынесенные константы стилей
 const SECTION_PADDING: React.CSSProperties = { padding: '80px 24px' };
 const MAX_WIDTH: React.CSSProperties = { maxWidth: 1280, margin: '0 auto' };
 
-// ❌ Неправильно: CSS-модули, styled-components, Tailwind
+// НЕПРАВИЛЬНО: CSS-модули, styled-components, Tailwind
 ```
 
 ### Цветовые константы (в каждом файле страницы)
@@ -67,7 +125,7 @@ const FONT = 'Inter, sans-serif';
 
 ### Ant Design
 - Использовать компоненты Ant Design 6 для UI: `Button`, `Card`, `Select`, `Modal`, `Drawer`, `Tag`, `Badge`, `Input`, `InputNumber`, `Form`, `Tooltip`, `Rate`, `Collapse`, `Radio`
-- Тема настроена в `theme.ts` через `ConfigProvider`
+- Тема настроена в `shared/theme.ts` через `ConfigProvider`
 - Стилизация через `style` и `styles={{ body: {...} }}`
 
 ### Анимации (Framer Motion)
@@ -103,6 +161,8 @@ const containerVariants = {
 |-----|----------|--------|
 | Компоненты | PascalCase | `HomePage`, `ShopHeader` |
 | Файлы компонентов | PascalCase.tsx | `CatalogPage.tsx` |
+| Папки доменов | kebab-case | `catalog`, `order`, `subscription` |
+| Подпапки домена | snake_case | `model/`, `ui/` |
 | Hooks | camelCase с `use` | `useCartStore` |
 | Константы | UPPER_SNAKE | `DESIGN_OVERLAY_PRICE` |
 | Стили | camelCase (CSS-in-JS) | `borderRadius`, `backgroundColor` |
@@ -115,12 +175,13 @@ const containerVariants = {
 - Интерфейсы для объектов, type для union/intersection
 - Без `any` — использовать `unknown` + type guard
 - Props как inline type или интерфейс в том же файле
+- Типы домена — в `domains/{domain}/model/types.ts`
 
 ```tsx
-// ✅ Inline props
+// ПРАВИЛЬНО: Inline props
 const PlanCard: React.FC<{ plan: SubscriptionPlan; index: number }> = ({ plan, index }) => (...)
 
-// ✅ Для сложных props — интерфейс перед компонентом
+// ПРАВИЛЬНО: Для сложных props — интерфейс перед компонентом
 interface ConstructorProps {
   wallWidth: number;
   wallHeight: number;
@@ -137,13 +198,13 @@ const [scrolled, setScrolled] = useState(false);
 const [selectedTab, setSelectedTab] = useState<'purchase' | 'subscription'>('purchase');
 ```
 
-### Глобальный стейт (Zustand)
+### Доменный стейт (Zustand в domains/{domain}/model/)
 ```tsx
 // Селекторный доступ (для оптимизации re-render)
 const totalItems = useCartStore((s) => s.totalItems);
 const hasSub = useSubscriptionStore((s) => s.hasSubscription);
 
-// ❌ Неправильно: деструктуризация всего стора
+// НЕПРАВИЛЬНО: деструктуризация всего стора
 const { items, addItem, removeItem } = useCartStore();
 ```
 

@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Button, Card, Rate, Tag } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { products, categories, clientReviews } from '../../shared/data/products';
+import { products, categories, clientReviews } from '../../catalog/model/data';
 
 // ─── Animation variants ───────────────────────────────────────────────────────
 

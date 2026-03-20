@@ -13,9 +13,10 @@ import {
   CrownOutlined,
 } from '@ant-design/icons';
 import { motion, AnimatePresence } from 'framer-motion';
-import { products, PANEL_SIZES, BASE_PANEL_PRICES, DESIGN_OVERLAY_PRICE } from '../../shared/data/products';
-import { useSubscriptionStore } from '../../shared/store/subscriptionStore';
-import { useCartStore } from '../../shared/store/cartStore';
+import { products } from '../../catalog/model/data';
+import { PANEL_SIZES, BASE_PANEL_PRICES, DESIGN_OVERLAY_PRICE } from '../../../shared/config/constants';
+import { useSubscriptionStore } from '../../subscription/model/subscriptionStore';
+import { useCartStore } from '../../order/model/cartStore';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

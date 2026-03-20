@@ -10,7 +10,7 @@
 ### 0.1 Инициализация проекта
 - [x] React + Vite + TypeScript проект
 - [x] ESLint настроен
-- [x] Структура папок: pages/, shared/ui, shared/store, shared/data
+- [x] DDD-структура: app/, domains/ (catalog, order, subscription, constructor, content), shared/
 - [x] Подключены: Ant Design 6, Framer Motion 12, Zustand 5, React Router 7, TanStack Query 5
 
 ### 0.2 Дизайн-система и тема
@@ -124,45 +124,51 @@
 
 ---
 
-## Фаза 9: Backend API (FastAPI)
+## Фаза 9: Backend API (FastAPI + DDD)
 
-### 9.1 Инфраструктура
+Архитектура: **Domain-Driven Design** — Domain / Application / Infrastructure layers.
+
+### 9.1 Инфраструктура и DDD-каркас
 - [ ] FastAPI + SQLAlchemy (async) + PostgreSQL
+- [ ] DDD-структура: `domain/` → `application/` → `infrastructure/`
 - [ ] Alembic миграции
 - [ ] Docker + docker-compose
-- [ ] Pydantic v2 для валидации
+- [ ] Pydantic v2 для валидации (DTO в infrastructure/api/)
 
-### 9.2 Auth API
-- [ ] POST `/api/auth/register` — регистрация
-- [ ] POST `/api/auth/login` — авторизация (JWT)
-- [ ] POST `/api/auth/forgot-password` — восстановление
-- [ ] GET `/api/auth/me` — текущий пользователь
+### 9.2 Domain Layer — Bounded Contexts
+- [ ] **Catalog**: entities (Design — Aggregate Root, Category, DesignReview), value objects (PanelSize, Color, Price), абстрактные репозитории (ABC), доменные сервисы
+- [ ] **Order**: entities (Order — Aggregate Root, OrderItem), value objects (Address, OrderStatus, Money), PricingService (доменный сервис), абстрактные репозитории
+- [ ] **Subscription**: entities (Subscription — Aggregate Root, SubscriptionPlan), value objects (SubscriptionTier, BillingPeriod), абстрактные репозитории
+- [ ] **User**: entities (User — Aggregate Root), value objects (Email, Password), абстрактные репозитории
 
-### 9.3 Catalog API
-- [ ] GET `/api/designs` — список (фильтры, сортировка, пагинация)
-- [ ] GET `/api/designs/:id` — детали дизайна
-- [ ] GET `/api/categories` — категории
-- [ ] GET/POST `/api/designs/:id/reviews` — отзывы
+### 9.3 Application Layer — Use Cases
+- [ ] Catalog: ListDesigns, GetDesignDetails, AddReview
+- [ ] Order: CreateOrder, GetOrderHistory, CalculateWallCost
+- [ ] Subscription: Subscribe, CancelSubscription, CheckOverlayLimit
+- [ ] User: Register, Login, UpdateProfile
 
-### 9.4 Orders API
-- [ ] POST `/api/orders` — создать заказ
-- [ ] GET `/api/orders` — мои заказы
-- [ ] GET `/api/orders/:id` — детали заказа
+### 9.4 Infrastructure Layer — Persistence
+- [ ] SQLAlchemy ORM-модели (маппинг на доменные сущности)
+- [ ] Реализации репозиториев: catalog_repo, order_repo, subscription_repo, user_repo
+- [ ] Async сессии, database.py
 
-### 9.5 Subscriptions API
-- [ ] GET `/api/subscriptions/plans` — планы
-- [ ] POST `/api/subscriptions` — оформить
-- [ ] GET `/api/subscriptions/status` — статус
-- [ ] DELETE `/api/subscriptions` — отменить
+### 9.5 Infrastructure Layer — API (FastAPI роутеры)
+- [ ] Auth: POST `/api/auth/register`, `/api/auth/login`, `/api/auth/forgot-password`, GET `/api/auth/me`
+- [ ] Catalog: GET `/api/designs`, `/api/designs/:id`, `/api/categories`, GET/POST `/api/designs/:id/reviews`
+- [ ] Orders: POST `/api/orders`, GET `/api/orders`, `/api/orders/:id`
+- [ ] Subscriptions: GET `/api/subscriptions/plans`, POST `/api/subscriptions`, GET `/api/subscriptions/status`, DELETE `/api/subscriptions`
+- [ ] Projects: CRUD `/api/projects`
+- [ ] Other: POST `/api/calculator`, POST `/api/contacts`
 
-### 9.6 Projects API
-- [ ] CRUD для проектов конструктора
+### 9.6 Infrastructure Layer — Security
+- [ ] JWT tokens (python-jose)
+- [ ] Password hashing (bcrypt)
+- [ ] FastAPI dependencies (get_current_user, get_db)
 
-### 9.7 Other
-- [ ] POST `/api/calculator` — расчёт стоимости
-- [ ] POST `/api/contacts` — форма обратной связи
-- [ ] GET `/api/users/me` — профиль
-- [ ] PUT `/api/users/me` — обновление профиля
+### 9.7 Тесты по DDD-слоям
+- [ ] `tests/domain/` — unit-тесты доменных сущностей и сервисов (без БД)
+- [ ] `tests/application/` — тесты use cases (с моками репозиториев)
+- [ ] `tests/api/` — интеграционные тесты API endpoints
 
 ---
 

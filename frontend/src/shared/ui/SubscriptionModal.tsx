@@ -1,12 +1,11 @@
-import { useState } from 'react';
 import { Modal, Button, Input, Card, Tag, Form, message } from 'antd';
 import { CheckOutlined, CrownOutlined, ThunderboltOutlined, RocketOutlined } from '@ant-design/icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   useSubscriptionStore,
   SUBSCRIPTION_PLANS,
-  type SubscriptionPlan,
-} from '../store/subscriptionStore';
+} from '../../domains/subscription/model/subscriptionStore';
+import type { SubscriptionPlan } from '../../domains/subscription/model/types';
 
 const GREEN = '#4CAF50';
 const DARK = '#2D2D2D';

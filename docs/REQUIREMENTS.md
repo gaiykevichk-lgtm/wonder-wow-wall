@@ -172,25 +172,96 @@
 ## 5. Технологический стек
 
 ### Frontend (Web)
-- **React 18+** + TypeScript
-- **Vite** -- сборка
-- **Ant Design 5** -- UI kit
-- **Framer Motion** -- анимации
-- **Zustand** -- state management (корзина, auth)
-- **React Router 6** -- маршрутизация
-- **TanStack Query** -- серверный стейт
+- **React 19** + TypeScript 5.9
+- **Vite 8** -- сборка
+- **Ant Design 6** -- UI kit
+- **Framer Motion 12** -- анимации
+- **Zustand 5** -- state management (корзина, подписка)
+- **React Router 7** -- маршрутизация
+- **TanStack Query 5** -- серверный стейт
 
 ### Backend
 - **FastAPI** (Python) -- REST API
-- **SQLAlchemy** + **Alembic** -- ORM + миграции
-- **PostgreSQL** -- БД (SQLite для dev)
-- **JWT** -- авторизация
+- **SQLAlchemy 2.0** + **Alembic** -- ORM (async) + миграции
+- **PostgreSQL 16** -- БД
+- **Redis** -- кеширование, сессии
+- **JWT** (python-jose) -- авторизация
 - **S3-compatible** -- хранение изображений
 
 ### Инфраструктура
 - Docker -- контейнеризация
 - Nginx -- reverse proxy
 - CI/CD -- автодеплой
+
+---
+
+## 5.1 Архитектура: Domain-Driven Design (DDD)
+
+Проект использует архитектуру **Domain-Driven Design** — код организован по бизнес-доменам (Bounded Contexts), а не по техническим слоям.
+
+### Bounded Contexts (ограниченные контексты)
+
+| Домен | Описание | Aggregate Root |
+|-------|---------|----------------|
+| **Catalog** | Дизайны накладок, категории, отзывы | Design |
+| **Order** | Корзина, оформление, история заказов | Order |
+| **Subscription** | Планы подписки, управление, лимиты накладок | Subscription |
+| **Constructor** | Snap-to-grid размещение, визуализация, расчёт стоимости | -- |
+| **Content** | Информационные страницы (О нас, FAQ, Портфолио и др.) | -- |
+| **User** | Регистрация, авторизация, профиль | User |
+
+### Ubiquitous Language (единый язык домена)
+
+| Термин | Английский | Описание |
+|--------|-----------|---------|
+| Накладка | overlay | Сменный дизайн на магнитном креплении |
+| Панель | panel | Базовая стеновая пластина (30x30, 30x60, 60x60 см) |
+| Дизайн | design | Визуальное оформление накладки |
+| Подписка | subscription | Ежемесячное обновление накладок |
+| Конструктор | constructor | Визуальный редактор стены |
+
+### Frontend DDD-структура
+
+```
+src/
+├── app/                          # Application layer (точка входа, провайдеры)
+├── domains/                      # Bounded Contexts
+│   ├── catalog/                  # model/ (types, data) + ui/ (pages)
+│   ├── order/                    # model/ (types, cartStore) + ui/ (pages)
+│   ├── subscription/             # model/ (types, subscriptionStore) + ui/ (pages)
+│   ├── constructor/              # model/ (types) + ui/ (pages)
+│   └── content/                  # ui/ (информационные страницы)
+└── shared/                       # Cross-cutting: ui, config, router, theme
+```
+
+### Backend DDD-структура (планируемая)
+
+```
+app/
+├── domain/                      # Domain Layer (чистая бизнес-логика)
+│   ├── catalog/                 # entities, value_objects, repositories (ABC), services
+│   ├── order/
+│   ├── subscription/
+│   └── user/
+├── application/                 # Application Layer (use cases)
+│   ├── catalog/                 # ListDesigns, GetDesignDetails, AddReview
+│   ├── order/                   # CreateOrder, GetOrderHistory, CalculateWallCost
+│   ├── subscription/            # Subscribe, CancelSubscription
+│   └── user/                    # Register, Login, UpdateProfile
+└── infrastructure/              # Infrastructure Layer (реализации)
+    ├── persistence/             # SQLAlchemy, реализации репозиториев
+    ├── api/                     # FastAPI роутеры (адаптеры)
+    └── security/                # JWT, хеширование
+```
+
+### Принципы DDD
+
+- **Bounded Contexts**: каждый домен изолирован, общается через чёткие интерфейсы
+- **Domain Layer**: чистая бизнес-логика без зависимостей от фреймворков
+- **Application Layer**: use cases координируют доменную логику
+- **Infrastructure Layer**: реализации (БД, API) зависят от домена, а не наоборот
+- **Dependency Rule**: domain <-- application <-- infrastructure (зависимости направлены внутрь)
+- **Aggregate Root**: единственная точка доступа к агрегату (Design, Order, Subscription, User)
 
 ---
 

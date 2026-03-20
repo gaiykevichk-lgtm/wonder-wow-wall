@@ -1,8 +1,9 @@
 # Wonder Wow Wall — Backend
 
 REST API для B2C интернет-магазина модульных стеновых панелей.
+Архитектура: **Domain-Driven Design (DDD)** — Domain / Application / Infrastructure layers.
 
-> **Статус**: планируется (Фаза 8 по плану разработки). Фронтенд работает на моковых данных.
+> **Статус**: планируется (Фаза 9 по плану разработки). Фронтенд работает на моковых данных.
 
 ## Стек (планируемый)
 
@@ -31,56 +32,95 @@ uvicorn app.main:app --reload --port 8080
 docker compose up -d
 ```
 
-## Планируемая структура
+## Архитектура (DDD)
+
+### Принципы
+
+- **Domain Layer** — чистая бизнес-логика без зависимостей от фреймворков
+- **Application Layer** — use cases координируют доменную логику
+- **Infrastructure Layer** — реализации (БД, API, JWT) зависят от домена, а не наоборот
+- **Dependency Rule**: domain ← application ← infrastructure (зависимости направлены внутрь)
+
+### Структура проекта
 
 ```
 backend/
 ├── app/
 │   ├── main.py                  # FastAPI приложение, middleware, CORS
 │   ├── config.py                # Настройки (Pydantic BaseSettings)
-│   ├── database.py              # Подключение к БД, AsyncSession
 │   │
-│   ├── models/                  # SQLAlchemy модели
-│   │   ├── user.py              # User, Address
-│   │   ├── design.py            # Design, Category, Color, DesignReview
-│   │   ├── panel.py             # PanelSize, BasePanelPrice
-│   │   ├── order.py             # Order, OrderItem
-│   │   ├── subscription.py      # Subscription, SubscriptionPlan
-│   │   └── project.py           # ConstructorProject (сохранённые проекты)
+│   ├── domain/                  # Domain Layer (чистая бизнес-логика)
+│   │   ├── catalog/             # Bounded Context: Каталог
+│   │   │   ├── entities.py      # Design (Aggregate Root), Category, DesignReview
+│   │   │   ├── value_objects.py # PanelSize, Color, Price
+│   │   │   ├── repositories.py  # Абстрактные интерфейсы репозиториев (ABC)
+│   │   │   └── services.py     # Доменные сервисы каталога
+│   │   │
+│   │   ├── order/               # Bounded Context: Заказы
+│   │   │   ├── entities.py      # Order (Aggregate Root), OrderItem
+│   │   │   ├── value_objects.py # Address, OrderStatus, Money
+│   │   │   ├── repositories.py
+│   │   │   └── services.py     # PricingService (доменный сервис)
+│   │   │
+│   │   ├── subscription/        # Bounded Context: Подписки
+│   │   │   ├── entities.py      # Subscription (Aggregate Root), SubscriptionPlan
+│   │   │   ├── value_objects.py # SubscriptionTier, BillingPeriod
+│   │   │   ├── repositories.py
+│   │   │   └── services.py
+│   │   │
+│   │   └── user/                # Bounded Context: Пользователи
+│   │       ├── entities.py      # User (Aggregate Root)
+│   │       ├── value_objects.py # Email, Password
+│   │       ├── repositories.py
+│   │       └── services.py
 │   │
-│   ├── schemas/                 # Pydantic схемы (request/response)
-│   │   ├── user.py
-│   │   ├── design.py
-│   │   ├── order.py
-│   │   ├── subscription.py
-│   │   └── project.py
+│   ├── application/             # Application Layer (use cases, координация)
+│   │   ├── catalog/
+│   │   │   └── use_cases.py     # ListDesigns, GetDesignDetails, AddReview
+│   │   ├── order/
+│   │   │   └── use_cases.py     # CreateOrder, GetOrderHistory, CalculateWallCost
+│   │   ├── subscription/
+│   │   │   └── use_cases.py     # Subscribe, CancelSubscription, CheckOverlayLimit
+│   │   └── user/
+│   │       └── use_cases.py     # Register, Login, UpdateProfile
 │   │
-│   ├── api/                     # Роутеры (endpoints)
-│   │   ├── auth.py              # POST /register, /login, /forgot-password
-│   │   ├── designs.py           # GET /designs, /designs/:id, /categories
-│   │   ├── orders.py            # POST /orders, GET /orders, /orders/:id
-│   │   ├── subscriptions.py     # POST /subscribe, DELETE /cancel, GET /status
-│   │   ├── projects.py          # CRUD конструктор-проектов
-│   │   ├── users.py             # GET/PUT /me, favorites
-│   │   └── contacts.py          # POST /contacts (форма обратной связи)
-│   │
-│   ├── services/                # Бизнес-логика
-│   │   ├── auth_service.py
-│   │   ├── order_service.py
-│   │   ├── subscription_service.py
-│   │   └── pricing_service.py   # Расчёт стоимости (панель + накладка ± подписка)
+│   ├── infrastructure/          # Infrastructure Layer (реализации)
+│   │   ├── persistence/
+│   │   │   ├── database.py      # Async engine, sessionmaker, Base
+│   │   │   ├── models.py        # SQLAlchemy ORM-модели (маппинг на доменные сущности)
+│   │   │   └── repositories/    # Реализации репозиториев
+│   │   │       ├── catalog_repo.py
+│   │   │       ├── order_repo.py
+│   │   │       ├── subscription_repo.py
+│   │   │       └── user_repo.py
+│   │   │
+│   │   ├── api/                 # FastAPI роутеры (адаптеры)
+│   │   │   ├── catalog.py       # GET /api/designs, /categories, /reviews
+│   │   │   ├── orders.py        # POST/GET /api/orders
+│   │   │   ├── subscriptions.py # POST/GET/DELETE /api/subscriptions
+│   │   │   ├── auth.py          # POST /api/auth/register, /login
+│   │   │   ├── projects.py      # CRUD /api/projects
+│   │   │   └── contacts.py      # POST /api/contacts
+│   │   │
+│   │   └── security/
+│   │       └── jwt.py           # JWT tokens, password hashing
 │   │
 │   └── utils/
-│       ├── security.py          # JWT, хеширование паролей
-│       └── dependencies.py      # get_current_user, get_db
+│       └── dependencies.py      # FastAPI Depends (get_db, get_current_user)
 │
 ├── alembic/                     # Миграции
-├── tests/                       # Тесты
-│   ├── conftest.py
-│   ├── test_auth.py
-│   ├── test_designs.py
-│   ├── test_orders.py
-│   └── test_subscriptions.py
+├── tests/                       # Тесты по bounded contexts
+│   ├── domain/                  # Unit-тесты доменного слоя
+│   │   ├── test_catalog.py
+│   │   ├── test_order.py
+│   │   └── test_subscription.py
+│   ├── application/             # Тесты use cases
+│   │   ├── test_catalog_use_cases.py
+│   │   └── test_order_use_cases.py
+│   └── api/                     # Интеграционные тесты API
+│       ├── test_catalog_api.py
+│       ├── test_orders_api.py
+│       └── test_auth_api.py
 │
 ├── Dockerfile
 ├── docker-compose.yml
@@ -89,6 +129,31 @@ backend/
 ├── alembic.ini
 ├── CONVENTIONS.md
 └── README.md                    ← вы здесь
+```
+
+### Bounded Contexts (ограниченные контексты)
+
+| Домен | Aggregate Root | Entities | Value Objects |
+|-------|---------------|----------|--------------|
+| **Catalog** | Design | Category, DesignReview | PanelSize, Color, Price |
+| **Order** | Order | OrderItem | Address, OrderStatus, Money |
+| **Subscription** | Subscription | SubscriptionPlan | SubscriptionTier, BillingPeriod |
+| **User** | User | — | Email, Password |
+
+### Потоки данных (слои)
+
+```
+HTTP Request
+    ↓
+[Infrastructure: API Router] — валидация, сериализация
+    ↓
+[Application: Use Case] — координация, транзакции
+    ↓
+[Domain: Entity + Service] — бизнес-правила
+    ↓
+[Infrastructure: Repository] — персистентность
+    ↓
+HTTP Response
 ```
 
 ## API Endpoints (план)
@@ -101,7 +166,7 @@ backend/
 | POST | `/api/auth/forgot-password` | Восстановление пароля |
 | GET | `/api/auth/me` | Текущий пользователь |
 
-### Designs (каталог)
+### Catalog (designs)
 | Метод | Путь | Описание |
 |-------|------|---------|
 | GET | `/api/designs` | Список дизайнов (фильтры, пагинация) |
@@ -144,27 +209,37 @@ backend/
 | POST | `/api/contacts` | Форма обратной связи |
 | GET | `/api/portfolio` | Портфолио проектов |
 
-## Модель данных (ключевые сущности)
+## Модель данных (доменные сущности)
 
-### DesignOverlay
-- `id`, `name`, `category_id`, `style`, `image_url`, `description`
+### Catalog Domain
+
+**Design** (Aggregate Root)
+- `id`, `name`, `slug`, `category_id`, `style`, `image_url`, `description`
 - `price` = 1 200 ₽ (единая цена для всех дизайнов)
 - `colors[]`, `specs{}`, `rating`, `reviews_count`
 
-### PanelSize
-- `id`, `width_mm`, `height_mm`, `label`
-- 3 размера: 300×300, 300×600, 600×600
+**PanelSize** (Value Object)
+- 3 размера: 300×300, 300×600, 600×600 мм
+- Цены: 890 / 1 490 / 2 490 ₽
 
-### BasePanelPrice
-- `panel_size_id`, `price`
-- 890 / 1490 / 2490 ₽
+### Order Domain
 
-### SubscriptionPlan
+**Order** (Aggregate Root)
+- `id`, `user_id`, `status`, `total`, `items[]`, `address`, `created_at`
+- Статусы: pending → confirmed → in_progress → installed → completed
+
+### Subscription Domain
+
+**Subscription** (Aggregate Root)
+- `id`, `user_id`, `plan_id`, `status`, `started_at`, `expires_at`
+
+**SubscriptionPlan**
 - `id`, `name`, `price`, `period`, `overlays_per_month`, `features[]`
 
-### Order
-- `id`, `user_id`, `status`, `total`, `items[]`, `created_at`
-- Статусы: pending → confirmed → in_progress → installed → completed
+### User Domain
+
+**User** (Aggregate Root)
+- `id`, `email`, `password_hash`, `name`, `phone`, `created_at`
 
 ## Переменные окружения (.env)
 
