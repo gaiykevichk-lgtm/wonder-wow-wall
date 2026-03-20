@@ -349,6 +349,7 @@ const CheckoutPage: React.FC = () => {
             gap: 28,
             alignItems: 'start',
           }}
+          className="checkout-layout"
         >
           {/* Left: form */}
           <motion.div

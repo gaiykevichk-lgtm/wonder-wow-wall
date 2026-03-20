@@ -254,6 +254,7 @@ export default function ConstructorPage() {
           maxWidth: 1400,
           margin: '0 auto',
         }}
+        className="constructor-layout"
       >
         {/* LEFT SIDEBAR */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

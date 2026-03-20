@@ -59,6 +59,7 @@ const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }
         gap: 64,
         alignItems: 'center',
       }}
+      className="hero-grid"
     >
       {/* Left column */}
       <motion.div
@@ -68,6 +69,14 @@ const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }
         style={{ display: 'flex', flexDirection: 'column', gap: 28 }}
       >
         <motion.div variants={fadeUpVariants} custom={0}>
+          <img
+            src="/logo.png"
+            alt="Wonder Wow Wall"
+            style={{ height: 56, marginBottom: 8 }}
+          />
+        </motion.div>
+
+        <motion.div variants={fadeUpVariants} custom={0.5}>
           <Tag
             style={{
               background: GREEN,
@@ -682,6 +691,7 @@ const CalculatorCTASection: React.FC<{ onConstructor: () => void }> = ({ onConst
           padding: '48px 56px',
           alignItems: 'center',
         }}
+        className="cta-calc-grid"
       >
         {/* Left */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -941,6 +951,7 @@ const CTABannerSection: React.FC<{ onCatalog: () => void; onContact: () => void 
         viewport={{ once: true, amount: 0.3 }}
         variants={fadeUpVariants}
         custom={0}
+        className="cta-banner-inner"
         style={{
           background: DARK,
           borderRadius: 16,
@@ -1027,7 +1038,7 @@ const HomePage: React.FC = () => {
   const handleConstructor = () => navigate('/constructor');
   const handleCategory = (key: string) => navigate(`/catalog?category=${key}`);
   const handleProduct = (id: string) => navigate(`/product/${id}`);
-  const handleContact = () => navigate('/contact');
+  const handleContact = () => navigate('/contacts');
 
   return (
     <div style={{ fontFamily: 'Inter, sans-serif' }}>
@@ -1038,6 +1049,15 @@ const HomePage: React.FC = () => {
       <CalculatorCTASection onConstructor={handleConstructor} />
       <ReviewsSection />
       <CTABannerSection onCatalog={handleCatalog} onContact={handleContact} />
+
+      <style>{`
+        @media (max-width: 768px) {
+          .hero-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
+          .hero-grid .hero-images { order: -1; }
+          .cta-calc-grid { grid-template-columns: 1fr !important; padding: 28px 20px !important; }
+          .cta-banner-inner { padding: 36px 20px !important; }
+        }
+      `}</style>
     </div>
   );
 };

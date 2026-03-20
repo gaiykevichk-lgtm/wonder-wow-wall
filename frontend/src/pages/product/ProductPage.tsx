@@ -163,6 +163,7 @@ export default function ProductPage() {
             gap: 48,
             alignItems: 'start',
           }}
+          className="product-layout"
         >
           {/* LEFT — Image gallery */}
           <div>

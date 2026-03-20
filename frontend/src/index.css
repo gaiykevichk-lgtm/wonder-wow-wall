@@ -27,3 +27,53 @@ body {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .ant-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+
+/* Image fallback */
+img {
+  background: linear-gradient(135deg, #F5F5F5 0%, #E5E7EB 100%);
+}
+
+/* ─── Mobile Responsive ─────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  /* Page layouts */
+  .hero-grid,
+  .product-layout,
+  .checkout-layout,
+  .constructor-layout {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+
+  .cta-calc-grid {
+    grid-template-columns: 1fr !important;
+    padding: 24px 20px !important;
+  }
+
+  .cta-banner-inner {
+    padding: 36px 20px !important;
+  }
+
+  /* Header */
+  header {
+    padding: 0 16px !important;
+  }
+
+  /* General section padding */
+  section {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  /* Footer bottom row */
+  footer [style*="justify-content: space-between"] {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-grid h1 {
+    font-size: 32px !important;
+  }
+}

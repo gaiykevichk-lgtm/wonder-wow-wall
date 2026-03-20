@@ -80,7 +80,7 @@ export function ShopHeader() {
               src="/logo.png"
               alt="Wonder Wow Wall"
               style={{
-                height: 36,
+                height: 48,
                 filter: scrolled || !isHome ? 'none' : 'brightness(10)',
                 transition: 'filter 0.3s',
               }}
