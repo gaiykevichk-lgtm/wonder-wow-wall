@@ -41,6 +41,7 @@ uvicorn app.main:app --reload     # → http://localhost:8080
 | **Order** | Корзина, оформление, история заказов | Order |
 | **Subscription** | Планы подписки, управление, лимиты накладок | Subscription |
 | **Constructor** | Snap-to-grid размещение, визуализация, расчёт стоимости | — |
+| **Visualizer** | Фото-редактор стен: загрузка фото, сегментация, размещение панелей | VisualizationProject |
 | **Content** | Информационные страницы (О нас, FAQ, Портфолио и др.) | — |
 | **User** | Регистрация, авторизация, профиль (backend) | User |
 
@@ -50,7 +51,8 @@ uvicorn app.main:app --reload     # → http://localhost:8080
 - **Панель** (panel) — базовая стеновая пластина (30×30, 30×60, 60×60 см)
 - **Дизайн** (design) — визуальное оформление накладки
 - **Подписка** (subscription) — ежемесячное обновление накладок
-- **Конструктор** (constructor) — визуальный редактор стены
+- **Конструктор** (constructor) — визуальный редактор стены (абстрактная сетка)
+- **Визуализатор** (visualizer) — фото-редактор стены (реальное фото + ML-сегментация)
 
 ## Структура проекта
 
@@ -83,9 +85,13 @@ wonder-wow-wall/
 │       │   ├── subscription/    # Подписка
 │       │   │   ├── model/       # SubscriptionPlan, subscriptionStore
 │       │   │   └── ui/          # PricingPage
-│       │   ├── constructor/     # Конструктор стен
+│       │   ├── constructor/     # Конструктор стен (абстрактная сетка)
 │       │   │   ├── model/       # ConstructorPanel
 │       │   │   └── ui/          # ConstructorPage
+│       │   ├── visualizer/      # Фото-редактор стен (реальное фото)
+│       │   │   ├── model/       # Scene, WallMask, PanelLayout, VisualizationProject
+│       │   │   ├── ui/          # PhotoEditorPage, WallCanvas, MaskOverlay
+│       │   │   └── lib/         # canvasRenderer, maskUtils, imageProcessing
 │       │   └── content/         # Информационные страницы
 │       │       └── ui/          # Home, About, FAQ, Portfolio...
 │       ├── shared/              # Cross-cutting concerns
@@ -103,12 +109,14 @@ wonder-wow-wall/
         │   ├── catalog/         # Entities, Value Objects, Repositories (ABC)
         │   ├── order/
         │   ├── subscription/
-        │   └── user/
+        │   ├── user/
+        │   └── visualizer/      # Scene, WallMask, ObjectMask, VisualizationProject
         ├── application/         # Application Layer (use cases)
         │   ├── catalog/
         │   ├── order/
         │   ├── subscription/
-        │   └── user/
+        │   ├── user/
+        │   └── visualizer/      # UploadPhoto, CorrectMask, SaveProject, ExportImage
         └── infrastructure/      # Infrastructure Layer (БД, API, JWT)
             ├── persistence/     # SQLAlchemy, реализации репозиториев
             ├── api/             # FastAPI роутеры
@@ -143,6 +151,8 @@ wonder-wow-wall/
 
 - Требования: [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md)
 - Дизайн-система: [`docs/design-docs/DESIGN-SYSTEM.md`](docs/design-docs/DESIGN-SYSTEM.md)
+- Фото-редактор (архитектура): [`docs/design-docs/PHOTO-WALL-EDITOR-ARCHITECTURE.md`](docs/design-docs/PHOTO-WALL-EDITOR-ARCHITECTURE.md)
+- Фото-редактор (спецификация): [`docs/product-specs/PHOTO-WALL-EDITOR.md`](docs/product-specs/PHOTO-WALL-EDITOR.md)
 - План разработки: [`docs/exec-plans/active/PLAN-MVP.md`](docs/exec-plans/active/PLAN-MVP.md)
 - Frontend: [`frontend/README.md`](frontend/README.md)
 - Backend: [`backend/README.md`](backend/README.md)

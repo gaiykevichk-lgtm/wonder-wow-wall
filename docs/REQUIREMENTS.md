@@ -100,6 +100,25 @@
 - [ ] Добавление в корзину из конструктора
 - [ ] Загрузка референсов (фото стены)
 
+### 3.5.1 Фото-редактор стен (Photo Wall Editor)
+
+> Полная спецификация: [`docs/product-specs/PHOTO-WALL-EDITOR.md`](product-specs/PHOTO-WALL-EDITOR.md)
+> Архитектурное решение: [`docs/design-docs/PHOTO-WALL-EDITOR-ARCHITECTURE.md`](design-docs/PHOTO-WALL-EDITOR-ARCHITECTURE.md)
+
+- [ ] Загрузка фото стены (drag & drop, файл, камера)
+- [ ] ML-сегментация сцены: распознавание стены и объектов (мебель, двери, окна, розетки)
+- [ ] Генерация WallMask (где стена) и ObjectMask (где объекты)
+- [ ] Ручная коррекция маски (кисть, ластик, undo/redo)
+- [ ] Авторазмещение панелей на свободной поверхности стены
+- [ ] Панели НЕ перекрывают распознанные объекты
+- [ ] Выбор дизайна, размера, цвета панелей
+- [ ] Реалистичная визуализация на Canvas (перспектива, освещение)
+- [ ] Режим сравнения до/после (slider)
+- [ ] Калибровка масштаба (реальные размеры стены)
+- [ ] Расчёт стоимости (панели + накладки, учёт подписки)
+- [ ] Добавление проекта в корзину
+- [ ] Сохранение проекта визуализации
+
 ### 3.6 Оформление заказа
 - [ ] Корзина (drawer)
 - [ ] Управление количеством
@@ -207,6 +226,7 @@
 | **Order** | Корзина, оформление, история заказов | Order |
 | **Subscription** | Планы подписки, управление, лимиты накладок | Subscription |
 | **Constructor** | Snap-to-grid размещение, визуализация, расчёт стоимости | -- |
+| **Visualizer** | Фото-редактор стен: сегментация, размещение панелей на фото | VisualizationProject |
 | **Content** | Информационные страницы (О нас, FAQ, Портфолио и др.) | -- |
 | **User** | Регистрация, авторизация, профиль | User |
 
@@ -218,7 +238,13 @@
 | Панель | panel | Базовая стеновая пластина (30x30, 30x60, 60x60 см) |
 | Дизайн | design | Визуальное оформление накладки |
 | Подписка | subscription | Ежемесячное обновление накладок |
-| Конструктор | constructor | Визуальный редактор стены |
+| Конструктор | constructor | Визуальный редактор стены (абстрактная сетка) |
+| Визуализатор | visualizer | Фото-редактор стены (реальное фото + ML-сегментация) |
+| Сцена | scene | Загруженное фото интерьера с результатами анализа |
+| Маска стены | wall mask | Бинарная карта: какие пиксели являются стеной |
+| Маска объектов | object mask | Карта объектов с классами (мебель, двери, окна) |
+| Сегментация | segmentation | ML-процесс разделения фото на стену и объекты |
+| Раскладка | layout | Результат размещения панелей на стене |
 
 ### Frontend DDD-структура
 
@@ -230,6 +256,7 @@ src/
 │   ├── order/                    # model/ (types, cartStore) + ui/ (pages)
 │   ├── subscription/             # model/ (types, subscriptionStore) + ui/ (pages)
 │   ├── constructor/              # model/ (types) + ui/ (pages)
+│   ├── visualizer/               # model/ (types, store, services) + ui/ (pages) + lib/
 │   └── content/                  # ui/ (информационные страницы)
 └── shared/                       # Cross-cutting: ui, config, router, theme
 ```
@@ -242,12 +269,14 @@ app/
 │   ├── catalog/                 # entities, value_objects, repositories (ABC), services
 │   ├── order/
 │   ├── subscription/
-│   └── user/
+│   ├── user/
+│   └── visualizer/              # Scene, WallMask, ObjectMask, VisualizationProject
 ├── application/                 # Application Layer (use cases)
 │   ├── catalog/                 # ListDesigns, GetDesignDetails, AddReview
 │   ├── order/                   # CreateOrder, GetOrderHistory, CalculateWallCost
 │   ├── subscription/            # Subscribe, CancelSubscription
-│   └── user/                    # Register, Login, UpdateProfile
+│   ├── user/                    # Register, Login, UpdateProfile
+│   └── visualizer/              # UploadPhoto, CorrectMask, SaveProject, ExportImage
 └── infrastructure/              # Infrastructure Layer (реализации)
     ├── persistence/             # SQLAlchemy, реализации репозиториев
     ├── api/                     # FastAPI роутеры (адаптеры)
