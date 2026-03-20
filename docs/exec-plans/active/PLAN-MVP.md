@@ -129,33 +129,39 @@
 
 ---
 
-## Фаза 8.5: Фото-редактор стен (Visualizer) 🔜
+## Фаза 8.5: Фото-редактор стен (Visualizer) ✅ ЗАВЕРШЕНА (Frontend MVP)
 
 > Полная спецификация: [`docs/product-specs/PHOTO-WALL-EDITOR.md`](../../product-specs/PHOTO-WALL-EDITOR.md)
 > Архитектура: [`docs/design-docs/PHOTO-WALL-EDITOR-ARCHITECTURE.md`](../../design-docs/PHOTO-WALL-EDITOR-ARCHITECTURE.md)
 
-### 8.5.1 MVP фото-редактора (Phase 1)
-- [ ] Bounded Context `visualizer`: model/ (types, store, services) + ui/ + lib/
-- [ ] Загрузка фото стены (drag & drop, файл, камера)
-- [ ] Интеграция с серверной ML-сегментацией (SAM 2)
-- [ ] Отображение WallMask и ObjectMask поверх фото
-- [ ] Ручная коррекция маски (кисть, ластик, undo/redo)
-- [ ] Авторазмещение панелей на WallMask (Layout Engine)
-- [ ] Панели не перекрывают объекты (ObjectMask)
-- [ ] Выбор дизайна, размера, цвета из каталога
-- [ ] Canvas-визуализация панелей на фото
-- [ ] Расчёт стоимости (с учётом подписки)
-- [ ] Добавление проекта в корзину
-- [ ] Маршрут `/visualizer`
+### 8.5.1 MVP фото-редактора — Frontend ✅
+- [x] Bounded Context `visualizer`: model/ (types, store, adapters) + ui/ (8 компонентов) + lib/ (4 утилиты)
+- [x] Загрузка фото стены (drag & drop, файл, камера) — PhotoUploader
+- [x] Отображение WallMask и ObjectMask поверх фото — WallCanvas (Canvas 2D)
+- [x] Ручная коррекция маски (кисть, ластик, undo/redo) — MaskToolbar + maskUtils
+- [x] Авторазмещение панелей на WallMask (Layout Engine) — layoutEngine.ts
+- [x] Панели не перекрывают объекты (ObjectMask) — wallCoverageInRect ≥70%
+- [x] Выбор дизайна, размера, цвета из каталога — PanelPicker
+- [x] Canvas-визуализация панелей на фото — WallCanvas (прямоугольники с лейблами)
+- [x] Расчёт стоимости (с учётом подписки) — costCalculator + CostSummary
+- [x] Добавление проекта в корзину — adapters.ts → cartStore
+- [x] Маршрут `/visualizer` — lazy-loaded
+- [x] Сравнение до/после (slider) — BeforeAfterSlider
+- [x] Zoom/Pan (колесо мыши + alt-click)
+- [x] 3 режима размещения: ручной, авто, акцент — PlacementControls
+- [x] Тесты: 90 тестов (maskUtils, layoutEngine, costCalculator, adapters, store, UI)
 
-### 8.5.2 Реалистичность (Phase 2)
+### 8.5.1b MVP — Ожидает Backend
+- [ ] Интеграция с серверной ML-сегментацией (SAM 2) — `POST /api/visualizer/upload`
+- [ ] Автоматическое определение стен и объектов (пока — мок-маска)
+
+### 8.5.2 Реалистичность (Phase 2) — Планируется
 - [ ] Определение перспективы стены
 - [ ] Перспективная трансформация панелей (WebGL)
 - [ ] Учёт освещения на фото
 - [ ] Тени швов между панелями
-- [ ] Сравнение до/после (slider)
 
-### 8.5.3 Продвинутые функции (Phase 3)
+### 8.5.3 Продвинутые функции (Phase 3) — Планируется
 - [ ] Калибровка масштаба (2 точки → реальное расстояние)
 - [ ] Режим «Акцентная зона»
 - [ ] Комбинирование нескольких дизайнов
@@ -266,9 +272,9 @@
 | 6 | Подписка | ✅ Завершена | — |
 | 7 | Информационные страницы | ✅ Завершена | — |
 | 8 | Авторизация и ЛК | ✅ Завершена | — |
-| 8.5 | Фото-редактор стен (Visualizer) | 🔜 Следующая | Высокий |
-| 9 | Backend API | ⬜ Планируется | Высокий |
+| 8.5 | Фото-редактор стен (Visualizer) | ✅ Frontend MVP | — |
+| 9 | Backend API | 🔜 Следующая | Высокий |
 | 10 | Интеграция | ⬜ Планируется | Средний |
 | 11 | Полировка и деплой | ⬜ Планируется | Средний |
 
-**Завершено: 9 из 13 фаз (69%)**
+**Завершено: 10 из 13 фаз (77%)**
