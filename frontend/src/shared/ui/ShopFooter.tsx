@@ -19,7 +19,7 @@ export function ShopFooter() {
             <img
               src="/logo.png"
               alt="Wonder Wow Wall"
-              style={{ height: 32, filter: 'brightness(10)', marginBottom: 16 }}
+              style={{ height: 40, filter: 'brightness(10)', marginBottom: 16 }}
             />
             <p style={{ fontSize: 14, color: '#9CA3AF', lineHeight: 1.6, marginBottom: 20 }}>
               Инновационный сервис отделки стен модульными пластинами.

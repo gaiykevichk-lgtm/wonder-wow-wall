@@ -72,7 +72,7 @@ const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }
           <img
             src="/logo.png"
             alt="Wonder Wow Wall"
-            style={{ height: 56, marginBottom: 8 }}
+            style={{ height: 72, marginBottom: 8 }}
           />
         </motion.div>
 
