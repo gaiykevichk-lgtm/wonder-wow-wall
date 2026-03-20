@@ -41,9 +41,10 @@ uvicorn app.main:app --reload     # → http://localhost:8080
 | **Order** | Корзина, оформление, история заказов | Order |
 | **Subscription** | Планы подписки, управление, лимиты накладок | Subscription |
 | **Constructor** | Snap-to-grid размещение, визуализация, расчёт стоимости | — |
+| **Auth** | Регистрация, вход, JWT, защищённые маршруты | User |
+| **Account** | Личный кабинет: профиль, заказы, проекты, избранное, конструктор, подписка | — |
 | **Visualizer** | Фото-редактор стен: загрузка фото, сегментация, размещение панелей | VisualizationProject |
 | **Content** | Информационные страницы (О нас, FAQ, Портфолио и др.) | — |
-| **User** | Регистрация, авторизация, профиль (backend) | User |
 
 ### Ubiquitous Language (единый язык)
 
@@ -88,6 +89,12 @@ wonder-wow-wall/
 │       │   ├── constructor/     # Конструктор стен (абстрактная сетка)
 │       │   │   ├── model/       # ConstructorPanel
 │       │   │   └── ui/          # ConstructorPage
+│       │   ├── auth/            # Авторизация
+│       │   │   ├── model/       # User, Address, authStore
+│       │   │   └── ui/          # LoginPage, RegisterPage, ForgotPasswordPage, RequireAuth
+│       │   ├── account/         # Личный кабинет
+│       │   │   ├── model/       # Order, SavedProject, accountStore
+│       │   │   └── ui/          # AccountLayout, Profile, Orders, Projects, Constructor, Favorites, Subscription
 │       │   ├── visualizer/      # Фото-редактор стен (реальное фото)
 │       │   │   ├── model/       # Scene, WallMask, PanelLayout, VisualizationProject
 │       │   │   ├── ui/          # PhotoEditorPage, WallCanvas, MaskOverlay
@@ -146,6 +153,8 @@ wonder-wow-wall/
 - [x] Подписка — выбор плана, оформление, статус в хедере, скидки в конструкторе
 - [x] Тарифы — покупка vs подписка, прозрачное ценообразование
 - [x] Информационные страницы (О нас, FAQ, Портфолио, Контакты)
+- [x] Авторизация — вход, регистрация, восстановление пароля, protected routes
+- [x] Личный кабинет — профиль, заказы, проекты, конструктор, избранное, подписка
 
 ## Дальнейшая документация
 
