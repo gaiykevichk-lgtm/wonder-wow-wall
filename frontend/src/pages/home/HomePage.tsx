@@ -70,9 +70,9 @@ const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }
       >
         <motion.div variants={fadeUpVariants} custom={0}>
           <img
-            src="/logo.png"
+            src="/logo-black.png"
             alt="Wonder Wow Wall"
-            style={{ height: 72, marginBottom: 8 }}
+            style={{ height: 80, marginBottom: 8 }}
           />
         </motion.div>
 

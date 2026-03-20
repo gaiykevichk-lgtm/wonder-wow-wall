@@ -77,10 +77,10 @@ export function ShopHeader() {
             }}
           >
             <img
-              src="/logo.png"
+              src="/logo-black.png"
               alt="Wonder Wow Wall"
               style={{
-                height: 44,
+                height: 52,
                 filter: scrolled || !isHome ? 'none' : 'brightness(10)',
                 transition: 'filter 0.3s',
               }}
@@ -164,7 +164,7 @@ export function ShopHeader() {
       {/* Mobile Drawer */}
       <Drawer
         title={
-          <img src="/logo.png" alt="Wonder Wow Wall" style={{ height: 36 }} />
+          <img src="/logo-black.png" alt="Wonder Wow Wall" style={{ height: 44 }} />
         }
         open={mobileOpen}
         onClose={() => setMobileOpen(false)}
