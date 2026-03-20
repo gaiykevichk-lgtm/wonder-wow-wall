@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Badge, Button, Drawer, Tag } from 'antd';
+import { Badge, Button, Drawer, Tag, Tooltip } from 'antd';
 import {
   ShoppingOutlined,
   HeartOutlined,
@@ -11,6 +11,7 @@ import {
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../domains/order/model/cartStore';
 import { useSubscriptionStore } from '../../domains/subscription/model/subscriptionStore';
+import { useAuthStore } from '../../domains/auth/model/authStore';
 
 const NAV_ITEMS = [
   { path: '/catalog', label: 'Каталог' },
@@ -30,6 +31,8 @@ export function ShopHeader() {
   const totalItems = useCartStore((s) => s.totalItems);
   const activePlan = useSubscriptionStore((s) => s.getActivePlan);
   const openSubModal = useSubscriptionStore((s) => s.openModal);
+  const isAuth = useAuthStore((s) => s.isAuth);
+  const user = useAuthStore((s) => s.user);
   const isHome = location.pathname === '/';
 
   useEffect(() => {
@@ -182,12 +185,30 @@ export function ShopHeader() {
                 style={{ color: textColor, transition: 'color 0.3s' }}
               />
             </Badge>
-            <Button
-              type="text"
-              icon={<UserOutlined style={{ fontSize: 20 }} />}
-              onClick={() => navigate('/login')}
-              style={{ color: textColor, transition: 'color 0.3s' }}
-            />
+            {isAuth ? (
+              <Tooltip title={user?.name || 'Кабинет'}>
+                <Button
+                  type="text"
+                  onClick={() => navigate('/account')}
+                  style={{
+                    color: textColor,
+                    transition: 'color 0.3s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
+                  <UserOutlined style={{ fontSize: 20 }} />
+                </Button>
+              </Tooltip>
+            ) : (
+              <Button
+                type="text"
+                icon={<UserOutlined style={{ fontSize: 20 }} />}
+                onClick={() => navigate('/login')}
+                style={{ color: textColor, transition: 'color 0.3s' }}
+              />
+            )}
             <Button
               type="text"
               icon={<MenuOutlined style={{ fontSize: 20 }} />}

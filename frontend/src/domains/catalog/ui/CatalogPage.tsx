@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
 import { Card, Rate, Tag, Input, Select, Slider, Button } from 'antd';
-import { SearchOutlined, FilterOutlined, AppstoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { SearchOutlined, FilterOutlined, AppstoreOutlined, UnorderedListOutlined, HeartOutlined, HeartFilled } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { products, categories } from '../model/data';
 import { useCartStore } from '../../order/model/cartStore';
+import { useAccountStore } from '../../account/model/accountStore';
 import type { PanelProduct } from '../model/types';
 
 type SortKey = 'popular' | 'price-asc' | 'price-desc' | 'rating';
@@ -23,6 +24,8 @@ export default function CatalogPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const addItem = useCartStore((s) => s.addItem);
+  const favoriteIds = useAccountStore((s) => s.favoriteIds);
+  const toggleFavorite = useAccountStore((s) => s.toggleFavorite);
 
   const initialCategory = searchParams.get('category') || 'all';
 
@@ -304,6 +307,8 @@ export default function CatalogPage() {
                   product={product}
                   index={i}
                   hovered={hoveredCard === product.id}
+                  isFavorite={favoriteIds.includes(product.id)}
+                  onToggleFavorite={toggleFavorite}
                   onHover={setHoveredCard}
                   onAddToCart={handleAddToCart}
                   onNavigate={() => navigate(`/product/${product.id}`)}
@@ -331,12 +336,14 @@ interface GridCardProps {
   product: PanelProduct;
   index: number;
   hovered: boolean;
+  isFavorite: boolean;
+  onToggleFavorite: (id: string) => void;
   onHover: (id: string | null) => void;
   onAddToCart: (e: React.MouseEvent, product: PanelProduct) => void;
   onNavigate: () => void;
 }
 
-function GridCard({ product, index, hovered, onHover, onAddToCart, onNavigate }: GridCardProps) {
+function GridCard({ product, index, hovered, isFavorite, onToggleFavorite, onHover, onAddToCart, onNavigate }: GridCardProps) {
   return (
     <motion.div
       custom={index}
@@ -391,6 +398,27 @@ function GridCard({ product, index, hovered, onHover, onAddToCart, onNavigate }:
                 {product.badge}
               </Tag>
             )}
+
+            {/* Favorite button */}
+            <Button
+              type="text"
+              icon={isFavorite ? <HeartFilled style={{ color: '#ff4d4f', fontSize: 18 }} /> : <HeartOutlined style={{ fontSize: 18, color: '#999' }} />}
+              onClick={(e) => { e.stopPropagation(); onToggleFavorite(product.id); }}
+              style={{
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                background: 'rgba(255,255,255,0.9)',
+                borderRadius: '50%',
+                width: 32,
+                height: 32,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 0,
+                boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+              }}
+            />
 
             {/* Add to cart overlay button */}
             <div
