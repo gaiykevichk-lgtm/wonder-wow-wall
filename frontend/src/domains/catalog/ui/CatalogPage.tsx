@@ -1,9 +1,11 @@
 import { useState, useMemo } from 'react';
-import { Card, Rate, Tag, Input, Select, Slider, Button } from 'antd';
+import { Card, Rate, Tag, Input, Select, Slider, Button, Skeleton } from 'antd';
 import { SearchOutlined, FilterOutlined, AppstoreOutlined, UnorderedListOutlined, HeartOutlined, HeartFilled } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { products, categories } from '../model/data';
+import { products as mockProducts, categories as mockCategories } from '../model/data';
+import { useDesigns, useCategories } from '../api/catalogApi';
+import { apiDesignToProduct, apiCategoryToCategory } from '../api/adapters';
 import { useCartStore } from '../../order/model/cartStore';
 import { useAccountStore } from '../../account/model/accountStore';
 import type { PanelProduct } from '../model/types';
@@ -35,6 +37,24 @@ export default function CatalogPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
+
+  // API data with fallback to mocks
+  const { data: designsData, isLoading: designsLoading } = useDesigns();
+  const { data: categoriesData } = useCategories();
+
+  const products = useMemo(() => {
+    if (designsData?.items) {
+      return designsData.items.map(apiDesignToProduct);
+    }
+    return mockProducts;
+  }, [designsData]);
+
+  const categories = useMemo(() => {
+    if (categoriesData) {
+      return [{ key: 'all', label: 'Все дизайны', image: '', count: 0 }, ...categoriesData.map(apiCategoryToCategory)];
+    }
+    return mockCategories;
+  }, [categoriesData]);
 
   const handleCategoryChange = (key: string) => {
     setActiveCategory(key);
@@ -268,7 +288,16 @@ export default function CatalogPage() {
         </div>
 
         {/* Product Grid / List */}
-        {filtered.length === 0 ? (
+        {designsLoading ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 24 }}>
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Card key={i} style={{ borderRadius: 12, overflow: 'hidden' }}>
+                <Skeleton.Image style={{ width: '100%', height: 220 }} active />
+                <Skeleton active paragraph={{ rows: 2 }} style={{ marginTop: 16 }} />
+              </Card>
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
           <div
             style={{
               textAlign: 'center',

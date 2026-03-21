@@ -10,6 +10,7 @@ interface AuthState {
   login: (payload: LoginPayload) => Promise<boolean>;
   register: (payload: RegisterPayload) => Promise<boolean>;
   logout: () => void;
+  setAuth: (user: { id: string; name: string; email: string; phone: string; created_at?: string }, token: string) => void;
   updateProfile: (data: Partial<Pick<User, 'name' | 'email' | 'phone'>>) => void;
   addAddress: (address: Omit<Address, 'id'>) => void;
   removeAddress: (id: string) => void;
@@ -56,6 +57,18 @@ export const useAuthStore = create<AuthState>()(
 
       logout: () => {
         set({ user: null, token: null, isAuth: false });
+      },
+
+      setAuth: (apiUser, token) => {
+        const user: User = {
+          id: apiUser.id,
+          name: apiUser.name,
+          email: apiUser.email,
+          phone: apiUser.phone,
+          addresses: [],
+          createdAt: apiUser.created_at || new Date().toISOString(),
+        };
+        set({ user, token, isAuth: true });
       },
 
       updateProfile: (data) => {

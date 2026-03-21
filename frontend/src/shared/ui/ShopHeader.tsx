@@ -258,6 +258,11 @@ export function ShopHeader() {
         @media (max-width: 768px) {
           .desktop-nav { display: none !important; }
           .mobile-menu-btn { display: inline-flex !important; }
+          .sub-btn-desktop { display: none !important; }
+        }
+        @media (max-width: 1024px) {
+          .desktop-nav { display: none !important; }
+          .mobile-menu-btn { display: inline-flex !important; }
         }
       `}</style>
     </>

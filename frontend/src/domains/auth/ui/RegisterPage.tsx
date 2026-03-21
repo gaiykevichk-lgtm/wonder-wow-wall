@@ -1,28 +1,25 @@
-import { useState } from 'react';
 import { Form, Input, Button, Card, Typography, Divider, message } from 'antd';
 import { UserOutlined, MailOutlined, LockOutlined, PhoneOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useAuthStore } from '../model/authStore';
+import { useRegisterMutation } from '../api/authApi';
+import { ApiError } from '../../../shared/api';
 
 const { Title, Text } = Typography;
 const GREEN = '#4CAF50';
 
 export default function RegisterPage() {
-  const [loading, setLoading] = useState(false);
-  const register = useAuthStore((s) => s.register);
+  const registerMutation = useRegisterMutation();
   const navigate = useNavigate();
 
   const onFinish = async (values: { name: string; email: string; phone: string; password: string }) => {
-    setLoading(true);
     try {
-      const ok = await register(values);
-      if (ok) {
-        message.success('Аккаунт создан!');
-        navigate('/account');
-      }
-    } finally {
-      setLoading(false);
+      await registerMutation.mutateAsync(values);
+      message.success('Аккаунт создан!');
+      navigate('/account');
+    } catch (err) {
+      const detail = err instanceof ApiError ? err.detail : 'Ошибка регистрации';
+      message.error(detail);
     }
   };
 
@@ -112,7 +109,7 @@ export default function RegisterPage() {
                 type="primary"
                 htmlType="submit"
                 block
-                loading={loading}
+                loading={registerMutation.isPending}
                 style={{ background: GREEN, borderColor: GREEN, borderRadius: 8, height: 44 }}
               >
                 Создать аккаунт

@@ -1,30 +1,27 @@
-import { useState } from 'react';
 import { Form, Input, Button, Card, Typography, Divider, message } from 'antd';
 import { MailOutlined, LockOutlined } from '@ant-design/icons';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useAuthStore } from '../model/authStore';
+import { useLoginMutation } from '../api/authApi';
+import { ApiError } from '../../../shared/api';
 
 const { Title, Text } = Typography;
 const GREEN = '#4CAF50';
 
 export default function LoginPage() {
-  const [loading, setLoading] = useState(false);
-  const login = useAuthStore((s) => s.login);
+  const loginMutation = useLoginMutation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirect = searchParams.get('redirect') || '/account';
 
   const onFinish = async (values: { email: string; password: string }) => {
-    setLoading(true);
     try {
-      const ok = await login(values);
-      if (ok) {
-        message.success('Добро пожаловать!');
-        navigate(redirect);
-      }
-    } finally {
-      setLoading(false);
+      await loginMutation.mutateAsync(values);
+      message.success('Добро пожаловать!');
+      navigate(redirect);
+    } catch (err) {
+      const detail = err instanceof ApiError ? err.detail : 'Ошибка входа';
+      message.error(detail);
     }
   };
 
@@ -87,7 +84,7 @@ export default function LoginPage() {
                 type="primary"
                 htmlType="submit"
                 block
-                loading={loading}
+                loading={loginMutation.isPending}
                 style={{ background: GREEN, borderColor: GREEN, borderRadius: 8, height: 44 }}
               >
                 Войти

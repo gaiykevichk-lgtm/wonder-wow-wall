@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Button, Rate, Tag, InputNumber, Breadcrumb, message } from 'antd';
+import { Button, Rate, Tag, InputNumber, Breadcrumb, message, Skeleton } from 'antd';
 import {
   ShoppingCartOutlined,
   HeartOutlined,
@@ -9,7 +9,9 @@ import {
   ShareAltOutlined,
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
-import { products } from '../model/data';
+import { products as mockProducts } from '../model/data';
+import { useDesign, useDesigns } from '../api/catalogApi';
+import { apiDesignToProduct } from '../api/adapters';
 import { useCartStore } from '../../order/model/cartStore';
 
 export default function ProductPage() {
@@ -17,12 +19,34 @@ export default function ProductPage() {
   const navigate = useNavigate();
   const { addItem, setOpen: setCartOpen } = useCartStore();
 
-  const product = products.find((p) => p.id === id);
+  // Try API first, fallback to mock data
+  const { data: apiDesign, isLoading } = useDesign(id || '');
+  const { data: allDesigns } = useDesigns();
+
+  const product = useMemo(() => {
+    if (apiDesign) return apiDesignToProduct(apiDesign);
+    return mockProducts.find((p) => p.id === id);
+  }, [apiDesign, id]);
 
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedColor, setSelectedColor] = useState(0);
   const [selectedSize, setSelectedSize] = useState(0);
   const [quantity, setQuantity] = useState(1);
+
+  if (isLoading) {
+    return (
+      <div style={{ paddingTop: 72, background: '#FFFFFF', minHeight: '100vh' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '24px 24px 64px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48 }}>
+            <Skeleton.Image style={{ width: '100%', height: 480 }} active />
+            <div>
+              <Skeleton active paragraph={{ rows: 8 }} />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -62,9 +86,17 @@ export default function ProductPage() {
 
   const totalPrice = product.price * quantity;
 
-  const relatedProducts = products
-    .filter((p) => p.category === product.category && p.id !== product.id)
-    .slice(0, 3);
+  const relatedProducts = useMemo(() => {
+    if (allDesigns?.items) {
+      return allDesigns.items
+        .filter((d) => d.category_id === product.category && d.id !== product.id)
+        .slice(0, 3)
+        .map(apiDesignToProduct);
+    }
+    return mockProducts
+      .filter((p) => p.category === product.category && p.id !== product.id)
+      .slice(0, 3);
+  }, [allDesigns, product]);
 
   const handleAddToCart = () => {
     addItem({
