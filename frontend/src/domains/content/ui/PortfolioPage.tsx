@@ -42,7 +42,7 @@ const projects = [
     typeLabel: 'Квартира',
     title: 'Скандинавская гостиная',
     desc: 'Деревянные панели светлого ясеня создают уютную атмосферу скандинавского стиля. Площадь: 34 м².',
-    image: 'https://picsum.photos/seed/portfolio-1/600/500',
+    image: 'https://images.unsplash.com/photo-1723810779771-f5895e975ba1?w=600&h=500&fit=crop',
   },
   {
     id: '2',
@@ -50,7 +50,7 @@ const projects = [
     typeLabel: 'Офис',
     title: 'Переговорная комната',
     desc: 'Строгие геометрические панели в тёмных тонах подчёркивают деловой стиль переговорной зоны.',
-    image: 'https://picsum.photos/seed/portfolio-2/600/500',
+    image: 'https://images.unsplash.com/photo-1755096731687-d0b6efac246d?w=600&h=500&fit=crop',
   },
   {
     id: '3',
@@ -58,7 +58,7 @@ const projects = [
     typeLabel: 'Ресторан',
     title: 'Акцентная стена бара',
     desc: '3D-панели в форме волны с подсветкой создают атмосферное пространство для гостей заведения.',
-    image: 'https://picsum.photos/seed/portfolio-3/600/500',
+    image: 'https://images.unsplash.com/photo-1521607630287-ee2e81ad3ced?w=600&h=500&fit=crop',
   },
   {
     id: '4',
@@ -66,7 +66,7 @@ const projects = [
     typeLabel: 'Квартира',
     title: 'Спальня в стиле лофт',
     desc: 'Бетонные панели с фактурой грубого камня органично вписались в интерьер городского лофта.',
-    image: 'https://picsum.photos/seed/portfolio-4/600/500',
+    image: 'https://images.unsplash.com/photo-1555794812-7f4102b3773b?w=600&h=500&fit=crop',
   },
   {
     id: '5',
@@ -74,7 +74,7 @@ const projects = [
     typeLabel: 'Офис',
     title: 'Рецепция IT-компании',
     desc: 'Белые 3D-панели с фирменным логотипом создают современный и профессиональный образ компании.',
-    image: 'https://picsum.photos/seed/portfolio-5/600/500',
+    image: 'https://images.unsplash.com/photo-1584530313715-bfe628686135?w=600&h=500&fit=crop',
   },
   {
     id: '6',
@@ -82,7 +82,7 @@ const projects = [
     typeLabel: 'Ресторан',
     title: 'Японский ресторан',
     desc: 'Деревянные рейки в японском стиле создают медитативную атмосферу и зонируют пространство.',
-    image: 'https://picsum.photos/seed/portfolio-6/600/500',
+    image: 'https://images.unsplash.com/photo-1722109997425-40f920848aed?w=600&h=500&fit=crop',
   },
 ];
 

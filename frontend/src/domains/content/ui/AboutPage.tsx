@@ -178,10 +178,10 @@ const StorySection: React.FC = () => (
           }}
         >
           {[
-            'https://picsum.photos/seed/about-1/400/400',
-            'https://picsum.photos/seed/about-2/400/400',
-            'https://picsum.photos/seed/about-3/400/400',
-            'https://picsum.photos/seed/about-4/400/400',
+            'https://images.unsplash.com/photo-1755288556391-c4911fa13627?w=400&h=400&fit=crop',
+            'https://images.unsplash.com/photo-1566041510394-cf7c8fe21800?w=400&h=400&fit=crop',
+            'https://images.unsplash.com/photo-1582135739786-3bceafcaea85?w=400&h=400&fit=crop',
+            'https://images.unsplash.com/photo-1644925757334-d0397c01518c?w=400&h=400&fit=crop',
           ].map((src, i) => (
             <div
               key={i}
