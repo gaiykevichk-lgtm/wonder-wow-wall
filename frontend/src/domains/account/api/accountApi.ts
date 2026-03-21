@@ -15,6 +15,7 @@ export function useProjects() {
   return useQuery({
     queryKey: projectKeys.list(),
     queryFn: () => api.get<ApiProject[]>('/projects'),
+    retry: false,
   });
 }
 
@@ -23,6 +24,7 @@ export function useProject(id: string) {
     queryKey: projectKeys.detail(id),
     queryFn: () => api.get<ApiProject>(`/projects/${id}`),
     enabled: !!id,
+    retry: false,
   });
 }
 

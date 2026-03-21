@@ -16,6 +16,7 @@ export function usePlans() {
     queryKey: subscriptionKeys.plans(),
     queryFn: () => api.get<ApiPlan[]>('/subscriptions/plans'),
     staleTime: 10 * 60 * 1000,
+    retry: false,
   });
 }
 
@@ -23,6 +24,7 @@ export function useSubscriptionStatus() {
   return useQuery({
     queryKey: subscriptionKeys.status(),
     queryFn: () => api.get<ApiSubscription | null>('/subscriptions/status'),
+    retry: false,
   });
 }
 

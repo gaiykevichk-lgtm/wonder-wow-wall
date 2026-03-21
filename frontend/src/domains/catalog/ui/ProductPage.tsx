@@ -20,7 +20,7 @@ export default function ProductPage() {
   const { addItem, setOpen: setCartOpen } = useCartStore();
 
   // Try API first, fallback to mock data
-  const { data: apiDesign, isLoading } = useDesign(id || '');
+  const { data: apiDesign, isLoading, isError } = useDesign(id || '');
   const { data: allDesigns } = useDesigns();
 
   const product = useMemo(() => {
@@ -33,7 +33,7 @@ export default function ProductPage() {
   const [selectedSize, setSelectedSize] = useState(0);
   const [quantity, setQuantity] = useState(1);
 
-  if (isLoading) {
+  if (isLoading && !isError && !product) {
     return (
       <div style={{ paddingTop: 72, background: '#FFFFFF', minHeight: '100vh' }}>
         <div style={{ maxWidth: 1280, margin: '0 auto', padding: '24px 24px 64px' }}>

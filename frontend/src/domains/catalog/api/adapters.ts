@@ -19,8 +19,8 @@ export function apiDesignToProduct(d: ApiDesign): PanelProduct {
     specs: {},
     colors: d.colors.map((c) => ({ hex: c.hex, name: c.name })),
     sizes: PANEL_SIZES.map((s) => ({
-      width: s.widthMm,
-      height: s.heightMm,
+      width: s.width,
+      height: s.height,
       label: s.label,
     })),
     rating: d.rating,

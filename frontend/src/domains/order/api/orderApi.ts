@@ -15,6 +15,7 @@ export function useOrders() {
   return useQuery({
     queryKey: orderKeys.list(),
     queryFn: () => api.get<ApiOrder[]>('/orders'),
+    retry: false,
   });
 }
 
@@ -23,6 +24,7 @@ export function useOrder(id: string) {
     queryKey: orderKeys.detail(id),
     queryFn: () => api.get<ApiOrder>(`/orders/${id}`),
     enabled: !!id,
+    retry: false,
   });
 }
 

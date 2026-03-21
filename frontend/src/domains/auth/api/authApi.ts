@@ -18,6 +18,7 @@ export function useProfile() {
     queryFn: () => api.get<ApiUserResponse>('/auth/me'),
     enabled: isAuth,
     staleTime: 2 * 60 * 1000,
+    retry: false,
   });
 }
 

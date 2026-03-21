@@ -31,6 +31,7 @@ export function useDesigns(params?: {
   return useQuery({
     queryKey: catalogKeys.designs(params),
     queryFn: () => api.get<ApiDesignListResponse>(`/designs${qs ? `?${qs}` : ''}`),
+    retry: false,
   });
 }
 
@@ -39,6 +40,7 @@ export function useDesign(id: string) {
     queryKey: catalogKeys.design(id),
     queryFn: () => api.get<ApiDesign>(`/designs/${id}`),
     enabled: !!id,
+    retry: false,
   });
 }
 
@@ -47,6 +49,7 @@ export function useCategories() {
     queryKey: catalogKeys.categories(),
     queryFn: () => api.get<ApiCategory[]>('/categories'),
     staleTime: 5 * 60 * 1000, // categories rarely change
+    retry: false,
   });
 }
 
@@ -55,6 +58,7 @@ export function useDesignReviews(designId: string) {
     queryKey: catalogKeys.reviews(designId),
     queryFn: () => api.get<ApiReview[]>(`/designs/${designId}/reviews`),
     enabled: !!designId,
+    retry: false,
   });
 }
 
