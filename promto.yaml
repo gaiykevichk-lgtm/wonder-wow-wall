@@ -1,4 +1,4 @@
-project_dir: wonder-wow-wall
+project_dir: /home/user/wonder-wow-wall
 
 services:
   db:
