@@ -23,10 +23,11 @@ uvicorn app.main:app --reload     # → http://localhost:8080
 |------|-----------|
 | Frontend | React 19 + TypeScript 5.9 + Vite 8 |
 | UI | Ant Design 6 + Framer Motion 12 |
-| State | Zustand 5 (cart, subscription) |
-| Routing | React Router 7 (11 маршрутов, lazy-loading) |
-| Data Fetching | TanStack Query 5 (подготовлено для API) |
-| Backend | FastAPI + SQLAlchemy + PostgreSQL (планируется, DDD-архитектура) |
+| State | Zustand 5 (cart, subscription, auth, account) |
+| Routing | React Router 7 (21 маршрут, lazy-loading) |
+| Data Fetching | TanStack Query 5 (интегрировано с API) |
+| API Client | Fetch wrapper с JWT auto-attach, ApiError, 401 redirect |
+| Backend | FastAPI + SQLAlchemy + PostgreSQL (DDD, 29 API routes) |
 | Deploy | Docker + Nginx |
 
 ## Архитектура: Domain-Driven Design

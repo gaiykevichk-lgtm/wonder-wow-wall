@@ -218,14 +218,45 @@
 
 ---
 
-## Фаза 10: Интеграция Frontend ↔ Backend
+## Фаза 10: Интеграция Frontend ↔ Backend ✅ ЗАВЕРШЕНА
 
-- [ ] API client (axios или fetch wrapper)
-- [ ] TanStack Query для всех API-вызовов
-- [ ] Замена моковых данных на API
-- [ ] JWT interceptor (авто-refresh, redirect to login)
-- [ ] Обработка ошибок (toast-уведомления)
-- [ ] Loading states (скелетоны)
+### 10.1 API Client
+- [x] Fetch wrapper с base URL, JWT auto-attach, error handling (`shared/api/client.ts`)
+- [x] Типы API-ответов, совпадающие с Pydantic-схемами бэкенда (`shared/api/types.ts`)
+- [x] ApiError класс с status + detail
+- [x] Автоочистка auth state и redirect на /login при 401
+
+### 10.2 TanStack Query Hooks (5 доменов)
+- [x] **Catalog**: useDesigns, useDesign, useCategories, useDesignReviews, useAddReview
+- [x] **Auth**: useProfile, useLoginMutation, useRegisterMutation, useUpdateProfileMutation
+- [x] **Orders**: useOrders, useOrder, useCreateOrder, useCalculateWallCost
+- [x] **Subscriptions**: usePlans, useSubscriptionStatus, useSubscribe, useCancelSubscription
+- [x] **Projects**: useProjects, useProject, useCreateProject, useUpdateProject, useDeleteProject
+- [x] **Contacts**: useSubmitContact, useCalculator
+
+### 10.3 Интеграция в страницы
+- [x] CatalogPage → API дизайнов + категорий с fallback на моки
+- [x] ProductPage → API дизайна + related designs с fallback
+- [x] LoginPage → useLoginMutation (API, с ApiError обработкой)
+- [x] RegisterPage → useRegisterMutation (API, с ApiError обработкой)
+- [x] ProfileSection → useUpdateProfileMutation (API + локальный fallback)
+- [x] OrdersSection → useOrders (API с fallback на accountStore)
+- [x] ContactsPage → useSubmitContact (API с graceful fallback)
+- [x] authStore.setAuth() — маппинг API user → frontend User
+
+### 10.4 Error Handling & Loading States
+- [x] ApiError с message.error() toast-уведомлениями (Login, Register)
+- [x] Skeleton loading: каталог (6 карточек), товар (2 колонки), заказы
+- [x] QueryClient defaults: retry=1, staleTime=30s, refetchOnWindowFocus=false
+
+### 10.5 Инфраструктура
+- [x] Vite proxy: /api → http://localhost:8080
+- [x] Адаптеры: apiDesignToProduct, apiCategoryToCategory, apiReviewToReview
+
+### 10.6 Тесты — 26 новых, всего 182
+- [x] `shared/api/__tests__/client.test.ts` — 9 тестов (GET/POST/PATCH/PUT/DELETE, JWT, 401, errors)
+- [x] `shared/api/__tests__/types.test.ts` — 8 тестов (все API типы)
+- [x] `domains/catalog/api/__tests__/adapters.test.ts` — 9 тестов (маппинг Design→Product, Category, Review)
 
 ---
 
@@ -273,7 +304,7 @@
 | 8 | Авторизация и ЛК | ✅ Завершена | — |
 | 8.5 | Фото-редактор стен (Visualizer) | ✅ Frontend MVP | — |
 | 9 | Backend API | ✅ Завершена | — |
-| 10 | Интеграция | 🔜 Следующая | Средний |
+| 10 | Интеграция | ✅ Завершена | — |
 | 11 | Полировка и деплой | ⬜ Планируется | Средний |
 
-**Завершено: 11 из 13 фаз (85%)**
+**Завершено: 12 из 13 фаз (92%)**

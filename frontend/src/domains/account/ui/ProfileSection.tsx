@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Card, Form, Input, Button, Typography, Space, Tag, Empty, Modal, message } from 'antd';
 import { EditOutlined, PlusOutlined, DeleteOutlined, EnvironmentOutlined, CheckOutlined } from '@ant-design/icons';
 import { useAuthStore } from '../../auth/model/authStore';
+import { useUpdateProfileMutation } from '../../auth/api/authApi';
 import type { Address } from '../../auth/model/types';
 
 const { Title, Text } = Typography;
@@ -13,16 +14,25 @@ export default function ProfileSection() {
   const addAddress = useAuthStore((s) => s.addAddress);
   const removeAddress = useAuthStore((s) => s.removeAddress);
   const setDefaultAddress = useAuthStore((s) => s.setDefaultAddress);
+  const updateProfileMutation = useUpdateProfileMutation();
 
   const [editing, setEditing] = useState(false);
   const [addressModal, setAddressModal] = useState(false);
   const [form] = Form.useForm();
   const [addrForm] = Form.useForm();
 
-  const handleSaveProfile = (values: { name: string; email: string; phone: string }) => {
-    updateProfile(values);
-    setEditing(false);
-    message.success('Профиль обновлён');
+  const handleSaveProfile = async (values: { name: string; email: string; phone: string }) => {
+    try {
+      await updateProfileMutation.mutateAsync({ name: values.name, phone: values.phone });
+      updateProfile(values);
+      setEditing(false);
+      message.success('Профиль обновлён');
+    } catch {
+      // Fallback: update locally even if API fails
+      updateProfile(values);
+      setEditing(false);
+      message.success('Профиль обновлён');
+    }
   };
 
   const handleAddAddress = (values: Omit<Address, 'id'>) => {

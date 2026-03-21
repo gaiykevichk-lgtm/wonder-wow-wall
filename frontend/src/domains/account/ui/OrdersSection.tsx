@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Card, Tag, Typography, Empty, Steps, Button, Space, Collapse } from 'antd';
+import { Card, Tag, Typography, Empty, Steps, Button, Space, Skeleton } from 'antd';
 import { ShoppingOutlined, EyeOutlined } from '@ant-design/icons';
 import { useAccountStore } from '../model/accountStore';
+import { useOrders } from '../../order/api/orderApi';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '../model/types';
 import type { Order, OrderStatus } from '../model/types';
 
@@ -96,13 +97,39 @@ function OrderCard({ order }: { order: Order }) {
 }
 
 export default function OrdersSection() {
-  const orders = useAccountStore((s) => s.orders);
+  const mockOrders = useAccountStore((s) => s.orders);
+  const { data: apiOrders, isLoading } = useOrders();
+
+  // Map API orders to frontend type, fallback to mock
+  const orders: Order[] = apiOrders
+    ? apiOrders.map((o) => ({
+        id: o.id,
+        number: o.number,
+        date: o.created_at,
+        status: o.status as OrderStatus,
+        items: o.items.map((i) => ({
+          id: i.id,
+          name: i.design_name,
+          image: i.design_image,
+          size: i.size_key,
+          color: i.color,
+          quantity: i.quantity,
+          price: i.unit_price,
+        })),
+        total: o.total,
+        address: o.address,
+      }))
+    : mockOrders;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <Title level={3} style={{ margin: 0 }}>Мои заказы</Title>
 
-      {orders.length === 0 ? (
+      {isLoading ? (
+        <Card style={{ borderRadius: 12 }}>
+          <Skeleton active paragraph={{ rows: 3 }} />
+        </Card>
+      ) : orders.length === 0 ? (
         <Card style={{ borderRadius: 12 }}>
           <Empty description="У вас пока нет заказов" image={Empty.PRESENTED_IMAGE_SIMPLE} />
         </Card>

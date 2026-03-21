@@ -1,8 +1,8 @@
-import { Card, Typography, Empty, Button, Space, Popconfirm, Tag } from 'antd';
+import { Card, Typography, Empty, Button, Space, Popconfirm, Tag, Skeleton } from 'antd';
 import { DeleteOutlined, EditOutlined, AppstoreOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAccountStore } from '../model/accountStore';
-import { BASE_PANEL_PRICES, DESIGN_OVERLAY_PRICE } from '../../../shared/config/constants';
+import { useProjects, useDeleteProject } from '../api/accountApi';
 
 const { Title, Text } = Typography;
 const GREEN = '#4CAF50';

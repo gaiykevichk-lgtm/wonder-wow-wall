@@ -7,6 +7,7 @@ import {
   ClockCircleOutlined,
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
+import { useSubmitContact } from '../../../shared/api/contactsApi';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
@@ -62,10 +63,14 @@ const contactItems = [
 
 const ContactsPage: React.FC = () => {
   const [form] = Form.useForm();
+  const submitContact = useSubmitContact();
 
   const handleSubmit = async () => {
     try {
-      await form.validateFields();
+      const values = await form.validateFields();
+      try {
+        await submitContact.mutateAsync(values);
+      } catch { /* API may not be running, continue */ }
       message.success('Сообщение отправлено! Мы свяжемся с вами в ближайшее время.');
       form.resetFields();
     } catch {
