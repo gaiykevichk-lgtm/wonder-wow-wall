@@ -31,10 +31,10 @@ const GRAY_TEXT = '#6B7280';
 // ─── Hero Section ─────────────────────────────────────────────────────────────
 
 const heroImages = [
-  'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=600&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1615529182904-14819c35db37?w=600&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=600&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=600&h=600&fit=crop',
+  'https://picsum.photos/seed/hero-oak/600/600',
+  'https://picsum.photos/seed/hero-marble/600/600',
+  'https://picsum.photos/seed/hero-waves/600/600',
+  'https://picsum.photos/seed/hero-hexagon/600/600',
 ];
 
 const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }> = ({
