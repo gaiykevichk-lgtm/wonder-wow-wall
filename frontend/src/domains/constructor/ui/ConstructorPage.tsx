@@ -1345,14 +1345,35 @@ export default function ConstructorPage() {
             </div>
 
             {/* Panel legend below wall */}
-            {placedPanels.length > 0 && (
-              <div style={{ marginTop: 14 }}>
-                <div style={{ fontSize: 12, color: GRAY, marginBottom: 6 }}>
-                  Размещённые панели ({costs.panelCount} шт)
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  <AnimatePresence>
-                    {(() => {
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 12, color: GRAY, marginBottom: 6 }}>
+                Размещённые панели ({costs.panelCount} шт)
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                <AnimatePresence mode="wait">
+                  {placedPanels.length === 0 ? (
+                    <motion.div
+                      key="__empty__"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      <Tag
+                        style={{
+                          borderRadius: 8,
+                          padding: '4px 10px',
+                          fontSize: 12,
+                          border: '1px dashed rgba(0,0,0,0.12)',
+                          background: 'transparent',
+                          color: GRAY,
+                        }}
+                      >
+                        Добавьте панель
+                      </Tag>
+                    </motion.div>
+                  ) : (
+                    (() => {
                       const groups = new Map<string, { name: string; size: string; color: string; colorName: string; count: number; image: string }>();
                       for (const p of placedPanels) {
                         const key = `${p.designId}__${p.sizeMm}__${p.color}`;
@@ -1395,11 +1416,11 @@ export default function ConstructorPage() {
                           </Tag>
                         </motion.div>
                       ));
-                    })()}
-                  </AnimatePresence>
-                </div>
+                    })()
+                  )}
+                </AnimatePresence>
               </div>
-            )}
+            </div>
 
             {/* ─── Cost summary (compact horizontal layout) ──────────────── */}
             <div
