@@ -853,6 +853,8 @@ export default function ConstructorPage() {
                 buttonStyle="solid"
                 size="small"
                 options={SIZE_OPTIONS.map((s) => ({ label: s.label, value: s.key }))}
+                style={{ display: 'flex', width: '100%' }}
+                className="size-switcher"
               />
             </div>
 
