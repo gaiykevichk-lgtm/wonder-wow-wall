@@ -923,9 +923,7 @@ export default function ConstructorPage() {
                     border: '1px solid #D1D5DB',
                     color: GRAY,
                   }}
-                >
-                  Очистить
-                </Button>
+                />
               </Tooltip>
             </div>
           </Card>
