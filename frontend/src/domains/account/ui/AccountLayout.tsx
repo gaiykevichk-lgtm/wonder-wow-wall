@@ -12,7 +12,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../auth/model/authStore';
 
 const { Title, Text } = Typography;
-const BLUE = '#4CAF50';
+const ACCENT = '#4CAF50';
 
 const MENU_ITEMS = [
   { key: '/account', icon: <UserOutlined />, label: 'Профиль' },
@@ -51,7 +51,7 @@ export default function AccountLayout() {
           width: 260,
           flexShrink: 0,
           background: '#F5F5F5',
-          borderRadius: 20,
+          borderRadius: 16,
           padding: '24px 0',
           height: 'fit-content',
           position: 'sticky',
@@ -63,7 +63,7 @@ export default function AccountLayout() {
           <Avatar
             size={64}
             icon={<UserOutlined />}
-            style={{ background: BLUE, marginBottom: 12 }}
+            style={{ background: ACCENT, marginBottom: 12 }}
           />
           <Title level={5} style={{ margin: 0, color: '#2D2D2D', fontWeight: 600 }}>{user?.name || 'Пользователь'}</Title>
           <Text type="secondary" style={{ fontSize: 13, color: '#6B7280' }}>{user?.email}</Text>

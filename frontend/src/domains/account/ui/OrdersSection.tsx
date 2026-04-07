@@ -16,7 +16,7 @@ function OrderCard({ order }: { order: Order }) {
 
   return (
     <Card
-      style={{ borderRadius: 20 }}
+      style={{ borderRadius: 16 }}
       title={
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Space>
@@ -126,11 +126,11 @@ export default function OrdersSection() {
       <Title level={3} style={{ margin: 0, color: '#2D2D2D', fontWeight: 600 }}>Мои заказы</Title>
 
       {isLoading ? (
-        <Card style={{ borderRadius: 20 }}>
+        <Card style={{ borderRadius: 16 }}>
           <Skeleton active paragraph={{ rows: 3 }} />
         </Card>
       ) : orders.length === 0 ? (
-        <Card style={{ borderRadius: 20 }}>
+        <Card style={{ borderRadius: 16 }}>
           <Empty description="У вас пока нет заказов" image={Empty.PRESENTED_IMAGE_SIMPLE} />
         </Card>
       ) : (

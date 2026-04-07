@@ -43,7 +43,7 @@ export function CartDrawer() {
           <div style={{ flex: 1, overflow: 'auto', padding: '16px 24px' }}>
             {items.map((item) => (
               <div key={item.id} style={{ display: 'flex', gap: 16, padding: '16px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-                <img src={item.image} alt={item.name} style={{ width: 72, height: 72, borderRadius: 20, objectFit: 'cover' }} />
+                <img src={item.image} alt={item.name} style={{ width: 72, height: 72, borderRadius: 16, objectFit: 'cover' }} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2, color: '#2D2D2D' }}>{item.name}</div>
                   <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 2 }}>{item.size}</div>

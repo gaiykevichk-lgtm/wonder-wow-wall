@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
 const { Title, Text } = Typography;
-const BLUE = '#4CAF50';
+const ACCENT = '#4CAF50';
 
 export default function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
@@ -37,7 +37,7 @@ export default function ForgotPasswordPage() {
       >
         <Card
           style={{
-            borderRadius: 20,
+            borderRadius: 16,
             boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
             border: 'none',
           }}
@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
               subTitle="Проверьте почту — мы отправили ссылку для восстановления пароля"
               extra={
                 <Link to="/login">
-                  <Button type="primary" style={{ background: BLUE, borderColor: BLUE, borderRadius: 8 }}>
+                  <Button type="primary" style={{ background: ACCENT, borderColor: ACCENT, borderRadius: 8 }}>
                     Вернуться ко входу
                   </Button>
                 </Link>
@@ -79,7 +79,7 @@ export default function ForgotPasswordPage() {
                     htmlType="submit"
                     block
                     loading={loading}
-                    style={{ background: BLUE, borderColor: BLUE, borderRadius: 8, height: 44 }}
+                    style={{ background: ACCENT, borderColor: ACCENT, borderRadius: 8, height: 44 }}
                   >
                     Отправить ссылку
                   </Button>

@@ -355,7 +355,7 @@ export default function CatalogPage() {
         {designsLoading ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 24 }}>
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Card key={i} style={{ borderRadius: 20, overflow: 'hidden', border: 'none' }}>
+              <Card key={i} style={{ borderRadius: 16, overflow: 'hidden', border: 'none' }}>
                 <Skeleton.Image style={{ width: '100%', height: 220 }} active />
                 <Skeleton active paragraph={{ rows: 2 }} style={{ marginTop: 16 }} />
               </Card>
@@ -451,7 +451,7 @@ function GridCard({ product, index, hovered, isFavorite, onToggleFavorite, onHov
         onMouseLeave={() => onHover(null)}
         bodyStyle={{ padding: '16px' }}
         style={{
-          borderRadius: 20,
+          borderRadius: 16,
           overflow: 'hidden',
           border: 'none',
           cursor: 'pointer',
@@ -645,7 +645,7 @@ function ListCard({ product, index, onAddToCart, onNavigate }: ListCardProps) {
           gap: 20,
           background: '#FAFAFA',
           border: 'none',
-          borderRadius: 20,
+          borderRadius: 16,
           overflow: 'hidden',
           cursor: 'pointer',
           transition: 'all 0.8s cubic-bezier(0.25, 0.1, 0.25, 1.0)',

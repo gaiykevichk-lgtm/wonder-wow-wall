@@ -59,7 +59,7 @@ const SIZE_OPTIONS: { key: PanelSizeKey; label: string; wCells: number; hCells: 
   { key: '60x60', label: '60x60 см', wCells: 2, hCells: 2, widthMm: 600, heightMm: 600 },
 ];
 
-const BLUE = '#4CAF50';
+const ACCENT = '#4CAF50';
 const DARK = '#2D2D2D';
 
 function getPanelPrice(sizeKey: string): number {
@@ -382,14 +382,14 @@ export default function AccountConstructorSection() {
             icon={<SaveOutlined />}
             onClick={handleSave}
             type="primary"
-            style={{ background: BLUE, borderColor: BLUE, borderRadius: 8 }}
+            style={{ background: ACCENT, borderColor: ACCENT, borderRadius: 8 }}
           >
             {currentProjectId ? 'Сохранить' : 'Сохранить как'}
           </Button>
           <Button
             icon={<ShoppingCartOutlined />}
             onClick={handleAddToCart}
-            style={{ borderRadius: 8, borderColor: BLUE, color: BLUE }}
+            style={{ borderRadius: 8, borderColor: ACCENT, color: ACCENT }}
           >
             В корзину
           </Button>
@@ -401,7 +401,7 @@ export default function AccountConstructorSection() {
         {/* ─── LEFT SIDEBAR ─────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {/* Wall settings */}
-          <Card style={{ borderRadius: 20, border: '1px solid rgba(0,0,0,0.04)' }} styles={{ body: { padding: 16 } }}>
+          <Card style={{ borderRadius: 16, border: '1px solid rgba(0,0,0,0.04)' }} styles={{ body: { padding: 16 } }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, fontWeight: 600, fontSize: 13, color: '#2D2D2D' }}>
               <ColumnWidthOutlined style={{ color: '#6B7280' }} /> Параметры стены
             </div>
@@ -441,7 +441,7 @@ export default function AccountConstructorSection() {
           </Card>
 
           {/* Design selection */}
-          <Card style={{ borderRadius: 20, border: '1px solid rgba(0,0,0,0.04)' }} styles={{ body: { padding: 16 } }}>
+          <Card style={{ borderRadius: 16, border: '1px solid rgba(0,0,0,0.04)' }} styles={{ body: { padding: 16 } }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, fontWeight: 600, fontSize: 13, color: '#2D2D2D' }}>
               <AppstoreOutlined style={{ color: '#6B7280' }} /> Дизайн накладки
             </div>
@@ -482,7 +482,7 @@ export default function AccountConstructorSection() {
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
               <Button icon={<PlusOutlined />} onClick={handleAddToWall} size="small"
-                style={{ flex: 1, background: BLUE, color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 12 }}>
+                style={{ flex: 1, background: ACCENT, color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 12 }}>
                 Добавить
               </Button>
               <Tooltip title="Заполнить стену">
@@ -495,7 +495,7 @@ export default function AccountConstructorSection() {
           </Card>
 
           {/* Cost summary */}
-          <Card style={{ borderRadius: 20, border: '1px solid rgba(0,0,0,0.04)' }} styles={{ body: { padding: 16 } }}>
+          <Card style={{ borderRadius: 16, border: '1px solid rgba(0,0,0,0.04)' }} styles={{ body: { padding: 16 } }}>
             <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10, color: '#2D2D2D' }}>Расчёт стоимости</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
@@ -510,7 +510,7 @@ export default function AccountConstructorSection() {
                 <span>├ Базовые панели:</span>
                 <span>{costs.totalBase.toLocaleString('ru-RU')} ₽</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: isSubscriber ? BLUE : '#6B7280' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: isSubscriber ? ACCENT : '#6B7280' }}>
                 <span>└ Накладки:</span>
                 <span>{isSubscriber ? '0 ₽ (подписка)' : `${costs.totalOverlay.toLocaleString('ru-RU')} ₽`}</span>
               </div>
@@ -543,7 +543,7 @@ export default function AccountConstructorSection() {
         </div>
 
         {/* ─── RIGHT - Wall Canvas ──────────────────────────────────────────── */}
-        <Card style={{ borderRadius: 20, border: '1px solid rgba(0,0,0,0.04)' }} styles={{ body: { padding: 16 } }}>
+        <Card style={{ borderRadius: 16, border: '1px solid rgba(0,0,0,0.04)' }} styles={{ body: { padding: 16 } }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 6 }}>
             <div>
               <span style={{ fontWeight: 600, fontSize: 13, color: '#2D2D2D' }}>Визуализация</span>
@@ -607,7 +607,7 @@ export default function AccountConstructorSection() {
                   width: ghostVisible.wCells * CELL_PX + (ghostVisible.wCells - 1) * GAP_PX,
                   height: ghostVisible.hCells * CELL_PX + (ghostVisible.hCells - 1) * GAP_PX,
                   background: `url(${selectedDesign.image})`, backgroundSize: 'cover', backgroundPosition: 'center',
-                  opacity: 0.4, borderRadius: 4, border: `2px dashed ${BLUE}`, pointerEvents: 'none', zIndex: 5,
+                  opacity: 0.4, borderRadius: 4, border: `2px dashed ${ACCENT}`, pointerEvents: 'none', zIndex: 5,
                 }} />
               )}
 
@@ -701,7 +701,7 @@ export default function AccountConstructorSection() {
         onCancel={() => setSaveModalOpen(false)}
         onOk={handleSaveNew}
         okText="Сохранить"
-        okButtonProps={{ style: { background: BLUE, borderColor: BLUE, borderRadius: 8 } }}
+        okButtonProps={{ style: { background: ACCENT, borderColor: ACCENT, borderRadius: 8 } }}
       >
         <div style={{ marginBottom: 8, fontSize: 13, color: '#6B7280' }}>Название проекта:</div>
         <Input

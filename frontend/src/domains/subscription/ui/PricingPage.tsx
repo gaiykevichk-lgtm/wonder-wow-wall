@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { BASE_PANEL_PRICES, DESIGN_OVERLAY_PRICE } from '../../../shared/config/constants';
 import { useSubscriptionStore, SUBSCRIPTION_PLANS } from '../model/subscriptionStore';
 
-const BLUE = '#4CAF50';
+const ACCENT = '#4CAF50';
 const DARK = '#2D2D2D';
 const GRAY_TEXT = '#6B7280';
 const FONT = 'Inter, sans-serif';
@@ -42,8 +42,8 @@ const PlanCard: React.FC<{
   <motion.div variants={fadeUp} custom={index} style={{ position: 'relative' }}>
     <Card
       style={{
-        borderRadius: 20,
-        border: plan.popular ? `2px solid ${DARK}` : isActive ? `2px solid ${BLUE}` : '1px solid rgba(0,0,0,0.04)',
+        borderRadius: 16,
+        border: plan.popular ? `2px solid ${DARK}` : isActive ? `2px solid ${ACCENT}` : '1px solid rgba(0,0,0,0.04)',
         boxShadow: 'none',
         background: plan.popular ? DARK : '#fff',
         height: '100%',
@@ -53,12 +53,12 @@ const PlanCard: React.FC<{
       styles={{ body: { padding: '36px 28px' } }}
     >
       {plan.popular && (
-        <Tag style={{ position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', background: BLUE, color: '#fff', border: 'none', borderRadius: 8, fontFamily: FONT, fontWeight: 600, fontSize: 12, padding: '4px 16px', whiteSpace: 'nowrap' }}>
+        <Tag style={{ position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', background: ACCENT, color: '#fff', border: 'none', borderRadius: 8, fontFamily: FONT, fontWeight: 600, fontSize: 12, padding: '4px 16px', whiteSpace: 'nowrap' }}>
           Популярный
         </Tag>
       )}
       {isActive && (
-        <Tag icon={<CrownOutlined />} style={{ position: 'absolute', top: -14, right: 16, background: BLUE, color: '#fff', border: 'none', borderRadius: 8, fontFamily: FONT, fontWeight: 600, fontSize: 12, padding: '4px 12px' }}>
+        <Tag icon={<CrownOutlined />} style={{ position: 'absolute', top: -14, right: 16, background: ACCENT, color: '#fff', border: 'none', borderRadius: 8, fontFamily: FONT, fontWeight: 600, fontSize: 12, padding: '4px 12px' }}>
           Ваш план
         </Tag>
       )}
@@ -80,7 +80,7 @@ const PlanCard: React.FC<{
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 32 }}>
         {plan.features.map((feat) => (
           <div key={feat} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-            <CheckOutlined style={{ color: BLUE, fontSize: 13, marginTop: 3, flexShrink: 0 }} />
+            <CheckOutlined style={{ color: ACCENT, fontSize: 13, marginTop: 3, flexShrink: 0 }} />
             <span style={{ fontFamily: FONT, fontSize: 14, color: plan.popular ? 'rgba(255,255,255,0.85)' : DARK, lineHeight: 1.5 }}>{feat}</span>
           </div>
         ))}
@@ -91,7 +91,7 @@ const PlanCard: React.FC<{
         onClick={() => onSelect(plan.id)}
         disabled={isActive}
         style={{
-          background: isActive ? '#E8E8E8' : plan.popular ? BLUE : DARK,
+          background: isActive ? '#E8E8E8' : plan.popular ? ACCENT : DARK,
           color: isActive ? GRAY_TEXT : '#fff',
           border: 'none',
           borderRadius: 8,
@@ -162,7 +162,7 @@ const PricingPage: React.FC = () => {
 
       {/* Active subscription banner */}
       {hasSubscription() && (
-        <section style={{ background: BLUE, padding: '16px 24px' }}>
+        <section style={{ background: ACCENT, padding: '16px 24px' }}>
           <div style={{ ...MAX_WIDTH, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#fff' }}>
               <CrownOutlined style={{ fontSize: 18 }} />
@@ -198,7 +198,7 @@ const PricingPage: React.FC = () => {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
                 {panelPricing.map((item, i) => (
                   <motion.div key={item.size} variants={fadeUp} custom={i + 1}>
-                    <Card style={{ borderRadius: 20, border: '1px solid rgba(0,0,0,0.04)', height: '100%' }} styles={{ body: { padding: '28px' } }}>
+                    <Card style={{ borderRadius: 16, border: '1px solid rgba(0,0,0,0.04)', height: '100%' }} styles={{ body: { padding: '28px' } }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                         <h3 style={{ fontSize: 22, fontWeight: 600, color: DARK, margin: 0 }}>{item.size}</h3>
                         <p style={{ fontSize: 13, color: GRAY_TEXT, margin: 0, lineHeight: 1.5 }}>{item.desc}</p>
@@ -211,7 +211,7 @@ const PricingPage: React.FC = () => {
                             <span style={{ color: GRAY_TEXT }}>Накладка (любой дизайн):</span>
                             <span style={{ fontWeight: 600, color: DARK }}>
                               {hasSubscription() ? (
-                                <><span style={{ textDecoration: 'line-through', color: '#9CA3AF', marginRight: 6 }}>{item.overlayPrice.toLocaleString('ru-RU')} ₽</span><span style={{ color: BLUE }}>0 ₽ (подписка)</span></>
+                                <><span style={{ textDecoration: 'line-through', color: '#9CA3AF', marginRight: 6 }}>{item.overlayPrice.toLocaleString('ru-RU')} ₽</span><span style={{ color: ACCENT }}>0 ₽ (подписка)</span></>
                               ) : (
                                 <>{item.overlayPrice.toLocaleString('ru-RU')} ₽</>
                               )}
@@ -224,7 +224,7 @@ const PricingPage: React.FC = () => {
                             </span>
                           </div>
                         </div>
-                        <div style={{ fontSize: 12, color: BLUE, fontWeight: 500 }}>
+                        <div style={{ fontSize: 12, color: ACCENT, fontWeight: 500 }}>
                           {hasSubscription()
                             ? 'Накладки включены в вашу подписку!'
                             : `Замена накладки — только ${item.overlayPrice.toLocaleString('ru-RU')} ₽`}
@@ -235,12 +235,12 @@ const PricingPage: React.FC = () => {
                 ))}
               </div>
 
-              <motion.div variants={fadeUp} custom={5} style={{ background: DARK, borderRadius: 20, padding: '28px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
+              <motion.div variants={fadeUp} custom={5} style={{ background: DARK, borderRadius: 16, padding: '28px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
                 <div>
                   <p style={{ fontSize: 17, fontWeight: 600, color: '#fff', margin: '0 0 4px' }}>Рассчитайте стоимость вашей стены</p>
                   <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', margin: 0 }}>Используйте конструктор — укажите размеры, выберите дизайн, получите точную смету.</p>
                 </div>
-                <Button size="large" icon={<ArrowRightOutlined />} onClick={() => navigate('/constructor')} style={{ background: BLUE, color: '#fff', border: 'none', borderRadius: 8, height: 48, padding: '0 28px', fontWeight: 600, flexShrink: 0 }}>
+                <Button size="large" icon={<ArrowRightOutlined />} onClick={() => navigate('/constructor')} style={{ background: ACCENT, color: '#fff', border: 'none', borderRadius: 8, height: 48, padding: '0 28px', fontWeight: 600, flexShrink: 0 }}>
                   Открыть конструктор
                 </Button>
               </motion.div>
@@ -252,7 +252,7 @@ const PricingPage: React.FC = () => {
                   { title: 'Монтаж за 2 часа', text: 'Профессиональная установка базовых панелей.' },
                   { title: '100+ дизайнов', text: 'Дерево, камень, абстракция, геометрия и другие.' },
                 ].map((item) => (
-                  <div key={item.title} style={{ padding: '20px', borderRadius: 20, border: '1px solid rgba(0,0,0,0.04)' }}>
+                  <div key={item.title} style={{ padding: '20px', borderRadius: 16, border: '1px solid rgba(0,0,0,0.04)' }}>
                     <h4 style={{ fontSize: 15, fontWeight: 600, color: DARK, margin: '0 0 6px' }}>{item.title}</h4>
                     <p style={{ fontSize: 13, color: GRAY_TEXT, margin: 0, lineHeight: 1.5 }}>{item.text}</p>
                   </div>
@@ -282,7 +282,7 @@ const PricingPage: React.FC = () => {
                 ))}
               </div>
 
-              <motion.div variants={fadeUp} custom={4} style={{ background: '#F5F5F5', borderRadius: 20, padding: '24px 28px' }}>
+              <motion.div variants={fadeUp} custom={4} style={{ background: '#F5F5F5', borderRadius: 16, padding: '24px 28px' }}>
                 <h3 style={{ fontSize: 16, fontWeight: 600, color: DARK, margin: '0 0 12px' }}>Как работает подписка?</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {[
@@ -293,7 +293,7 @@ const PricingPage: React.FC = () => {
                     '5. Отмена подписки в любой момент без штрафов',
                   ].map((step) => (
                     <div key={step} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: DARK }}>
-                      <CheckOutlined style={{ color: BLUE, fontSize: 12, flexShrink: 0 }} />
+                      <CheckOutlined style={{ color: ACCENT, fontSize: 12, flexShrink: 0 }} />
                       {step}
                     </div>
                   ))}

@@ -13,7 +13,7 @@ import { motion } from 'framer-motion';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
-const BLUE = '#4CAF50';
+const ACCENT = '#4CAF50';
 const DARK = '#2D2D2D';
 const GRAY_TEXT = '#6B7280';
 const FONT = 'Inter, sans-serif';
@@ -188,7 +188,7 @@ const StorySection: React.FC = () => (
               key={i}
               style={{
                 aspectRatio: '1 / 1',
-                borderRadius: 20,
+                borderRadius: 16,
                 overflow: 'hidden',
                 border: '1px solid rgba(0,0,0,0.04)',
               }}
@@ -286,7 +286,7 @@ const TechnologySection: React.FC = () => (
             >
               <Card
                 style={{
-                  borderRadius: 20,
+                  borderRadius: 16,
                   border: '1px solid rgba(0,0,0,0.04)',
                   boxShadow: 'none',
                   height: '100%',
@@ -333,10 +333,10 @@ const TechnologySection: React.FC = () => (
 // ─── Numbers Section ──────────────────────────────────────────────────────────
 
 const numbers = [
-  { icon: <TrophyOutlined style={{ fontSize: 28, color: BLUE }} />, value: '200+', label: 'Дизайнов', desc: 'в каталоге' },
-  { icon: <TeamOutlined style={{ fontSize: 28, color: BLUE }} />, value: '50K+', label: 'Клиентов', desc: 'по всей России' },
-  { icon: <StarOutlined style={{ fontSize: 28, color: BLUE }} />, value: '5 лет', label: 'На рынке', desc: 'с 2019 года' },
-  { icon: <StarOutlined style={{ fontSize: 28, color: BLUE }} />, value: '4.9', label: 'Рейтинг', desc: 'средняя оценка' },
+  { icon: <TrophyOutlined style={{ fontSize: 28, color: ACCENT }} />, value: '200+', label: 'Дизайнов', desc: 'в каталоге' },
+  { icon: <TeamOutlined style={{ fontSize: 28, color: ACCENT }} />, value: '50K+', label: 'Клиентов', desc: 'по всей России' },
+  { icon: <StarOutlined style={{ fontSize: 28, color: ACCENT }} />, value: '5 лет', label: 'На рынке', desc: 'с 2019 года' },
+  { icon: <StarOutlined style={{ fontSize: 28, color: ACCENT }} />, value: '4.9', label: 'Рейтинг', desc: 'средняя оценка' },
 ];
 
 const NumbersSection: React.FC = () => (
@@ -381,7 +381,7 @@ const NumbersSection: React.FC = () => (
               whileHover={{ translateY: -2 }}
               style={{
                 border: '1px solid rgba(0,0,0,0.04)',
-                borderRadius: 20,
+                borderRadius: 16,
                 padding: '32px 24px',
                 display: 'flex',
                 flexDirection: 'column',
@@ -433,7 +433,7 @@ const EcoSection: React.FC = () => (
         viewport={{ once: true, amount: 0.2 }}
         style={{
           background: '#fff',
-          borderRadius: 20,
+          borderRadius: 16,
           border: '1px solid rgba(0,0,0,0.04)',
           padding: '56px 64px',
           display: 'grid',
@@ -444,7 +444,7 @@ const EcoSection: React.FC = () => (
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <motion.div variants={fadeUp} custom={0} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <ExperimentOutlined style={{ fontSize: 28, color: BLUE }} />
+            <ExperimentOutlined style={{ fontSize: 28, color: ACCENT }} />
             <span
               style={{
                 fontFamily: FONT,
@@ -504,7 +504,7 @@ const EcoSection: React.FC = () => (
                   width: 8,
                   height: 8,
                   borderRadius: '50%',
-                  background: BLUE,
+                  background: ACCENT,
                   marginTop: 6,
                   flexShrink: 0,
                 }}

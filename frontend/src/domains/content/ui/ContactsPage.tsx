@@ -187,7 +187,7 @@ const ContactsPage: React.FC = () => {
               <motion.div key={item.title} variants={fadeUp} custom={i + 1}>
                 <Card
                   style={{
-                    borderRadius: 20,
+                    borderRadius: 16,
                     border: '1px solid rgba(0,0,0,0.04)',
                     boxShadow: 'none',
                     transition: 'box-shadow 0.3s ease, transform 0.3s ease',
@@ -250,7 +250,7 @@ const ContactsPage: React.FC = () => {
           >
             <Card
               style={{
-                borderRadius: 20,
+                borderRadius: 16,
                 border: '1px solid rgba(0,0,0,0.04)',
                 boxShadow: 'none',
               }}

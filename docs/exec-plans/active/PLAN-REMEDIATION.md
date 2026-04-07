@@ -128,8 +128,8 @@
 - [x] Dev server работает (port 5173)
 
 ### 3.4 Тех.долг (выявлен code review)
-- [ ] Переименовать `const BLUE = '#4CAF50'` → `const ACCENT = '#4CAF50'` (17 файлов)
-- [ ] Заменить `borderRadius: 20` → `borderRadius: 16` на карточках/контейнерах (~30 вхождений, 12 файлов)
+- [x] Переименовать `const BLUE = '#4CAF50'` → `const ACCENT = '#4CAF50'` (17 файлов) ✅
+- [x] Заменить `borderRadius: 20` → `borderRadius: 16` на карточках/контейнерах (64 вхождения, 27 файлов) ✅
 
 ---
 

@@ -6,7 +6,7 @@ import { useUpdateProfileMutation } from '../../auth/api/authApi';
 import type { Address } from '../../auth/model/types';
 
 const { Title, Text } = Typography;
-const BLUE = '#4CAF50';
+const ACCENT = '#4CAF50';
 
 export default function ProfileSection() {
   const user = useAuthStore((s) => s.user);
@@ -53,12 +53,12 @@ export default function ProfileSection() {
         title="Личные данные"
         extra={
           !editing && (
-            <Button type="link" icon={<EditOutlined />} onClick={() => { setEditing(true); form.setFieldsValue(user); }} style={{ color: BLUE }}>
+            <Button type="link" icon={<EditOutlined />} onClick={() => { setEditing(true); form.setFieldsValue(user); }} style={{ color: ACCENT }}>
               Редактировать
             </Button>
           )
         }
-        style={{ borderRadius: 20 }}
+        style={{ borderRadius: 16 }}
       >
         {editing ? (
           <Form form={form} layout="vertical" onFinish={handleSaveProfile} initialValues={user}>
@@ -72,7 +72,7 @@ export default function ProfileSection() {
               <Input />
             </Form.Item>
             <Space>
-              <Button type="primary" htmlType="submit" style={{ background: BLUE, borderColor: BLUE, borderRadius: 8 }}>
+              <Button type="primary" htmlType="submit" style={{ background: ACCENT, borderColor: ACCENT, borderRadius: 8 }}>
                 Сохранить
               </Button>
               <Button onClick={() => setEditing(false)} style={{ borderRadius: 8 }}>Отмена</Button>
@@ -95,11 +95,11 @@ export default function ProfileSection() {
       <Card
         title="Адреса доставки"
         extra={
-          <Button type="link" icon={<PlusOutlined />} onClick={() => setAddressModal(true)} style={{ color: BLUE }}>
+          <Button type="link" icon={<PlusOutlined />} onClick={() => setAddressModal(true)} style={{ color: ACCENT }}>
             Добавить
           </Button>
         }
-        style={{ borderRadius: 20 }}
+        style={{ borderRadius: 16 }}
       >
         {user.addresses.length === 0 ? (
           <Empty description="Нет сохранённых адресов" image={Empty.PRESENTED_IMAGE_SIMPLE} />
@@ -115,11 +115,11 @@ export default function ProfileSection() {
                   padding: '12px 16px',
                   background: addr.isDefault ? 'rgba(0,113,227,0.04)' : '#F5F5F5',
                   borderRadius: 14,
-                  border: addr.isDefault ? `1px solid ${BLUE}` : '1px solid rgba(0,0,0,0.04)',
+                  border: addr.isDefault ? `1px solid ${ACCENT}` : '1px solid rgba(0,0,0,0.04)',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <EnvironmentOutlined style={{ color: addr.isDefault ? BLUE : '#6B7280', fontSize: 18 }} />
+                  <EnvironmentOutlined style={{ color: addr.isDefault ? ACCENT : '#6B7280', fontSize: 18 }} />
                   <div>
                     <div>
                       <Text strong style={{ color: '#2D2D2D' }}>{addr.label}</Text>
@@ -173,7 +173,7 @@ export default function ProfileSection() {
               <Input placeholder="101000" />
             </Form.Item>
           </div>
-          <Button type="primary" htmlType="submit" block style={{ background: BLUE, borderColor: BLUE, borderRadius: 8 }}>
+          <Button type="primary" htmlType="submit" block style={{ background: ACCENT, borderColor: ACCENT, borderRadius: 8 }}>
             Добавить адрес
           </Button>
         </Form>

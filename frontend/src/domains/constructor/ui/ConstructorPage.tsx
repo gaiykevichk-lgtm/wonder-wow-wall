@@ -52,7 +52,7 @@ const CELL_SIZE_MM = 300; // 30 cm grid cell
 const CELL_PX = 60; // pixels per cell on screen
 const GAP_PX = 2;
 
-const BLUE = '#4CAF50';
+const ACCENT = '#4CAF50';
 const DARK = '#2D2D2D';
 const GRAY = '#6B7280';
 const LIGHT_BG = '#F5F5F5';
@@ -484,7 +484,7 @@ export default function ConstructorPage() {
                 height: 100,
                 borderRadius: 16,
                 background: 'linear-gradient(135deg, #F5F5F5 0%, #E8E8E8 100%)',
-                border: wallMode === 'grid' ? `2px solid ${BLUE}` : '2px solid rgba(0,0,0,0.06)',
+                border: wallMode === 'grid' ? `2px solid ${ACCENT}` : '2px solid rgba(0,0,0,0.06)',
                 cursor: 'pointer',
                 display: 'flex',
                 flexDirection: 'column',
@@ -496,8 +496,8 @@ export default function ConstructorPage() {
                 transform: wallMode === 'grid' ? 'scale(1.02)' : 'scale(1)',
               }}
             >
-              <AppstoreOutlined style={{ fontSize: 22, color: wallMode === 'grid' ? BLUE : GRAY }} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: wallMode === 'grid' ? BLUE : DARK }}>
+              <AppstoreOutlined style={{ fontSize: 22, color: wallMode === 'grid' ? ACCENT : GRAY }} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: wallMode === 'grid' ? ACCENT : DARK }}>
                 Без фона
               </span>
             </motion.div>
@@ -521,10 +521,10 @@ export default function ConstructorPage() {
                     position: 'relative',
                     cursor: 'pointer',
                     flexShrink: 0,
-                    border: isSelected ? `2px solid ${BLUE}` : '2px solid rgba(0,0,0,0.06)',
+                    border: isSelected ? `2px solid ${ACCENT}` : '2px solid rgba(0,0,0,0.06)',
                     transform: isSelected ? 'scale(1.02)' : 'scale(1)',
                     transition: 'border-color 0.3s cubic-bezier(0.25, 0.1, 0.25, 1), transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1)',
-                    boxShadow: isSelected ? `0 0 0 1px ${BLUE}, 0 4px 16px rgba(0,113,227,0.15)` : '0 2px 8px rgba(0,0,0,0.06)',
+                    boxShadow: isSelected ? `0 0 0 1px ${ACCENT}, 0 4px 16px rgba(0,113,227,0.15)` : '0 2px 8px rgba(0,0,0,0.06)',
                   }}
                 >
                   <img
@@ -589,7 +589,7 @@ export default function ConstructorPage() {
           {/* Wall settings */}
           <Card
             style={{
-              borderRadius: 20,
+              borderRadius: 16,
               border: '1px solid rgba(0,0,0,0.04)',
               backdropFilter: 'blur(20px)',
               background: 'rgba(255,255,255,0.85)',
@@ -692,7 +692,7 @@ export default function ConstructorPage() {
                       border: `1px solid rgba(0,113,227,0.1)`,
                     }}
                   >
-                    <div style={{ fontWeight: 600, marginBottom: 2, color: BLUE }}>
+                    <div style={{ fontWeight: 600, marginBottom: 2, color: ACCENT }}>
                       {selectedPreset.room} — {selectedPreset.productName}
                     </div>
                     <div style={{ color: GRAY }}>{selectedPreset.caption}</div>
@@ -705,7 +705,7 @@ export default function ConstructorPage() {
           {/* Design selection */}
           <Card
             style={{
-              borderRadius: 20,
+              borderRadius: 16,
               border: '1px solid rgba(0,0,0,0.04)',
               backdropFilter: 'blur(20px)',
               background: 'rgba(255,255,255,0.85)',
@@ -823,7 +823,7 @@ export default function ConstructorPage() {
                 onClick={handleAddToWall}
                 style={{
                   flex: 1,
-                  background: BLUE,
+                  background: ACCENT,
                   color: '#fff',
                   border: 'none',
                   height: 38,
@@ -855,7 +855,7 @@ export default function ConstructorPage() {
           {/* Cost summary */}
           <Card
             style={{
-              borderRadius: 20,
+              borderRadius: 16,
               border: '1px solid rgba(0,0,0,0.04)',
               backdropFilter: 'blur(20px)',
               background: 'rgba(255,255,255,0.85)',
@@ -883,7 +883,7 @@ export default function ConstructorPage() {
                 <span>├ Базовые панели:</span>
                 <span>{costs.totalBase.toLocaleString('ru-RU')} ₽</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: isSubscriber ? BLUE : GRAY }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: isSubscriber ? ACCENT : GRAY }}>
                 <span>└ Накладки (дизайн):</span>
                 <span>{isSubscriber ? '0 ₽ (подписка)' : `${costs.totalOverlay.toLocaleString('ru-RU')} ₽`}</span>
               </div>
@@ -912,7 +912,7 @@ export default function ConstructorPage() {
                 onClick={handleAddToCart}
                 style={{
                   flex: 1,
-                  background: BLUE,
+                  background: ACCENT,
                   color: '#fff',
                   border: 'none',
                   height: 38,
@@ -975,7 +975,7 @@ export default function ConstructorPage() {
         <div>
           <Card
             style={{
-              borderRadius: 20,
+              borderRadius: 16,
               border: '1px solid rgba(0,0,0,0.04)',
               backdropFilter: 'blur(20px)',
               background: 'rgba(255,255,255,0.85)',
@@ -1075,7 +1075,7 @@ export default function ConstructorPage() {
                       backgroundPosition: 'center',
                       opacity: 0.4,
                       borderRadius: 4,
-                      border: `2px dashed ${BLUE}`,
+                      border: `2px dashed ${ACCENT}`,
                       pointerEvents: 'none',
                       zIndex: 5,
                     }}

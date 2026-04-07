@@ -7,7 +7,7 @@ import {
 } from '../../domains/subscription/model/subscriptionStore';
 import type { SubscriptionPlan } from '../../domains/subscription/model/types';
 
-const BLUE = '#4CAF50';
+const ACCENT = '#4CAF50';
 const DARK = '#2D2D2D';
 const FONT = 'Inter, sans-serif';
 
@@ -31,7 +31,7 @@ function StepSelect({ onSelect }: { onSelect: (id: string) => void }) {
           hoverable
           onClick={() => onSelect(plan.id)}
           style={{
-            borderRadius: 20,
+            borderRadius: 16,
             border: plan.popular ? `2px solid ${DARK}` : '1px solid rgba(0,0,0,0.04)',
             cursor: 'pointer',
             position: 'relative',
@@ -46,7 +46,7 @@ function StepSelect({ onSelect }: { onSelect: (id: string) => void }) {
                 position: 'absolute',
                 top: -10,
                 right: 16,
-                background: BLUE,
+                background: ACCENT,
                 color: '#fff',
                 border: 'none',
                 borderRadius: 8,
@@ -114,7 +114,7 @@ function StepForm({
       <div
         style={{
           background: '#F5F5F5',
-          borderRadius: 20,
+          borderRadius: 16,
           padding: '16px 18px',
           display: 'flex',
           alignItems: 'center',
@@ -138,7 +138,7 @@ function StepForm({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 4 }}>
         {plan.features.slice(0, 4).map((f) => (
           <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: DARK }}>
-            <CheckOutlined style={{ color: BLUE, fontSize: 11 }} />
+            <CheckOutlined style={{ color: ACCENT, fontSize: 11 }} />
             {f}
           </div>
         ))}
@@ -183,7 +183,7 @@ function StepForm({
               flex: 2,
               height: 44,
               borderRadius: 8,
-              background: BLUE,
+              background: ACCENT,
               color: '#fff',
               border: 'none',
               fontWeight: 600,
@@ -216,7 +216,7 @@ function StepSuccess({ plan, onClose }: { plan: SubscriptionPlan; onClose: () =>
           width: 72,
           height: 72,
           borderRadius: '50%',
-          background: BLUE,
+          background: ACCENT,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -238,13 +238,13 @@ function StepSuccess({ plan, onClose }: { plan: SubscriptionPlan; onClose: () =>
       <div
         style={{
           background: '#F5F5F5',
-          borderRadius: 20,
+          borderRadius: 16,
           padding: '16px',
           marginBottom: 20,
           textAlign: 'left',
         }}
       >
-        <div style={{ fontSize: 13, fontWeight: 600, color: BLUE, marginBottom: 8 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: ACCENT, marginBottom: 8 }}>
           Что дальше:
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -253,7 +253,7 @@ function StepSuccess({ plan, onClose }: { plan: SubscriptionPlan; onClose: () =>
             'Статус подписки виден в шапке сайта',
             'Управление подпиской — в личном кабинете',
           ].map((t) => (
-            <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: BLUE }}>
+            <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: ACCENT }}>
               <CheckOutlined style={{ fontSize: 10 }} /> {t}
             </div>
           ))}

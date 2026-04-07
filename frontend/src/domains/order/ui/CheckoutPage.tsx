@@ -21,7 +21,7 @@ import { useCartStore } from '../model/cartStore';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
-const BLUE = '#4CAF50';
+const ACCENT = '#4CAF50';
 const DARK = '#2D2D2D';
 const GRAY_TEXT = '#6B7280';
 const FONT = 'Inter, sans-serif';
@@ -361,7 +361,7 @@ const CheckoutPage: React.FC = () => {
           >
             <Card
               style={{
-                borderRadius: 20,
+                borderRadius: 16,
                 border: '1px solid rgba(0,0,0,0.04)',
                 boxShadow: 'none',
               }}
@@ -437,7 +437,7 @@ const CheckoutPage: React.FC = () => {
           >
             <Card
               style={{
-                borderRadius: 20,
+                borderRadius: 16,
                 border: '1px solid rgba(0,0,0,0.04)',
                 boxShadow: 'none',
               }}
@@ -523,7 +523,7 @@ const CheckoutPage: React.FC = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
                   <span style={{ fontFamily: FONT, fontSize: 14, color: GRAY_TEXT }}>Доставка</span>
                   {deliveryCost === 0 ? (
-                    <span style={{ fontFamily: FONT, fontSize: 14, color: BLUE, fontWeight: 600 }}>
+                    <span style={{ fontFamily: FONT, fontSize: 14, color: ACCENT, fontWeight: 600 }}>
                       Бесплатно
                     </span>
                   ) : (
@@ -572,7 +572,7 @@ const CheckoutPage: React.FC = () => {
                   'Профессиональный монтаж',
                 ].map((text) => (
                   <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <CheckCircleOutlined style={{ color: BLUE, fontSize: 14 }} />
+                    <CheckCircleOutlined style={{ color: ACCENT, fontSize: 14 }} />
                     <span style={{ fontFamily: FONT, fontSize: 13, color: DARK }}>{text}</span>
                   </div>
                 ))}

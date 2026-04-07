@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
-const BLUE = '#4CAF50';
+const ACCENT = '#4CAF50';
 const DARK = '#2D2D2D';
 const GRAY_TEXT = '#6B7280';
 const FONT = 'Inter, sans-serif';
@@ -323,7 +323,7 @@ const FaqPage: React.FC = () => {
                 <Collapse
                   items={cat.items}
                   style={{
-                    borderRadius: 20,
+                    borderRadius: 16,
                     border: '1px solid rgba(0,0,0,0.04)',
                     background: '#fff',
                     fontFamily: FONT,
@@ -346,7 +346,7 @@ const FaqPage: React.FC = () => {
             transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1.0] }}
             style={{
               background: DARK,
-              borderRadius: 20,
+              borderRadius: 16,
               padding: '56px 64px',
               display: 'flex',
               flexDirection: 'column',
@@ -385,7 +385,7 @@ const FaqPage: React.FC = () => {
                 size="large"
                 icon={<PhoneOutlined />}
                 style={{
-                  background: BLUE,
+                  background: ACCENT,
                   color: '#fff',
                   border: 'none',
                   borderRadius: 8,

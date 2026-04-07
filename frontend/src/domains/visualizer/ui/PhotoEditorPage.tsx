@@ -212,7 +212,7 @@ export default function PhotoEditorPage() {
           <Card
             size="small"
             title="Дизайн"
-            style={{ borderRadius: 20, overflow: 'auto', maxHeight: 700 }}
+            style={{ borderRadius: 16, overflow: 'auto', maxHeight: 700 }}
           >
             <PanelPicker
               selectedDesignId={store.selectedDesignId}
@@ -309,7 +309,7 @@ export default function PhotoEditorPage() {
             <Card
               size="small"
               title="Размещение"
-              style={{ borderRadius: 20 }}
+              style={{ borderRadius: 16 }}
             >
               <PlacementControls
                 mode={store.layout.placementMode}

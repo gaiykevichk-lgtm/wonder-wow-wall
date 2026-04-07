@@ -5,7 +5,7 @@ import { useAccountStore } from '../model/accountStore';
 import { useProjects, useDeleteProject } from '../api/accountApi';
 
 const { Title, Text } = Typography;
-const BLUE = '#4CAF50';
+const ACCENT = '#4CAF50';
 const CELL_PX = 20; // smaller preview
 const GAP_PX = 1;
 
@@ -17,7 +17,7 @@ function ProjectPreview({ project }: { project: ReturnType<typeof useAccountStor
 
   return (
     <Card
-      style={{ borderRadius: 20 }}
+      style={{ borderRadius: 16 }}
       hoverable
     >
       <div style={{ display: 'flex', gap: 20 }}>
@@ -73,7 +73,7 @@ function ProjectPreview({ project }: { project: ReturnType<typeof useAccountStor
                 icon={<EditOutlined />}
                 size="small"
                 onClick={() => navigate(`/account/constructor?project=${project.id}`)}
-                style={{ background: BLUE, borderColor: BLUE, borderRadius: 8 }}
+                style={{ background: ACCENT, borderColor: ACCENT, borderRadius: 8 }}
               >
                 Открыть
               </Button>
@@ -105,14 +105,14 @@ export default function ProjectsSection() {
           type="primary"
           icon={<AppstoreOutlined />}
           onClick={() => navigate('/account/constructor')}
-          style={{ background: BLUE, borderColor: BLUE, borderRadius: 8 }}
+          style={{ background: ACCENT, borderColor: ACCENT, borderRadius: 8 }}
         >
           Новый проект
         </Button>
       </div>
 
       {projects.length === 0 ? (
-        <Card style={{ borderRadius: 20, textAlign: 'center', padding: 40 }}>
+        <Card style={{ borderRadius: 16, textAlign: 'center', padding: 40 }}>
           <Empty
             description={
               <div>
@@ -129,7 +129,7 @@ export default function ProjectsSection() {
               type="primary"
               icon={<AppstoreOutlined />}
               onClick={() => navigate('/account/constructor')}
-              style={{ background: BLUE, borderColor: BLUE, borderRadius: 8, marginTop: 8 }}
+              style={{ background: ACCENT, borderColor: ACCENT, borderRadius: 8, marginTop: 8 }}
             >
               Создать проект
             </Button>

@@ -6,7 +6,7 @@ import { useLoginMutation } from '../api/authApi';
 import { ApiError } from '../../../shared/api';
 
 const { Title, Text } = Typography;
-const BLUE = '#4CAF50';
+const ACCENT = '#4CAF50';
 
 export default function LoginPage() {
   const loginMutation = useLoginMutation();
@@ -44,7 +44,7 @@ export default function LoginPage() {
       >
         <Card
           style={{
-            borderRadius: 20,
+            borderRadius: 16,
             boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
             border: 'none',
           }}
@@ -74,7 +74,7 @@ export default function LoginPage() {
             </Form.Item>
 
             <div style={{ textAlign: 'right', marginTop: -16, marginBottom: 16 }}>
-              <Link to="/forgot-password" style={{ color: BLUE, fontSize: 13 }}>
+              <Link to="/forgot-password" style={{ color: ACCENT, fontSize: 13 }}>
                 Забыли пароль?
               </Link>
             </div>
@@ -85,7 +85,7 @@ export default function LoginPage() {
                 htmlType="submit"
                 block
                 loading={loginMutation.isPending}
-                style={{ background: BLUE, borderColor: BLUE, borderRadius: 8, height: 44 }}
+                style={{ background: ACCENT, borderColor: ACCENT, borderRadius: 8, height: 44 }}
               >
                 Войти
               </Button>
@@ -96,7 +96,7 @@ export default function LoginPage() {
 
           <div style={{ textAlign: 'center' }}>
             <Text style={{ color: '#6B7280' }}>Нет аккаунта? </Text>
-            <Link to="/register" style={{ color: BLUE, fontWeight: 600 }}>
+            <Link to="/register" style={{ color: ACCENT, fontWeight: 600 }}>
               Зарегистрироваться
             </Link>
           </div>

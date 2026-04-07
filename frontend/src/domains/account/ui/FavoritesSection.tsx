@@ -6,7 +6,7 @@ import { products } from '../../catalog/model/data';
 import { useCartStore } from '../../order/model/cartStore';
 
 const { Title, Text } = Typography;
-const BLUE = '#4CAF50';
+const ACCENT = '#4CAF50';
 
 export default function FavoritesSection() {
   const favoriteIds = useAccountStore((s) => s.favoriteIds);
@@ -21,7 +21,7 @@ export default function FavoritesSection() {
       <Title level={3} style={{ margin: 0, color: '#2D2D2D', fontWeight: 600 }}>Избранное</Title>
 
       {favoriteProducts.length === 0 ? (
-        <Card style={{ borderRadius: 20, textAlign: 'center', padding: 40 }}>
+        <Card style={{ borderRadius: 16, textAlign: 'center', padding: 40 }}>
           <Empty
             description={
               <div>
@@ -37,7 +37,7 @@ export default function FavoritesSection() {
             <Button
               type="primary"
               onClick={() => navigate('/catalog')}
-              style={{ background: BLUE, borderColor: BLUE, borderRadius: 8, marginTop: 8 }}
+              style={{ background: ACCENT, borderColor: ACCENT, borderRadius: 8, marginTop: 8 }}
             >
               Перейти в каталог
             </Button>
@@ -49,7 +49,7 @@ export default function FavoritesSection() {
             <Card
               key={product.id}
               hoverable
-              style={{ borderRadius: 20, overflow: 'hidden' }}
+              style={{ borderRadius: 16, overflow: 'hidden' }}
               cover={
                 <div style={{ position: 'relative', height: 180, background: '#F5F5F5' }}>
                   <div
@@ -78,7 +78,7 @@ export default function FavoritesSection() {
                 <Text type="secondary" style={{ fontSize: 12, color: '#6B7280' }}>({product.reviews})</Text>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text strong style={{ fontSize: 16, color: BLUE }}>
+                <Text strong style={{ fontSize: 16, color: ACCENT }}>
                   {product.price.toLocaleString('ru-RU')} ₽
                 </Text>
                 <Button
@@ -99,7 +99,7 @@ export default function FavoritesSection() {
                       size: product.sizes[0]?.label || '',
                     });
                   }}
-                  style={{ background: BLUE, borderColor: BLUE, borderRadius: 8 }}
+                  style={{ background: ACCENT, borderColor: ACCENT, borderRadius: 8 }}
                 >
                   В корзину
                 </Button>

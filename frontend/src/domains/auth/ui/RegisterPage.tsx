@@ -6,7 +6,7 @@ import { useRegisterMutation } from '../api/authApi';
 import { ApiError } from '../../../shared/api';
 
 const { Title, Text } = Typography;
-const BLUE = '#4CAF50';
+const ACCENT = '#4CAF50';
 
 export default function RegisterPage() {
   const registerMutation = useRegisterMutation();
@@ -42,7 +42,7 @@ export default function RegisterPage() {
       >
         <Card
           style={{
-            borderRadius: 20,
+            borderRadius: 16,
             boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
             border: 'none',
           }}
@@ -110,7 +110,7 @@ export default function RegisterPage() {
                 htmlType="submit"
                 block
                 loading={registerMutation.isPending}
-                style={{ background: BLUE, borderColor: BLUE, borderRadius: 8, height: 44 }}
+                style={{ background: ACCENT, borderColor: ACCENT, borderRadius: 8, height: 44 }}
               >
                 Создать аккаунт
               </Button>
@@ -121,7 +121,7 @@ export default function RegisterPage() {
 
           <div style={{ textAlign: 'center' }}>
             <Text style={{ color: '#6B7280' }}>Уже есть аккаунт? </Text>
-            <Link to="/login" style={{ color: BLUE, fontWeight: 600 }}>
+            <Link to="/login" style={{ color: ACCENT, fontWeight: 600 }}>
               Войти
             </Link>
           </div>

@@ -15,7 +15,7 @@ import { motion } from 'framer-motion';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
-const BLUE = '#4CAF50';
+const ACCENT = '#4CAF50';
 const DARK = '#2D2D2D';
 const GRAY_TEXT = '#6B7280';
 const FONT = 'Inter, sans-serif';
@@ -73,22 +73,22 @@ const processSteps = [
 
 const guarantees = [
   {
-    icon: <SafetyCertificateOutlined style={{ fontSize: 26, color: BLUE }} />,
+    icon: <SafetyCertificateOutlined style={{ fontSize: 26, color: ACCENT }} />,
     title: '5 лет гарантии',
     desc: 'На все материалы и монтажные работы. При любом дефекте производства устраним бесплатно.',
   },
   {
-    icon: <GiftOutlined style={{ fontSize: 26, color: BLUE }} />,
+    icon: <GiftOutlined style={{ fontSize: 26, color: ACCENT }} />,
     title: 'Бесплатный монтаж',
     desc: 'При заказе от 20 м² монтаж включён в стоимость. Никаких скрытых платежей.',
   },
   {
-    icon: <TeamOutlined style={{ fontSize: 26, color: BLUE }} />,
+    icon: <TeamOutlined style={{ fontSize: 26, color: ACCENT }} />,
     title: 'Опытные мастера',
     desc: 'Каждый монтажник имеет не менее 3 лет опыта и прошёл нашу сертификацию.',
   },
   {
-    icon: <CarOutlined style={{ fontSize: 26, color: BLUE }} />,
+    icon: <CarOutlined style={{ fontSize: 26, color: ACCENT }} />,
     title: 'Быстрая доставка',
     desc: 'Доставка по Москве за 1 день, по России за 3–7 рабочих дней.',
   },
@@ -356,7 +356,7 @@ const HowItWorksPage: React.FC = () => (
               >
                 <Card
                   style={{
-                    borderRadius: 20,
+                    borderRadius: 16,
                     border: '1px solid rgba(0,0,0,0.04)',
                     boxShadow: 'none',
                     height: '100%',
@@ -426,7 +426,7 @@ const HowItWorksPage: React.FC = () => (
           <motion.div variants={fadeUp} custom={1}>
             <Collapse
               items={faqItems}
-              style={{ borderRadius: 20, border: '1px solid rgba(0,0,0,0.04)', background: '#fff' }}
+              style={{ borderRadius: 16, border: '1px solid rgba(0,0,0,0.04)', background: '#fff' }}
               expandIconPosition="end"
               defaultActiveKey={['1']}
             />

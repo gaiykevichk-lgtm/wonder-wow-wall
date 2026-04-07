@@ -3,7 +3,7 @@ import { CrownOutlined, CheckCircleOutlined, SwapOutlined } from '@ant-design/ic
 import { useSubscriptionStore, SUBSCRIPTION_PLANS } from '../../subscription/model/subscriptionStore';
 
 const { Title, Text } = Typography;
-const BLUE = '#4CAF50';
+const ACCENT = '#4CAF50';
 
 export default function AccountSubscriptionSection() {
   const activePlan = useSubscriptionStore((s) => s.getActivePlan);
@@ -19,7 +19,7 @@ export default function AccountSubscriptionSection() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         <Title level={3} style={{ margin: 0, color: '#2D2D2D', fontWeight: 600 }}>Подписка</Title>
-        <Card style={{ borderRadius: 20, textAlign: 'center', padding: 40 }}>
+        <Card style={{ borderRadius: 16, textAlign: 'center', padding: 40 }}>
           <Empty
             description={
               <div>
@@ -36,7 +36,7 @@ export default function AccountSubscriptionSection() {
               type="primary"
               icon={<CrownOutlined />}
               onClick={() => openModal()}
-              style={{ background: BLUE, borderColor: BLUE, borderRadius: 8, marginTop: 8 }}
+              style={{ background: ACCENT, borderColor: ACCENT, borderRadius: 8, marginTop: 8 }}
               size="large"
             >
               Выбрать план
@@ -51,8 +51,8 @@ export default function AccountSubscriptionSection() {
               key={p.id}
               hoverable
               style={{
-                borderRadius: 20,
-                border: p.popular ? `2px solid ${BLUE}` : undefined,
+                borderRadius: 16,
+                border: p.popular ? `2px solid ${ACCENT}` : undefined,
               }}
               onClick={() => openModal(p.id)}
             >
@@ -62,7 +62,7 @@ export default function AccountSubscriptionSection() {
               <Title level={4} style={{ margin: '0 0 4px', color: '#2D2D2D', fontWeight: 600 }}>{p.name}</Title>
               <Text type="secondary" style={{ color: '#6B7280' }}>{p.desc}</Text>
               <div style={{ margin: '16px 0 12px' }}>
-                <Text style={{ fontSize: 28, fontWeight: 600, color: BLUE }}>
+                <Text style={{ fontSize: 28, fontWeight: 600, color: ACCENT }}>
                   {p.price.toLocaleString('ru-RU')} ₽
                 </Text>
                 <Text type="secondary" style={{ color: '#6B7280' }}> / {p.period}</Text>
@@ -70,7 +70,7 @@ export default function AccountSubscriptionSection() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {p.features.slice(0, 4).map((f, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <CheckCircleOutlined style={{ color: BLUE, fontSize: 13 }} />
+                    <CheckCircleOutlined style={{ color: ACCENT, fontSize: 13 }} />
                     <Text style={{ fontSize: 13, color: '#2D2D2D' }}>{f}</Text>
                   </div>
                 ))}
@@ -96,21 +96,21 @@ export default function AccountSubscriptionSection() {
       {/* Active plan */}
       <Card
         style={{
-          borderRadius: 20,
+          borderRadius: 16,
           background: 'linear-gradient(135deg, #E8F0FE 0%, #D2E3FC 100%)',
-          border: `1px solid ${BLUE}`,
+          border: `1px solid ${ACCENT}`,
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-              <CrownOutlined style={{ fontSize: 28, color: BLUE }} />
+              <CrownOutlined style={{ fontSize: 28, color: ACCENT }} />
               <div>
                 <Title level={4} style={{ margin: 0, color: '#2D2D2D', fontWeight: 600 }}>{plan.name}</Title>
                 <Text type="secondary" style={{ color: '#6B7280' }}>{plan.desc}</Text>
               </div>
             </div>
-            <Text style={{ fontSize: 24, fontWeight: 600, color: BLUE }}>
+            <Text style={{ fontSize: 24, fontWeight: 600, color: ACCENT }}>
               {plan.price.toLocaleString('ru-RU')} ₽
             </Text>
             <Text type="secondary" style={{ color: '#6B7280' }}> / {plan.period}</Text>
@@ -120,7 +120,7 @@ export default function AccountSubscriptionSection() {
       </Card>
 
       {/* Stats */}
-      <Card title="Использование" style={{ borderRadius: 20 }}>
+      <Card title="Использование" style={{ borderRadius: 16 }}>
         <Descriptions column={2}>
           <Descriptions.Item label="Подписка с">
             {subscribedAt ? new Date(subscribedAt).toLocaleDateString('ru-RU') : '—'}
@@ -140,11 +140,11 @@ export default function AccountSubscriptionSection() {
       </Card>
 
       {/* Features */}
-      <Card title="Ваши преимущества" style={{ borderRadius: 20 }}>
+      <Card title="Ваши преимущества" style={{ borderRadius: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {plan.features.map((f, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <CheckCircleOutlined style={{ color: BLUE, fontSize: 16 }} />
+              <CheckCircleOutlined style={{ color: ACCENT, fontSize: 16 }} />
               <Text style={{ color: '#2D2D2D' }}>{f}</Text>
             </div>
           ))}
@@ -152,12 +152,12 @@ export default function AccountSubscriptionSection() {
       </Card>
 
       {/* Actions */}
-      <Card style={{ borderRadius: 20 }}>
+      <Card style={{ borderRadius: 16 }}>
         <Space>
           <Button
             icon={<SwapOutlined />}
             onClick={() => openModal()}
-            style={{ borderColor: BLUE, color: BLUE, borderRadius: 8 }}
+            style={{ borderColor: ACCENT, color: ACCENT, borderRadius: 8 }}
           >
             Сменить план
           </Button>

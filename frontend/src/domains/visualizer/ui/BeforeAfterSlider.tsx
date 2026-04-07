@@ -63,7 +63,7 @@ export function BeforeAfterSlider({
         width,
         height,
         overflow: 'hidden',
-        borderRadius: 20,
+        borderRadius: 16,
         cursor: 'ew-resize',
         userSelect: 'none',
       }}

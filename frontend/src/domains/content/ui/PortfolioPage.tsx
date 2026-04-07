@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
-const BLUE = '#4CAF50';
+const ACCENT = '#4CAF50';
 const DARK = '#2D2D2D';
 const GRAY_TEXT = '#6B7280';
 const FONT = 'Inter, sans-serif';
@@ -99,7 +99,7 @@ const ProjectCard: React.FC<{ project: typeof projects[0]; index: number }> = ({
       onHoverStart={() => setHovered(true)}
       onHoverEnd={() => setHovered(false)}
       style={{
-        borderRadius: 20,
+        borderRadius: 16,
         overflow: 'hidden',
         border: '1px solid rgba(0,0,0,0.04)',
         background: '#fff',
@@ -139,10 +139,10 @@ const ProjectCard: React.FC<{ project: typeof projects[0]; index: number }> = ({
             position: 'absolute',
             top: 14,
             left: 14,
-            background: BLUE,
+            background: ACCENT,
             color: '#fff',
             border: 'none',
-            borderRadius: 20,
+            borderRadius: 16,
             fontFamily: FONT,
             fontWeight: 600,
             fontSize: 12,

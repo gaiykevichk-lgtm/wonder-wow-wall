@@ -429,7 +429,7 @@ export default function ProductPage() {
             initial="hidden"
             whileInView="show"
             viewport={{ once: true, amount: 0.4 }}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', borderRadius: 20, padding: '24px 32px' }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', borderRadius: 16, padding: '24px 32px' }}
           >
             <div>
               <div style={{ fontSize: 13, color: '#6B7280', fontWeight: 500, marginBottom: 10 }}>Количество (м²)</div>
@@ -645,7 +645,7 @@ export default function ProductPage() {
           <h2 style={{ fontSize: 28, fontWeight: 700, color: '#2D2D2D', letterSpacing: '-0.02em', marginBottom: 32, textAlign: 'center' }}>
             Характеристики
           </h2>
-          <div style={{ borderRadius: 20, overflow: 'hidden', border: '1px solid rgba(0,0,0,0.06)' }}>
+          <div style={{ borderRadius: 16, overflow: 'hidden', border: '1px solid rgba(0,0,0,0.06)' }}>
             {Object.entries(product.specs).map(([key, value], idx, arr) => (
               <div
                 key={key}
@@ -733,7 +733,7 @@ export default function ProductPage() {
           )}
 
           {/* Add review form */}
-          <div style={{ marginTop: 32, background: '#F5F5F5', borderRadius: 20, padding: '24px 28px' }}>
+          <div style={{ marginTop: 32, background: '#F5F5F5', borderRadius: 16, padding: '24px 28px' }}>
             {isAuth ? (
               <>
                 <div style={{ fontSize: 17, fontWeight: 600, color: '#2D2D2D', marginBottom: 16 }}>Оставить отзыв</div>

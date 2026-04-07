@@ -65,7 +65,7 @@ export function PhotoUploader({ onUpload, loading }: PhotoUploaderProps) {
         gap: 24,
         padding: 64,
         border: `2px dashed ${dragActive ? '#4CAF50' : 'rgba(0,0,0,0.04)'}`,
-        borderRadius: 20,
+        borderRadius: 16,
         background: dragActive ? 'rgba(0, 113, 227, 0.04)' : '#FAFAFA',
         cursor: 'pointer',
         transition: 'all 0.3s',
@@ -174,7 +174,7 @@ export function PhotoUploader({ onUpload, loading }: PhotoUploaderProps) {
           marginTop: 16,
           padding: '16px 24px',
           background: 'rgba(0, 113, 227, 0.06)',
-          borderRadius: 20,
+          borderRadius: 16,
           border: '1px solid rgba(0, 113, 227, 0.15)',
           maxWidth: 400,
         }}

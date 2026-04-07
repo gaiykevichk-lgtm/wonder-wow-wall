@@ -130,7 +130,7 @@ export function ShopHeader() {
                 icon={<CrownOutlined />}
                 color="#4CAF50"
                 style={{
-                  borderRadius: 20,
+                  borderRadius: 16,
                   fontWeight: 600,
                   fontSize: 11,
                   padding: '2px 10px',
@@ -147,7 +147,7 @@ export function ShopHeader() {
                 onClick={() => openSubModal()}
                 className="sub-btn-desktop"
                 style={{
-                  borderRadius: 20,
+                  borderRadius: 16,
                   border: '1px solid #4CAF50',
                   color: '#4CAF50',
                   background: 'transparent',

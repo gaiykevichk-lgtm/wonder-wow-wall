@@ -30,7 +30,7 @@ export function CostSummary({
         gap: 12,
         padding: '16px',
         background: '#FAFAFA',
-        borderRadius: 20,
+        borderRadius: 16,
         border: '1px solid rgba(0,0,0,0.04)',
       }}
     >
