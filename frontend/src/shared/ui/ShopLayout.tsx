@@ -3,6 +3,7 @@ import { ShopHeader } from './ShopHeader';
 import { ShopFooter } from './ShopFooter';
 import { CartDrawer } from './CartDrawer';
 import { SubscriptionModal } from './SubscriptionModal';
+import { SupportFab } from './SupportFab';
 
 export function ShopLayout() {
   return (
@@ -14,6 +15,7 @@ export function ShopLayout() {
       <ShopFooter />
       <CartDrawer />
       <SubscriptionModal />
+      <SupportFab />
     </>
   );
 }

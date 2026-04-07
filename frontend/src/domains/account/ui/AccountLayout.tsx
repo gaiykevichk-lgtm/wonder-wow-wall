@@ -38,6 +38,7 @@ export default function AccountLayout() {
 
   return (
     <div
+      className="account-layout"
       style={{
         maxWidth: 1280,
         margin: '0 auto',
@@ -49,6 +50,7 @@ export default function AccountLayout() {
     >
       {/* Sidebar */}
       <aside
+        className="account-sidebar"
         style={{
           width: 260,
           flexShrink: 0,
@@ -61,7 +63,7 @@ export default function AccountLayout() {
         }}
       >
         {/* User info */}
-        <div style={{ padding: '0 24px 20px', borderBottom: '1px solid rgba(0,0,0,0.06)', textAlign: 'center' }}>
+        <div className="user-info-block" style={{ padding: '0 24px 20px', borderBottom: '1px solid rgba(0,0,0,0.06)', textAlign: 'center' }}>
           <Avatar
             size={64}
             icon={<UserOutlined />}

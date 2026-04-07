@@ -181,6 +181,7 @@ export default function CatalogPage() {
       <div style={{ maxWidth: 1080, margin: '0 auto', padding: '48px 40px' }}>
         {/* Filter Bar */}
         <div
+          className="catalog-filters"
           style={{
             display: 'flex',
             flexWrap: 'wrap',

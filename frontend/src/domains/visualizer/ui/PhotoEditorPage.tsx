@@ -269,6 +269,7 @@ export default function PhotoEditorPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1.0] }}
+          className="visualizer-layout"
           style={{
             display: 'grid',
             gridTemplateColumns: '240px 1fr 280px',

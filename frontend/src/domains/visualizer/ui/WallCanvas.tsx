@@ -320,6 +320,106 @@ export function WallCanvas({
     [zoom, onZoomChange],
   );
 
+  // ─── Touch handlers (pinch-to-zoom, touch pan, touch paint) ─────────
+  const lastTouchDistRef = useRef(0);
+  const lastTouchCenterRef = useRef<Point>({ x: 0, y: 0 });
+
+  const getTouchImageCoords = useCallback(
+    (touch: React.Touch): Point => {
+      const canvas = canvasRef.current;
+      if (!canvas) return { x: 0, y: 0 };
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      return {
+        x: (touch.clientX - rect.left) * scaleX,
+        y: (touch.clientY - rect.top) * scaleY,
+      };
+    },
+    [],
+  );
+
+  const touchDist = (a: React.Touch, b: React.Touch) =>
+    Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if (e.touches.length === 2) {
+        // Pinch start
+        lastTouchDistRef.current = touchDist(e.touches[0], e.touches[1]);
+        lastTouchCenterRef.current = {
+          x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+          y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+        };
+        return;
+      }
+      if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        if (maskTool) {
+          isPaintingRef.current = true;
+          strokePointsRef.current = [getTouchImageCoords(touch)];
+        } else {
+          // Single touch → pan
+          isPanningRef.current = true;
+          lastPanRef.current = { x: touch.clientX, y: touch.clientY };
+        }
+      }
+    },
+    [maskTool, getTouchImageCoords],
+  );
+
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      e.preventDefault();
+      if (e.touches.length === 2) {
+        // Pinch zoom
+        const dist = touchDist(e.touches[0], e.touches[1]);
+        if (lastTouchDistRef.current > 0) {
+          const scale = dist / lastTouchDistRef.current;
+          const newZoom = Math.max(0.25, Math.min(4, zoom * scale));
+          onZoomChange?.(newZoom);
+        }
+        lastTouchDistRef.current = dist;
+
+        // Two-finger pan
+        const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        const dx = cx - lastTouchCenterRef.current.x;
+        const dy = cy - lastTouchCenterRef.current.y;
+        lastTouchCenterRef.current = { x: cx, y: cy };
+        onPanChange?.({ x: panOffset.x + dx, y: panOffset.y + dy });
+        return;
+      }
+      if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        if (isPaintingRef.current && maskTool) {
+          strokePointsRef.current.push(getTouchImageCoords(touch));
+        } else if (isPanningRef.current) {
+          const dx = touch.clientX - lastPanRef.current.x;
+          const dy = touch.clientY - lastPanRef.current.y;
+          lastPanRef.current = { x: touch.clientX, y: touch.clientY };
+          onPanChange?.({ x: panOffset.x + dx, y: panOffset.y + dy });
+        }
+      }
+    },
+    [zoom, panOffset, onZoomChange, onPanChange, maskTool, getTouchImageCoords],
+  );
+
+  const handleTouchEnd = useCallback(
+    () => {
+      if (isPaintingRef.current && maskTool) {
+        isPaintingRef.current = false;
+        if (strokePointsRef.current.length > 0) {
+          onMaskStroke?.(strokePointsRef.current);
+          strokePointsRef.current = [];
+        }
+      }
+      isPanningRef.current = false;
+      lastTouchDistRef.current = 0;
+    },
+    [maskTool, onMaskStroke],
+  );
+
   return (
     <div
       ref={containerRef}
@@ -344,6 +444,9 @@ export function WallCanvas({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
         onWheel={handleWheel}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         style={{
           display: 'block',
           width: '100%',
@@ -351,6 +454,7 @@ export function WallCanvas({
           objectFit: 'contain',
           transform: `scale(${zoom}) translate(${panOffset.x / zoom}px, ${panOffset.y / zoom}px)`,
           transformOrigin: 'center',
+          touchAction: 'none',
         }}
       />
       {/* Delete button for selected panel */}

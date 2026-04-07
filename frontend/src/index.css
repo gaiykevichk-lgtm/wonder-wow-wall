@@ -35,9 +35,31 @@ img {
   background: linear-gradient(135deg, #FAFAFA 0%, #F5F5F5 100%);
 }
 
-/* ─── Mobile Responsive ─────────────────────────────────────────────────────── */
+/* ─── Tablet (≤1024px) ─────────────────────────────────────────────────────── */
+
+@media (max-width: 1024px) {
+  .account-layout {
+    flex-direction: column !important;
+    gap: 16px !important;
+  }
+  .account-sidebar {
+    width: 100% !important;
+    position: static !important;
+    height: auto !important;
+  }
+  .account-sidebar .ant-menu-inline {
+    display: flex;
+    flex-wrap: wrap;
+  }
+}
+
+/* ─── Mobile (≤768px) ──────────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {
+  body {
+    font-size: 15px;
+  }
+
   .hero-grid,
   .product-layout,
   .checkout-layout,
@@ -68,7 +90,60 @@ img {
     flex-direction: column;
     align-items: flex-start !important;
   }
+
+  /* Account sidebar → horizontal scroll tab bar */
+  .account-layout {
+    flex-direction: column !important;
+    gap: 0 !important;
+    padding-top: 72px !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+  .account-sidebar {
+    width: 100% !important;
+    position: static !important;
+    height: auto !important;
+    padding: 12px 0 !important;
+    border-radius: 12px !important;
+    margin-bottom: 16px;
+  }
+  .account-sidebar .ant-menu-inline {
+    display: flex !important;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .account-sidebar .ant-menu-inline::-webkit-scrollbar {
+    display: none;
+  }
+  .account-sidebar .ant-menu-item {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+  }
+  .account-sidebar .user-info-block {
+    display: none !important;
+  }
+
+  /* Catalog filter row → vertical stacking */
+  .catalog-filters {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  /* Pricing cards horizontal */
+  .pricing-cards-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Visualizer → single column on mobile */
+  .visualizer-layout {
+    grid-template-columns: 1fr !important;
+    min-height: auto !important;
+  }
 }
+
+/* ─── Small phone (≤480px) ─────────────────────────────────────────────────── */
 
 @media (max-width: 480px) {
   .hero-grid h1 {
