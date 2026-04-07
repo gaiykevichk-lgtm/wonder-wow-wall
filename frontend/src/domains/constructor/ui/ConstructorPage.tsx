@@ -916,123 +916,6 @@ export default function ConstructorPage() {
             </div>
           </Card>
 
-          {/* Cost summary */}
-          <Card
-            style={{
-              borderRadius: 16,
-              border: '1px solid rgba(0,0,0,0.04)',
-              backdropFilter: 'blur(20px)',
-              background: 'rgba(255,255,255,0.85)',
-            }}
-            styles={{ body: { padding: 18 } }}
-          >
-            <div style={{ fontWeight: 600, fontSize: 14, color: DARK, marginBottom: 12 }}>
-              Расчёт стоимости
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                <span style={{ color: GRAY }}>Панелей:</span>
-                <span style={{ fontWeight: 500, color: DARK }}>{costs.panelCount} шт</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                <span style={{ color: GRAY }}>Покрытие:</span>
-                <span style={{ fontWeight: 500, color: DARK }}>{costs.totalArea.toFixed(2)} м²</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                <span style={{ color: GRAY }}>Площадь стены:</span>
-                <span style={{ fontWeight: 500, color: DARK }}>{costs.wallArea.toFixed(2)} м²</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: GRAY }}>
-                <span>├ Базовые панели:</span>
-                <span>{costs.totalBase.toLocaleString('ru-RU')} ₽</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: isSubscriber ? ACCENT : GRAY }}>
-                <span>└ Накладки (дизайн):</span>
-                <span>{isSubscriber ? '0 ₽ (подписка)' : `${costs.totalOverlay.toLocaleString('ru-RU')} ₽`}</span>
-              </div>
-            </div>
-
-            <div
-              style={{
-                background: DARK,
-                borderRadius: 12,
-                padding: '14px 16px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: 12,
-              }}
-            >
-              <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>Итого:</span>
-              <span style={{ fontSize: 22, fontWeight: 600, color: '#fff', letterSpacing: '-0.01em' }}>
-                {costs.total.toLocaleString('ru-RU')} ₽
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Button
-                icon={<ShoppingCartOutlined />}
-                onClick={handleAddToCart}
-                style={{
-                  flex: 1,
-                  background: ACCENT,
-                  color: '#fff',
-                  border: 'none',
-                  height: 38,
-                  borderRadius: 8,
-                  fontWeight: 600,
-                }}
-              >
-                В корзину
-              </Button>
-              <Button
-                icon={<UndoOutlined />}
-                onClick={handleClear}
-                style={{ height: 38, borderRadius: 8, border: '1px solid #D1D5DB', color: GRAY }}
-              >
-                Очистить
-              </Button>
-            </div>
-          </Card>
-
-          {/* Subscription banner or info */}
-          {isSubscriber ? (
-            <div
-              style={{
-                padding: '12px 14px',
-                background: LIGHT_BG,
-                borderRadius: 12,
-                fontSize: 12,
-                color: '#2E7D32',
-                lineHeight: 1.6,
-                border: '1px solid #C8E6C9',
-              }}
-            >
-              <CrownOutlined style={{ marginRight: 6, fontSize: 14 }} />
-              <strong>Подписка «{activePlan()?.name}»</strong> — накладки включены в план! Вы платите только за базовые панели.
-              {activePlan()?.areaLimitM2 ? ` Лимит: ${activePlan()!.areaLimitM2} м² в месяц.` : ' Безлимитная площадь.'}
-            </div>
-          ) : (
-            <div
-              onClick={() => openSubModal()}
-              style={{
-                padding: '12px 14px',
-                background: '#FFF8E1',
-                borderRadius: 12,
-                fontSize: 12,
-                color: '#F57F17',
-                lineHeight: 1.6,
-                cursor: 'pointer',
-                border: '1px solid #FFE082',
-                transition: 'background 0.2s',
-              }}
-            >
-              <InfoCircleOutlined style={{ marginRight: 6 }} />
-              <strong>Оформите подписку</strong> — и накладки будут бесплатны! Планы от {(4900).toLocaleString('ru-RU')} ₽/мес.
-              <span style={{ textDecoration: 'underline', marginLeft: 4 }}>Подробнее</span>
-            </div>
-          )}
         </div>
 
         {/* ─── RIGHT - Wall Canvas ──────────────────────────────────────────── */}
@@ -1517,6 +1400,118 @@ export default function ConstructorPage() {
                 </div>
               </div>
             )}
+
+            {/* ─── Cost summary (moved from left panel) ─────────────────── */}
+            <div style={{ marginTop: 16, borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: 16 }}>
+              <div style={{ fontWeight: 600, fontSize: 14, color: DARK, marginBottom: 12 }}>
+                Расчёт стоимости
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                  <span style={{ color: GRAY }}>Панелей:</span>
+                  <span style={{ fontWeight: 500, color: DARK }}>{costs.panelCount} шт</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                  <span style={{ color: GRAY }}>Покрытие:</span>
+                  <span style={{ fontWeight: 500, color: DARK }}>{costs.totalArea.toFixed(2)} м²</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                  <span style={{ color: GRAY }}>Площадь стены:</span>
+                  <span style={{ fontWeight: 500, color: DARK }}>{costs.wallArea.toFixed(2)} м²</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: GRAY }}>
+                  <span>├ Базовые панели:</span>
+                  <span>{costs.totalBase.toLocaleString('ru-RU')} ₽</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: isSubscriber ? ACCENT : GRAY }}>
+                  <span>└ Накладки (дизайн):</span>
+                  <span>{isSubscriber ? '0 ₽ (подписка)' : `${costs.totalOverlay.toLocaleString('ru-RU')} ₽`}</span>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: DARK,
+                  borderRadius: 12,
+                  padding: '14px 16px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 12,
+                }}
+              >
+                <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>Итого:</span>
+                <span style={{ fontSize: 22, fontWeight: 600, color: '#fff', letterSpacing: '-0.01em' }}>
+                  {costs.total.toLocaleString('ru-RU')} ₽
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Button
+                  icon={<ShoppingCartOutlined />}
+                  onClick={handleAddToCart}
+                  style={{
+                    flex: 1,
+                    background: ACCENT,
+                    color: '#fff',
+                    border: 'none',
+                    height: 38,
+                    borderRadius: 8,
+                    fontWeight: 600,
+                  }}
+                >
+                  В корзину
+                </Button>
+                <Button
+                  icon={<UndoOutlined />}
+                  onClick={handleClear}
+                  style={{ height: 38, borderRadius: 8, border: '1px solid #D1D5DB', color: GRAY }}
+                >
+                  Очистить
+                </Button>
+              </div>
+            </div>
+
+            {/* Subscription banner */}
+            <div style={{ marginTop: 12 }}>
+              {isSubscriber ? (
+                <div
+                  style={{
+                    padding: '12px 14px',
+                    background: LIGHT_BG,
+                    borderRadius: 12,
+                    fontSize: 12,
+                    color: '#2E7D32',
+                    lineHeight: 1.6,
+                    border: '1px solid #C8E6C9',
+                  }}
+                >
+                  <CrownOutlined style={{ marginRight: 6, fontSize: 14 }} />
+                  <strong>Подписка «{activePlan()?.name}»</strong> — накладки включены в план! Вы платите только за базовые панели.
+                  {activePlan()?.areaLimitM2 ? ` Лимит: ${activePlan()!.areaLimitM2} м² в месяц.` : ' Безлимитная площадь.'}
+                </div>
+              ) : (
+                <div
+                  onClick={() => openSubModal()}
+                  style={{
+                    padding: '12px 14px',
+                    background: '#FFF8E1',
+                    borderRadius: 12,
+                    fontSize: 12,
+                    color: '#F57F17',
+                    lineHeight: 1.6,
+                    cursor: 'pointer',
+                    border: '1px solid #FFE082',
+                    transition: 'background 0.2s',
+                  }}
+                >
+                  <InfoCircleOutlined style={{ marginRight: 6 }} />
+                  <strong>Оформите подписку</strong> — и накладки будут бесплатны! Планы от {(7000).toLocaleString('ru-RU')} ₽/мес.
+                  <span style={{ textDecoration: 'underline', marginLeft: 4 }}>Подробнее</span>
+                </div>
+              )}
+            </div>
           </Card>
         </div>
       </div>
