@@ -3,6 +3,9 @@ import { CloseCircleFilled } from '@ant-design/icons';
 import type { Scene, PlacedPanel, MaskTool, Point, AccentZone, PlacementMode } from '../model/types';
 import { wallMaskToImageData } from '../lib/maskUtils';
 
+const touchDist = (a: React.Touch, b: React.Touch) =>
+  Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+
 interface WallCanvasProps {
   scene: Scene;
   panels: PlacedPanel[];
@@ -338,9 +341,6 @@ export function WallCanvas({
     },
     [],
   );
-
-  const touchDist = (a: React.Touch, b: React.Touch) =>
-    Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
 
   const handleTouchStart = useCallback(
     (e: React.TouchEvent) => {

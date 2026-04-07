@@ -51,6 +51,9 @@ img {
     display: flex;
     flex-wrap: wrap;
   }
+  .visualizer-layout {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 /* ─── Mobile (≤768px) ──────────────────────────────────────────────────────── */

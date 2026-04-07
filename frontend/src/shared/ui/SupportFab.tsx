@@ -14,6 +14,7 @@ export function SupportFab() {
         type="primary"
         shape="circle"
         icon={<MessageOutlined style={{ fontSize: 24 }} />}
+        aria-label="Открыть поддержку"
         onClick={() => setOpen(true)}
         style={{
           position: 'fixed',

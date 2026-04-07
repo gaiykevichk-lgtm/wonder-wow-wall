@@ -406,14 +406,6 @@ export default function PhotoEditorPage() {
         </motion.div>
       )}
 
-      {/* Responsive styles */}
-      <style>{`
-        @media (max-width: 1024px) {
-          [style*="grid-template-columns: 240px 1fr 280px"] {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }
