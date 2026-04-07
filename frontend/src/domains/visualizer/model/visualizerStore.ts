@@ -66,6 +66,10 @@ interface VisualizerState {
   cost: CostBreakdown;
   recalculateCost: (hasSubscription: boolean) => void;
 
+  // Persistence
+  saveToLocalStorage: () => void;
+  loadFromLocalStorage: () => boolean;
+
   // Reset
   reset: () => void;
 }
@@ -209,8 +213,69 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => ({
     set({ cost: calculateCost(panels, hasSubscription) });
   },
 
+  // Persistence
+  saveToLocalStorage: () => {
+    const state = get();
+    if (!state.scene) return;
+    const data = {
+      scene: {
+        photo: { url: state.scene.photo.url, width: state.scene.photo.width, height: state.scene.photo.height },
+        calibration: state.scene.calibration,
+        segmentationStatus: state.scene.segmentationStatus,
+      },
+      layout: {
+        panels: state.layout.panels,
+        placementMode: state.layout.placementMode,
+        accentZone: state.layout.accentZone,
+      },
+      selectedDesignId: state.selectedDesignId,
+      selectedDesignName: state.selectedDesignName,
+      selectedDesignImage: state.selectedDesignImage,
+      selectedSizeKey: state.selectedSizeKey,
+      selectedColor: state.selectedColor,
+      selectedColorName: state.selectedColorName,
+    };
+    try {
+      localStorage.setItem('wow-wall-visualizer', JSON.stringify(data));
+    } catch {
+      // Silently fail if storage is full
+    }
+  },
+  loadFromLocalStorage: () => {
+    try {
+      const raw = localStorage.getItem('wow-wall-visualizer');
+      if (!raw) return false;
+      const data = JSON.parse(raw);
+      if (!data.scene?.photo?.url) return false;
+      set({
+        scene: {
+          photo: data.scene.photo,
+          wallMask: null,
+          objectMask: null,
+          calibration: data.scene.calibration ?? null,
+          segmentationStatus: data.scene.segmentationStatus ?? 'ready',
+        },
+        layout: data.layout ?? { ...EMPTY_LAYOUT },
+        selectedDesignId: data.selectedDesignId ?? '',
+        selectedDesignName: data.selectedDesignName ?? '',
+        selectedDesignImage: data.selectedDesignImage ?? '',
+        selectedSizeKey: data.selectedSizeKey ?? '30x30',
+        selectedColor: data.selectedColor ?? '',
+        selectedColorName: data.selectedColorName ?? '',
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
   // Reset
-  reset: () =>
+  reset: () => {
+    try {
+      localStorage.removeItem('wow-wall-visualizer');
+    } catch {
+      // ignore
+    }
     set({
       scene: null,
       layout: { ...EMPTY_LAYOUT },
@@ -222,5 +287,6 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => ({
       selectedSizeKey: '30x30',
       selectedColor: '',
       selectedColorName: '',
-    }),
+    });
+  },
 }));

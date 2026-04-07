@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { Typography, message, Progress, Card } from 'antd';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVisualizerStore } from '../model/visualizerStore';
@@ -17,7 +17,7 @@ import { PanelPicker } from './PanelPicker';
 import { PlacementControls } from './PlacementControls';
 import { CostSummary } from './CostSummary';
 import { useSearchParams } from 'react-router-dom';
-import type { Point } from '../model/types';
+import type { Point, AccentZone } from '../model/types';
 
 const { Title, Text } = Typography;
 
@@ -30,8 +30,17 @@ export default function PhotoEditorPage() {
   const [zoom, setZoom] = useState(1);
   const [panOffset, setPanOffset] = useState<Point>({ x: 0, y: 0 });
   const [editingMask, setEditingMask] = useState(false);
+  const [hoverCell, setHoverCell] = useState<Point | null>(null);
 
   const [searchParams] = useSearchParams();
+
+  // Try to restore from localStorage on mount
+  useEffect(() => {
+    if (!store.scene) {
+      store.loadFromLocalStorage();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Init design from URL param or first product
   useEffect(() => {
@@ -148,10 +157,59 @@ export default function PhotoEditorPage() {
     message.success(`Добавлено ${items.length} позиций в корзину`);
   }, [store.layout.panels, hasSubscription, addCartItem, setCartOpen]);
 
-  // Save project
+  // Remove panel
+  const handleRemovePanel = useCallback(
+    (id: string) => {
+      store.removePanel(id);
+    },
+    [store],
+  );
+
+  // Accent zone drawn
+  const handleAccentZoneDraw = useCallback(
+    (zone: AccentZone) => {
+      store.setAccentZone(zone);
+    },
+    [store],
+  );
+
+  // Save project to localStorage
   const handleSave = useCallback(() => {
-    message.info('Сохранение проектов будет доступно после авторизации');
+    store.saveToLocalStorage();
+    message.success('Проект сохранён');
+  }, [store]);
+
+  // Export canvas as JPEG
+  const handleExport = useCallback(() => {
+    const canvas = document.querySelector<HTMLCanvasElement>('[data-testid="wall-canvas"]');
+    if (!canvas) return;
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `wow-wall-visualizer-${Date.now()}.jpg`;
+        a.click();
+        URL.revokeObjectURL(url);
+        message.success('Изображение сохранено');
+      },
+      'image/jpeg',
+      0.92,
+    );
   }, []);
+
+  // Compute cell size in pixels for hover highlight
+  const cellSizePx = useMemo(() => {
+    if (!store.scene?.calibration) return null;
+    const pxPerCm = store.scene.calibration.pixelsPerCm;
+    const sizeKey = store.selectedSizeKey; // e.g. '30x30'
+    const [wStr, hStr] = sizeKey.split('x');
+    const wCm = Number(wStr);
+    const hCm = Number(hStr);
+    if (!wCm || !hCm) return null;
+    return { w: wCm * pxPerCm, h: hCm * pxPerCm };
+  }, [store.scene?.calibration, store.selectedSizeKey]);
 
   const { scene } = store;
   const isReady = scene?.segmentationStatus === 'ready';
@@ -248,10 +306,16 @@ export default function PhotoEditorPage() {
               brushSize={store.brushSize}
               zoom={zoom}
               panOffset={panOffset}
+              placementMode={store.layout.placementMode}
+              hoverCell={hoverCell}
+              cellSizePx={cellSizePx}
               onCanvasClick={handleCanvasClick}
               onMaskStroke={handleMaskStroke}
               onZoomChange={setZoom}
               onPanChange={setPanOffset}
+              onRemovePanel={handleRemovePanel}
+              onHoverChange={setHoverCell}
+              onAccentZoneDraw={handleAccentZoneDraw}
             />
 
             {/* Mask toolbar */}
@@ -329,6 +393,7 @@ export default function PhotoEditorPage() {
               hasSubscription={hasSubscription()}
               onAddToCart={handleAddToCart}
               onSave={handleSave}
+              onExport={handleExport}
             />
           </div>
         </motion.div>

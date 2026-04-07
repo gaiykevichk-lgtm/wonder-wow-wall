@@ -1,5 +1,6 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
-import type { Scene, PlacedPanel, MaskTool, Point } from '../model/types';
+import { CloseCircleFilled } from '@ant-design/icons';
+import type { Scene, PlacedPanel, MaskTool, Point, AccentZone } from '../model/types';
 import { wallMaskToImageData } from '../lib/maskUtils';
 
 interface WallCanvasProps {
@@ -11,10 +12,16 @@ interface WallCanvasProps {
   brushSize: number;
   zoom: number;
   panOffset: Point;
+  placementMode: 'manual' | 'auto' | 'accent';
+  hoverCell: Point | null;
+  cellSizePx: { w: number; h: number } | null;
   onCanvasClick?: (x: number, y: number) => void;
   onMaskStroke?: (points: Point[]) => void;
   onPanChange?: (offset: Point) => void;
   onZoomChange?: (zoom: number) => void;
+  onRemovePanel?: (id: string) => void;
+  onHoverChange?: (point: Point | null) => void;
+  onAccentZoneDraw?: (zone: AccentZone) => void;
 }
 
 export function WallCanvas({
@@ -26,10 +33,16 @@ export function WallCanvas({
   brushSize,
   zoom,
   panOffset,
+  placementMode,
+  hoverCell,
+  cellSizePx,
   onCanvasClick,
   onMaskStroke,
   onPanChange,
   onZoomChange,
+  onRemovePanel,
+  onHoverChange,
+  onAccentZoneDraw,
 }: WallCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -39,6 +52,10 @@ export function WallCanvas({
   const isPaintingRef = useRef(false);
   const isPanningRef = useRef(false);
   const lastPanRef = useRef<Point>({ x: 0, y: 0 });
+  const [selectedPanelId, setSelectedPanelId] = useState<string | null>(null);
+  // Accent zone drawing state
+  const isDrawingZoneRef = useRef(false);
+  const zoneStartRef = useRef<Point>({ x: 0, y: 0 });
 
   // Load photo image
   useEffect(() => {
@@ -81,6 +98,17 @@ export function WallCanvas({
       ctx.drawImage(maskCanvas, 0, 0, canvas.width, canvas.height);
     }
 
+    // Draw hover highlight in manual mode
+    if (hoverCell && cellSizePx && placementMode === 'manual' && !maskTool) {
+      ctx.fillStyle = 'rgba(76, 175, 80, 0.18)';
+      ctx.fillRect(hoverCell.x, hoverCell.y, cellSizePx.w, cellSizePx.h);
+      ctx.strokeStyle = 'rgba(76, 175, 80, 0.5)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.strokeRect(hoverCell.x, hoverCell.y, cellSizePx.w, cellSizePx.h);
+      ctx.setLineDash([]);
+    }
+
     // Draw panels
     for (const panel of panels) {
       ctx.fillStyle = panel.color || '#CCCCCC';
@@ -89,8 +117,9 @@ export function WallCanvas({
 
       // Panel border
       ctx.globalAlpha = 1;
-      ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-      ctx.lineWidth = 1;
+      const isSelected = panel.id === selectedPanelId;
+      ctx.strokeStyle = isSelected ? '#4CAF50' : 'rgba(0,0,0,0.15)';
+      ctx.lineWidth = isSelected ? 3 : 1;
       ctx.strokeRect(panel.x, panel.y, panel.renderWidth, panel.renderHeight);
 
       // Design label
@@ -104,7 +133,7 @@ export function WallCanvas({
     }
 
     ctx.restore();
-  }, [scene, panels, maskVisible, maskOpacity, imageLoaded]);
+  }, [scene, panels, maskVisible, maskOpacity, imageLoaded, hoverCell, cellSizePx, placementMode, maskTool, selectedPanelId]);
 
   useEffect(() => {
     render();
@@ -126,10 +155,30 @@ export function WallCanvas({
     [],
   );
 
+  // Find panel at image coordinates
+  const findPanelAt = useCallback(
+    (pt: Point): PlacedPanel | undefined =>
+      [...panels].reverse().find(
+        (p) => pt.x >= p.x && pt.x <= p.x + p.renderWidth && pt.y >= p.y && pt.y <= p.y + p.renderHeight,
+      ),
+    [panels],
+  );
+
+  // Snap point to grid cell for hover
+  const snapToGrid = useCallback(
+    (pt: Point): Point | null => {
+      if (!cellSizePx) return null;
+      return {
+        x: Math.floor(pt.x / cellSizePx.w) * cellSizePx.w,
+        y: Math.floor(pt.y / cellSizePx.h) * cellSizePx.h,
+      };
+    },
+    [cellSizePx],
+  );
+
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       if (e.button === 1 || (e.button === 0 && e.altKey)) {
-        // Middle click or Alt+click → pan
         isPanningRef.current = true;
         lastPanRef.current = { x: e.clientX, y: e.clientY };
         return;
@@ -139,9 +188,18 @@ export function WallCanvas({
         isPaintingRef.current = true;
         const point = getImageCoords(e);
         strokePointsRef.current = [point];
+        return;
+      }
+
+      // Accent zone drawing
+      if (placementMode === 'accent' && !maskTool) {
+        const point = getImageCoords(e);
+        isDrawingZoneRef.current = true;
+        zoneStartRef.current = point;
+        return;
       }
     },
-    [maskTool, getImageCoords],
+    [maskTool, getImageCoords, placementMode],
   );
 
   const handleMouseMove = useCallback(
@@ -157,9 +215,17 @@ export function WallCanvas({
       if (isPaintingRef.current && maskTool) {
         const point = getImageCoords(e);
         strokePointsRef.current.push(point);
+        return;
+      }
+
+      // Hover highlight in manual mode
+      if (placementMode === 'manual' && !maskTool) {
+        const point = getImageCoords(e);
+        const snapped = snapToGrid(point);
+        onHoverChange?.(snapped);
       }
     },
-    [maskTool, panOffset, onPanChange, getImageCoords],
+    [maskTool, panOffset, onPanChange, getImageCoords, placementMode, snapToGrid, onHoverChange],
   );
 
   const handleMouseUp = useCallback(
@@ -178,14 +244,47 @@ export function WallCanvas({
         return;
       }
 
-      // Regular click → place panel
+      // Finish accent zone drawing
+      if (isDrawingZoneRef.current) {
+        isDrawingZoneRef.current = false;
+        const endPoint = getImageCoords(e);
+        const zone: AccentZone = {
+          topLeft: {
+            x: Math.min(zoneStartRef.current.x, endPoint.x),
+            y: Math.min(zoneStartRef.current.y, endPoint.y),
+          },
+          bottomRight: {
+            x: Math.max(zoneStartRef.current.x, endPoint.x),
+            y: Math.max(zoneStartRef.current.y, endPoint.y),
+          },
+        };
+        if (
+          zone.bottomRight.x - zone.topLeft.x > 10 &&
+          zone.bottomRight.y - zone.topLeft.y > 10
+        ) {
+          onAccentZoneDraw?.(zone);
+        }
+        return;
+      }
+
+      // Regular click — check if clicking on panel for selection, or place new panel
       if (!maskTool) {
         const point = getImageCoords(e);
-        onCanvasClick?.(point.x, point.y);
+        const clickedPanel = findPanelAt(point);
+        if (clickedPanel) {
+          setSelectedPanelId((prev) => (prev === clickedPanel.id ? null : clickedPanel.id));
+        } else {
+          setSelectedPanelId(null);
+          onCanvasClick?.(point.x, point.y);
+        }
       }
     },
-    [maskTool, onCanvasClick, onMaskStroke, getImageCoords],
+    [maskTool, onCanvasClick, onMaskStroke, getImageCoords, findPanelAt, onAccentZoneDraw],
   );
+
+  const handleMouseLeave = useCallback(() => {
+    onHoverChange?.(null);
+  }, [onHoverChange]);
 
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
@@ -219,6 +318,7 @@ export function WallCanvas({
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
         onWheel={handleWheel}
         style={{
           display: 'block',
@@ -229,6 +329,48 @@ export function WallCanvas({
           transformOrigin: 'center',
         }}
       />
+      {/* Delete button for selected panel */}
+      {selectedPanelId && (() => {
+        const panel = panels.find((p) => p.id === selectedPanelId);
+        if (!panel || !canvasRef.current) return null;
+        const rect = canvasRef.current.getBoundingClientRect();
+        const scaleX = rect.width / canvasRef.current.width;
+        const scaleY = rect.height / canvasRef.current.height;
+        const btnX = (panel.x + panel.renderWidth) * scaleX - 12;
+        const btnY = panel.y * scaleY - 12;
+        return (
+          <button
+            data-testid="panel-delete-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemovePanel?.(selectedPanelId);
+              setSelectedPanelId(null);
+            }}
+            style={{
+              position: 'absolute',
+              left: btnX,
+              top: btnY,
+              width: 24,
+              height: 24,
+              borderRadius: '50%',
+              border: 'none',
+              background: '#EF4444',
+              color: '#fff',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 14,
+              lineHeight: 1,
+              padding: 0,
+              zIndex: 10,
+              boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+            }}
+          >
+            <CloseCircleFilled />
+          </button>
+        );
+      })()}
       {/* Brush cursor preview when mask tool is active */}
       {maskTool && (
         <div

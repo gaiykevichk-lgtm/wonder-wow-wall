@@ -16,14 +16,19 @@ function makeCost(overrides: Partial<CostBreakdown> = {}): CostBreakdown {
   };
 }
 
+const defaultProps = () => ({
+  onAddToCart: vi.fn(),
+  onSave: vi.fn(),
+  onExport: vi.fn(),
+});
+
 describe('CostSummary', () => {
   it('renders panel counts and cost', () => {
     render(
       <CostSummary
         cost={makeCost()}
         hasSubscription={false}
-        onAddToCart={vi.fn()}
-        onSave={vi.fn()}
+        {...defaultProps()}
       />,
     );
 
@@ -39,8 +44,7 @@ describe('CostSummary', () => {
       <CostSummary
         cost={makeCost({ overlayDiscount: 8400 })}
         hasSubscription={true}
-        onAddToCart={vi.fn()}
-        onSave={vi.fn()}
+        {...defaultProps()}
       />,
     );
 
@@ -56,6 +60,7 @@ describe('CostSummary', () => {
         hasSubscription={false}
         onAddToCart={onAddToCart}
         onSave={vi.fn()}
+        onExport={vi.fn()}
       />,
     );
 
@@ -68,12 +73,28 @@ describe('CostSummary', () => {
       <CostSummary
         cost={makeCost({ totalPanels: 0 })}
         hasSubscription={false}
-        onAddToCart={vi.fn()}
-        onSave={vi.fn()}
+        {...defaultProps()}
       />,
     );
 
     expect(screen.getByText('В корзину').closest('button')).toBeDisabled();
-    expect(screen.getByText('Сохранить проект').closest('button')).toBeDisabled();
+    expect(screen.getByText('Сохранить').closest('button')).toBeDisabled();
+    expect(screen.getByText('Скачать').closest('button')).toBeDisabled();
+  });
+
+  it('calls onExport when download button clicked', () => {
+    const onExport = vi.fn();
+    render(
+      <CostSummary
+        cost={makeCost()}
+        hasSubscription={false}
+        onAddToCart={vi.fn()}
+        onSave={vi.fn()}
+        onExport={onExport}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Скачать'));
+    expect(onExport).toHaveBeenCalledOnce();
   });
 });

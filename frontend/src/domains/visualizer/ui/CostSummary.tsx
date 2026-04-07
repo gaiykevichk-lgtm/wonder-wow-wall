@@ -1,5 +1,5 @@
 import { Button, Tag, Typography } from 'antd';
-import { ShoppingCartOutlined, CrownOutlined } from '@ant-design/icons';
+import { ShoppingCartOutlined, CrownOutlined, DownloadOutlined, SaveOutlined } from '@ant-design/icons';
 import type { CostBreakdown } from '../model/types';
 
 const { Text, Title } = Typography;
@@ -13,6 +13,7 @@ interface CostSummaryProps {
   hasSubscription: boolean;
   onAddToCart: () => void;
   onSave: () => void;
+  onExport: () => void;
 }
 
 export function CostSummary({
@@ -20,6 +21,7 @@ export function CostSummary({
   hasSubscription,
   onAddToCart,
   onSave,
+  onExport,
 }: CostSummaryProps) {
   return (
     <div
@@ -136,14 +138,26 @@ export function CostSummary({
       >
         В корзину
       </Button>
-      <Button
-        block
-        onClick={onSave}
-        disabled={cost.totalPanels === 0}
-        style={{ borderRadius: 8 }}
-      >
-        Сохранить проект
-      </Button>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <Button
+          block
+          icon={<SaveOutlined />}
+          onClick={onSave}
+          disabled={cost.totalPanels === 0}
+          style={{ borderRadius: 8 }}
+        >
+          Сохранить
+        </Button>
+        <Button
+          block
+          icon={<DownloadOutlined />}
+          onClick={onExport}
+          disabled={cost.totalPanels === 0}
+          style={{ borderRadius: 8 }}
+        >
+          Скачать
+        </Button>
+      </div>
     </div>
   );
 }
