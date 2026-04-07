@@ -1,7 +1,6 @@
 import { Modal, Button, Input, Card, Tag, Form, message, Checkbox } from 'antd';
 import { CheckOutlined, CrownOutlined, ThunderboltOutlined, RocketOutlined } from '@ant-design/icons';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
 import {
   useSubscriptionStore,
   SUBSCRIPTION_PLANS,
@@ -184,9 +183,16 @@ function StepForm({
           <Checkbox>
             <span style={{ fontSize: 13, color: '#6B7280' }}>
               Я даю согласие на{' '}
-              <Link to="/privacy-policy" target="_blank" style={{ color: ACCENT }}>
+              <a
+                href="/privacy-policy"
+                style={{ color: ACCENT }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  window.open('/privacy-policy', '_blank');
+                }}
+              >
                 обработку персональных данных
-              </Link>
+              </a>
             </span>
           </Checkbox>
         </Form.Item>

@@ -12,9 +12,10 @@ export default function RegisterPage() {
   const registerMutation = useRegisterMutation();
   const navigate = useNavigate();
 
-  const onFinish = async (values: { name: string; email: string; phone: string; password: string }) => {
+  const onFinish = async (values: { name: string; email: string; phone: string; password: string; confirmPassword: string; privacyConsent: boolean }) => {
     try {
-      await registerMutation.mutateAsync(values);
+      const { name, email, phone, password } = values;
+      await registerMutation.mutateAsync({ name, email, phone, password });
       message.success('Аккаунт создан!');
       navigate('/account');
     } catch (err) {
