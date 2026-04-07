@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Card, Tag, Typography, Empty, Steps, Button, Space, Skeleton } from 'antd';
-import { ShoppingOutlined, EyeOutlined } from '@ant-design/icons';
+import { ShoppingOutlined, EyeOutlined, RedoOutlined } from '@ant-design/icons';
 import { useAccountStore } from '../model/accountStore';
 import { useOrders } from '../../order/api/orderApi';
+import { useCartStore } from '../../order/model/cartStore';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '../model/types';
 import type { Order, OrderStatus } from '../model/types';
 
@@ -13,6 +14,27 @@ const STATUS_STEPS: OrderStatus[] = ['placed', 'confirmed', 'in_progress', 'deli
 function OrderCard({ order }: { order: Order }) {
   const [expanded, setExpanded] = useState(false);
   const currentStep = STATUS_STEPS.indexOf(order.status);
+  const addItem = useCartStore((s) => s.addItem);
+  const setCartOpen = useCartStore((s) => s.setOpen);
+
+  const handleRepeatOrder = () => {
+    order.items.forEach((item) => {
+      for (let i = 0; i < item.quantity; i++) {
+        addItem({
+          id: `${item.id}-${Date.now()}-${i}`,
+          productId: item.id,
+          name: item.name,
+          image: item.image,
+          price: item.price,
+          area: 0,
+          color: '',
+          colorName: item.color,
+          size: item.size,
+        });
+      }
+    });
+    setCartOpen(true);
+  };
 
   return (
     <Card
@@ -87,8 +109,15 @@ function OrderCard({ order }: { order: Order }) {
             ))}
           </div>
 
-          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text type="secondary" style={{ fontSize: 13, color: '#6B7280' }}>Адрес доставки: {order.address}</Text>
+            <Button
+              icon={<RedoOutlined />}
+              onClick={handleRepeatOrder}
+              style={{ borderRadius: 8, borderColor: '#4CAF50', color: '#4CAF50' }}
+            >
+              Повторить заказ
+            </Button>
           </div>
         </>
       )}

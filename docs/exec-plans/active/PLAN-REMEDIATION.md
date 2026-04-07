@@ -176,39 +176,39 @@
 > **Приоритет: СРЕДНИЙ** — улучшение UX авторизованных пользователей.
 
 ### 5.1 Frontend — Header: поиск и избранное
-- [ ] Добавить иконку поиска (SearchOutlined) в ShopHeader → по клику разворачивает Input
-- [ ] Поиск в хедере → навигация на `/catalog?search={query}`
-- [ ] Добавить иконку избранного (HeartOutlined) в ShopHeader с badge (количество)
-- [ ] Клик → `/account/favorites` (если авторизован) или `/login?redirect=/account/favorites`
+- [x] Добавить иконку поиска (SearchOutlined) в ShopHeader → по клику разворачивает Input
+- [x] Поиск в хедере → навигация на `/catalog?search={query}`
+- [x] Добавить иконку избранного (HeartOutlined) в ShopHeader с badge (количество)
+- [x] Клик → `/account/favorites` (если авторизован) или `/login?redirect=/account/favorites`
 
 ### 5.2 Frontend — Забытый пароль
-- [ ] ForgotPasswordPage: подключить к бэкенду (когда эндпоинт будет готов)
+- [x] ForgotPasswordPage: подключить к бэкенду (когда эндпоинт будет готов)
 
 ### 5.3 Backend — Забытый пароль
-- [ ] `POST /api/auth/forgot-password` — принимает email, генерирует reset token (6 цифр), хранит в Redis (TTL 15 мин)
-- [ ] `POST /api/auth/reset-password` — принимает email + token + new_password
-- [ ] ⚠️ Реальная отправка email — placeholder (лог в консоль), готовность к SMTP-интеграции
+- [x] `POST /api/auth/forgot-password` — принимает email, генерирует reset token (6 цифр), хранит в Redis (TTL 15 мин)
+- [x] `POST /api/auth/reset-password` — принимает email + token + new_password
+- [x] ⚠️ Реальная отправка email — placeholder (лог в консоль), готовность к SMTP-интеграции
 
 ### 5.4 Frontend — Соцсети (placeholder)
-- [ ] LoginPage и RegisterPage: добавить неактивные кнопки «Войти через Google» и «Войти через VK»
-- [ ] Стиль: серые, disabled, tooltip «Скоро»
+- [x] LoginPage и RegisterPage: добавить неактивные кнопки «Войти через Google» и «Войти через VK»
+- [x] Стиль: серые, disabled, tooltip «Скоро»
 
 ### 5.5 Frontend — Уведомления (настройки)
-- [ ] Добавить раздел «Уведомления» в AccountLayout (между Избранное и Подписка)
-- [ ] NotificationsSection: toggle-переключатели (email о заказах, email о подписке, промо-рассылка)
-- [ ] Persist в localStorage через accountStore (бэкенд — в следующих итерациях)
+- [x] Добавить раздел «Уведомления» в AccountLayout (между Избранное и Подписка)
+- [x] NotificationsSection: toggle-переключатели (email о заказах, email о подписке, промо-рассылка)
+- [x] Persist в localStorage через accountStore (бэкенд — в следующих итерациях)
 
 ### 5.6 Frontend — Повтор заказа
-- [ ] OrdersSection: кнопка «Повторить заказ» в каждом заказе
-- [ ] Логика: скопировать items → cartStore.addItem() для каждого → открыть CartDrawer
+- [x] OrdersSection: кнопка «Повторить заказ» в каждом заказе
+- [x] Логика: скопировать items → cartStore.addItem() для каждого → открыть CartDrawer
 
 ### 5.7 Проверка
-- [ ] Поиск из хедера работает на всех страницах
-- [ ] Избранное доступно из хедера с badge
-- [ ] Восстановление пароля: email → код → новый пароль (E2E через API)
-- [ ] Кнопки соцсетей отображаются, при клике — «Скоро»
-- [ ] Повтор заказа добавляет товары в корзину
-- [ ] Настройки уведомлений сохраняются в localStorage
+- [x] Поиск из хедера работает на всех страницах
+- [x] Избранное доступно из хедера с badge
+- [x] Восстановление пароля: email → код → новый пароль (E2E через API)
+- [x] Кнопки соцсетей отображаются, при клике — «Скоро»
+- [x] Повтор заказа добавляет товары в корзину
+- [x] Настройки уведомлений сохраняются в localStorage
 
 ---
 

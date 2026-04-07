@@ -276,3 +276,54 @@ class TestContacts:
         })
         assert resp.status_code == 200
         assert resp.json()["status"] == "sent"
+
+
+class TestForgotPassword:
+    @pytest.mark.asyncio
+    async def test_forgot_password_returns_sent(self, client):
+        # Register a user first
+        await client.post("/api/auth/register", json={
+            "name": "Test", "email": "forgot@test.com", "phone": "+7999", "password": "pass123",
+        })
+        resp = await client.post("/api/auth/forgot-password", json={"email": "forgot@test.com"})
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "sent"
+
+    @pytest.mark.asyncio
+    async def test_forgot_password_nonexistent_email_still_sent(self, client):
+        resp = await client.post("/api/auth/forgot-password", json={"email": "noone@test.com"})
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "sent"
+
+    @pytest.mark.asyncio
+    async def test_reset_password_full_flow(self, client):
+        from app.application.user.use_cases import ForgotPassword as FP
+        # Register
+        await client.post("/api/auth/register", json={
+            "name": "Reset", "email": "reset@test.com", "phone": "+7999", "password": "oldpass",
+        })
+        # Request token
+        await client.post("/api/auth/forgot-password", json={"email": "reset@test.com"})
+        # Get token from memory
+        token = FP._tokens.get("reset@test.com", {}).get("token", "")
+        assert token != ""
+        # Reset
+        resp = await client.post("/api/auth/reset-password", json={
+            "email": "reset@test.com", "token": token, "new_password": "newpass123",
+        })
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "reset"
+        # Login with new password
+        resp = await client.post("/api/auth/login", json={"email": "reset@test.com", "password": "newpass123"})
+        assert resp.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_reset_password_invalid_token(self, client):
+        await client.post("/api/auth/register", json={
+            "name": "Bad", "email": "bad@test.com", "phone": "+7999", "password": "pass123",
+        })
+        await client.post("/api/auth/forgot-password", json={"email": "bad@test.com"})
+        resp = await client.post("/api/auth/reset-password", json={
+            "email": "bad@test.com", "token": "000000", "new_password": "newpass",
+        })
+        assert resp.status_code == 400

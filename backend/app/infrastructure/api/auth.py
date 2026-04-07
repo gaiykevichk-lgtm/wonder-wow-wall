@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
 
-from app.application.user.use_cases import Register, Login, GetProfile, UpdateProfile
+from app.application.user.use_cases import Register, Login, GetProfile, UpdateProfile, ForgotPassword, ResetPassword
 from app.container import get_user_repo
 from app.utils.dependencies import get_current_user_id
 
@@ -38,6 +38,16 @@ class AuthResponse(BaseModel):
 class UpdateProfileRequest(BaseModel):
     name: str | None = None
     phone: str | None = None
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    token: str
+    new_password: str
 
 
 # ─── Endpoints ───────────────────────────────────────────────────────
@@ -98,3 +108,18 @@ async def update_profile(body: UpdateProfileRequest, user_id: str = Depends(get_
         "id": user.id, "name": user.name, "email": user.email,
         "phone": user.phone, "created_at": user.created_at.isoformat(),
     }
+
+
+@router.post("/forgot-password")
+async def forgot_password(body: ForgotPasswordRequest, user_repo=Depends(get_user_repo)):
+    uc = ForgotPassword(user_repo)
+    return await uc.execute(body.email)
+
+
+@router.post("/reset-password")
+async def reset_password(body: ResetPasswordRequest, user_repo=Depends(get_user_repo)):
+    uc = ResetPassword(user_repo)
+    try:
+        return await uc.execute(body.email, body.token, body.new_password)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

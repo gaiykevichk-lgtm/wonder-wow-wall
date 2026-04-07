@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Badge, Button, Drawer, Tag, Tooltip } from 'antd';
+import { useState, useEffect, useRef } from 'react';
+import { Badge, Button, Drawer, Input, Tag, Tooltip } from 'antd';
 import {
   ShoppingOutlined,
   HeartOutlined,
@@ -7,11 +7,13 @@ import {
   MenuOutlined,
   CloseOutlined,
   CrownOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../domains/order/model/cartStore';
 import { useSubscriptionStore } from '../../domains/subscription/model/subscriptionStore';
 import { useAuthStore } from '../../domains/auth/model/authStore';
+import { useAccountStore } from '../../domains/account/model/accountStore';
 
 const NAV_ITEMS = [
   { path: '/catalog', label: 'Каталог' },
@@ -26,6 +28,9 @@ const NAV_ITEMS = [
 export function ShopHeader() {
   const [, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
+  const searchRef = useRef<any>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const setCartOpen = useCartStore((s) => s.setOpen);
@@ -34,6 +39,16 @@ export function ShopHeader() {
   const openSubModal = useSubscriptionStore((s) => s.openModal);
   const isAuth = useAuthStore((s) => s.isAuth);
   const user = useAuthStore((s) => s.user);
+  const favoriteCount = useAccountStore((s) => s.favoriteIds.length);
+
+  const handleSearch = () => {
+    const q = searchValue.trim();
+    if (q) {
+      navigate(`/catalog?search=${encodeURIComponent(q)}`);
+      setSearchOpen(false);
+      setSearchValue('');
+    }
+  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -159,11 +174,38 @@ export function ShopHeader() {
                 Подписка
               </Button>
             )}
-            <Button
-              type="text"
-              icon={<HeartOutlined style={{ fontSize: 18 }} />}
-              style={{ color: textColor, transition: 'color 0.3s' }}
-            />
+            {searchOpen ? (
+              <Input
+                ref={searchRef}
+                size="small"
+                placeholder="Поиск..."
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                onPressEnter={handleSearch}
+                onBlur={() => { if (!searchValue) setSearchOpen(false); }}
+                autoFocus
+                style={{ width: 160, borderRadius: 16, fontSize: 12 }}
+                suffix={<SearchOutlined style={{ color: '#6B7280', cursor: 'pointer' }} onClick={handleSearch} />}
+              />
+            ) : (
+              <Button
+                type="text"
+                icon={<SearchOutlined style={{ fontSize: 18 }} />}
+                onClick={() => setSearchOpen(true)}
+                style={{ color: textColor, transition: 'color 0.3s' }}
+              />
+            )}
+            <Badge count={favoriteCount} size="small" color="#4CAF50">
+              <Button
+                type="text"
+                icon={<HeartOutlined style={{ fontSize: 18 }} />}
+                onClick={() => {
+                  if (isAuth) navigate('/account/favorites');
+                  else navigate('/login?redirect=/account/favorites');
+                }}
+                style={{ color: textColor, transition: 'color 0.3s' }}
+              />
+            </Badge>
             <Badge count={totalItems()} size="small" color="#4CAF50">
               <Button
                 type="text"

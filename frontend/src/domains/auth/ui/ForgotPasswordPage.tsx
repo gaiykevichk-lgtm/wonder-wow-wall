@@ -1,21 +1,49 @@
 import { useState } from 'react';
-import { Form, Input, Button, Card, Typography, Result } from 'antd';
-import { MailOutlined, ArrowLeftOutlined } from '@ant-design/icons';
-import { Link } from 'react-router-dom';
+import { Form, Input, Button, Card, Typography, Result, message } from 'antd';
+import { MailOutlined, ArrowLeftOutlined, LockOutlined, SafetyOutlined } from '@ant-design/icons';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useForgotPasswordMutation, useResetPasswordMutation } from '../api/authApi';
+import { ApiError } from '../../../shared/api';
 
 const { Title, Text } = Typography;
 const ACCENT = '#4CAF50';
 
-export default function ForgotPasswordPage() {
-  const [sent, setSent] = useState(false);
-  const [loading, setLoading] = useState(false);
+type Step = 'email' | 'reset' | 'done';
 
-  const onFinish = async () => {
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setSent(true);
-    setLoading(false);
+export default function ForgotPasswordPage() {
+  const [step, setStep] = useState<Step>('email');
+  const [email, setEmail] = useState('');
+  const navigate = useNavigate();
+
+  const forgotMutation = useForgotPasswordMutation();
+  const resetMutation = useResetPasswordMutation();
+
+  const onSendEmail = async (values: { email: string }) => {
+    try {
+      await forgotMutation.mutateAsync({ email: values.email });
+      setEmail(values.email);
+      message.success('Код отправлен на почту');
+      setStep('reset');
+    } catch (err) {
+      const detail = err instanceof ApiError ? err.detail : 'Ошибка отправки';
+      message.error(detail);
+    }
+  };
+
+  const onResetPassword = async (values: { token: string; new_password: string }) => {
+    try {
+      await resetMutation.mutateAsync({
+        email,
+        token: values.token,
+        new_password: values.new_password,
+      });
+      message.success('Пароль успешно изменён');
+      setStep('done');
+    } catch (err) {
+      const detail = err instanceof ApiError ? err.detail : 'Ошибка сброса пароля';
+      message.error(detail);
+    }
   };
 
   return (
@@ -42,11 +70,11 @@ export default function ForgotPasswordPage() {
             border: 'none',
           }}
         >
-          {sent ? (
+          {step === 'done' ? (
             <Result
               status="success"
-              title="Письмо отправлено"
-              subTitle="Проверьте почту — мы отправили ссылку для восстановления пароля"
+              title="Пароль изменён"
+              subTitle="Теперь вы можете войти с новым паролем"
               extra={
                 <Link to="/login">
                   <Button type="primary" style={{ background: ACCENT, borderColor: ACCENT, borderRadius: 8 }}>
@@ -55,6 +83,70 @@ export default function ForgotPasswordPage() {
                 </Link>
               }
             />
+          ) : step === 'reset' ? (
+            <>
+              <div style={{ textAlign: 'center', marginBottom: 32 }}>
+                <Title level={3} style={{ margin: 0, fontWeight: 600, color: '#2D2D2D' }}>Введите код</Title>
+                <Text style={{ color: '#6B7280' }}>Код отправлен на {email}</Text>
+              </div>
+
+              <Form layout="vertical" onFinish={onResetPassword} size="large" requiredMark={false}>
+                <Form.Item
+                  name="token"
+                  rules={[
+                    { required: true, message: 'Введите код' },
+                    { len: 6, message: 'Код должен содержать 6 цифр' },
+                  ]}
+                >
+                  <Input prefix={<SafetyOutlined />} placeholder="6-значный код" maxLength={6} />
+                </Form.Item>
+
+                <Form.Item
+                  name="new_password"
+                  rules={[
+                    { required: true, message: 'Введите новый пароль' },
+                    { min: 6, message: 'Минимум 6 символов' },
+                  ]}
+                >
+                  <Input.Password prefix={<LockOutlined />} placeholder="Новый пароль" />
+                </Form.Item>
+
+                <Form.Item
+                  name="confirm_password"
+                  dependencies={['new_password']}
+                  rules={[
+                    { required: true, message: 'Подтвердите пароль' },
+                    ({ getFieldValue }) => ({
+                      validator(_, value) {
+                        if (!value || getFieldValue('new_password') === value) return Promise.resolve();
+                        return Promise.reject(new Error('Пароли не совпадают'));
+                      },
+                    }),
+                  ]}
+                >
+                  <Input.Password prefix={<LockOutlined />} placeholder="Подтвердите пароль" />
+                </Form.Item>
+
+                <Form.Item>
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    block
+                    loading={resetMutation.isPending}
+                    style={{ background: ACCENT, borderColor: ACCENT, borderRadius: 8, height: 44 }}
+                  >
+                    Сбросить пароль
+                  </Button>
+                </Form.Item>
+              </Form>
+
+              <div style={{ textAlign: 'center' }}>
+                <Link to="/login" style={{ color: '#6B7280', fontSize: 14 }}>
+                  <ArrowLeftOutlined style={{ marginRight: 6 }} />
+                  Вернуться ко входу
+                </Link>
+              </div>
+            </>
           ) : (
             <>
               <div style={{ textAlign: 'center', marginBottom: 32 }}>
@@ -62,7 +154,7 @@ export default function ForgotPasswordPage() {
                 <Text style={{ color: '#6B7280' }}>Введите email, привязанный к аккаунту</Text>
               </div>
 
-              <Form layout="vertical" onFinish={onFinish} size="large" requiredMark={false}>
+              <Form layout="vertical" onFinish={onSendEmail} size="large" requiredMark={false}>
                 <Form.Item
                   name="email"
                   rules={[
@@ -78,10 +170,10 @@ export default function ForgotPasswordPage() {
                     type="primary"
                     htmlType="submit"
                     block
-                    loading={loading}
+                    loading={forgotMutation.isPending}
                     style={{ background: ACCENT, borderColor: ACCENT, borderRadius: 8, height: 44 }}
                   >
-                    Отправить ссылку
+                    Отправить код
                   </Button>
                 </Form.Item>
               </Form>

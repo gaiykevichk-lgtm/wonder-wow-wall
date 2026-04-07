@@ -1,5 +1,5 @@
-import { Form, Input, Button, Card, Typography, Divider, message } from 'antd';
-import { MailOutlined, LockOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Card, Typography, Divider, message, Tooltip } from 'antd';
+import { MailOutlined, LockOutlined, GoogleOutlined } from '@ant-design/icons';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useLoginMutation } from '../api/authApi';
@@ -93,6 +93,30 @@ export default function LoginPage() {
           </Form>
 
           <Divider style={{ margin: '16px 0', fontSize: 13, color: '#999' }}>или</Divider>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+            <Tooltip title="Скоро">
+              <Button
+                disabled
+                block
+                size="large"
+                style={{ borderRadius: 8, height: 44, fontWeight: 500, color: '#6B7280', borderColor: '#E5E7EB' }}
+                icon={<GoogleOutlined />}
+              >
+                Войти через Google
+              </Button>
+            </Tooltip>
+            <Tooltip title="Скоро">
+              <Button
+                disabled
+                block
+                size="large"
+                style={{ borderRadius: 8, height: 44, fontWeight: 500, color: '#6B7280', borderColor: '#E5E7EB' }}
+              >
+                Войти через VK
+              </Button>
+            </Tooltip>
+          </div>
 
           <div style={{ textAlign: 'center' }}>
             <Text style={{ color: '#6B7280' }}>Нет аккаунта? </Text>

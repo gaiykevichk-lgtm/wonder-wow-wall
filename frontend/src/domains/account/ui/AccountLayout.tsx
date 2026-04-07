@@ -6,6 +6,7 @@ import {
   HeartOutlined,
   CrownOutlined,
   AppstoreOutlined,
+  BellOutlined,
   LogoutOutlined,
 } from '@ant-design/icons';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -20,6 +21,7 @@ const MENU_ITEMS = [
   { key: '/account/projects', icon: <ProjectOutlined />, label: 'Мои проекты' },
   { key: '/account/constructor', icon: <AppstoreOutlined />, label: 'Конструктор' },
   { key: '/account/favorites', icon: <HeartOutlined />, label: 'Избранное' },
+  { key: '/account/notifications', icon: <BellOutlined />, label: 'Уведомления' },
   { key: '/account/subscription', icon: <CrownOutlined />, label: 'Подписка' },
 ];
 

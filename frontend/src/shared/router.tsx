@@ -41,6 +41,7 @@ const ProjectsSection = lazy(() => import('../domains/account/ui/ProjectsSection
 const FavoritesSection = lazy(() => import('../domains/account/ui/FavoritesSection'));
 const AccountSubscriptionSection = lazy(() => import('../domains/account/ui/AccountSubscriptionSection'));
 const AccountConstructorSection = lazy(() => import('../domains/account/ui/AccountConstructorSection'));
+const NotificationsSection = lazy(() => import('../domains/account/ui/NotificationsSection'));
 
 const Loading = () => (
   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -86,6 +87,7 @@ export function AppRouter() {
             <Route path="projects" element={<ProjectsSection />} />
             <Route path="constructor" element={<AccountConstructorSection />} />
             <Route path="favorites" element={<FavoritesSection />} />
+            <Route path="notifications" element={<NotificationsSection />} />
             <Route path="subscription" element={<AccountSubscriptionSection />} />
           </Route>
         </Route>
