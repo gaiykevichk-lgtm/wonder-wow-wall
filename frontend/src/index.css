@@ -17,6 +17,10 @@ body {
 
 #root { min-height: 100vh; }
 
+/* Constructor: show delete button only on panel hover */
+.placed-panel .panel-delete-btn { opacity: 0; transition: opacity 0.15s; }
+.placed-panel:hover .panel-delete-btn { opacity: 1; }
+
 ::selection { background: #4CAF50; color: #fff; }
 
 ::-webkit-scrollbar { width: 6px; }

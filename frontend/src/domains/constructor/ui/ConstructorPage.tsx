@@ -1093,6 +1093,7 @@ export default function ConstructorPage() {
                 {placedPanels.map((panel) => (
                   <div
                     key={panel.id}
+                    className="placed-panel"
                     onMouseDown={(e) => handlePanelMouseDown(e, panel.id)}
                     style={{
                       position: 'absolute',
@@ -1157,8 +1158,9 @@ export default function ConstructorPage() {
                         {panel.sizeMm}
                       </div>
                     )}
-                    {/* Delete button */}
+                    {/* Delete button — visible on hover via CSS class */}
                     <button
+                      className="panel-delete-btn"
                       onMouseDown={(e) => e.stopPropagation()}
                       onClick={(e) => { e.stopPropagation(); handleDeletePanel(panel.id); }}
                       style={{
@@ -1179,11 +1181,7 @@ export default function ConstructorPage() {
                         lineHeight: 1,
                         padding: 0,
                         zIndex: 30,
-                        opacity: 0.7,
-                        transition: 'opacity 0.15s',
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-                      onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.7')}
                     >
                       ×
                     </button>
