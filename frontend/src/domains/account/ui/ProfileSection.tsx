@@ -6,7 +6,7 @@ import { useUpdateProfileMutation } from '../../auth/api/authApi';
 import type { Address } from '../../auth/model/types';
 
 const { Title, Text } = Typography;
-const GREEN = '#4CAF50';
+const BLUE = '#0071e3';
 
 export default function ProfileSection() {
   const user = useAuthStore((s) => s.user);
@@ -46,19 +46,19 @@ export default function ProfileSection() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <Title level={3} style={{ margin: 0 }}>Профиль</Title>
+      <Title level={3} style={{ margin: 0, color: '#1d1d1f', fontWeight: 600 }}>Профиль</Title>
 
       {/* Personal info */}
       <Card
         title="Личные данные"
         extra={
           !editing && (
-            <Button type="link" icon={<EditOutlined />} onClick={() => { setEditing(true); form.setFieldsValue(user); }}>
+            <Button type="link" icon={<EditOutlined />} onClick={() => { setEditing(true); form.setFieldsValue(user); }} style={{ color: BLUE }}>
               Редактировать
             </Button>
           )
         }
-        style={{ borderRadius: 12 }}
+        style={{ borderRadius: 20 }}
       >
         {editing ? (
           <Form form={form} layout="vertical" onFinish={handleSaveProfile} initialValues={user}>
@@ -72,20 +72,20 @@ export default function ProfileSection() {
               <Input />
             </Form.Item>
             <Space>
-              <Button type="primary" htmlType="submit" style={{ background: GREEN, borderColor: GREEN }}>
+              <Button type="primary" htmlType="submit" style={{ background: BLUE, borderColor: BLUE, borderRadius: 980 }}>
                 Сохранить
               </Button>
-              <Button onClick={() => setEditing(false)}>Отмена</Button>
+              <Button onClick={() => setEditing(false)} style={{ borderRadius: 980 }}>Отмена</Button>
             </Space>
           </Form>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div><Text type="secondary">Имя:</Text> <Text strong>{user.name}</Text></div>
-            <div><Text type="secondary">Email:</Text> <Text strong>{user.email}</Text></div>
-            <div><Text type="secondary">Телефон:</Text> <Text strong>{user.phone}</Text></div>
+            <div><Text type="secondary" style={{ color: '#86868b' }}>Имя:</Text> <Text strong style={{ color: '#1d1d1f' }}>{user.name}</Text></div>
+            <div><Text type="secondary" style={{ color: '#86868b' }}>Email:</Text> <Text strong style={{ color: '#1d1d1f' }}>{user.email}</Text></div>
+            <div><Text type="secondary" style={{ color: '#86868b' }}>Телефон:</Text> <Text strong style={{ color: '#1d1d1f' }}>{user.phone}</Text></div>
             <div>
-              <Text type="secondary">Дата регистрации:</Text>{' '}
-              <Text>{new Date(user.createdAt).toLocaleDateString('ru-RU')}</Text>
+              <Text type="secondary" style={{ color: '#86868b' }}>Дата регистрации:</Text>{' '}
+              <Text style={{ color: '#1d1d1f' }}>{new Date(user.createdAt).toLocaleDateString('ru-RU')}</Text>
             </div>
           </div>
         )}
@@ -95,11 +95,11 @@ export default function ProfileSection() {
       <Card
         title="Адреса доставки"
         extra={
-          <Button type="link" icon={<PlusOutlined />} onClick={() => setAddressModal(true)}>
+          <Button type="link" icon={<PlusOutlined />} onClick={() => setAddressModal(true)} style={{ color: BLUE }}>
             Добавить
           </Button>
         }
-        style={{ borderRadius: 12 }}
+        style={{ borderRadius: 20 }}
       >
         {user.addresses.length === 0 ? (
           <Empty description="Нет сохранённых адресов" image={Empty.PRESENTED_IMAGE_SIMPLE} />
@@ -113,30 +113,30 @@ export default function ProfileSection() {
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   padding: '12px 16px',
-                  background: addr.isDefault ? 'rgba(76,175,80,0.06)' : '#FAFAFA',
-                  borderRadius: 8,
-                  border: addr.isDefault ? `1px solid ${GREEN}` : '1px solid #F0F0F0',
+                  background: addr.isDefault ? 'rgba(0,113,227,0.04)' : '#F5F5F7',
+                  borderRadius: 14,
+                  border: addr.isDefault ? `1px solid ${BLUE}` : '1px solid rgba(0,0,0,0.04)',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <EnvironmentOutlined style={{ color: addr.isDefault ? GREEN : '#999', fontSize: 18 }} />
+                  <EnvironmentOutlined style={{ color: addr.isDefault ? BLUE : '#86868b', fontSize: 18 }} />
                   <div>
                     <div>
-                      <Text strong>{addr.label}</Text>
-                      {addr.isDefault && <Tag color="green" style={{ marginLeft: 8, fontSize: 11 }}>Основной</Tag>}
+                      <Text strong style={{ color: '#1d1d1f' }}>{addr.label}</Text>
+                      {addr.isDefault && <Tag color="blue" style={{ marginLeft: 8, fontSize: 11 }}>Основной</Tag>}
                     </div>
-                    <Text type="secondary" style={{ fontSize: 13 }}>
+                    <Text type="secondary" style={{ fontSize: 13, color: '#86868b' }}>
                       {addr.city}, {addr.street}, д. {addr.building}{addr.apartment ? `, кв. ${addr.apartment}` : ''}
                     </Text>
                   </div>
                 </div>
                 <Space>
                   {!addr.isDefault && (
-                    <Button type="text" size="small" icon={<CheckOutlined />} onClick={() => setDefaultAddress(addr.id)}>
+                    <Button type="text" size="small" icon={<CheckOutlined />} onClick={() => setDefaultAddress(addr.id)} style={{ borderRadius: 980 }}>
                       По умолчанию
                     </Button>
                   )}
-                  <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => removeAddress(addr.id)} />
+                  <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => removeAddress(addr.id)} style={{ borderRadius: 980 }} />
                 </Space>
               </div>
             ))}
@@ -173,7 +173,7 @@ export default function ProfileSection() {
               <Input placeholder="101000" />
             </Form.Item>
           </div>
-          <Button type="primary" htmlType="submit" block style={{ background: GREEN, borderColor: GREEN }}>
+          <Button type="primary" htmlType="submit" block style={{ background: BLUE, borderColor: BLUE, borderRadius: 980 }}>
             Добавить адрес
           </Button>
         </Form>

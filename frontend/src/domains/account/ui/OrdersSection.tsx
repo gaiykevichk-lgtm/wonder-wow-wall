@@ -16,25 +16,25 @@ function OrderCard({ order }: { order: Order }) {
 
   return (
     <Card
-      style={{ borderRadius: 12 }}
+      style={{ borderRadius: 20 }}
       title={
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Space>
             <ShoppingOutlined />
-            <Text strong>Заказ {order.number}</Text>
+            <Text strong style={{ color: '#1d1d1f' }}>Заказ {order.number}</Text>
           </Space>
           <Tag color={ORDER_STATUS_COLORS[order.status]}>{ORDER_STATUS_LABELS[order.status]}</Tag>
         </div>
       }
       extra={
-        <Button type="text" icon={<EyeOutlined />} onClick={() => setExpanded(!expanded)}>
+        <Button type="text" icon={<EyeOutlined />} onClick={() => setExpanded(!expanded)} style={{ borderRadius: 980 }}>
           {expanded ? 'Скрыть' : 'Подробнее'}
         </Button>
       }
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: expanded ? 16 : 0 }}>
-        <Text type="secondary">Дата: {new Date(order.date).toLocaleDateString('ru-RU')}</Text>
-        <Text strong style={{ fontSize: 16 }}>{order.total.toLocaleString('ru-RU')} ₽</Text>
+        <Text type="secondary" style={{ color: '#86868b' }}>Дата: {new Date(order.date).toLocaleDateString('ru-RU')}</Text>
+        <Text strong style={{ fontSize: 16, color: '#1d1d1f' }}>{order.total.toLocaleString('ru-RU')} ₽</Text>
       </div>
 
       {expanded && (
@@ -55,16 +55,16 @@ function OrderCard({ order }: { order: Order }) {
                   alignItems: 'center',
                   gap: 12,
                   padding: '8px 12px',
-                  background: '#FAFAFA',
-                  borderRadius: 8,
+                  background: '#F5F5F7',
+                  borderRadius: 14,
                 }}
               >
                 <div
                   style={{
                     width: 48,
                     height: 48,
-                    borderRadius: 8,
-                    background: '#E8E8E8',
+                    borderRadius: 12,
+                    background: 'rgba(0,0,0,0.04)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -75,20 +75,20 @@ function OrderCard({ order }: { order: Order }) {
                   🎨
                 </div>
                 <div style={{ flex: 1 }}>
-                  <Text strong>{item.name}</Text>
+                  <Text strong style={{ color: '#1d1d1f' }}>{item.name}</Text>
                   <div>
-                    <Text type="secondary" style={{ fontSize: 13 }}>
+                    <Text type="secondary" style={{ fontSize: 13, color: '#86868b' }}>
                       {item.size} · {item.color} · {item.quantity} шт.
                     </Text>
                   </div>
                 </div>
-                <Text strong>{(item.price * item.quantity).toLocaleString('ru-RU')} ₽</Text>
+                <Text strong style={{ color: '#1d1d1f' }}>{(item.price * item.quantity).toLocaleString('ru-RU')} ₽</Text>
               </div>
             ))}
           </div>
 
-          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #F0F0F0' }}>
-            <Text type="secondary" style={{ fontSize: 13 }}>Адрес доставки: {order.address}</Text>
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+            <Text type="secondary" style={{ fontSize: 13, color: '#86868b' }}>Адрес доставки: {order.address}</Text>
           </div>
         </>
       )}
@@ -123,14 +123,14 @@ export default function OrdersSection() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <Title level={3} style={{ margin: 0 }}>Мои заказы</Title>
+      <Title level={3} style={{ margin: 0, color: '#1d1d1f', fontWeight: 600 }}>Мои заказы</Title>
 
       {isLoading ? (
-        <Card style={{ borderRadius: 12 }}>
+        <Card style={{ borderRadius: 20 }}>
           <Skeleton active paragraph={{ rows: 3 }} />
         </Card>
       ) : orders.length === 0 ? (
-        <Card style={{ borderRadius: 12 }}>
+        <Card style={{ borderRadius: 20 }}>
           <Empty description="У вас пока нет заказов" image={Empty.PRESENTED_IMAGE_SIMPLE} />
         </Card>
       ) : (

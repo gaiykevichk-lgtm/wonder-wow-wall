@@ -47,7 +47,7 @@ export function PanelPicker({
     >
       {/* Search */}
       <Input
-        prefix={<SearchOutlined style={{ color: '#9CA3AF' }} />}
+        prefix={<SearchOutlined style={{ color: '#86868b' }} />}
         placeholder="Найти дизайн..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
@@ -73,7 +73,7 @@ export function PanelPicker({
             style={{
               cursor: 'pointer',
               borderRadius: 8,
-              border: `2px solid ${selectedDesignId === product.id ? '#4CAF50' : '#E5E7EB'}`,
+              border: `2px solid ${selectedDesignId === product.id ? '#0071e3' : 'rgba(0,0,0,0.04)'}`,
               overflow: 'hidden',
               transition: 'border-color 0.2s',
               position: 'relative',
@@ -84,7 +84,7 @@ export function PanelPicker({
                 width: '100%',
                 paddingBottom: '100%',
                 background: `url(${product.image}) center/cover`,
-                backgroundColor: '#F5F5F5',
+                backgroundColor: '#F5F5F7',
               }}
             />
             <Text
@@ -102,7 +102,7 @@ export function PanelPicker({
             </Text>
             {selectedDesignId === product.id && (
               <Tag
-                color="#4CAF50"
+                color="#0071e3"
                 style={{
                   position: 'absolute',
                   top: 4,
@@ -160,7 +160,7 @@ export function PanelPicker({
                   height: 28,
                   borderRadius: '50%',
                   background: c.hex,
-                  border: `2px solid ${selectedColor === c.hex ? '#4CAF50' : '#E5E7EB'}`,
+                  border: `2px solid ${selectedColor === c.hex ? '#0071e3' : 'rgba(0,0,0,0.04)'}`,
                   cursor: 'pointer',
                   transition: 'border-color 0.2s',
                 }}

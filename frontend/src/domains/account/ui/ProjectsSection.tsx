@@ -5,7 +5,7 @@ import { useAccountStore } from '../model/accountStore';
 import { useProjects, useDeleteProject } from '../api/accountApi';
 
 const { Title, Text } = Typography;
-const GREEN = '#4CAF50';
+const BLUE = '#0071e3';
 const CELL_PX = 20; // smaller preview
 const GAP_PX = 1;
 
@@ -17,7 +17,7 @@ function ProjectPreview({ project }: { project: ReturnType<typeof useAccountStor
 
   return (
     <Card
-      style={{ borderRadius: 12 }}
+      style={{ borderRadius: 20 }}
       hoverable
     >
       <div style={{ display: 'flex', gap: 20 }}>
@@ -28,8 +28,8 @@ function ProjectPreview({ project }: { project: ReturnType<typeof useAccountStor
             width: gridW,
             height: gridH,
             background: project.wallColor,
-            borderRadius: 8,
-            border: '1px solid #E8E8E8',
+            borderRadius: 12,
+            border: '1px solid rgba(0,0,0,0.04)',
             flexShrink: 0,
             overflow: 'hidden',
           }}
@@ -54,17 +54,17 @@ function ProjectPreview({ project }: { project: ReturnType<typeof useAccountStor
         {/* Info */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
-            <Title level={5} style={{ margin: '0 0 4px' }}>{project.name}</Title>
-            <Text type="secondary" style={{ fontSize: 13 }}>
-              Стена: {project.wallCols * 30}×{project.wallRows * 30} см · {project.panels.length} панелей
+            <Title level={5} style={{ margin: '0 0 4px', color: '#1d1d1f', fontWeight: 600 }}>{project.name}</Title>
+            <Text type="secondary" style={{ fontSize: 13, color: '#86868b' }}>
+              Стена: {project.wallCols * 30}x{project.wallRows * 30} см · {project.panels.length} панелей
             </Text>
             <br />
-            <Text type="secondary" style={{ fontSize: 13 }}>
+            <Text type="secondary" style={{ fontSize: 13, color: '#86868b' }}>
               Обновлён: {new Date(project.updatedAt).toLocaleDateString('ru-RU')}
             </Text>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
-            <Tag color="green" style={{ fontSize: 14, padding: '2px 12px' }}>
+            <Tag color="blue" style={{ fontSize: 14, padding: '2px 12px' }}>
               {project.totalPrice.toLocaleString('ru-RU')} ₽
             </Tag>
             <Space>
@@ -73,7 +73,7 @@ function ProjectPreview({ project }: { project: ReturnType<typeof useAccountStor
                 icon={<EditOutlined />}
                 size="small"
                 onClick={() => navigate(`/account/constructor?project=${project.id}`)}
-                style={{ background: GREEN, borderColor: GREEN }}
+                style={{ background: BLUE, borderColor: BLUE, borderRadius: 980 }}
               >
                 Открыть
               </Button>
@@ -83,7 +83,7 @@ function ProjectPreview({ project }: { project: ReturnType<typeof useAccountStor
                 okText="Да"
                 cancelText="Нет"
               >
-                <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+                <Button type="text" danger icon={<DeleteOutlined />} size="small" style={{ borderRadius: 980 }} />
               </Popconfirm>
             </Space>
           </div>
@@ -100,25 +100,25 @@ export default function ProjectsSection() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Title level={3} style={{ margin: 0 }}>Мои проекты</Title>
+        <Title level={3} style={{ margin: 0, color: '#1d1d1f', fontWeight: 600 }}>Мои проекты</Title>
         <Button
           type="primary"
           icon={<AppstoreOutlined />}
           onClick={() => navigate('/account/constructor')}
-          style={{ background: GREEN, borderColor: GREEN, borderRadius: 8 }}
+          style={{ background: BLUE, borderColor: BLUE, borderRadius: 980 }}
         >
           Новый проект
         </Button>
       </div>
 
       {projects.length === 0 ? (
-        <Card style={{ borderRadius: 12, textAlign: 'center', padding: 40 }}>
+        <Card style={{ borderRadius: 20, textAlign: 'center', padding: 40 }}>
           <Empty
             description={
               <div>
-                <Text type="secondary" style={{ fontSize: 15 }}>У вас пока нет сохранённых проектов</Text>
+                <Text type="secondary" style={{ fontSize: 15, color: '#86868b' }}>У вас пока нет сохранённых проектов</Text>
                 <br />
-                <Text type="secondary" style={{ fontSize: 13 }}>
+                <Text type="secondary" style={{ fontSize: 13, color: '#86868b' }}>
                   Перейдите в конструктор, чтобы создать свой первый проект
                 </Text>
               </div>
@@ -129,7 +129,7 @@ export default function ProjectsSection() {
               type="primary"
               icon={<AppstoreOutlined />}
               onClick={() => navigate('/account/constructor')}
-              style={{ background: GREEN, borderColor: GREEN, borderRadius: 8, marginTop: 8 }}
+              style={{ background: BLUE, borderColor: BLUE, borderRadius: 980, marginTop: 8 }}
             >
               Создать проект
             </Button>

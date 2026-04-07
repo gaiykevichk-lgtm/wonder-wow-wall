@@ -4,18 +4,18 @@ import { motion } from 'framer-motion';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
-const GREEN = '#4CAF50';
-const DARK = '#2D2D2D';
-const GRAY_TEXT = '#6B7280';
+const BLUE = '#0071e3';
+const DARK = '#1d1d1f';
+const GRAY_TEXT = '#86868b';
 const FONT = 'Inter, sans-serif';
-const MAX_WIDTH: React.CSSProperties = { maxWidth: 1280, margin: '0 auto' };
+const MAX_WIDTH: React.CSSProperties = { maxWidth: 1080, margin: '0 auto' };
 
 const fadeUp = {
   hidden: { opacity: 0, y: 28 },
   visible: (i: number = 0) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.48, ease: 'easeOut', delay: i * 0.08 },
+    transition: { duration: 0.8, ease: [0.25, 0.1, 0.25, 1.0], delay: i * 0.08 },
   }),
 };
 
@@ -95,17 +95,17 @@ const ProjectCard: React.FC<{ project: typeof projects[0]; index: number }> = ({
     <motion.div
       variants={fadeUp}
       custom={index}
-      whileHover={{ translateY: -6 }}
+      whileHover={{ translateY: -2 }}
       onHoverStart={() => setHovered(true)}
       onHoverEnd={() => setHovered(false)}
       style={{
-        borderRadius: 16,
+        borderRadius: 20,
         overflow: 'hidden',
-        border: '1px solid #E5E7EB',
+        border: '1px solid rgba(0,0,0,0.04)',
         background: '#fff',
         cursor: 'pointer',
-        boxShadow: hovered ? '0 16px 48px rgba(0,0,0,0.12)' : 'none',
-        transition: 'box-shadow 0.25s ease',
+        boxShadow: hovered ? '0 8px 30px rgba(0,0,0,0.08)' : 'none',
+        transition: 'box-shadow 0.3s ease',
       }}
     >
       {/* Image */}
@@ -139,7 +139,7 @@ const ProjectCard: React.FC<{ project: typeof projects[0]; index: number }> = ({
             position: 'absolute',
             top: 14,
             left: 14,
-            background: GREEN,
+            background: BLUE,
             color: '#fff',
             border: 'none',
             borderRadius: 20,
@@ -159,9 +159,10 @@ const ProjectCard: React.FC<{ project: typeof projects[0]; index: number }> = ({
           style={{
             fontFamily: FONT,
             fontSize: 17,
-            fontWeight: 700,
+            fontWeight: 600,
             color: DARK,
             margin: '0 0 8px',
+            letterSpacing: '-0.03em',
           }}
         >
           {project.title}
@@ -194,7 +195,7 @@ const PortfolioPage: React.FC = () => {
   return (
     <div style={{ fontFamily: FONT, paddingTop: 72 }}>
       {/* Hero */}
-      <section style={{ background: '#F5F5F5', padding: '80px 24px' }}>
+      <section style={{ background: '#F5F5F7', padding: '120px 24px' }}>
         <div style={{ ...MAX_WIDTH, textAlign: 'center' }}>
           <motion.div
             variants={stagger}
@@ -222,11 +223,11 @@ const PortfolioPage: React.FC = () => {
               style={{
                 fontFamily: FONT,
                 fontSize: 'clamp(36px, 4vw, 52px)',
-                fontWeight: 800,
+                fontWeight: 600,
                 color: DARK,
                 margin: 0,
                 lineHeight: 1.15,
-                letterSpacing: '-0.5px',
+                letterSpacing: '-0.03em',
               }}
             >
               Портфолио проектов
@@ -257,7 +258,7 @@ const PortfolioPage: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.15 }}
+            transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1.0], delay: 0.15 }}
             style={{ display: 'flex', gap: 8, marginBottom: 48, flexWrap: 'wrap' }}
           >
             {filters.map((f) => (
@@ -265,10 +266,10 @@ const PortfolioPage: React.FC = () => {
                 key={f.key}
                 onClick={() => setActiveFilter(f.key)}
                 style={{
-                  background: activeFilter === f.key ? DARK : '#F5F5F5',
+                  background: activeFilter === f.key ? DARK : '#F5F5F7',
                   color: activeFilter === f.key ? '#fff' : DARK,
                   border: 'none',
-                  borderRadius: 24,
+                  borderRadius: 980,
                   padding: '8px 22px',
                   fontFamily: FONT,
                   fontWeight: 600,

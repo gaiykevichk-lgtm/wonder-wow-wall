@@ -63,7 +63,7 @@ export function BeforeAfterSlider({
         width,
         height,
         overflow: 'hidden',
-        borderRadius: 12,
+        borderRadius: 20,
         cursor: 'ew-resize',
         userSelect: 'none',
       }}
@@ -129,8 +129,8 @@ export function BeforeAfterSlider({
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: 14,
-            color: '#2D2D2D',
-            fontWeight: 700,
+            color: '#1d1d1f',
+            fontWeight: 600,
           }}
         >
           ⟷
@@ -158,7 +158,7 @@ export function BeforeAfterSlider({
           position: 'absolute',
           top: 12,
           right: 12,
-          background: 'rgba(76,175,80,0.8)',
+          background: 'rgba(0,113,227,0.8)',
           color: '#FFF',
           padding: '2px 8px',
           borderRadius: 4,

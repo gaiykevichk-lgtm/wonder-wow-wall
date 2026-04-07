@@ -43,7 +43,7 @@ const CELL_PX = 60; // pixels per cell on screen
 const GAP_PX = 2;
 
 const WALL_COLORS = [
-  { label: 'Белая', value: '#F5F5F5' },
+  { label: 'Белая', value: '#F5F5F7' },
   { label: 'Светло-серая', value: '#E8E8E8' },
   { label: 'Бежевая', value: '#F5E6D3' },
   { label: 'Тёмная', value: '#2C2C2C' },
@@ -57,8 +57,8 @@ const SIZE_OPTIONS: { key: PanelSizeKey; label: string; wCells: number; hCells: 
 ];
 
 const FONT = 'Inter, sans-serif';
-const GREEN = '#4CAF50';
-const DARK = '#2D2D2D';
+const BLUE = '#0071e3';
+const DARK = '#1d1d1f';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -85,7 +85,7 @@ export default function ConstructorPage() {
   // Wall settings
   const [wallCols, setWallCols] = useState(13); // ~4m width
   const [wallRows, setWallRows] = useState(9); // ~2.7m height
-  const [wallColor, setWallColor] = useState('#F5F5F5');
+  const [wallColor, setWallColor] = useState('#F5F5F7');
 
   // Panel selection
   const [selectedDesignId, setSelectedDesignId] = useState(products[0].id);
@@ -362,14 +362,14 @@ export default function ConstructorPage() {
   // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ paddingTop: 72, background: '#F5F5F5', minHeight: '100vh', fontFamily: FONT }}>
+    <div style={{ paddingTop: 72, background: '#F5F5F7', minHeight: '100vh', fontFamily: FONT }}>
       {/* Page Header */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #E5E7EB', padding: '28px 24px' }}>
+      <div style={{ background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.04)', padding: '28px 24px' }}>
         <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-          <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1A1A1A', margin: '0 0 6px' }}>
+          <h1 style={{ fontSize: 28, fontWeight: 600, color: '#1A1A1A', margin: '0 0 6px' }}>
             Конструктор стен
           </h1>
-          <p style={{ color: '#6B7280', margin: 0, fontSize: 15 }}>
+          <p style={{ color: '#86868b', margin: 0, fontSize: 15 }}>
             Разместите панели на виртуальной стене. Кликайте на ячейки или используйте кнопку «Добавить».
             Все дизайны накладок — {DESIGN_OVERLAY_PRICE.toLocaleString('ru-RU')} ₽/шт.
           </p>
@@ -391,15 +391,15 @@ export default function ConstructorPage() {
         {/* ─── LEFT SIDEBAR ─────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Wall settings */}
-          <Card style={{ borderRadius: 12, border: '1px solid #E5E7EB' }} styles={{ body: { padding: 18 } }}>
+          <Card style={{ borderRadius: 20, border: '1px solid rgba(0,0,0,0.04)' }} styles={{ body: { padding: 18 } }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, fontWeight: 600, fontSize: 14, color: '#1A1A1A' }}>
-              <ColumnWidthOutlined style={{ color: '#6B7280' }} />
+              <ColumnWidthOutlined style={{ color: '#86868b' }} />
               Параметры стены
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
               <div>
-                <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>Ширина (ячейки × 30см)</div>
+                <div style={{ fontSize: 12, color: '#86868b', marginBottom: 4 }}>Ширина (ячейки × 30см)</div>
                 <Select
                   value={wallCols}
                   onChange={(v) => { setWallCols(v); setPlacedPanels([]); }}
@@ -415,7 +415,7 @@ export default function ConstructorPage() {
                 />
               </div>
               <div>
-                <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>Высота (ячейки × 30см)</div>
+                <div style={{ fontSize: 12, color: '#86868b', marginBottom: 4 }}>Высота (ячейки × 30см)</div>
                 <Select
                   value={wallRows}
                   onChange={(v) => { setWallRows(v); setPlacedPanels([]); }}
@@ -432,7 +432,7 @@ export default function ConstructorPage() {
             </div>
 
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#6B7280', marginBottom: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#86868b', marginBottom: 6 }}>
                 <BgColorsOutlined /> Цвет стены
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -445,7 +445,7 @@ export default function ConstructorPage() {
                         height: 28,
                         borderRadius: 6,
                         background: c.value,
-                        border: wallColor === c.value ? '2px solid #2D2D2D' : '1px solid #D1D5DB',
+                        border: wallColor === c.value ? '2px solid #1d1d1f' : '1px solid #D1D5DB',
                         cursor: 'pointer',
                         transition: 'border 0.15s',
                         boxSizing: 'border-box',
@@ -458,9 +458,9 @@ export default function ConstructorPage() {
           </Card>
 
           {/* Design selection */}
-          <Card style={{ borderRadius: 12, border: '1px solid #E5E7EB' }} styles={{ body: { padding: 18 } }}>
+          <Card style={{ borderRadius: 20, border: '1px solid rgba(0,0,0,0.04)' }} styles={{ body: { padding: 18 } }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, fontWeight: 600, fontSize: 14, color: '#1A1A1A' }}>
-              <AppstoreOutlined style={{ color: '#6B7280' }} />
+              <AppstoreOutlined style={{ color: '#86868b' }} />
               Дизайн накладки
             </div>
 
@@ -500,7 +500,7 @@ export default function ConstructorPage() {
 
             {/* Color */}
             <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>
+              <div style={{ fontSize: 12, color: '#86868b', marginBottom: 4 }}>
                 Оттенок: {selectedColor.name}
               </div>
               <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
@@ -513,7 +513,7 @@ export default function ConstructorPage() {
                         height: 26,
                         borderRadius: '50%',
                         background: c.hex,
-                        border: selectedColorIdx === idx ? '2px solid #2D2D2D' : '1px solid #D1D5DB',
+                        border: selectedColorIdx === idx ? '2px solid #1d1d1f' : '1px solid #D1D5DB',
                         cursor: 'pointer',
                         boxSizing: 'border-box',
                       }}
@@ -525,7 +525,7 @@ export default function ConstructorPage() {
 
             {/* Size */}
             <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>Размер панели</div>
+              <div style={{ fontSize: 12, color: '#86868b', marginBottom: 4 }}>Размер панели</div>
               <Radio.Group
                 value={selectedSizeKey}
                 onChange={(e) => setSelectedSizeKey(e.target.value)}
@@ -538,15 +538,15 @@ export default function ConstructorPage() {
 
             {/* Price breakdown for selected size */}
             <div style={{ background: '#F9FAFB', borderRadius: 8, padding: '8px 10px', marginBottom: 12, fontSize: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6B7280', marginBottom: 3 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#86868b', marginBottom: 3 }}>
                 <span>Панель ({selectedSize.label}):</span>
                 <span>{BASE_PANEL_PRICES[`${selectedSize.widthMm}x${selectedSize.heightMm}`]?.toLocaleString('ru-RU')} ₽</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6B7280', marginBottom: 3 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#86868b', marginBottom: 3 }}>
                 <span>Накладка (дизайн):</span>
                 <span>{DESIGN_OVERLAY_PRICE.toLocaleString('ru-RU')} ₽</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, color: DARK, borderTop: '1px solid #E5E7EB', paddingTop: 4, marginTop: 2 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, color: DARK, borderTop: '1px solid rgba(0,0,0,0.04)', paddingTop: 4, marginTop: 2 }}>
                 <span>Итого за 1 шт:</span>
                 <span>{getPanelPrice(selectedSizeKey).toLocaleString('ru-RU')} ₽</span>
               </div>
@@ -559,11 +559,11 @@ export default function ConstructorPage() {
                 onClick={handleAddToWall}
                 style={{
                   flex: 1,
-                  background: GREEN,
+                  background: BLUE,
                   color: '#fff',
                   border: 'none',
                   height: 38,
-                  borderRadius: 8,
+                  borderRadius: 980,
                   fontWeight: 600,
                   fontSize: 13,
                 }}
@@ -576,7 +576,7 @@ export default function ConstructorPage() {
                   onClick={handleFillWall}
                   style={{
                     height: 38,
-                    borderRadius: 8,
+                    borderRadius: 980,
                     border: '1px solid #D1D5DB',
                     fontWeight: 500,
                     fontSize: 13,
@@ -589,29 +589,29 @@ export default function ConstructorPage() {
           </Card>
 
           {/* Cost summary */}
-          <Card style={{ borderRadius: 12, border: '1px solid #E5E7EB' }} styles={{ body: { padding: 18 } }}>
+          <Card style={{ borderRadius: 20, border: '1px solid rgba(0,0,0,0.04)' }} styles={{ body: { padding: 18 } }}>
             <div style={{ fontWeight: 600, fontSize: 14, color: '#1A1A1A', marginBottom: 12 }}>
               Расчёт стоимости
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                <span style={{ color: '#6B7280' }}>Панелей:</span>
+                <span style={{ color: '#86868b' }}>Панелей:</span>
                 <span style={{ fontWeight: 500, color: '#1A1A1A' }}>{costs.panelCount} шт</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                <span style={{ color: '#6B7280' }}>Покрытие:</span>
+                <span style={{ color: '#86868b' }}>Покрытие:</span>
                 <span style={{ fontWeight: 500, color: '#1A1A1A' }}>{costs.totalArea.toFixed(2)} м²</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                <span style={{ color: '#6B7280' }}>Площадь стены:</span>
+                <span style={{ color: '#86868b' }}>Площадь стены:</span>
                 <span style={{ fontWeight: 500, color: '#1A1A1A' }}>{costs.wallArea.toFixed(2)} м²</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#9CA3AF' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#86868b' }}>
                 <span>├ Базовые панели:</span>
                 <span>{costs.totalBase.toLocaleString('ru-RU')} ₽</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: isSubscriber ? '#4CAF50' : '#9CA3AF' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: isSubscriber ? '#0071e3' : '#86868b' }}>
                 <span>└ Накладки (дизайн):</span>
                 <span>{isSubscriber ? '0 ₽ (подписка)' : `${costs.totalOverlay.toLocaleString('ru-RU')} ₽`}</span>
               </div>
@@ -629,7 +629,7 @@ export default function ConstructorPage() {
               }}
             >
               <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>Итого:</span>
-              <span style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>
+              <span style={{ fontSize: 22, fontWeight: 600, color: '#fff' }}>
                 {costs.total.toLocaleString('ru-RU')} ₽
               </span>
             </div>
@@ -640,11 +640,11 @@ export default function ConstructorPage() {
                 onClick={handleAddToCart}
                 style={{
                   flex: 1,
-                  background: GREEN,
+                  background: BLUE,
                   color: '#fff',
                   border: 'none',
                   height: 38,
-                  borderRadius: 8,
+                  borderRadius: 980,
                   fontWeight: 600,
                 }}
               >
@@ -653,7 +653,7 @@ export default function ConstructorPage() {
               <Button
                 icon={<UndoOutlined />}
                 onClick={handleClear}
-                style={{ height: 38, borderRadius: 8, border: '1px solid #D1D5DB', color: '#6B7280' }}
+                style={{ height: 38, borderRadius: 980, border: '1px solid #D1D5DB', color: '#86868b' }}
               >
                 Очистить
               </Button>
@@ -662,7 +662,7 @@ export default function ConstructorPage() {
 
           {/* Subscription banner or info */}
           {isSubscriber ? (
-            <div style={{ padding: '12px 14px', background: '#E8F5E9', borderRadius: 10, fontSize: 12, color: '#2E7D32', lineHeight: 1.6, border: '1px solid #C8E6C9' }}>
+            <div style={{ padding: '12px 14px', background: '#F5F5F7', borderRadius: 10, fontSize: 12, color: '#2E7D32', lineHeight: 1.6, border: '1px solid #C8E6C9' }}>
               <CrownOutlined style={{ marginRight: 6, fontSize: 14 }} />
               <strong>Подписка «{activePlan()?.name}»</strong> — накладки включены в план! Вы платите только за базовые панели.
               {activePlan()?.overlaysPerMonth ? ` Осталось ${activePlan()!.overlaysPerMonth} накладок в этом месяце.` : ' Безлимитные накладки.'}
@@ -681,15 +681,15 @@ export default function ConstructorPage() {
 
         {/* ─── RIGHT - Wall Canvas ──────────────────────────────────────────── */}
         <div>
-          <Card style={{ borderRadius: 12, border: '1px solid #E5E7EB' }} styles={{ body: { padding: 18 } }}>
+          <Card style={{ borderRadius: 20, border: '1px solid rgba(0,0,0,0.04)' }} styles={{ body: { padding: 18 } }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
               <div>
                 <span style={{ fontWeight: 600, fontSize: 14, color: '#1A1A1A' }}>Визуализация стены</span>
-                <span style={{ fontSize: 12, color: '#9CA3AF', marginLeft: 10 }}>
+                <span style={{ fontSize: 12, color: '#86868b', marginLeft: 10 }}>
                   {(wallWidthMm / 1000).toFixed(1)} × {(wallHeightMm / 1000).toFixed(1)} м · ячейка 30×30 см
                 </span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#9CA3AF' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#86868b' }}>
                 <DragOutlined /> Перетаскивайте панели · Кликните на ячейку для размещения
               </div>
             </div>
@@ -753,7 +753,7 @@ export default function ConstructorPage() {
                       backgroundPosition: 'center',
                       opacity: 0.4,
                       borderRadius: 4,
-                      border: `2px dashed ${GREEN}`,
+                      border: `2px dashed ${BLUE}`,
                       pointerEvents: 'none',
                       zIndex: 5,
                     }}
@@ -870,7 +870,7 @@ export default function ConstructorPage() {
             {/* Panel legend below wall */}
             {placedPanels.length > 0 && (
               <div style={{ marginTop: 14 }}>
-                <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 6 }}>
+                <div style={{ fontSize: 12, color: '#86868b', marginBottom: 6 }}>
                   Размещённые панели ({costs.panelCount} шт)
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -891,7 +891,7 @@ export default function ConstructorPage() {
                           initial={{ opacity: 0, scale: 0.9 }}
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.9 }}
-                          transition={{ duration: 0.15 }}
+                          transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1.0] }}
                         >
                           <Tag
                             style={{
@@ -901,7 +901,7 @@ export default function ConstructorPage() {
                               alignItems: 'center',
                               gap: 5,
                               fontSize: 12,
-                              border: '1px solid #E5E7EB',
+                              border: '1px solid rgba(0,0,0,0.04)',
                               background: '#fff',
                               color: '#374151',
                             }}

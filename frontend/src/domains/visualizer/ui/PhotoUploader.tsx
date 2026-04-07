@@ -50,7 +50,7 @@ export function PhotoUploader({ onUpload, loading }: PhotoUploaderProps) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
+      transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1.0] }}
       onDragOver={(e) => {
         e.preventDefault();
         setDragActive(true);
@@ -64,9 +64,9 @@ export function PhotoUploader({ onUpload, loading }: PhotoUploaderProps) {
         justifyContent: 'center',
         gap: 24,
         padding: 64,
-        border: `2px dashed ${dragActive ? '#4CAF50' : '#E5E7EB'}`,
-        borderRadius: 16,
-        background: dragActive ? 'rgba(76, 175, 80, 0.04)' : '#FAFAFA',
+        border: `2px dashed ${dragActive ? '#0071e3' : 'rgba(0,0,0,0.04)'}`,
+        borderRadius: 20,
+        background: dragActive ? 'rgba(0, 113, 227, 0.04)' : '#FAFAFA',
         cursor: 'pointer',
         transition: 'all 0.3s',
         minHeight: 400,
@@ -78,7 +78,7 @@ export function PhotoUploader({ onUpload, loading }: PhotoUploaderProps) {
           height: 80,
           borderRadius: '50%',
           background: dragActive
-            ? 'rgba(76, 175, 80, 0.1)'
+            ? 'rgba(0, 113, 227, 0.1)'
             : 'rgba(0,0,0,0.04)',
           display: 'flex',
           alignItems: 'center',
@@ -89,13 +89,13 @@ export function PhotoUploader({ onUpload, loading }: PhotoUploaderProps) {
         <CameraOutlined
           style={{
             fontSize: 36,
-            color: dragActive ? '#4CAF50' : '#9CA3AF',
+            color: dragActive ? '#0071e3' : '#86868b',
           }}
         />
       </div>
 
       <div style={{ textAlign: 'center' }}>
-        <Title level={4} style={{ margin: 0, color: '#2D2D2D' }}>
+        <Title level={4} style={{ margin: 0, color: '#1d1d1f' }}>
           Загрузите фото стены
         </Title>
         <Text type="secondary" style={{ fontSize: 14 }}>
@@ -124,9 +124,9 @@ export function PhotoUploader({ onUpload, loading }: PhotoUploaderProps) {
               input?.click();
             }}
             style={{
-              background: '#2D2D2D',
-              borderColor: '#2D2D2D',
-              borderRadius: 10,
+              background: '#1d1d1f',
+              borderColor: '#1d1d1f',
+              borderRadius: 980,
               height: 48,
               paddingInline: 32,
               fontWeight: 600,
@@ -155,7 +155,7 @@ export function PhotoUploader({ onUpload, loading }: PhotoUploaderProps) {
             }}
             className="mobile-camera-btn"
             style={{
-              borderRadius: 10,
+              borderRadius: 980,
               height: 48,
               paddingInline: 24,
             }}
@@ -173,14 +173,14 @@ export function PhotoUploader({ onUpload, loading }: PhotoUploaderProps) {
         style={{
           marginTop: 16,
           padding: '16px 24px',
-          background: 'rgba(76, 175, 80, 0.06)',
-          borderRadius: 12,
-          border: '1px solid rgba(76, 175, 80, 0.15)',
+          background: 'rgba(0, 113, 227, 0.06)',
+          borderRadius: 20,
+          border: '1px solid rgba(0, 113, 227, 0.15)',
           maxWidth: 400,
         }}
       >
-        <Text style={{ fontSize: 13, color: '#6B7280' }}>
-          <strong style={{ color: '#2D2D2D' }}>Советы для лучшего результата:</strong>
+        <Text style={{ fontSize: 13, color: '#86868b' }}>
+          <strong style={{ color: '#1d1d1f' }}>Советы для лучшего результата:</strong>
           <br />
           — Фотографируйте стену фронтально
           <br />

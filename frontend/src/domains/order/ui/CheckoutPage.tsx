@@ -21,19 +21,19 @@ import { useCartStore } from '../model/cartStore';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
-const GREEN = '#4CAF50';
-const DARK = '#2D2D2D';
-const GRAY_TEXT = '#6B7280';
+const BLUE = '#0071e3';
+const DARK = '#1d1d1f';
+const GRAY_TEXT = '#86868b';
 const FONT = 'Inter, sans-serif';
 
-const MAX_WIDTH: React.CSSProperties = { maxWidth: 1280, margin: '0 auto' };
+const MAX_WIDTH: React.CSSProperties = { maxWidth: 1080, margin: '0 auto' };
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
   visible: (i: number = 0) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.45, ease: 'easeOut', delay: i * 0.08 },
+    transition: { duration: 0.8, ease: [0.25, 0.1, 0.25, 1.0], delay: i * 0.08 },
   }),
 };
 
@@ -78,7 +78,7 @@ const CheckoutPage: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 32 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1.0] }}
           style={{
             display: 'flex',
             flexDirection: 'column',
@@ -93,7 +93,7 @@ const CheckoutPage: React.FC = () => {
             style={{
               fontFamily: FONT,
               fontSize: 28,
-              fontWeight: 800,
+              fontWeight: 600,
               color: DARK,
               margin: 0,
             }}
@@ -110,7 +110,7 @@ const CheckoutPage: React.FC = () => {
               background: DARK,
               color: '#fff',
               border: 'none',
-              borderRadius: 10,
+              borderRadius: 980,
               height: 52,
               padding: '0 32px',
               fontFamily: FONT,
@@ -234,7 +234,7 @@ const CheckoutPage: React.FC = () => {
               key={opt.value}
               value={opt.value}
               style={{
-                border: `1.5px solid ${delivery === opt.value ? DARK : '#E5E7EB'}`,
+                border: `1.5px solid ${delivery === opt.value ? DARK : 'rgba(0,0,0,0.04)'}`,
                 borderRadius: 10,
                 padding: '12px 16px',
                 margin: 0,
@@ -286,7 +286,7 @@ const CheckoutPage: React.FC = () => {
             key={opt.value}
             value={opt.value}
             style={{
-              border: `1.5px solid ${payment === opt.value ? DARK : '#E5E7EB'}`,
+              border: `1.5px solid ${payment === opt.value ? DARK : 'rgba(0,0,0,0.04)'}`,
               borderRadius: 10,
               padding: '12px 16px',
               margin: 0,
@@ -309,17 +309,17 @@ const CheckoutPage: React.FC = () => {
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <div style={{ paddingTop: 72, minHeight: '100vh', background: '#F5F5F5', padding: '72px 24px 80px' }}>
+    <div style={{ paddingTop: 72, minHeight: '100vh', background: '#F5F5F7', padding: '72px 24px 80px' }}>
       <div style={{ ...MAX_WIDTH }}>
         {/* Page title */}
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
+          transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1.0] }}
           style={{
             fontFamily: FONT,
             fontSize: 'clamp(28px, 3vw, 36px)',
-            fontWeight: 800,
+            fontWeight: 600,
             color: DARK,
             margin: '0 0 32px',
           }}
@@ -331,7 +331,7 @@ const CheckoutPage: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
+          transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1.0], delay: 0.1 }}
           style={{ marginBottom: 36 }}
         >
           <Steps
@@ -361,8 +361,8 @@ const CheckoutPage: React.FC = () => {
           >
             <Card
               style={{
-                borderRadius: 16,
-                border: '1px solid #E5E7EB',
+                borderRadius: 20,
+                border: '1px solid rgba(0,0,0,0.04)',
                 boxShadow: 'none',
               }}
               styles={{ body: { padding: '32px 32px 24px' } }}
@@ -371,7 +371,7 @@ const CheckoutPage: React.FC = () => {
                 style={{
                   fontFamily: FONT,
                   fontSize: 20,
-                  fontWeight: 700,
+                  fontWeight: 600,
                   color: DARK,
                   margin: '0 0 24px',
                 }}
@@ -395,8 +395,8 @@ const CheckoutPage: React.FC = () => {
                     style={{
                       background: '#fff',
                       color: DARK,
-                      border: '1px solid #E5E7EB',
-                      borderRadius: 10,
+                      border: '1px solid rgba(0,0,0,0.04)',
+                      borderRadius: 980,
                       height: 48,
                       padding: '0 24px',
                       fontFamily: FONT,
@@ -413,7 +413,7 @@ const CheckoutPage: React.FC = () => {
                     background: DARK,
                     color: '#fff',
                     border: 'none',
-                    borderRadius: 10,
+                    borderRadius: 980,
                     height: 48,
                     padding: '0 32px',
                     fontFamily: FONT,
@@ -437,8 +437,8 @@ const CheckoutPage: React.FC = () => {
           >
             <Card
               style={{
-                borderRadius: 16,
-                border: '1px solid #E5E7EB',
+                borderRadius: 20,
+                border: '1px solid rgba(0,0,0,0.04)',
                 boxShadow: 'none',
               }}
               styles={{ body: { padding: '28px 24px' } }}
@@ -447,7 +447,7 @@ const CheckoutPage: React.FC = () => {
                 style={{
                   fontFamily: FONT,
                   fontSize: 17,
-                  fontWeight: 700,
+                  fontWeight: 600,
                   color: DARK,
                   margin: '0 0 20px',
                 }}
@@ -466,7 +466,7 @@ const CheckoutPage: React.FC = () => {
                         borderRadius: 8,
                         overflow: 'hidden',
                         flexShrink: 0,
-                        border: '1px solid #E5E7EB',
+                        border: '1px solid rgba(0,0,0,0.04)',
                       }}
                     >
                       {item.image ? (
@@ -498,7 +498,7 @@ const CheckoutPage: React.FC = () => {
                       </div>
                     </div>
                     <div
-                      style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: DARK, flexShrink: 0 }}
+                      style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: DARK, flexShrink: 0 }}
                     >
                       {(item.price * item.quantity).toLocaleString('ru-RU')} ₽
                     </div>
@@ -523,7 +523,7 @@ const CheckoutPage: React.FC = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
                   <span style={{ fontFamily: FONT, fontSize: 14, color: GRAY_TEXT }}>Доставка</span>
                   {deliveryCost === 0 ? (
-                    <span style={{ fontFamily: FONT, fontSize: 14, color: GREEN, fontWeight: 600 }}>
+                    <span style={{ fontFamily: FONT, fontSize: 14, color: BLUE, fontWeight: 600 }}>
                       Бесплатно
                     </span>
                   ) : (
@@ -545,10 +545,10 @@ const CheckoutPage: React.FC = () => {
                     borderTop: '1px solid #F3F4F6',
                   }}
                 >
-                  <span style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: DARK }}>
+                  <span style={{ fontFamily: FONT, fontSize: 16, fontWeight: 600, color: DARK }}>
                     Итого
                   </span>
-                  <span style={{ fontFamily: FONT, fontSize: 18, fontWeight: 800, color: DARK }}>
+                  <span style={{ fontFamily: FONT, fontSize: 18, fontWeight: 600, color: DARK }}>
                     {grandTotal.toLocaleString('ru-RU')} ₽
                   </span>
                 </div>
@@ -558,7 +558,7 @@ const CheckoutPage: React.FC = () => {
               <div
                 style={{
                   marginTop: 20,
-                  background: '#F9FAFB',
+                  background: '#F5F5F7',
                   borderRadius: 10,
                   padding: '14px 16px',
                   display: 'flex',
@@ -572,7 +572,7 @@ const CheckoutPage: React.FC = () => {
                   'Профессиональный монтаж',
                 ].map((text) => (
                   <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <CheckCircleOutlined style={{ color: GREEN, fontSize: 14 }} />
+                    <CheckCircleOutlined style={{ color: BLUE, fontSize: 14 }} />
                     <span style={{ fontFamily: FONT, fontSize: 13, color: DARK }}>{text}</span>
                   </div>
                 ))}

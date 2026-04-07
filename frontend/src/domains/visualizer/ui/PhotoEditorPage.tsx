@@ -177,6 +177,7 @@ export default function PhotoEditorPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ ease: [0.25, 0.1, 0.25, 1.0] }}
             style={{
               display: 'flex',
               flexDirection: 'column',
@@ -199,7 +200,7 @@ export default function PhotoEditorPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
+          transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1.0] }}
           style={{
             display: 'grid',
             gridTemplateColumns: '240px 1fr 280px',
@@ -211,7 +212,7 @@ export default function PhotoEditorPage() {
           <Card
             size="small"
             title="Дизайн"
-            style={{ borderRadius: 12, overflow: 'auto', maxHeight: 700 }}
+            style={{ borderRadius: 20, overflow: 'auto', maxHeight: 700 }}
           >
             <PanelPicker
               selectedDesignId={store.selectedDesignId}
@@ -271,10 +272,10 @@ export default function PhotoEditorPage() {
                 onClick={() => setEditingMask(!editingMask)}
                 style={{
                   padding: '6px 16px',
-                  borderRadius: 8,
-                  border: `1px solid ${editingMask ? '#4CAF50' : '#E5E7EB'}`,
-                  background: editingMask ? 'rgba(76,175,80,0.08)' : '#FFF',
-                  color: editingMask ? '#4CAF50' : '#6B7280',
+                  borderRadius: 980,
+                  border: `1px solid ${editingMask ? '#0071e3' : 'rgba(0,0,0,0.04)'}`,
+                  background: editingMask ? 'rgba(0,113,227,0.08)' : '#FFF',
+                  color: editingMask ? '#0071e3' : '#86868b',
                   cursor: 'pointer',
                   fontSize: 13,
                   fontWeight: 500,
@@ -290,10 +291,10 @@ export default function PhotoEditorPage() {
                 }}
                 style={{
                   padding: '6px 16px',
-                  borderRadius: 8,
-                  border: '1px solid #E5E7EB',
+                  borderRadius: 980,
+                  border: '1px solid rgba(0,0,0,0.04)',
                   background: '#FFF',
-                  color: '#6B7280',
+                  color: '#86868b',
                   cursor: 'pointer',
                   fontSize: 13,
                 }}
@@ -308,7 +309,7 @@ export default function PhotoEditorPage() {
             <Card
               size="small"
               title="Размещение"
-              style={{ borderRadius: 12 }}
+              style={{ borderRadius: 20 }}
             >
               <PlacementControls
                 mode={store.layout.placementMode}

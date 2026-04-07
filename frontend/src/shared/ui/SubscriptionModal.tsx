@@ -7,8 +7,8 @@ import {
 } from '../../domains/subscription/model/subscriptionStore';
 import type { SubscriptionPlan } from '../../domains/subscription/model/types';
 
-const GREEN = '#4CAF50';
-const DARK = '#2D2D2D';
+const BLUE = '#0071e3';
+const DARK = '#1d1d1f';
 const FONT = 'Inter, sans-serif';
 
 const PLAN_ICONS: Record<string, React.ReactNode> = {
@@ -22,7 +22,7 @@ const PLAN_ICONS: Record<string, React.ReactNode> = {
 function StepSelect({ onSelect }: { onSelect: (id: string) => void }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <p style={{ fontSize: 15, color: '#6B7280', margin: '0 0 8px', textAlign: 'center' }}>
+      <p style={{ fontSize: 15, color: '#86868b', margin: '0 0 8px', textAlign: 'center' }}>
         Выберите план подписки на обновление накладок
       </p>
       {SUBSCRIPTION_PLANS.map((plan) => (
@@ -31,10 +31,12 @@ function StepSelect({ onSelect }: { onSelect: (id: string) => void }) {
           hoverable
           onClick={() => onSelect(plan.id)}
           style={{
-            borderRadius: 14,
-            border: plan.popular ? `2px solid ${DARK}` : '1px solid #E5E7EB',
+            borderRadius: 20,
+            border: plan.popular ? `2px solid ${DARK}` : '1px solid rgba(0,0,0,0.04)',
             cursor: 'pointer',
             position: 'relative',
+            transform: plan.popular ? 'scale(1.05)' : 'scale(1)',
+            transition: 'transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1.0)',
           }}
           styles={{ body: { padding: '18px 20px' } }}
         >
@@ -44,12 +46,12 @@ function StepSelect({ onSelect }: { onSelect: (id: string) => void }) {
                 position: 'absolute',
                 top: -10,
                 right: 16,
-                background: GREEN,
+                background: BLUE,
                 color: '#fff',
                 border: 'none',
-                borderRadius: 10,
+                borderRadius: 980,
                 fontSize: 11,
-                fontWeight: 700,
+                fontWeight: 600,
                 padding: '2px 10px',
               }}
             >
@@ -62,7 +64,7 @@ function StepSelect({ onSelect }: { onSelect: (id: string) => void }) {
                 width: 44,
                 height: 44,
                 borderRadius: 10,
-                background: plan.popular ? DARK : '#F5F5F5',
+                background: plan.popular ? DARK : '#F5F5F7',
                 color: plan.popular ? '#fff' : DARK,
                 display: 'flex',
                 alignItems: 'center',
@@ -73,11 +75,11 @@ function StepSelect({ onSelect }: { onSelect: (id: string) => void }) {
               {PLAN_ICONS[plan.id]}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 16, color: DARK }}>{plan.name}</div>
-              <div style={{ fontSize: 13, color: '#6B7280' }}>{plan.desc}</div>
+              <div style={{ fontWeight: 600, fontSize: 16, color: DARK }}>{plan.name}</div>
+              <div style={{ fontSize: 13, color: '#86868b' }}>{plan.desc}</div>
             </div>
             <div style={{ textAlign: 'right', flexShrink: 0 }}>
-              <div style={{ fontWeight: 800, fontSize: 20, color: DARK }}>
+              <div style={{ fontWeight: 600, fontSize: 20, color: DARK }}>
                 {plan.price.toLocaleString('ru-RU')} ₽
               </div>
               <div style={{ fontSize: 12, color: '#9CA3AF' }}>/ {plan.period}</div>
@@ -111,8 +113,8 @@ function StepForm({
       {/* Plan summary */}
       <div
         style={{
-          background: '#F9FAFB',
-          borderRadius: 12,
+          background: '#F5F5F7',
+          borderRadius: 20,
           padding: '16px 18px',
           display: 'flex',
           alignItems: 'center',
@@ -121,11 +123,11 @@ function StepForm({
         }}
       >
         <div>
-          <div style={{ fontWeight: 700, fontSize: 16, color: DARK }}>{plan.name}</div>
-          <div style={{ fontSize: 13, color: '#6B7280' }}>{plan.desc}</div>
+          <div style={{ fontWeight: 600, fontSize: 16, color: DARK }}>{plan.name}</div>
+          <div style={{ fontSize: 13, color: '#86868b' }}>{plan.desc}</div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontWeight: 800, fontSize: 22, color: DARK }}>
+          <div style={{ fontWeight: 600, fontSize: 22, color: DARK }}>
             {plan.price.toLocaleString('ru-RU')} ₽
           </div>
           <div style={{ fontSize: 12, color: '#9CA3AF' }}>/ {plan.period}</div>
@@ -136,7 +138,7 @@ function StepForm({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 4 }}>
         {plan.features.slice(0, 4).map((f) => (
           <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: DARK }}>
-            <CheckOutlined style={{ color: GREEN, fontSize: 11 }} />
+            <CheckOutlined style={{ color: BLUE, fontSize: 11 }} />
             {f}
           </div>
         ))}
@@ -171,7 +173,7 @@ function StepForm({
         <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
           <Button
             onClick={onBack}
-            style={{ flex: 1, height: 44, borderRadius: 10, fontWeight: 500 }}
+            style={{ flex: 1, height: 44, borderRadius: 980, fontWeight: 500 }}
           >
             Назад
           </Button>
@@ -180,11 +182,11 @@ function StepForm({
             style={{
               flex: 2,
               height: 44,
-              borderRadius: 10,
-              background: GREEN,
+              borderRadius: 980,
+              background: BLUE,
               color: '#fff',
               border: 'none',
-              fontWeight: 700,
+              fontWeight: 600,
               fontSize: 15,
             }}
           >
@@ -214,7 +216,7 @@ function StepSuccess({ plan, onClose }: { plan: SubscriptionPlan; onClose: () =>
           width: 72,
           height: 72,
           borderRadius: '50%',
-          background: GREEN,
+          background: BLUE,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -224,10 +226,10 @@ function StepSuccess({ plan, onClose }: { plan: SubscriptionPlan; onClose: () =>
         <CheckOutlined style={{ fontSize: 32, color: '#fff' }} />
       </motion.div>
 
-      <h2 style={{ fontFamily: FONT, fontSize: 24, fontWeight: 800, color: DARK, margin: '0 0 8px' }}>
+      <h2 style={{ fontFamily: FONT, fontSize: 24, fontWeight: 600, color: DARK, margin: '0 0 8px' }}>
         Подписка оформлена!
       </h2>
-      <p style={{ fontSize: 15, color: '#6B7280', margin: '0 0 20px', lineHeight: 1.6 }}>
+      <p style={{ fontSize: 15, color: '#86868b', margin: '0 0 20px', lineHeight: 1.6 }}>
         План «{plan.name}» активирован. Вам доступно{' '}
         {plan.overlaysPerMonth === 0 ? 'неограниченное количество' : `до ${plan.overlaysPerMonth}`}{' '}
         накладок в месяц.
@@ -235,14 +237,14 @@ function StepSuccess({ plan, onClose }: { plan: SubscriptionPlan; onClose: () =>
 
       <div
         style={{
-          background: '#F0FFF0',
-          borderRadius: 12,
+          background: '#F5F5F7',
+          borderRadius: 20,
           padding: '16px',
           marginBottom: 20,
           textAlign: 'left',
         }}
       >
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#2E7D32', marginBottom: 8 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: BLUE, marginBottom: 8 }}>
           Что дальше:
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -251,7 +253,7 @@ function StepSuccess({ plan, onClose }: { plan: SubscriptionPlan; onClose: () =>
             'Статус подписки виден в шапке сайта',
             'Управление подпиской — в личном кабинете',
           ].map((t) => (
-            <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#2E7D32' }}>
+            <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: BLUE }}>
               <CheckOutlined style={{ fontSize: 10 }} /> {t}
             </div>
           ))}
@@ -265,7 +267,7 @@ function StepSuccess({ plan, onClose }: { plan: SubscriptionPlan; onClose: () =>
           background: DARK,
           color: '#fff',
           border: 'none',
-          borderRadius: 10,
+          borderRadius: 980,
           height: 48,
           width: '100%',
           fontWeight: 600,
@@ -310,7 +312,7 @@ export function SubscriptionModal() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1.0] }}
           >
             <StepSelect onSelect={selectPlan} />
           </motion.div>
@@ -322,7 +324,7 @@ export function SubscriptionModal() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1.0] }}
           >
             <StepForm
               plan={selectedPlan}
@@ -341,7 +343,7 @@ export function SubscriptionModal() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
+            transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1.0] }}
           >
             <StepSuccess plan={selectedPlan} onClose={closeModal} />
           </motion.div>

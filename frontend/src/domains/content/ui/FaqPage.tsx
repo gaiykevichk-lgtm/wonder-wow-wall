@@ -6,18 +6,18 @@ import { useNavigate } from 'react-router-dom';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
-const GREEN = '#4CAF50';
-const DARK = '#2D2D2D';
-const GRAY_TEXT = '#6B7280';
+const BLUE = '#0071e3';
+const DARK = '#1d1d1f';
+const GRAY_TEXT = '#86868b';
 const FONT = 'Inter, sans-serif';
-const MAX_WIDTH: React.CSSProperties = { maxWidth: 1280, margin: '0 auto' };
+const MAX_WIDTH: React.CSSProperties = { maxWidth: 1080, margin: '0 auto' };
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
   visible: (i: number = 0) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.45, ease: 'easeOut', delay: i * 0.08 },
+    transition: { duration: 0.8, ease: [0.25, 0.1, 0.25, 1.0], delay: i * 0.08 },
   }),
 };
 
@@ -215,7 +215,7 @@ const FaqPage: React.FC = () => {
   return (
     <div style={{ fontFamily: FONT, paddingTop: 72 }}>
       {/* Hero */}
-      <section style={{ background: '#F5F5F5', padding: '80px 24px' }}>
+      <section style={{ background: '#F5F5F7', padding: '120px 24px' }}>
         <div style={{ ...MAX_WIDTH, textAlign: 'center' }}>
           <motion.div
             variants={stagger}
@@ -244,11 +244,11 @@ const FaqPage: React.FC = () => {
               style={{
                 fontFamily: FONT,
                 fontSize: 'clamp(36px, 4vw, 52px)',
-                fontWeight: 800,
+                fontWeight: 600,
                 color: DARK,
                 margin: 0,
                 lineHeight: 1.15,
-                letterSpacing: '-0.5px',
+                letterSpacing: '-0.03em',
               }}
             >
               Часто задаваемые вопросы
@@ -273,7 +273,7 @@ const FaqPage: React.FC = () => {
       </section>
 
       {/* FAQ categories */}
-      <section style={{ background: '#fff', padding: '72px 24px 88px' }}>
+      <section style={{ background: '#fff', padding: '120px 24px' }}>
         <div style={{ ...MAX_WIDTH }}>
           <motion.div
             variants={stagger}
@@ -296,7 +296,7 @@ const FaqPage: React.FC = () => {
                       width: 36,
                       height: 36,
                       borderRadius: 8,
-                      background: '#F5F5F5',
+                      background: '#F5F5F7',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -309,9 +309,10 @@ const FaqPage: React.FC = () => {
                     style={{
                       fontFamily: FONT,
                       fontSize: 22,
-                      fontWeight: 800,
+                      fontWeight: 600,
                       color: DARK,
                       margin: 0,
+                      letterSpacing: '-0.03em',
                     }}
                   >
                     {cat.title}
@@ -322,8 +323,8 @@ const FaqPage: React.FC = () => {
                 <Collapse
                   items={cat.items}
                   style={{
-                    borderRadius: 12,
-                    border: '1px solid #E5E7EB',
+                    borderRadius: 20,
+                    border: '1px solid rgba(0,0,0,0.04)',
                     background: '#fff',
                     fontFamily: FONT,
                   }}
@@ -336,13 +337,13 @@ const FaqPage: React.FC = () => {
       </section>
 
       {/* Contact CTA */}
-      <section style={{ background: '#F5F5F5', padding: '0 24px 88px' }}>
+      <section style={{ background: '#F5F5F7', padding: '0 24px 88px' }}>
         <div style={{ ...MAX_WIDTH }}>
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1.0] }}
             style={{
               background: DARK,
               borderRadius: 20,
@@ -358,9 +359,10 @@ const FaqPage: React.FC = () => {
               style={{
                 fontFamily: FONT,
                 fontSize: 'clamp(24px, 3vw, 32px)',
-                fontWeight: 800,
+                fontWeight: 600,
                 color: '#fff',
                 margin: 0,
+                letterSpacing: '-0.03em',
               }}
             >
               Не нашли ответ?
@@ -383,10 +385,10 @@ const FaqPage: React.FC = () => {
                 size="large"
                 icon={<PhoneOutlined />}
                 style={{
-                  background: GREEN,
+                  background: BLUE,
                   color: '#fff',
                   border: 'none',
-                  borderRadius: 10,
+                  borderRadius: 980,
                   height: 52,
                   padding: '0 28px',
                   fontFamily: FONT,
@@ -407,7 +409,7 @@ const FaqPage: React.FC = () => {
                   background: 'transparent',
                   color: '#fff',
                   border: '1px solid rgba(255,255,255,0.35)',
-                  borderRadius: 10,
+                  borderRadius: 980,
                   height: 52,
                   padding: '0 28px',
                   fontFamily: FONT,

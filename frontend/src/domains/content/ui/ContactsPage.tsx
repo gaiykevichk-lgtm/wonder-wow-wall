@@ -11,17 +11,17 @@ import { useSubmitContact } from '../../../shared/api/contactsApi';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
-const DARK = '#2D2D2D';
-const GRAY_TEXT = '#6B7280';
+const DARK = '#1d1d1f';
+const GRAY_TEXT = '#86868b';
 const FONT = 'Inter, sans-serif';
-const MAX_WIDTH: React.CSSProperties = { maxWidth: 1280, margin: '0 auto' };
+const MAX_WIDTH: React.CSSProperties = { maxWidth: 1080, margin: '0 auto' };
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
   visible: (i: number = 0) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.45, ease: 'easeOut', delay: i * 0.1 },
+    transition: { duration: 0.8, ease: [0.25, 0.1, 0.25, 1.0], delay: i * 0.1 },
   }),
 };
 
@@ -93,7 +93,7 @@ const ContactsPage: React.FC = () => {
   return (
     <div style={{ paddingTop: 72, minHeight: '100vh', background: '#fff' }}>
       {/* Header */}
-      <section style={{ background: '#F5F5F5', padding: '80px 24px' }}>
+      <section style={{ background: '#F5F5F7', padding: '120px 24px' }}>
         <div style={{ ...MAX_WIDTH, textAlign: 'center' }}>
           <motion.div
             variants={stagger}
@@ -121,11 +121,11 @@ const ContactsPage: React.FC = () => {
               style={{
                 fontFamily: FONT,
                 fontSize: 'clamp(36px, 4vw, 52px)',
-                fontWeight: 800,
+                fontWeight: 600,
                 color: DARK,
                 margin: 0,
                 lineHeight: 1.15,
-                letterSpacing: '-0.5px',
+                letterSpacing: '-0.03em',
               }}
             >
               Контакты
@@ -150,7 +150,7 @@ const ContactsPage: React.FC = () => {
       </section>
 
       {/* Main content */}
-      <section style={{ padding: '80px 24px' }}>
+      <section style={{ padding: '120px 24px' }}>
         <div
           style={{
             ...MAX_WIDTH,
@@ -174,9 +174,10 @@ const ContactsPage: React.FC = () => {
               style={{
                 fontFamily: FONT,
                 fontSize: 24,
-                fontWeight: 700,
+                fontWeight: 600,
                 color: DARK,
                 margin: '0 0 8px',
+                letterSpacing: '-0.03em',
               }}
             >
               Наши контакты
@@ -186,10 +187,12 @@ const ContactsPage: React.FC = () => {
               <motion.div key={item.title} variants={fadeUp} custom={i + 1}>
                 <Card
                   style={{
-                    borderRadius: 14,
-                    border: '1px solid #E5E7EB',
+                    borderRadius: 20,
+                    border: '1px solid rgba(0,0,0,0.04)',
                     boxShadow: 'none',
+                    transition: 'box-shadow 0.3s ease, transform 0.3s ease',
                   }}
+                  hoverable
                   styles={{ body: { padding: '20px 24px' } }}
                 >
                   <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
@@ -198,7 +201,7 @@ const ContactsPage: React.FC = () => {
                         width: 44,
                         height: 44,
                         borderRadius: 10,
-                        background: '#F5F5F5',
+                        background: '#F5F5F7',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -243,12 +246,12 @@ const ContactsPage: React.FC = () => {
             initial={{ opacity: 0, x: 32 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, amount: 0.1 }}
-            transition={{ duration: 0.55, ease: 'easeOut' }}
+            transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1.0] }}
           >
             <Card
               style={{
-                borderRadius: 16,
-                border: '1px solid #E5E7EB',
+                borderRadius: 20,
+                border: '1px solid rgba(0,0,0,0.04)',
                 boxShadow: 'none',
               }}
               styles={{ body: { padding: '36px 32px' } }}
@@ -257,9 +260,10 @@ const ContactsPage: React.FC = () => {
                 style={{
                   fontFamily: FONT,
                   fontSize: 22,
-                  fontWeight: 700,
+                  fontWeight: 600,
                   color: DARK,
                   margin: '0 0 24px',
+                  letterSpacing: '-0.03em',
                 }}
               >
                 Напишите нам
@@ -312,7 +316,7 @@ const ContactsPage: React.FC = () => {
                     background: DARK,
                     color: '#fff',
                     border: 'none',
-                    borderRadius: 10,
+                    borderRadius: 980,
                     height: 52,
                     padding: '0 36px',
                     fontFamily: FONT,

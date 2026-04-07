@@ -13,19 +13,19 @@ import { motion } from 'framer-motion';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
-const GREEN = '#4CAF50';
-const DARK = '#2D2D2D';
-const GRAY_TEXT = '#6B7280';
+const BLUE = '#0071e3';
+const DARK = '#1d1d1f';
+const GRAY_TEXT = '#86868b';
 const FONT = 'Inter, sans-serif';
-const SECTION_PAD: React.CSSProperties = { padding: '80px 24px' };
-const MAX_WIDTH: React.CSSProperties = { maxWidth: 1280, margin: '0 auto' };
+const SECTION_PAD: React.CSSProperties = { padding: '120px 24px' };
+const MAX_WIDTH: React.CSSProperties = { maxWidth: 1080, margin: '0 auto' };
 
 const fadeUp = {
   hidden: { opacity: 0, y: 28 },
   visible: (i: number = 0) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.5, ease: 'easeOut', delay: i * 0.1 },
+    transition: { duration: 0.8, ease: [0.25, 0.1, 0.25, 1.0], delay: i * 0.1 },
   }),
 };
 
@@ -39,7 +39,7 @@ const stagger = {
 const HeroSection: React.FC = () => (
   <section
     style={{
-      background: '#F5F5F5',
+      background: '#F5F5F7',
       ...SECTION_PAD,
       paddingTop: 96,
       paddingBottom: 96,
@@ -72,11 +72,11 @@ const HeroSection: React.FC = () => (
           style={{
             fontFamily: FONT,
             fontSize: 'clamp(40px, 5vw, 60px)',
-            fontWeight: 800,
+            fontWeight: 600,
             color: DARK,
             margin: 0,
             lineHeight: 1.1,
-            letterSpacing: '-1px',
+            letterSpacing: '-0.03em',
           }}
         >
           О компании Wonder Wow Wall
@@ -142,10 +142,11 @@ const StorySection: React.FC = () => (
             style={{
               fontFamily: FONT,
               fontSize: 'clamp(28px, 3vw, 36px)',
-              fontWeight: 800,
+              fontWeight: 600,
               color: DARK,
               margin: 0,
               lineHeight: 1.2,
+              letterSpacing: '-0.03em',
             }}
           >
             Основаны в 2019 году с единой целью
@@ -170,7 +171,7 @@ const StorySection: React.FC = () => (
           initial={{ opacity: 0, x: 32 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true, amount: 0.2 }}
-          transition={{ duration: 0.6, ease: 'easeOut' }}
+          transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1.0] }}
           style={{
             display: 'grid',
             gridTemplateColumns: '1fr 1fr',
@@ -187,9 +188,9 @@ const StorySection: React.FC = () => (
               key={i}
               style={{
                 aspectRatio: '1 / 1',
-                borderRadius: 12,
+                borderRadius: 20,
                 overflow: 'hidden',
-                border: '1px solid #E5E7EB',
+                border: '1px solid rgba(0,0,0,0.04)',
               }}
             >
               <img
@@ -226,7 +227,7 @@ const techFeatures = [
 ];
 
 const TechnologySection: React.FC = () => (
-  <section style={{ background: '#F5F5F5', ...SECTION_PAD }}>
+  <section style={{ background: '#F5F5F7', ...SECTION_PAD }}>
     <div style={{ ...MAX_WIDTH }}>
       <motion.div
         variants={stagger}
@@ -256,10 +257,11 @@ const TechnologySection: React.FC = () => (
             style={{
               fontFamily: FONT,
               fontSize: 'clamp(28px, 3vw, 36px)',
-              fontWeight: 800,
+              fontWeight: 600,
               color: DARK,
               margin: 0,
               textAlign: 'center',
+              letterSpacing: '-0.03em',
             }}
           >
             Почему наши панели лучше
@@ -275,24 +277,35 @@ const TechnologySection: React.FC = () => (
           }}
         >
           {techFeatures.map((feat, i) => (
-            <motion.div key={feat.title} variants={fadeUp} custom={i + 2}>
+            <motion.div
+              key={feat.title}
+              variants={fadeUp}
+              custom={i + 2}
+              whileHover={{ translateY: -2 }}
+              style={{ transition: 'box-shadow 0.3s ease' }}
+            >
               <Card
                 style={{
-                  borderRadius: 16,
-                  border: '1px solid #E5E7EB',
+                  borderRadius: 20,
+                  border: '1px solid rgba(0,0,0,0.04)',
                   boxShadow: 'none',
                   height: '100%',
+                  transition: 'box-shadow 0.3s ease, transform 0.3s ease',
                 }}
-                styles={{ body: { padding: '32px' } }}
+                hoverable
+                styles={{
+                  body: { padding: '32px' },
+                }}
               >
                 <div style={{ marginBottom: 20 }}>{feat.icon}</div>
                 <h3
                   style={{
                     fontFamily: FONT,
                     fontSize: 18,
-                    fontWeight: 700,
+                    fontWeight: 600,
                     color: DARK,
                     margin: '0 0 12px',
+                    letterSpacing: '-0.03em',
                   }}
                 >
                   {feat.title}
@@ -320,10 +333,10 @@ const TechnologySection: React.FC = () => (
 // ─── Numbers Section ──────────────────────────────────────────────────────────
 
 const numbers = [
-  { icon: <TrophyOutlined style={{ fontSize: 28, color: GREEN }} />, value: '200+', label: 'Дизайнов', desc: 'в каталоге' },
-  { icon: <TeamOutlined style={{ fontSize: 28, color: GREEN }} />, value: '50K+', label: 'Клиентов', desc: 'по всей России' },
-  { icon: <StarOutlined style={{ fontSize: 28, color: GREEN }} />, value: '5 лет', label: 'На рынке', desc: 'с 2019 года' },
-  { icon: <StarOutlined style={{ fontSize: 28, color: GREEN }} />, value: '4.9', label: 'Рейтинг', desc: 'средняя оценка' },
+  { icon: <TrophyOutlined style={{ fontSize: 28, color: BLUE }} />, value: '200+', label: 'Дизайнов', desc: 'в каталоге' },
+  { icon: <TeamOutlined style={{ fontSize: 28, color: BLUE }} />, value: '50K+', label: 'Клиентов', desc: 'по всей России' },
+  { icon: <StarOutlined style={{ fontSize: 28, color: BLUE }} />, value: '5 лет', label: 'На рынке', desc: 'с 2019 года' },
+  { icon: <StarOutlined style={{ fontSize: 28, color: BLUE }} />, value: '4.9', label: 'Рейтинг', desc: 'средняя оценка' },
 ];
 
 const NumbersSection: React.FC = () => (
@@ -342,10 +355,11 @@ const NumbersSection: React.FC = () => (
           style={{
             fontFamily: FONT,
             fontSize: 'clamp(28px, 3vw, 36px)',
-            fontWeight: 800,
+            fontWeight: 600,
             color: DARK,
             margin: 0,
             textAlign: 'center',
+            letterSpacing: '-0.03em',
           }}
         >
           Wonder Wow Wall в цифрах
@@ -364,9 +378,10 @@ const NumbersSection: React.FC = () => (
               key={item.label}
               variants={fadeUp}
               custom={i + 1}
+              whileHover={{ translateY: -2 }}
               style={{
-                border: '1px solid #E5E7EB',
-                borderRadius: 16,
+                border: '1px solid rgba(0,0,0,0.04)',
+                borderRadius: 20,
                 padding: '32px 24px',
                 display: 'flex',
                 flexDirection: 'column',
@@ -374,6 +389,7 @@ const NumbersSection: React.FC = () => (
                 gap: 10,
                 textAlign: 'center',
                 background: '#fff',
+                transition: 'box-shadow 0.3s ease, transform 0.3s ease',
               }}
             >
               <div>{item.icon}</div>
@@ -381,15 +397,16 @@ const NumbersSection: React.FC = () => (
                 style={{
                   fontFamily: FONT,
                   fontSize: 42,
-                  fontWeight: 800,
+                  fontWeight: 600,
                   color: DARK,
                   lineHeight: 1,
+                  letterSpacing: '-0.03em',
                 }}
               >
                 {item.value}
               </span>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: DARK }}>
+                <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 600, color: DARK }}>
                   {item.label}
                 </span>
                 <span style={{ fontFamily: FONT, fontSize: 13, color: GRAY_TEXT }}>
@@ -407,7 +424,7 @@ const NumbersSection: React.FC = () => (
 // ─── Eco Section ──────────────────────────────────────────────────────────────
 
 const EcoSection: React.FC = () => (
-  <section style={{ background: '#F5F5F5', ...SECTION_PAD }}>
+  <section style={{ background: '#F5F5F7', ...SECTION_PAD }}>
     <div style={{ ...MAX_WIDTH }}>
       <motion.div
         variants={stagger}
@@ -417,7 +434,7 @@ const EcoSection: React.FC = () => (
         style={{
           background: '#fff',
           borderRadius: 20,
-          border: '1px solid #E5E7EB',
+          border: '1px solid rgba(0,0,0,0.04)',
           padding: '56px 64px',
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
@@ -427,7 +444,7 @@ const EcoSection: React.FC = () => (
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <motion.div variants={fadeUp} custom={0} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <ExperimentOutlined style={{ fontSize: 28, color: GREEN }} />
+            <ExperimentOutlined style={{ fontSize: 28, color: BLUE }} />
             <span
               style={{
                 fontFamily: FONT,
@@ -447,10 +464,11 @@ const EcoSection: React.FC = () => (
             style={{
               fontFamily: FONT,
               fontSize: 'clamp(26px, 2.5vw, 34px)',
-              fontWeight: 800,
+              fontWeight: 600,
               color: DARK,
               margin: 0,
               lineHeight: 1.2,
+              letterSpacing: '-0.03em',
             }}
           >
             Забота об окружающей среде
@@ -486,13 +504,13 @@ const EcoSection: React.FC = () => (
                   width: 8,
                   height: 8,
                   borderRadius: '50%',
-                  background: GREEN,
+                  background: BLUE,
                   marginTop: 6,
                   flexShrink: 0,
                 }}
               />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: DARK }}>
+                <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 600, color: DARK }}>
                   {item.title}
                 </span>
                 <span style={{ fontFamily: FONT, fontSize: 13, color: GRAY_TEXT }}>

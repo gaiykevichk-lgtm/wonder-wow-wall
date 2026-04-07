@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
 const { Title, Text } = Typography;
-const GREEN = '#4CAF50';
+const BLUE = '#0071e3';
 
 export default function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
@@ -25,20 +25,20 @@ export default function ForgotPasswordPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #F8F9FA 0%, #E8F5E9 100%)',
+        background: '#FBFBFD',
         padding: '96px 16px 48px',
       }}
     >
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+        transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1.0] }}
         style={{ width: '100%', maxWidth: 420 }}
       >
         <Card
           style={{
-            borderRadius: 16,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+            borderRadius: 20,
+            boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
             border: 'none',
           }}
         >
@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
               subTitle="Проверьте почту — мы отправили ссылку для восстановления пароля"
               extra={
                 <Link to="/login">
-                  <Button type="primary" style={{ background: GREEN, borderColor: GREEN, borderRadius: 8 }}>
+                  <Button type="primary" style={{ background: BLUE, borderColor: BLUE, borderRadius: 980 }}>
                     Вернуться ко входу
                   </Button>
                 </Link>
@@ -58,8 +58,8 @@ export default function ForgotPasswordPage() {
           ) : (
             <>
               <div style={{ textAlign: 'center', marginBottom: 32 }}>
-                <Title level={3} style={{ margin: 0 }}>Восстановление пароля</Title>
-                <Text type="secondary">Введите email, привязанный к аккаунту</Text>
+                <Title level={3} style={{ margin: 0, fontWeight: 600, color: '#1d1d1f' }}>Восстановление пароля</Title>
+                <Text style={{ color: '#86868b' }}>Введите email, привязанный к аккаунту</Text>
               </div>
 
               <Form layout="vertical" onFinish={onFinish} size="large" requiredMark={false}>
@@ -79,7 +79,7 @@ export default function ForgotPasswordPage() {
                     htmlType="submit"
                     block
                     loading={loading}
-                    style={{ background: GREEN, borderColor: GREEN, borderRadius: 8, height: 44 }}
+                    style={{ background: BLUE, borderColor: BLUE, borderRadius: 980, height: 44 }}
                   >
                     Отправить ссылку
                   </Button>
@@ -87,7 +87,7 @@ export default function ForgotPasswordPage() {
               </Form>
 
               <div style={{ textAlign: 'center' }}>
-                <Link to="/login" style={{ color: '#666', fontSize: 14 }}>
+                <Link to="/login" style={{ color: '#86868b', fontSize: 14 }}>
                   <ArrowLeftOutlined style={{ marginRight: 6 }} />
                   Вернуться ко входу
                 </Link>

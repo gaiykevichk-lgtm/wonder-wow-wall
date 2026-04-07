@@ -13,12 +13,14 @@ import type { PanelProduct } from '../model/types';
 type SortKey = 'popular' | 'price-asc' | 'price-desc' | 'rating';
 type ViewMode = 'grid' | 'list';
 
+const appleEase = [0.25, 0.1, 0.25, 1.0];
+
 const fadeUpVariants = {
   hidden: { opacity: 0, y: 24 },
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.4, delay: i * 0.05, ease: 'easeOut' },
+    transition: { duration: 0.8, delay: i * 0.05, ease: appleEase },
   }),
 };
 
@@ -127,30 +129,30 @@ export default function CatalogPage() {
       {/* Page Header */}
       <div
         style={{
-          background: '#F5F5F5',
-          padding: '48px 40px',
-          borderBottom: '1px solid #E8E8E8',
+          background: '#F5F5F7',
+          padding: '120px 40px',
         }}
       >
-        <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+        <div style={{ maxWidth: 1080, margin: '0 auto', textAlign: 'center' }}>
           <h1
             style={{
-              fontSize: 36,
-              fontWeight: 700,
-              color: '#1A1A1A',
+              fontSize: 48,
+              fontWeight: 600,
+              color: '#1d1d1f',
               margin: 0,
-              lineHeight: 1.2,
+              lineHeight: 1.08,
+              letterSpacing: '-0.03em',
             }}
           >
             Каталог дизайнов
           </h1>
-          <p style={{ margin: '8px 0 0', fontSize: 16, color: '#6B7280' }}>
+          <p style={{ margin: '12px 0 0', fontSize: 17, color: '#86868b' }}>
             {filtered.length} из {products.length} товаров
           </p>
         </div>
       </div>
 
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '32px 40px' }}>
+      <div style={{ maxWidth: 1080, margin: '0 auto', padding: '48px 40px' }}>
         {/* Filter Bar */}
         <div
           style={{
@@ -159,19 +161,16 @@ export default function CatalogPage() {
             gap: 16,
             alignItems: 'center',
             marginBottom: 24,
-            padding: '20px 24px',
-            background: '#F9F9F9',
-            borderRadius: 12,
-            border: '1px solid #E8E8E8',
+            padding: '12px 0',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#6B7280' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#86868b' }}>
             <FilterOutlined />
             <span style={{ fontWeight: 500, fontSize: 14 }}>Фильтры</span>
           </div>
 
           <Input
-            prefix={<SearchOutlined style={{ color: '#9CA3AF' }} />}
+            prefix={<SearchOutlined style={{ color: '#86868b' }} />}
             placeholder="Поиск по названию или материалу..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -179,8 +178,9 @@ export default function CatalogPage() {
               flex: '1 1 220px',
               minWidth: 180,
               maxWidth: 320,
-              borderRadius: 8,
+              borderRadius: 980,
               height: 38,
+              border: '1px solid rgba(0,0,0,0.08)',
             }}
             allowClear
           />
@@ -188,7 +188,7 @@ export default function CatalogPage() {
           <Select
             value={sortKey}
             onChange={(val) => setSortKey(val as SortKey)}
-            style={{ width: 180, borderRadius: 8 }}
+            style={{ width: 180, borderRadius: 980 }}
             options={[
               { value: 'popular', label: 'По популярности' },
               { value: 'price-asc', label: 'Цена: по возрастанию' },
@@ -198,7 +198,7 @@ export default function CatalogPage() {
           />
 
           <div style={{ flex: '1 1 200px', minWidth: 180, maxWidth: 280 }}>
-            <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>
+            <div style={{ fontSize: 12, color: '#86868b', marginBottom: 4 }}>
               Цена: {priceRange[0].toLocaleString('ru-RU')} ₽ — {priceRange[1].toLocaleString('ru-RU')} ₽
             </div>
             <Slider
@@ -210,8 +210,8 @@ export default function CatalogPage() {
               onChange={(val) => setPriceRange(val as [number, number])}
               tooltip={{ formatter: (v) => `${v?.toLocaleString('ru-RU')} ₽` }}
               styles={{
-                track: { background: '#2D2D2D' },
-                handle: { borderColor: '#2D2D2D' },
+                track: { background: '#0071e3' },
+                handle: { borderColor: '#0071e3' },
               }}
             />
           </div>
@@ -224,10 +224,10 @@ export default function CatalogPage() {
               style={{
                 width: 38,
                 height: 38,
-                borderRadius: 8,
-                background: viewMode === 'grid' ? '#2D2D2D' : 'transparent',
-                color: viewMode === 'grid' ? '#FFFFFF' : '#6B7280',
-                border: viewMode === 'grid' ? 'none' : '1px solid #E8E8E8',
+                borderRadius: 980,
+                background: viewMode === 'grid' ? '#1d1d1f' : 'transparent',
+                color: viewMode === 'grid' ? '#FFFFFF' : '#86868b',
+                border: 'none',
               }}
             />
             <Button
@@ -237,10 +237,10 @@ export default function CatalogPage() {
               style={{
                 width: 38,
                 height: 38,
-                borderRadius: 8,
-                background: viewMode === 'list' ? '#2D2D2D' : 'transparent',
-                color: viewMode === 'list' ? '#FFFFFF' : '#6B7280',
-                border: viewMode === 'list' ? 'none' : '1px solid #E8E8E8',
+                borderRadius: 980,
+                background: viewMode === 'list' ? '#1d1d1f' : 'transparent',
+                color: viewMode === 'list' ? '#FFFFFF' : '#86868b',
+                border: 'none',
               }}
             />
           </div>
@@ -261,14 +261,14 @@ export default function CatalogPage() {
               onClick={() => handleCategoryChange(cat.key)}
               style={{
                 padding: '8px 18px',
-                borderRadius: 20,
+                borderRadius: 980,
                 border: 'none',
                 cursor: 'pointer',
                 fontSize: 14,
                 fontWeight: activeCategory === cat.key ? 600 : 400,
-                background: activeCategory === cat.key ? '#2D2D2D' : '#F3F4F6',
-                color: activeCategory === cat.key ? '#FFFFFF' : '#4B5563',
-                transition: 'all 0.2s',
+                background: activeCategory === cat.key ? '#1d1d1f' : 'rgba(0,0,0,0.04)',
+                color: activeCategory === cat.key ? '#FFFFFF' : '#1d1d1f',
+                transition: 'all 0.8s cubic-bezier(0.25, 0.1, 0.25, 1.0)',
               }}
             >
               {cat.label}
@@ -291,7 +291,7 @@ export default function CatalogPage() {
         {designsLoading ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 24 }}>
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Card key={i} style={{ borderRadius: 12, overflow: 'hidden' }}>
+              <Card key={i} style={{ borderRadius: 20, overflow: 'hidden', border: 'none' }}>
                 <Skeleton.Image style={{ width: '100%', height: 220 }} active />
                 <Skeleton active paragraph={{ rows: 2 }} style={{ marginTop: 16 }} />
               </Card>
@@ -301,12 +301,12 @@ export default function CatalogPage() {
           <div
             style={{
               textAlign: 'center',
-              padding: '80px 20px',
-              color: '#9CA3AF',
+              padding: '120px 20px',
+              color: '#86868b',
             }}
           >
             <div style={{ fontSize: 48, marginBottom: 16 }}>🔍</div>
-            <h3 style={{ fontSize: 22, fontWeight: 600, color: '#4B5563', margin: '0 0 8px' }}>
+            <h3 style={{ fontSize: 22, fontWeight: 600, color: '#1d1d1f', margin: '0 0 8px' }}>
               Ничего не найдено
             </h3>
             <p style={{ fontSize: 15, margin: 0 }}>
@@ -387,15 +387,16 @@ function GridCard({ product, index, hovered, isFavorite, onToggleFavorite, onHov
         onMouseLeave={() => onHover(null)}
         bodyStyle={{ padding: '16px' }}
         style={{
-          borderRadius: 12,
+          borderRadius: 20,
           overflow: 'hidden',
-          border: '1px solid #E8E8E8',
+          border: 'none',
           cursor: 'pointer',
-          transition: 'box-shadow 0.25s',
-          boxShadow: hovered ? '0 8px 32px rgba(0,0,0,0.12)' : '0 2px 8px rgba(0,0,0,0.05)',
+          transition: 'all 0.8s cubic-bezier(0.25, 0.1, 0.25, 1.0)',
+          boxShadow: hovered ? '0 4px 24px rgba(0,0,0,0.06)' : 'none',
+          transform: hovered ? 'translateY(-2px) scale(1.01)' : 'translateY(0) scale(1)',
         }}
         cover={
-          <div style={{ position: 'relative', height: 220, overflow: 'hidden', background: '#F5F5F5' }}>
+          <div style={{ position: 'relative', height: 220, overflow: 'hidden', background: '#F5F5F7' }}>
             <img
               src={product.image}
               alt={product.name}
@@ -403,7 +404,7 @@ function GridCard({ product, index, hovered, isFavorite, onToggleFavorite, onHov
                 width: '100%',
                 height: '100%',
                 objectFit: 'cover',
-                transition: 'transform 0.35s ease',
+                transition: 'transform 0.8s cubic-bezier(0.25, 0.1, 0.25, 1.0)',
                 transform: hovered ? 'scale(1.06)' : 'scale(1)',
               }}
             />
@@ -415,13 +416,13 @@ function GridCard({ product, index, hovered, isFavorite, onToggleFavorite, onHov
                   position: 'absolute',
                   top: 12,
                   left: 12,
-                  background: '#4CAF50',
+                  background: '#0071e3',
                   color: '#FFFFFF',
                   border: 'none',
-                  borderRadius: 6,
+                  borderRadius: 980,
                   fontWeight: 600,
                   fontSize: 11,
-                  padding: '2px 8px',
+                  padding: '2px 10px',
                 }}
               >
                 {product.badge}
@@ -431,7 +432,7 @@ function GridCard({ product, index, hovered, isFavorite, onToggleFavorite, onHov
             {/* Favorite button */}
             <Button
               type="text"
-              icon={isFavorite ? <HeartFilled style={{ color: '#ff4d4f', fontSize: 18 }} /> : <HeartOutlined style={{ fontSize: 18, color: '#999' }} />}
+              icon={isFavorite ? <HeartFilled style={{ color: '#ff4d4f', fontSize: 18 }} /> : <HeartOutlined style={{ fontSize: 18, color: '#86868b' }} />}
               onClick={(e) => { e.stopPropagation(); onToggleFavorite(product.id); }}
               style={{
                 position: 'absolute',
@@ -445,7 +446,8 @@ function GridCard({ product, index, hovered, isFavorite, onToggleFavorite, onHov
                 alignItems: 'center',
                 justifyContent: 'center',
                 padding: 0,
-                boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+                border: 'none',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
               }}
             />
 
@@ -457,21 +459,21 @@ function GridCard({ product, index, hovered, isFavorite, onToggleFavorite, onHov
                 right: 12,
                 opacity: hovered ? 1 : 0,
                 transform: hovered ? 'translateY(0)' : 'translateY(8px)',
-                transition: 'opacity 0.25s, transform 0.25s',
+                transition: 'opacity 0.8s cubic-bezier(0.25, 0.1, 0.25, 1.0), transform 0.8s cubic-bezier(0.25, 0.1, 0.25, 1.0)',
               }}
             >
               <Button
                 onClick={(e) => onAddToCart(e, product)}
                 style={{
-                  background: '#2D2D2D',
+                  background: '#0071e3',
                   color: '#FFFFFF',
                   border: 'none',
-                  borderRadius: 8,
+                  borderRadius: 980,
                   fontWeight: 600,
                   fontSize: 13,
                   height: 36,
-                  padding: '0 14px',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+                  padding: '0 18px',
+                  boxShadow: '0 4px 12px rgba(0,113,227,0.3)',
                 }}
               >
                 В корзину
@@ -484,7 +486,7 @@ function GridCard({ product, index, hovered, isFavorite, onToggleFavorite, onHov
         <div
           style={{
             fontSize: 11,
-            color: '#9CA3AF',
+            color: '#86868b',
             textTransform: 'uppercase',
             letterSpacing: '0.5px',
             marginBottom: 6,
@@ -498,7 +500,7 @@ function GridCard({ product, index, hovered, isFavorite, onToggleFavorite, onHov
           style={{
             fontSize: 16,
             fontWeight: 600,
-            color: '#1A1A1A',
+            color: '#1d1d1f',
             marginBottom: 8,
             lineHeight: 1.3,
           }}
@@ -514,16 +516,16 @@ function GridCard({ product, index, hovered, isFavorite, onToggleFavorite, onHov
             value={product.rating}
             style={{ fontSize: 12, color: '#F59E0B' }}
           />
-          <span style={{ fontSize: 12, color: '#9CA3AF' }}>({product.reviews})</span>
+          <span style={{ fontSize: 12, color: '#86868b' }}>({product.reviews})</span>
         </div>
 
         {/* Price + Color dots */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <span style={{ fontSize: 20, fontWeight: 700, color: '#1A1A1A' }}>
+            <span style={{ fontSize: 20, fontWeight: 600, color: '#1d1d1f' }}>
               {product.price.toLocaleString('ru-RU')} ₽
             </span>
-            <span style={{ fontSize: 12, color: '#9CA3AF', marginLeft: 4 }}>
+            <span style={{ fontSize: 12, color: '#86868b', marginLeft: 4 }}>
               {product.priceUnit}
             </span>
           </div>
@@ -538,13 +540,13 @@ function GridCard({ product, index, hovered, isFavorite, onToggleFavorite, onHov
                   height: 14,
                   borderRadius: '50%',
                   background: c.hex,
-                  border: '1.5px solid #E5E7EB',
+                  border: '1.5px solid rgba(0,0,0,0.04)',
                   flexShrink: 0,
                 }}
               />
             ))}
             {product.colors.length > 4 && (
-              <span style={{ fontSize: 11, color: '#9CA3AF', lineHeight: '14px' }}>
+              <span style={{ fontSize: 11, color: '#86868b', lineHeight: '14px' }}>
                 +{product.colors.length - 4}
               </span>
             )}
@@ -577,19 +579,23 @@ function ListCard({ product, index, onAddToCart, onNavigate }: ListCardProps) {
         style={{
           display: 'flex',
           gap: 20,
-          background: '#FFFFFF',
-          border: '1px solid #E8E8E8',
-          borderRadius: 12,
+          background: '#FBFBFD',
+          border: 'none',
+          borderRadius: 20,
           overflow: 'hidden',
           cursor: 'pointer',
-          transition: 'box-shadow 0.25s',
+          transition: 'all 0.8s cubic-bezier(0.25, 0.1, 0.25, 1.0)',
           padding: 0,
         }}
         onMouseEnter={(e) => {
-          (e.currentTarget as HTMLDivElement).style.boxShadow = '0 8px 24px rgba(0,0,0,0.10)';
+          const el = e.currentTarget as HTMLDivElement;
+          el.style.boxShadow = '0 4px 24px rgba(0,0,0,0.06)';
+          el.style.transform = 'translateY(-2px) scale(1.01)';
         }}
         onMouseLeave={(e) => {
-          (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
+          const el = e.currentTarget as HTMLDivElement;
+          el.style.boxShadow = 'none';
+          el.style.transform = 'translateY(0) scale(1)';
         }}
       >
         {/* Image */}
@@ -611,13 +617,13 @@ function ListCard({ product, index, onAddToCart, onNavigate }: ListCardProps) {
                 position: 'absolute',
                 top: 10,
                 left: 10,
-                background: '#4CAF50',
+                background: '#0071e3',
                 color: '#FFFFFF',
                 border: 'none',
-                borderRadius: 6,
+                borderRadius: 980,
                 fontWeight: 600,
                 fontSize: 11,
-                padding: '2px 8px',
+                padding: '2px 10px',
               }}
             >
               {product.badge}
@@ -637,15 +643,15 @@ function ListCard({ product, index, onAddToCart, onNavigate }: ListCardProps) {
             minWidth: 0,
           }}
         >
-          <div style={{ fontSize: 11, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          <div style={{ fontSize: 11, color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             {product.categoryLabel} · {product.material}
           </div>
-          <div style={{ fontSize: 17, fontWeight: 600, color: '#1A1A1A', lineHeight: 1.3 }}>
+          <div style={{ fontSize: 17, fontWeight: 600, color: '#1d1d1f', lineHeight: 1.3 }}>
             {product.name}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <Rate disabled allowHalf value={product.rating} style={{ fontSize: 12, color: '#F59E0B' }} />
-            <span style={{ fontSize: 12, color: '#9CA3AF' }}>({product.reviews})</span>
+            <span style={{ fontSize: 12, color: '#86868b' }}>({product.reviews})</span>
           </div>
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
             {product.colors.map((c) => (
@@ -657,7 +663,7 @@ function ListCard({ product, index, onAddToCart, onNavigate }: ListCardProps) {
                   height: 14,
                   borderRadius: '50%',
                   background: c.hex,
-                  border: '1.5px solid #E5E7EB',
+                  border: '1.5px solid rgba(0,0,0,0.04)',
                   flexShrink: 0,
                 }}
               />
@@ -678,22 +684,22 @@ function ListCard({ product, index, onAddToCart, onNavigate }: ListCardProps) {
           }}
         >
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 22, fontWeight: 700, color: '#1A1A1A', whiteSpace: 'nowrap' }}>
+            <div style={{ fontSize: 22, fontWeight: 600, color: '#1d1d1f', whiteSpace: 'nowrap' }}>
               {product.price.toLocaleString('ru-RU')} ₽
             </div>
-            <div style={{ fontSize: 12, color: '#9CA3AF' }}>{product.priceUnit}</div>
+            <div style={{ fontSize: 12, color: '#86868b' }}>{product.priceUnit}</div>
           </div>
           <Button
             onClick={(e) => onAddToCart(e, product)}
             style={{
-              background: '#2D2D2D',
+              background: '#0071e3',
               color: '#FFFFFF',
               border: 'none',
-              borderRadius: 8,
+              borderRadius: 980,
               fontWeight: 600,
               fontSize: 13,
               height: 38,
-              padding: '0 18px',
+              padding: '0 22px',
               whiteSpace: 'nowrap',
             }}
           >

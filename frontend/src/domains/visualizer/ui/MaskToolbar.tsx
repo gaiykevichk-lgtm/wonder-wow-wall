@@ -41,7 +41,7 @@ export function MaskToolbar({
         alignItems: 'center',
         gap: 16,
         padding: '8px 16px',
-        background: '#2D2D2D',
+        background: '#1d1d1f',
         borderRadius: 10,
         flexWrap: 'wrap',
       }}
@@ -54,7 +54,7 @@ export function MaskToolbar({
           {
             label: (
               <Tooltip title="Кисть — добавить стену">
-                <HighlightOutlined style={{ color: '#4CAF50' }} />
+                <HighlightOutlined style={{ color: '#0071e3' }} />
               </Tooltip>
             ),
             value: 'brush',
@@ -73,7 +73,7 @@ export function MaskToolbar({
 
       {/* Brush size */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ color: '#9CA3AF', fontSize: 12, whiteSpace: 'nowrap' }}>
+        <span style={{ color: '#86868b', fontSize: 12, whiteSpace: 'nowrap' }}>
           Размер:
         </span>
         <Slider
@@ -90,7 +90,7 @@ export function MaskToolbar({
 
       {/* Mask opacity */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ color: '#9CA3AF', fontSize: 12, whiteSpace: 'nowrap' }}>
+        <span style={{ color: '#86868b', fontSize: 12, whiteSpace: 'nowrap' }}>
           Прозрачность:
         </span>
         <Slider
@@ -111,7 +111,7 @@ export function MaskToolbar({
             maskVisible ? (
               <EyeOutlined style={{ color: '#FFFFFF' }} />
             ) : (
-              <EyeInvisibleOutlined style={{ color: '#6B7280' }} />
+              <EyeInvisibleOutlined style={{ color: '#86868b' }} />
             )
           }
           onClick={onToggleMask}
@@ -122,7 +122,7 @@ export function MaskToolbar({
       <Tooltip title="Отменить (Ctrl+Z)">
         <Button
           type="text"
-          icon={<UndoOutlined style={{ color: canUndo ? '#FFFFFF' : '#6B7280' }} />}
+          icon={<UndoOutlined style={{ color: canUndo ? '#FFFFFF' : '#86868b' }} />}
           disabled={!canUndo}
           onClick={onUndo}
         />

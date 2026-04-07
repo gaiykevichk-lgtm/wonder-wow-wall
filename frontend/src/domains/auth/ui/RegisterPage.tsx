@@ -6,7 +6,7 @@ import { useRegisterMutation } from '../api/authApi';
 import { ApiError } from '../../../shared/api';
 
 const { Title, Text } = Typography;
-const GREEN = '#4CAF50';
+const BLUE = '#0071e3';
 
 export default function RegisterPage() {
   const registerMutation = useRegisterMutation();
@@ -30,27 +30,27 @@ export default function RegisterPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #F8F9FA 0%, #E8F5E9 100%)',
+        background: '#FBFBFD',
         padding: '96px 16px 48px',
       }}
     >
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+        transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1.0] }}
         style={{ width: '100%', maxWidth: 420 }}
       >
         <Card
           style={{
-            borderRadius: 16,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+            borderRadius: 20,
+            boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
             border: 'none',
           }}
         >
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
             <img src="/logo.png" alt="Wonder Wow Wall" style={{ height: 48, marginBottom: 16 }} />
-            <Title level={3} style={{ margin: 0 }}>Регистрация</Title>
-            <Text type="secondary">Создайте аккаунт для сохранения проектов</Text>
+            <Title level={3} style={{ margin: 0, fontWeight: 600, color: '#1d1d1f' }}>Регистрация</Title>
+            <Text style={{ color: '#86868b' }}>Создайте аккаунт для сохранения проектов</Text>
           </div>
 
           <Form layout="vertical" onFinish={onFinish} size="large" requiredMark={false}>
@@ -110,7 +110,7 @@ export default function RegisterPage() {
                 htmlType="submit"
                 block
                 loading={registerMutation.isPending}
-                style={{ background: GREEN, borderColor: GREEN, borderRadius: 8, height: 44 }}
+                style={{ background: BLUE, borderColor: BLUE, borderRadius: 980, height: 44 }}
               >
                 Создать аккаунт
               </Button>
@@ -120,8 +120,8 @@ export default function RegisterPage() {
           <Divider style={{ margin: '16px 0', fontSize: 13, color: '#999' }}>или</Divider>
 
           <div style={{ textAlign: 'center' }}>
-            <Text type="secondary">Уже есть аккаунт? </Text>
-            <Link to="/login" style={{ color: GREEN, fontWeight: 600 }}>
+            <Text style={{ color: '#86868b' }}>Уже есть аккаунт? </Text>
+            <Link to="/login" style={{ color: BLUE, fontWeight: 600 }}>
               Войти
             </Link>
           </div>

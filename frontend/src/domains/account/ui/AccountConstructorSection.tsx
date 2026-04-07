@@ -46,7 +46,7 @@ const GAP_PX = 2;
 const CELL_SIZE_MM = 300;
 
 const WALL_COLORS = [
-  { label: 'Белая', value: '#F5F5F5' },
+  { label: 'Белая', value: '#F5F5F7' },
   { label: 'Светло-серая', value: '#E8E8E8' },
   { label: 'Бежевая', value: '#F5E6D3' },
   { label: 'Тёмная', value: '#2C2C2C' },
@@ -54,13 +54,13 @@ const WALL_COLORS = [
 ];
 
 const SIZE_OPTIONS: { key: PanelSizeKey; label: string; wCells: number; hCells: number; widthMm: number; heightMm: number }[] = [
-  { key: '30x30', label: '30×30 см', wCells: 1, hCells: 1, widthMm: 300, heightMm: 300 },
-  { key: '30x60', label: '30×60 см', wCells: 1, hCells: 2, widthMm: 300, heightMm: 600 },
-  { key: '60x60', label: '60×60 см', wCells: 2, hCells: 2, widthMm: 600, heightMm: 600 },
+  { key: '30x30', label: '30x30 см', wCells: 1, hCells: 1, widthMm: 300, heightMm: 300 },
+  { key: '30x60', label: '30x60 см', wCells: 1, hCells: 2, widthMm: 300, heightMm: 600 },
+  { key: '60x60', label: '60x60 см', wCells: 2, hCells: 2, widthMm: 600, heightMm: 600 },
 ];
 
-const GREEN = '#4CAF50';
-const DARK = '#2D2D2D';
+const BLUE = '#0071e3';
+const DARK = '#1d1d1f';
 
 function getPanelPrice(sizeKey: string): number {
   const baseKey = sizeKey === '30x30' ? '300x300' : sizeKey === '30x60' ? '300x600' : '600x600';
@@ -93,7 +93,7 @@ export default function AccountConstructorSection() {
   // Wall settings
   const [wallCols, setWallCols] = useState(13);
   const [wallRows, setWallRows] = useState(9);
-  const [wallColor, setWallColor] = useState('#F5F5F5');
+  const [wallColor, setWallColor] = useState('#F5F5F7');
 
   // Panel selection
   const [selectedDesignId, setSelectedDesignId] = useState(products[0].id);
@@ -150,7 +150,7 @@ export default function AccountConstructorSection() {
     let totalBase = 0;
     let totalOverlay = 0;
     for (const p of placedPanels) {
-      const baseKey = p.sizeMm === '30×30 см' ? '300x300' : p.sizeMm === '30×60 см' ? '300x600' : '600x600';
+      const baseKey = p.sizeMm === '30x30 см' ? '300x300' : p.sizeMm === '30x60 см' ? '300x600' : '600x600';
       totalBase += BASE_PANEL_PRICES[baseKey] || 0;
       totalOverlay += isSubscriber ? 0 : DESIGN_OVERLAY_PRICE;
     }
@@ -267,7 +267,7 @@ export default function AccountConstructorSection() {
       if (existing) { existing.count += 1; } else { groups.set(key, { panel, count: 1 }); }
     }
     groups.forEach(({ panel, count }) => {
-      const sizeKey = panel.sizeMm === '30×30 см' ? '300x300' : panel.sizeMm === '30×60 см' ? '300x600' : '600x600';
+      const sizeKey = panel.sizeMm === '30x30 см' ? '300x300' : panel.sizeMm === '30x60 см' ? '300x600' : '600x600';
       const unitPrice = (BASE_PANEL_PRICES[sizeKey] || 0) + DESIGN_OVERLAY_PRICE;
       const w = panel.widthCells * CELL_SIZE_MM;
       const h = panel.heightCells * CELL_SIZE_MM;
@@ -370,10 +370,10 @@ export default function AccountConstructorSection() {
       {/* Header with save */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h2 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 4px' }}>
+          <h2 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 4px', color: '#1d1d1f' }}>
             {currentProjectId ? projectName : 'Новый проект'}
           </h2>
-          <span style={{ color: '#6B7280', fontSize: 13 }}>
+          <span style={{ color: '#86868b', fontSize: 13 }}>
             Разместите панели на виртуальной стене и сохраните проект
           </span>
         </div>
@@ -382,14 +382,14 @@ export default function AccountConstructorSection() {
             icon={<SaveOutlined />}
             onClick={handleSave}
             type="primary"
-            style={{ background: GREEN, borderColor: GREEN, borderRadius: 8 }}
+            style={{ background: BLUE, borderColor: BLUE, borderRadius: 980 }}
           >
             {currentProjectId ? 'Сохранить' : 'Сохранить как'}
           </Button>
           <Button
             icon={<ShoppingCartOutlined />}
             onClick={handleAddToCart}
-            style={{ borderRadius: 8, borderColor: GREEN, color: GREEN }}
+            style={{ borderRadius: 980, borderColor: BLUE, color: BLUE }}
           >
             В корзину
           </Button>
@@ -401,26 +401,26 @@ export default function AccountConstructorSection() {
         {/* ─── LEFT SIDEBAR ─────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {/* Wall settings */}
-          <Card style={{ borderRadius: 12, border: '1px solid #E5E7EB' }} styles={{ body: { padding: 16 } }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, fontWeight: 600, fontSize: 13 }}>
-              <ColumnWidthOutlined style={{ color: '#6B7280' }} /> Параметры стены
+          <Card style={{ borderRadius: 20, border: '1px solid rgba(0,0,0,0.04)' }} styles={{ body: { padding: 16 } }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, fontWeight: 600, fontSize: 13, color: '#1d1d1f' }}>
+              <ColumnWidthOutlined style={{ color: '#86868b' }} /> Параметры стены
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
               <div>
-                <div style={{ fontSize: 11, color: '#6B7280', marginBottom: 3 }}>Ширина</div>
+                <div style={{ fontSize: 11, color: '#86868b', marginBottom: 3 }}>Ширина</div>
                 <Select value={wallCols} onChange={(v) => { setWallCols(v); setPlacedPanels([]); }} style={{ width: '100%' }} size="small"
                   options={[{ value: 6, label: '1.8 м' }, { value: 8, label: '2.4 м' }, { value: 10, label: '3.0 м' }, { value: 13, label: '3.9 м' }, { value: 16, label: '4.8 м' }, { value: 20, label: '6.0 м' }]}
                 />
               </div>
               <div>
-                <div style={{ fontSize: 11, color: '#6B7280', marginBottom: 3 }}>Высота</div>
+                <div style={{ fontSize: 11, color: '#86868b', marginBottom: 3 }}>Высота</div>
                 <Select value={wallRows} onChange={(v) => { setWallRows(v); setPlacedPanels([]); }} style={{ width: '100%' }} size="small"
                   options={[{ value: 5, label: '1.5 м' }, { value: 7, label: '2.1 м' }, { value: 9, label: '2.7 м' }, { value: 10, label: '3.0 м' }, { value: 12, label: '3.6 м' }]}
                 />
               </div>
             </div>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#6B7280', marginBottom: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#86868b', marginBottom: 4 }}>
                 <BgColorsOutlined /> Цвет стены
               </div>
               <div style={{ display: 'flex', gap: 5 }}>
@@ -430,7 +430,7 @@ export default function AccountConstructorSection() {
                       onClick={() => setWallColor(c.value)}
                       style={{
                         width: 26, height: 26, borderRadius: 6, background: c.value,
-                        border: wallColor === c.value ? '2px solid #2D2D2D' : '1px solid #D1D5DB',
+                        border: wallColor === c.value ? '2px solid #1d1d1f' : '1px solid #D1D5DB',
                         cursor: 'pointer', boxSizing: 'border-box',
                       }}
                     />
@@ -441,9 +441,9 @@ export default function AccountConstructorSection() {
           </Card>
 
           {/* Design selection */}
-          <Card style={{ borderRadius: 12, border: '1px solid #E5E7EB' }} styles={{ body: { padding: 16 } }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, fontWeight: 600, fontSize: 13 }}>
-              <AppstoreOutlined style={{ color: '#6B7280' }} /> Дизайн накладки
+          <Card style={{ borderRadius: 20, border: '1px solid rgba(0,0,0,0.04)' }} styles={{ body: { padding: 16 } }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, fontWeight: 600, fontSize: 13, color: '#1d1d1f' }}>
+              <AppstoreOutlined style={{ color: '#86868b' }} /> Дизайн накладки
             </div>
             <Select
               style={{ width: '100%', marginBottom: 10 }} size="small"
@@ -451,14 +451,14 @@ export default function AccountConstructorSection() {
               onChange={(v) => { setSelectedDesignId(v); setSelectedColorIdx(0); }}
               options={products.map((p) => ({ value: p.id, label: p.name }))}
             />
-            <div style={{ borderRadius: 8, overflow: 'hidden', height: 100, marginBottom: 10, background: '#eee', position: 'relative' }}>
+            <div style={{ borderRadius: 12, overflow: 'hidden', height: 100, marginBottom: 10, background: '#eee', position: 'relative' }}>
               <img src={selectedDesign.image} alt={selectedDesign.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               <div style={{ position: 'absolute', bottom: 6, right: 6, background: 'rgba(0,0,0,0.7)', color: '#fff', borderRadius: 5, padding: '2px 6px', fontSize: 10, fontWeight: 600 }}>
                 {DESIGN_OVERLAY_PRICE.toLocaleString('ru-RU')} ₽
               </div>
             </div>
             <div style={{ marginBottom: 8 }}>
-              <div style={{ fontSize: 11, color: '#6B7280', marginBottom: 3 }}>Оттенок: {selectedColor.name}</div>
+              <div style={{ fontSize: 11, color: '#86868b', marginBottom: 3 }}>Оттенок: {selectedColor.name}</div>
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                 {selectedDesign.colors.map((c, idx) => (
                   <Tooltip title={c.name} key={c.hex + idx}>
@@ -466,7 +466,7 @@ export default function AccountConstructorSection() {
                       onClick={() => setSelectedColorIdx(idx)}
                       style={{
                         width: 24, height: 24, borderRadius: '50%', background: c.hex,
-                        border: selectedColorIdx === idx ? '2px solid #2D2D2D' : '1px solid #D1D5DB',
+                        border: selectedColorIdx === idx ? '2px solid #1d1d1f' : '1px solid #D1D5DB',
                         cursor: 'pointer', boxSizing: 'border-box',
                       }}
                     />
@@ -475,19 +475,19 @@ export default function AccountConstructorSection() {
               </div>
             </div>
             <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 11, color: '#6B7280', marginBottom: 3 }}>Размер</div>
+              <div style={{ fontSize: 11, color: '#86868b', marginBottom: 3 }}>Размер</div>
               <Radio.Group value={selectedSizeKey} onChange={(e) => setSelectedSizeKey(e.target.value)} optionType="button" buttonStyle="solid" size="small"
                 options={SIZE_OPTIONS.map((s) => ({ label: s.label, value: s.key }))}
               />
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
               <Button icon={<PlusOutlined />} onClick={handleAddToWall} size="small"
-                style={{ flex: 1, background: GREEN, color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 12 }}>
+                style={{ flex: 1, background: BLUE, color: '#fff', border: 'none', borderRadius: 980, fontWeight: 600, fontSize: 12 }}>
                 Добавить
               </Button>
               <Tooltip title="Заполнить стену">
                 <Button icon={<AppstoreOutlined />} onClick={handleFillWall} size="small"
-                  style={{ borderRadius: 6, border: '1px solid #D1D5DB', fontSize: 12 }}>
+                  style={{ borderRadius: 980, border: '1px solid #D1D5DB', fontSize: 12 }}>
                   Заполнить
                 </Button>
               </Tooltip>
@@ -495,46 +495,46 @@ export default function AccountConstructorSection() {
           </Card>
 
           {/* Cost summary */}
-          <Card style={{ borderRadius: 12, border: '1px solid #E5E7EB' }} styles={{ body: { padding: 16 } }}>
-            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>Расчёт стоимости</div>
+          <Card style={{ borderRadius: 20, border: '1px solid rgba(0,0,0,0.04)' }} styles={{ body: { padding: 16 } }}>
+            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10, color: '#1d1d1f' }}>Расчёт стоимости</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                <span style={{ color: '#6B7280' }}>Панелей:</span>
-                <span style={{ fontWeight: 500 }}>{costs.panelCount} шт</span>
+                <span style={{ color: '#86868b' }}>Панелей:</span>
+                <span style={{ fontWeight: 500, color: '#1d1d1f' }}>{costs.panelCount} шт</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                <span style={{ color: '#6B7280' }}>Покрытие:</span>
-                <span style={{ fontWeight: 500 }}>{costs.totalArea.toFixed(2)} м²</span>
+                <span style={{ color: '#86868b' }}>Покрытие:</span>
+                <span style={{ fontWeight: 500, color: '#1d1d1f' }}>{costs.totalArea.toFixed(2)} м²</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#9CA3AF' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#86868b' }}>
                 <span>├ Базовые панели:</span>
                 <span>{costs.totalBase.toLocaleString('ru-RU')} ₽</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: isSubscriber ? GREEN : '#9CA3AF' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: isSubscriber ? BLUE : '#86868b' }}>
                 <span>└ Накладки:</span>
                 <span>{isSubscriber ? '0 ₽ (подписка)' : `${costs.totalOverlay.toLocaleString('ru-RU')} ₽`}</span>
               </div>
             </div>
-            <div style={{ background: DARK, borderRadius: 8, padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <div style={{ background: DARK, borderRadius: 14, padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
               <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12 }}>Итого:</span>
-              <span style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>{costs.total.toLocaleString('ru-RU')} ₽</span>
+              <span style={{ fontSize: 20, fontWeight: 600, color: '#fff' }}>{costs.total.toLocaleString('ru-RU')} ₽</span>
             </div>
             <Button icon={<UndoOutlined />} onClick={handleClear} block size="small"
-              style={{ borderRadius: 6, border: '1px solid #D1D5DB', color: '#6B7280' }}>
+              style={{ borderRadius: 980, border: '1px solid #D1D5DB', color: '#86868b' }}>
               Очистить стену
             </Button>
           </Card>
 
           {/* Subscription info */}
           {isSubscriber ? (
-            <div style={{ padding: '10px 12px', background: '#E8F5E9', borderRadius: 8, fontSize: 11, color: '#2E7D32', lineHeight: 1.6, border: '1px solid #C8E6C9' }}>
+            <div style={{ padding: '10px 12px', background: '#E8F0FE', borderRadius: 14, fontSize: 11, color: '#0d47a1', lineHeight: 1.6, border: '1px solid #D2E3FC' }}>
               <CrownOutlined style={{ marginRight: 4 }} />
               <strong>{activePlan()?.name}</strong> — накладки включены!
             </div>
           ) : (
             <div
               onClick={() => openSubModal()}
-              style={{ padding: '10px 12px', background: '#FFF8E1', borderRadius: 8, fontSize: 11, color: '#F57F17', lineHeight: 1.6, cursor: 'pointer', border: '1px solid #FFE082' }}
+              style={{ padding: '10px 12px', background: '#FFF8E1', borderRadius: 14, fontSize: 11, color: '#F57F17', lineHeight: 1.6, cursor: 'pointer', border: '1px solid #FFE082' }}
             >
               <InfoCircleOutlined style={{ marginRight: 4 }} />
               <strong>Подписка</strong> — накладки бесплатно! <span style={{ textDecoration: 'underline' }}>Подробнее</span>
@@ -543,15 +543,15 @@ export default function AccountConstructorSection() {
         </div>
 
         {/* ─── RIGHT - Wall Canvas ──────────────────────────────────────────── */}
-        <Card style={{ borderRadius: 12, border: '1px solid #E5E7EB' }} styles={{ body: { padding: 16 } }}>
+        <Card style={{ borderRadius: 20, border: '1px solid rgba(0,0,0,0.04)' }} styles={{ body: { padding: 16 } }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 6 }}>
             <div>
-              <span style={{ fontWeight: 600, fontSize: 13 }}>Визуализация</span>
-              <span style={{ fontSize: 11, color: '#9CA3AF', marginLeft: 8 }}>
-                {(wallWidthMm / 1000).toFixed(1)} × {(wallHeightMm / 1000).toFixed(1)} м
+              <span style={{ fontWeight: 600, fontSize: 13, color: '#1d1d1f' }}>Визуализация</span>
+              <span style={{ fontSize: 11, color: '#86868b', marginLeft: 8 }}>
+                {(wallWidthMm / 1000).toFixed(1)} x {(wallHeightMm / 1000).toFixed(1)} м
               </span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#9CA3AF' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#86868b' }}>
               <DragOutlined /> Перетаскивайте · Кликните для размещения
             </div>
           </div>
@@ -568,7 +568,7 @@ export default function AccountConstructorSection() {
                 width: wallWidthPx,
                 height: wallHeightPx,
                 background: wallColor,
-                borderRadius: 8,
+                borderRadius: 12,
                 boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
                 cursor: draggedId ? 'grabbing' : 'pointer',
                 userSelect: 'none',
@@ -607,7 +607,7 @@ export default function AccountConstructorSection() {
                   width: ghostVisible.wCells * CELL_PX + (ghostVisible.wCells - 1) * GAP_PX,
                   height: ghostVisible.hCells * CELL_PX + (ghostVisible.hCells - 1) * GAP_PX,
                   background: `url(${selectedDesign.image})`, backgroundSize: 'cover', backgroundPosition: 'center',
-                  opacity: 0.4, borderRadius: 4, border: `2px dashed ${GREEN}`, pointerEvents: 'none', zIndex: 5,
+                  opacity: 0.4, borderRadius: 4, border: `2px dashed ${BLUE}`, pointerEvents: 'none', zIndex: 5,
                 }} />
               )}
 
@@ -670,7 +670,7 @@ export default function AccountConstructorSection() {
           {/* Panel legend */}
           {placedPanels.length > 0 && (
             <div style={{ marginTop: 12 }}>
-              <div style={{ fontSize: 11, color: '#9CA3AF', marginBottom: 4 }}>
+              <div style={{ fontSize: 11, color: '#86868b', marginBottom: 4 }}>
                 Панели ({costs.panelCount} шт)
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
@@ -684,7 +684,7 @@ export default function AccountConstructorSection() {
                   return Array.from(groups.entries()).map(([key, g]) => (
                     <Tag key={key} style={{ fontSize: 11, borderRadius: 6 }}>
                       <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: g.color, marginRight: 4, verticalAlign: 'middle' }} />
-                      {g.name} · {g.size} × {g.count}
+                      {g.name} · {g.size} x {g.count}
                     </Tag>
                   ));
                 })()}
@@ -701,9 +701,9 @@ export default function AccountConstructorSection() {
         onCancel={() => setSaveModalOpen(false)}
         onOk={handleSaveNew}
         okText="Сохранить"
-        okButtonProps={{ style: { background: GREEN, borderColor: GREEN } }}
+        okButtonProps={{ style: { background: BLUE, borderColor: BLUE, borderRadius: 980 } }}
       >
-        <div style={{ marginBottom: 8, fontSize: 13, color: '#6B7280' }}>Название проекта:</div>
+        <div style={{ marginBottom: 8, fontSize: 13, color: '#86868b' }}>Название проекта:</div>
         <Input
           value={projectName}
           onChange={(e) => setProjectName(e.target.value)}

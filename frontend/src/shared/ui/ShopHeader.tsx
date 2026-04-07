@@ -24,7 +24,7 @@ const NAV_ITEMS = [
 ];
 
 export function ShopHeader() {
-  const [scrolled, setScrolled] = useState(false);
+  const [, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -34,7 +34,6 @@ export function ShopHeader() {
   const openSubModal = useSubscriptionStore((s) => s.openModal);
   const isAuth = useAuthStore((s) => s.isAuth);
   const user = useAuthStore((s) => s.user);
-  const isHome = location.pathname === '/';
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -42,9 +41,7 @@ export function ShopHeader() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const headerBg = scrolled || !isHome ? '#FFFFFF' : 'transparent';
-  const textColor = scrolled || !isHome ? '#2D2D2D' : '#FFFFFF';
-  const borderBottom = scrolled ? '1px solid #E5E7EB' : '1px solid transparent';
+  const textColor = '#1d1d1f';
 
   return (
     <>
@@ -55,9 +52,10 @@ export function ShopHeader() {
           left: 0,
           right: 0,
           zIndex: 1000,
-          background: headerBg,
-          backdropFilter: scrolled ? 'blur(12px)' : 'none',
-          borderBottom,
+          background: 'rgba(255,255,255,0.72)',
+          backdropFilter: 'saturate(180%) blur(20px)',
+          WebkitBackdropFilter: 'saturate(180%) blur(20px)',
+          borderBottom: '1px solid rgba(0,0,0,0.04)',
           transition: 'all 0.3s ease',
           padding: '0 24px',
         }}
@@ -69,7 +67,7 @@ export function ShopHeader() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            height: 72,
+            height: 48,
           }}
         >
           {/* Logo */}
@@ -88,8 +86,7 @@ export function ShopHeader() {
               src="/logo.png"
               alt="Wonder Wow Wall"
               style={{
-                height: 52,
-                filter: scrolled || !isHome ? 'none' : 'brightness(10)',
+                height: 36,
                 transition: 'filter 0.3s',
               }}
             />
@@ -104,37 +101,26 @@ export function ShopHeader() {
             }}
             className="desktop-nav"
           >
-            {NAV_ITEMS.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                style={{
-                  textDecoration: 'none',
-                  fontSize: 14,
-                  fontWeight: location.pathname === item.path ? 600 : 400,
-                  color: location.pathname === item.path
-                    ? (scrolled || !isHome ? '#4CAF50' : '#FFFFFF')
-                    : textColor,
-                  transition: 'color 0.3s',
-                  position: 'relative',
-                }}
-              >
-                {item.label}
-                {location.pathname === item.path && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      bottom: -4,
-                      left: 0,
-                      right: 0,
-                      height: 2,
-                      background: '#4CAF50',
-                      borderRadius: 1,
-                    }}
-                  />
-                )}
-              </Link>
-            ))}
+            {NAV_ITEMS.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  style={{
+                    textDecoration: 'none',
+                    fontSize: 12,
+                    fontWeight: isActive ? 600 : 400,
+                    color: '#1d1d1f',
+                    opacity: isActive ? 1 : 0.8,
+                    transition: 'opacity 0.3s',
+                    position: 'relative',
+                  }}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
           </nav>
 
           {/* Actions */}
@@ -142,7 +128,7 @@ export function ShopHeader() {
             {activePlan() ? (
               <Tag
                 icon={<CrownOutlined />}
-                color="#4CAF50"
+                color="#0071e3"
                 style={{
                   borderRadius: 20,
                   fontWeight: 600,
@@ -162,8 +148,8 @@ export function ShopHeader() {
                 className="sub-btn-desktop"
                 style={{
                   borderRadius: 20,
-                  border: `1px solid ${scrolled || !isHome ? '#4CAF50' : 'rgba(255,255,255,0.6)'}`,
-                  color: scrolled || !isHome ? '#4CAF50' : '#fff',
+                  border: '1px solid #0071e3',
+                  color: '#0071e3',
                   background: 'transparent',
                   fontWeight: 600,
                   fontSize: 12,
@@ -175,13 +161,13 @@ export function ShopHeader() {
             )}
             <Button
               type="text"
-              icon={<HeartOutlined style={{ fontSize: 20 }} />}
+              icon={<HeartOutlined style={{ fontSize: 18 }} />}
               style={{ color: textColor, transition: 'color 0.3s' }}
             />
-            <Badge count={totalItems()} size="small" color="#4CAF50">
+            <Badge count={totalItems()} size="small" color="#0071e3">
               <Button
                 type="text"
-                icon={<ShoppingOutlined style={{ fontSize: 20 }} />}
+                icon={<ShoppingOutlined style={{ fontSize: 18 }} />}
                 onClick={() => setCartOpen(true)}
                 style={{ color: textColor, transition: 'color 0.3s' }}
               />
@@ -199,20 +185,20 @@ export function ShopHeader() {
                     gap: 4,
                   }}
                 >
-                  <UserOutlined style={{ fontSize: 20 }} />
+                  <UserOutlined style={{ fontSize: 18 }} />
                 </Button>
               </Tooltip>
             ) : (
               <Button
                 type="text"
-                icon={<UserOutlined style={{ fontSize: 20 }} />}
+                icon={<UserOutlined style={{ fontSize: 18 }} />}
                 onClick={() => navigate('/login')}
                 style={{ color: textColor, transition: 'color 0.3s' }}
               />
             )}
             <Button
               type="text"
-              icon={<MenuOutlined style={{ fontSize: 20 }} />}
+              icon={<MenuOutlined style={{ fontSize: 18 }} />}
               onClick={() => setMobileOpen(true)}
               style={{ color: textColor, display: 'none' }}
               className="mobile-menu-btn"
@@ -242,10 +228,10 @@ export function ShopHeader() {
                 textDecoration: 'none',
                 fontSize: 16,
                 fontWeight: location.pathname === item.path ? 600 : 400,
-                color: location.pathname === item.path ? '#4CAF50' : '#2D2D2D',
+                color: location.pathname === item.path ? '#0071e3' : '#1d1d1f',
                 padding: '12px 16px',
                 borderRadius: 8,
-                background: location.pathname === item.path ? 'rgba(76,175,80,0.08)' : 'transparent',
+                background: location.pathname === item.path ? 'rgba(0,113,227,0.08)' : 'transparent',
               }}
             >
               {item.label}

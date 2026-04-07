@@ -6,12 +6,14 @@ import { products, categories, clientReviews } from '../../catalog/model/data';
 
 // ─── Animation variants ───────────────────────────────────────────────────────
 
+const APPLE_EASE: [number, number, number, number] = [0.25, 0.1, 0.25, 1.0];
+
 const fadeUpVariants = {
   hidden: { opacity: 0, y: 32 },
   visible: (i: number = 0) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.55, ease: 'easeOut', delay: i * 0.12 },
+    transition: { duration: 0.8, ease: APPLE_EASE, delay: i * 0.12 },
   }),
 };
 
@@ -22,11 +24,15 @@ const containerVariants = {
 
 // ─── Shared style constants ───────────────────────────────────────────────────
 
-const SECTION_PADDING: React.CSSProperties = { padding: '80px 24px' };
-const MAX_WIDTH: React.CSSProperties = { maxWidth: 1280, margin: '0 auto' };
-const GREEN = '#4CAF50';
-const DARK = '#2D2D2D';
-const GRAY_TEXT = '#6B7280';
+const SECTION_PADDING: React.CSSProperties = { padding: '120px 24px' };
+const MAX_WIDTH: React.CSSProperties = { maxWidth: 1080, margin: '0 auto' };
+const ACCENT = '#0071e3';
+const DARK = '#1d1d1f';
+const GRAY_TEXT = '#86868b';
+const LIGHT_BG = '#F5F5F7';
+const SUBTLE_BORDER = 'rgba(0,0,0,0.04)';
+const CARD_RADIUS = 20;
+const PILL_RADIUS = 980;
 
 // ─── Hero Section ─────────────────────────────────────────────────────────────
 
@@ -71,10 +77,10 @@ const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }
         <motion.div variants={fadeUpVariants} custom={0}>
           <Tag
             style={{
-              background: GREEN,
+              background: ACCENT,
               color: '#fff',
               border: 'none',
-              borderRadius: 20,
+              borderRadius: PILL_RADIUS,
               padding: '4px 14px',
               fontSize: 13,
               fontFamily: 'Inter, sans-serif',
@@ -90,12 +96,12 @@ const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }
           custom={1}
           style={{
             fontFamily: 'Inter, sans-serif',
-            fontSize: 'clamp(48px, 5vw, 64px)',
-            fontWeight: 800,
+            fontSize: 'clamp(56px, 6vw, 80px)',
+            fontWeight: 600,
             color: DARK,
             margin: 0,
             lineHeight: 1.1,
-            letterSpacing: '-1px',
+            letterSpacing: '-0.03em',
           }}
         >
           Стены, которые вдохновляют
@@ -126,10 +132,10 @@ const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }
             onClick={onCatalog}
             size="large"
             style={{
-              background: DARK,
+              background: ACCENT,
               color: '#fff',
               border: 'none',
-              borderRadius: 10,
+              borderRadius: PILL_RADIUS,
               height: 52,
               padding: '0 28px',
               fontFamily: 'Inter, sans-serif',
@@ -144,9 +150,9 @@ const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }
             size="large"
             style={{
               background: 'transparent',
-              color: DARK,
-              border: '1px solid #E5E7EB',
-              borderRadius: 10,
+              color: ACCENT,
+              border: 'none',
+              borderRadius: PILL_RADIUS,
               height: 52,
               padding: '0 28px',
               fontFamily: 'Inter, sans-serif',
@@ -165,7 +171,7 @@ const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }
           style={{
             display: 'flex',
             gap: 36,
-            borderTop: '1px solid #F3F4F6',
+            borderTop: `1px solid ${SUBTLE_BORDER}`,
             paddingTop: 24,
             flexWrap: 'wrap',
           }}
@@ -179,8 +185,8 @@ const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }
               <span
                 style={{
                   fontFamily: 'Inter, sans-serif',
-                  fontSize: 28,
-                  fontWeight: 800,
+                  fontSize: 44,
+                  fontWeight: 600,
                   color: DARK,
                 }}
               >
@@ -217,8 +223,7 @@ const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }
             variants={fadeUpVariants}
             custom={i * 0.5}
             style={{
-              border: '1px solid #E5E7EB',
-              borderRadius: 12,
+              borderRadius: CARD_RADIUS,
               overflow: 'hidden',
               aspectRatio: '1 / 1',
             }}
@@ -276,10 +281,11 @@ const HowItWorksSection: React.FC = () => (
           style={{
             fontFamily: 'Inter, sans-serif',
             fontSize: 'clamp(32px, 3vw, 36px)',
-            fontWeight: 800,
+            fontWeight: 600,
             color: DARK,
             margin: 0,
             textAlign: 'center',
+            letterSpacing: '-0.03em',
           }}
         >
           Как это работает
@@ -310,13 +316,13 @@ const HowItWorksSection: React.FC = () => (
                   width: 48,
                   height: 48,
                   borderRadius: '50%',
-                  background: DARK,
+                  background: ACCENT,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   color: '#fff',
                   fontFamily: 'Inter, sans-serif',
-                  fontWeight: 800,
+                  fontWeight: 600,
                   fontSize: 18,
                   flexShrink: 0,
                 }}
@@ -327,7 +333,7 @@ const HowItWorksSection: React.FC = () => (
                 <span
                   style={{
                     fontFamily: 'Inter, sans-serif',
-                    fontWeight: 700,
+                    fontWeight: 600,
                     fontSize: 17,
                     color: DARK,
                   }}
@@ -359,7 +365,7 @@ const CategoriesSection: React.FC<{ onCategory: (key: string) => void }> = ({ on
   const filtered = categories.filter((c) => c.key !== 'all');
 
   return (
-    <section style={{ background: '#F5F5F5', ...SECTION_PADDING }}>
+    <section style={{ background: LIGHT_BG, ...SECTION_PADDING }}>
       <div style={{ ...MAX_WIDTH }}>
         <motion.div
           variants={containerVariants}
@@ -389,10 +395,11 @@ const CategoriesSection: React.FC<{ onCategory: (key: string) => void }> = ({ on
               style={{
                 fontFamily: 'Inter, sans-serif',
                 fontSize: 'clamp(32px, 3vw, 36px)',
-                fontWeight: 800,
+                fontWeight: 600,
                 color: DARK,
                 margin: 0,
                 textAlign: 'center',
+                letterSpacing: '-0.03em',
               }}
             >
               Найдите свой стиль
@@ -412,11 +419,15 @@ const CategoriesSection: React.FC<{ onCategory: (key: string) => void }> = ({ on
                 key={cat.key}
                 variants={fadeUpVariants}
                 custom={i * 0.1 + 2}
-                whileHover={{ translateY: -4, boxShadow: '0 12px 32px rgba(0,0,0,0.12)' }}
+                whileHover={{
+                  translateY: -2,
+                  boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
+                  transition: { duration: 0.5, ease: APPLE_EASE },
+                }}
                 onClick={() => onCategory(cat.key)}
                 style={{
                   position: 'relative',
-                  borderRadius: 12,
+                  borderRadius: CARD_RADIUS,
                   overflow: 'hidden',
                   cursor: 'pointer',
                   aspectRatio: '3 / 4',
@@ -431,7 +442,7 @@ const CategoriesSection: React.FC<{ onCategory: (key: string) => void }> = ({ on
                   style={{
                     position: 'absolute',
                     inset: 0,
-                    background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%)',
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.45) 0%, transparent 60%)',
                   }}
                 />
                 <span
@@ -441,7 +452,7 @@ const CategoriesSection: React.FC<{ onCategory: (key: string) => void }> = ({ on
                     left: 14,
                     right: 14,
                     fontFamily: 'Inter, sans-serif',
-                    fontWeight: 700,
+                    fontWeight: 600,
                     fontSize: 15,
                     color: '#fff',
                   }}
@@ -491,9 +502,10 @@ const PopularProductsSection: React.FC<{ onProduct: (id: string) => void; onAllP
               style={{
                 fontFamily: 'Inter, sans-serif',
                 fontSize: 'clamp(32px, 3vw, 36px)',
-                fontWeight: 800,
+                fontWeight: 600,
                 color: DARK,
                 margin: 0,
+                letterSpacing: '-0.03em',
               }}
             >
               Популярные дизайны
@@ -507,9 +519,8 @@ const PopularProductsSection: React.FC<{ onProduct: (id: string) => void; onAllP
                 fontFamily: 'Inter, sans-serif',
                 fontSize: 15,
                 fontWeight: 600,
-                color: DARK,
-                textDecoration: 'underline',
-                textUnderlineOffset: 3,
+                color: ACCENT,
+                textDecoration: 'none',
               }}
             >
               Все дизайны →
@@ -529,15 +540,19 @@ const PopularProductsSection: React.FC<{ onProduct: (id: string) => void; onAllP
                 key={product.id}
                 variants={fadeUpVariants}
                 custom={i * 0.1 + 1}
-                whileHover={{ translateY: -4, boxShadow: '0 16px 40px rgba(0,0,0,0.1)' }}
+                whileHover={{
+                  translateY: -2,
+                  boxShadow: '0 16px 40px rgba(0,0,0,0.08)',
+                  transition: { duration: 0.5, ease: APPLE_EASE },
+                }}
                 onClick={() => onProduct(product.id)}
                 style={{
-                  borderRadius: 12,
-                  border: '1px solid #E5E7EB',
+                  borderRadius: CARD_RADIUS,
                   overflow: 'hidden',
                   cursor: 'pointer',
                   background: '#fff',
-                  transition: 'box-shadow 0.2s',
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+                  transition: `box-shadow 0.5s cubic-bezier(${APPLE_EASE.join(',')})`,
                 }}
               >
                 {/* Photo area */}
@@ -553,10 +568,10 @@ const PopularProductsSection: React.FC<{ onProduct: (id: string) => void; onAllP
                         position: 'absolute',
                         top: 12,
                         left: 12,
-                        background: GREEN,
+                        background: ACCENT,
                         color: '#fff',
                         border: 'none',
-                        borderRadius: 6,
+                        borderRadius: PILL_RADIUS,
                         fontFamily: 'Inter, sans-serif',
                         fontWeight: 600,
                         fontSize: 12,
@@ -584,7 +599,7 @@ const PopularProductsSection: React.FC<{ onProduct: (id: string) => void; onAllP
                   <div
                     style={{
                       fontFamily: 'Inter, sans-serif',
-                      fontWeight: 700,
+                      fontWeight: 600,
                       fontSize: 16,
                       color: DARK,
                       marginTop: 6,
@@ -622,7 +637,7 @@ const PopularProductsSection: React.FC<{ onProduct: (id: string) => void; onAllP
                     <span
                       style={{
                         fontFamily: 'Inter, sans-serif',
-                        fontWeight: 700,
+                        fontWeight: 600,
                         fontSize: 18,
                         color: DARK,
                       }}
@@ -646,7 +661,7 @@ const PopularProductsSection: React.FC<{ onProduct: (id: string) => void; onAllP
                             height: 16,
                             borderRadius: '50%',
                             background: c.hex,
-                            border: '1.5px solid #E5E7EB',
+                            border: `1.5px solid ${SUBTLE_BORDER}`,
                           }}
                         />
                       ))}
@@ -665,7 +680,7 @@ const PopularProductsSection: React.FC<{ onProduct: (id: string) => void; onAllP
 // ─── Calculator CTA Section ───────────────────────────────────────────────────
 
 const CalculatorCTASection: React.FC<{ onConstructor: () => void }> = ({ onConstructor }) => (
-  <section style={{ background: '#F5F5F5', ...SECTION_PADDING }}>
+  <section style={{ background: LIGHT_BG, ...SECTION_PADDING }}>
     <div style={{ ...MAX_WIDTH }}>
       <motion.div
         initial="hidden"
@@ -674,9 +689,8 @@ const CalculatorCTASection: React.FC<{ onConstructor: () => void }> = ({ onConst
         variants={fadeUpVariants}
         custom={0}
         style={{
-          border: '1px solid #E5E7EB',
-          borderRadius: 16,
-          background: '#fff',
+          borderRadius: CARD_RADIUS,
+          background: LIGHT_BG,
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
           gap: 48,
@@ -691,10 +705,11 @@ const CalculatorCTASection: React.FC<{ onConstructor: () => void }> = ({ onConst
             style={{
               fontFamily: 'Inter, sans-serif',
               fontSize: 'clamp(28px, 2.5vw, 34px)',
-              fontWeight: 800,
+              fontWeight: 600,
               color: DARK,
               margin: 0,
               lineHeight: 1.2,
+              letterSpacing: '-0.03em',
             }}
           >
             Рассчитайте стоимость
@@ -715,10 +730,10 @@ const CalculatorCTASection: React.FC<{ onConstructor: () => void }> = ({ onConst
             onClick={onConstructor}
             size="large"
             style={{
-              background: DARK,
+              background: ACCENT,
               color: '#fff',
               border: 'none',
-              borderRadius: 10,
+              borderRadius: PILL_RADIUS,
               height: 52,
               padding: '0 28px',
               fontFamily: 'Inter, sans-serif',
@@ -734,8 +749,8 @@ const CalculatorCTASection: React.FC<{ onConstructor: () => void }> = ({ onConst
         {/* Right — price examples visual */}
         <div
           style={{
-            background: '#F9FAFB',
-            borderRadius: 12,
+            background: '#fff',
+            borderRadius: CARD_RADIUS,
             padding: '28px 32px',
             display: 'flex',
             flexDirection: 'column',
@@ -753,7 +768,7 @@ const CalculatorCTASection: React.FC<{ onConstructor: () => void }> = ({ onConst
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                borderBottom: '1px solid #E5E7EB',
+                borderBottom: `1px solid ${SUBTLE_BORDER}`,
                 paddingBottom: 14,
               }}
             >
@@ -769,7 +784,7 @@ const CalculatorCTASection: React.FC<{ onConstructor: () => void }> = ({ onConst
               <span
                 style={{
                   fontFamily: 'Inter, sans-serif',
-                  fontWeight: 700,
+                  fontWeight: 600,
                   fontSize: 16,
                   color: DARK,
                 }}
@@ -782,7 +797,7 @@ const CalculatorCTASection: React.FC<{ onConstructor: () => void }> = ({ onConst
             style={{
               fontFamily: 'Inter, sans-serif',
               fontSize: 12,
-              color: '#9CA3AF',
+              color: GRAY_TEXT,
             }}
           >
             * Примерная стоимость материалов. Точный расчёт — в конструкторе.
@@ -825,10 +840,11 @@ const ReviewsSection: React.FC = () => {
             style={{
               fontFamily: 'Inter, sans-serif',
               fontSize: 'clamp(32px, 3vw, 36px)',
-              fontWeight: 800,
+              fontWeight: 600,
               color: DARK,
               margin: 0,
               textAlign: 'center',
+              letterSpacing: '-0.03em',
             }}
           >
             Отзывы клиентов
@@ -846,12 +862,15 @@ const ReviewsSection: React.FC = () => {
                 key={review.id}
                 variants={fadeUpVariants}
                 custom={i * 0.1 + 1}
-                whileHover={{ translateY: -4, boxShadow: '0 12px 32px rgba(0,0,0,0.08)' }}
+                whileHover={{
+                  translateY: -2,
+                  boxShadow: '0 12px 32px rgba(0,0,0,0.06)',
+                  transition: { duration: 0.5, ease: APPLE_EASE },
+                }}
                 style={{
-                  border: '1px solid #E5E7EB',
-                  borderRadius: 12,
+                  borderRadius: CARD_RADIUS,
                   padding: '24px',
-                  background: '#fff',
+                  background: LIGHT_BG,
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 14,
@@ -864,13 +883,13 @@ const ReviewsSection: React.FC = () => {
                       width: 44,
                       height: 44,
                       borderRadius: '50%',
-                      background: DARK,
+                      background: ACCENT,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       color: '#fff',
                       fontFamily: 'Inter, sans-serif',
-                      fontWeight: 700,
+                      fontWeight: 600,
                       fontSize: 14,
                       flexShrink: 0,
                     }}
@@ -881,7 +900,7 @@ const ReviewsSection: React.FC = () => {
                     <span
                       style={{
                         fontFamily: 'Inter, sans-serif',
-                        fontWeight: 700,
+                        fontWeight: 600,
                         fontSize: 15,
                         color: DARK,
                       }}
@@ -901,7 +920,7 @@ const ReviewsSection: React.FC = () => {
                   style={{
                     fontFamily: 'Inter, sans-serif',
                     fontSize: 14,
-                    color: '#374151',
+                    color: DARK,
                     margin: 0,
                     lineHeight: 1.65,
                     flex: 1,
@@ -915,7 +934,7 @@ const ReviewsSection: React.FC = () => {
                   style={{
                     fontFamily: 'Inter, sans-serif',
                     fontSize: 12,
-                    color: '#9CA3AF',
+                    color: GRAY_TEXT,
                   }}
                 >
                   {formatDate(review.date)}
@@ -945,9 +964,9 @@ const CTABannerSection: React.FC<{ onCatalog: () => void; onContact: () => void 
         custom={0}
         className="cta-banner-inner"
         style={{
-          background: DARK,
-          borderRadius: 16,
-          padding: '64px 56px',
+          background: LIGHT_BG,
+          borderRadius: CARD_RADIUS,
+          padding: '80px 56px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -959,10 +978,11 @@ const CTABannerSection: React.FC<{ onCatalog: () => void; onContact: () => void 
           style={{
             fontFamily: 'Inter, sans-serif',
             fontSize: 'clamp(32px, 3vw, 40px)',
-            fontWeight: 800,
-            color: '#fff',
+            fontWeight: 600,
+            color: DARK,
             margin: 0,
             lineHeight: 1.2,
+            letterSpacing: '-0.03em',
           }}
         >
           Готовы преобразить ваши стены?
@@ -971,7 +991,7 @@ const CTABannerSection: React.FC<{ onCatalog: () => void; onContact: () => void 
           style={{
             fontFamily: 'Inter, sans-serif',
             fontSize: 17,
-            color: '#9CA3AF',
+            color: GRAY_TEXT,
             margin: 0,
             maxWidth: 520,
             lineHeight: 1.6,
@@ -985,10 +1005,10 @@ const CTABannerSection: React.FC<{ onCatalog: () => void; onContact: () => void 
             onClick={onCatalog}
             size="large"
             style={{
-              background: GREEN,
+              background: ACCENT,
               color: '#fff',
               border: 'none',
-              borderRadius: 10,
+              borderRadius: PILL_RADIUS,
               height: 52,
               padding: '0 32px',
               fontFamily: 'Inter, sans-serif',
@@ -1003,9 +1023,9 @@ const CTABannerSection: React.FC<{ onCatalog: () => void; onContact: () => void 
             size="large"
             style={{
               background: 'transparent',
-              color: '#fff',
-              border: '1px solid rgba(255,255,255,0.35)',
-              borderRadius: 10,
+              color: ACCENT,
+              border: `1px solid ${ACCENT}`,
+              borderRadius: PILL_RADIUS,
               height: 52,
               padding: '0 32px',
               fontFamily: 'Inter, sans-serif',

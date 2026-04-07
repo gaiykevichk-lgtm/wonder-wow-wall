@@ -15,19 +15,19 @@ import { motion } from 'framer-motion';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
-const GREEN = '#4CAF50';
-const DARK = '#2D2D2D';
-const GRAY_TEXT = '#6B7280';
+const BLUE = '#0071e3';
+const DARK = '#1d1d1f';
+const GRAY_TEXT = '#86868b';
 const FONT = 'Inter, sans-serif';
-const SECTION_PAD: React.CSSProperties = { padding: '80px 24px' };
-const MAX_WIDTH: React.CSSProperties = { maxWidth: 1280, margin: '0 auto' };
+const SECTION_PAD: React.CSSProperties = { padding: '120px 24px' };
+const MAX_WIDTH: React.CSSProperties = { maxWidth: 1080, margin: '0 auto' };
 
 const fadeUp = {
   hidden: { opacity: 0, y: 28 },
   visible: (i: number = 0) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.48, ease: 'easeOut', delay: i * 0.1 },
+    transition: { duration: 0.8, ease: [0.25, 0.1, 0.25, 1.0], delay: i * 0.1 },
   }),
 };
 
@@ -73,22 +73,22 @@ const processSteps = [
 
 const guarantees = [
   {
-    icon: <SafetyCertificateOutlined style={{ fontSize: 26, color: GREEN }} />,
+    icon: <SafetyCertificateOutlined style={{ fontSize: 26, color: BLUE }} />,
     title: '5 лет гарантии',
     desc: 'На все материалы и монтажные работы. При любом дефекте производства устраним бесплатно.',
   },
   {
-    icon: <GiftOutlined style={{ fontSize: 26, color: GREEN }} />,
+    icon: <GiftOutlined style={{ fontSize: 26, color: BLUE }} />,
     title: 'Бесплатный монтаж',
     desc: 'При заказе от 20 м² монтаж включён в стоимость. Никаких скрытых платежей.',
   },
   {
-    icon: <TeamOutlined style={{ fontSize: 26, color: GREEN }} />,
+    icon: <TeamOutlined style={{ fontSize: 26, color: BLUE }} />,
     title: 'Опытные мастера',
     desc: 'Каждый монтажник имеет не менее 3 лет опыта и прошёл нашу сертификацию.',
   },
   {
-    icon: <CarOutlined style={{ fontSize: 26, color: GREEN }} />,
+    icon: <CarOutlined style={{ fontSize: 26, color: BLUE }} />,
     title: 'Быстрая доставка',
     desc: 'Доставка по Москве за 1 день, по России за 3–7 рабочих дней.',
   },
@@ -148,7 +148,7 @@ const faqItems = [
 const HowItWorksPage: React.FC = () => (
   <div style={{ fontFamily: FONT, paddingTop: 72 }}>
     {/* Hero */}
-    <section style={{ background: '#F5F5F5', padding: '80px 24px 88px' }}>
+    <section style={{ background: '#F5F5F7', padding: '120px 24px 120px' }}>
       <div style={{ ...MAX_WIDTH, textAlign: 'center' }}>
         <motion.div
           variants={stagger}
@@ -176,11 +176,11 @@ const HowItWorksPage: React.FC = () => (
             style={{
               fontFamily: FONT,
               fontSize: 'clamp(36px, 4vw, 52px)',
-              fontWeight: 800,
+              fontWeight: 600,
               color: DARK,
               margin: 0,
               lineHeight: 1.15,
-              letterSpacing: '-0.5px',
+              letterSpacing: '-0.03em',
             }}
           >
             Как это работает
@@ -225,7 +225,7 @@ const HowItWorksPage: React.FC = () => (
                 gap: 32,
                 alignItems: 'flex-start',
                 paddingBottom: i < processSteps.length - 1 ? 40 : 0,
-                borderBottom: i < processSteps.length - 1 ? '1px solid #F3F4F6' : 'none',
+                borderBottom: i < processSteps.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none',
               }}
             >
               {/* Number bubble */}
@@ -251,7 +251,7 @@ const HowItWorksPage: React.FC = () => (
                     style={{
                       fontFamily: FONT,
                       fontSize: 13,
-                      fontWeight: 700,
+                      fontWeight: 600,
                       color: GRAY_TEXT,
                       textTransform: 'uppercase',
                       letterSpacing: '1px',
@@ -264,9 +264,10 @@ const HowItWorksPage: React.FC = () => (
                   style={{
                     fontFamily: FONT,
                     fontSize: 22,
-                    fontWeight: 800,
+                    fontWeight: 600,
                     color: DARK,
                     margin: 0,
+                    letterSpacing: '-0.03em',
                   }}
                 >
                   {step.title}
@@ -279,7 +280,7 @@ const HowItWorksPage: React.FC = () => (
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 8,
-                    background: '#F5F5F5',
+                    background: '#F5F5F7',
                     borderRadius: 8,
                     padding: '8px 14px',
                     alignSelf: 'flex-start',
@@ -297,7 +298,7 @@ const HowItWorksPage: React.FC = () => (
     </section>
 
     {/* Guarantees */}
-    <section style={{ background: '#F5F5F5', ...SECTION_PAD }}>
+    <section style={{ background: '#F5F5F7', ...SECTION_PAD }}>
       <div style={{ ...MAX_WIDTH }}>
         <motion.div
           variants={stagger}
@@ -327,10 +328,11 @@ const HowItWorksPage: React.FC = () => (
               style={{
                 fontFamily: FONT,
                 fontSize: 'clamp(28px, 3vw, 36px)',
-                fontWeight: 800,
+                fontWeight: 600,
                 color: DARK,
                 margin: 0,
                 textAlign: 'center',
+                letterSpacing: '-0.03em',
               }}
             >
               Почему нам доверяют
@@ -346,9 +348,21 @@ const HowItWorksPage: React.FC = () => (
             }}
           >
             {guarantees.map((g, i) => (
-              <motion.div key={g.title} variants={fadeUp} custom={i + 2}>
+              <motion.div
+                key={g.title}
+                variants={fadeUp}
+                custom={i + 2}
+                whileHover={{ translateY: -2 }}
+              >
                 <Card
-                  style={{ borderRadius: 14, border: '1px solid #E5E7EB', boxShadow: 'none', height: '100%' }}
+                  style={{
+                    borderRadius: 20,
+                    border: '1px solid rgba(0,0,0,0.04)',
+                    boxShadow: 'none',
+                    height: '100%',
+                    transition: 'box-shadow 0.3s ease, transform 0.3s ease',
+                  }}
+                  hoverable
                   styles={{ body: { padding: '28px 24px' } }}
                 >
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -358,9 +372,10 @@ const HowItWorksPage: React.FC = () => (
                         style={{
                           fontFamily: FONT,
                           fontSize: 17,
-                          fontWeight: 700,
+                          fontWeight: 600,
                           color: DARK,
                           margin: '0 0 8px',
+                          letterSpacing: '-0.03em',
                         }}
                       >
                         {g.title}
@@ -398,9 +413,10 @@ const HowItWorksPage: React.FC = () => (
               style={{
                 fontFamily: FONT,
                 fontSize: 'clamp(24px, 2.5vw, 32px)',
-                fontWeight: 800,
+                fontWeight: 600,
                 color: DARK,
                 margin: 0,
+                letterSpacing: '-0.03em',
               }}
             >
               Частые вопросы
@@ -410,7 +426,7 @@ const HowItWorksPage: React.FC = () => (
           <motion.div variants={fadeUp} custom={1}>
             <Collapse
               items={faqItems}
-              style={{ borderRadius: 12, border: '1px solid #E5E7EB', background: '#fff' }}
+              style={{ borderRadius: 20, border: '1px solid rgba(0,0,0,0.04)', background: '#fff' }}
               expandIconPosition="end"
               defaultActiveKey={['1']}
             />
