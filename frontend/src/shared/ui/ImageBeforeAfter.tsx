@@ -70,21 +70,19 @@ export function ImageBeforeAfter({
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
       />
       {/* Before (clipped) */}
-      <div
+      <img
+        src={beforeSrc}
+        alt="До"
+        draggable={false}
         style={{
           position: 'absolute',
           inset: 0,
-          width: `${position}%`,
-          overflow: 'hidden',
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          clipPath: `inset(0 ${100 - position}% 0 0)`,
         }}
-      >
-        <img
-          src={beforeSrc}
-          alt="До"
-          draggable={false}
-          style={{ position: 'absolute', top: 0, left: 0, width: `${100 / (position / 100)}%`, height: '100%', objectFit: 'cover' }}
-        />
-      </div>
+      />
       {/* Divider */}
       <div
         style={{

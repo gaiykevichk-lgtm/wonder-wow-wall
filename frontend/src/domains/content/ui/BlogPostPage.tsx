@@ -14,6 +14,58 @@ const MAX_WIDTH: React.CSSProperties = { maxWidth: 720, margin: '0 auto' };
 const formatDate = (dateStr: string) =>
   new Date(dateStr).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 
+const renderContent = (content: string) => {
+  const lines = content.split('\n');
+  const elements: React.ReactNode[] = [];
+  let key = 0;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    if (trimmed.startsWith('## ')) {
+      elements.push(
+        <h2
+          key={key++}
+          style={{
+            fontFamily: FONT,
+            fontSize: 22,
+            fontWeight: 600,
+            color: DARK,
+            margin: '32px 0 12px',
+            letterSpacing: '-0.03em',
+          }}
+        >
+          {trimmed.slice(3)}
+        </h2>,
+      );
+    } else {
+      const parts = trimmed.split(/(\*\*[^*]+\*\*)/g);
+      elements.push(
+        <p
+          key={key++}
+          style={{
+            fontFamily: FONT,
+            fontSize: 16,
+            color: DARK,
+            margin: '0 0 16px',
+            lineHeight: 1.75,
+          }}
+        >
+          {parts.map((part, pi) =>
+            part.startsWith('**') && part.endsWith('**') ? (
+              <strong key={pi}>{part.slice(2, -2)}</strong>
+            ) : (
+              part
+            ),
+          )}
+        </p>,
+      );
+    }
+  }
+  return elements;
+};
+
 const BlogPostPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
@@ -34,60 +86,6 @@ const BlogPostPage: React.FC = () => {
       </div>
     );
   }
-
-  // Convert markdown-like content to simple HTML sections
-  const renderContent = (content: string) => {
-    const lines = content.split('\n');
-    const elements: React.ReactNode[] = [];
-    let key = 0;
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
-
-      if (trimmed.startsWith('## ')) {
-        elements.push(
-          <h2
-            key={key++}
-            style={{
-              fontFamily: FONT,
-              fontSize: 22,
-              fontWeight: 600,
-              color: DARK,
-              margin: '32px 0 12px',
-              letterSpacing: '-0.03em',
-            }}
-          >
-            {trimmed.slice(3)}
-          </h2>,
-        );
-      } else {
-        // Handle **bold** within text
-        const parts = trimmed.split(/(\*\*[^*]+\*\*)/g);
-        elements.push(
-          <p
-            key={key++}
-            style={{
-              fontFamily: FONT,
-              fontSize: 16,
-              color: DARK,
-              margin: '0 0 16px',
-              lineHeight: 1.75,
-            }}
-          >
-            {parts.map((part, pi) =>
-              part.startsWith('**') && part.endsWith('**') ? (
-                <strong key={pi}>{part.slice(2, -2)}</strong>
-              ) : (
-                part
-              ),
-            )}
-          </p>,
-        );
-      }
-    }
-    return elements;
-  };
 
   return (
     <div style={{ fontFamily: FONT, paddingTop: 72, minHeight: '100vh', background: '#fff' }}>

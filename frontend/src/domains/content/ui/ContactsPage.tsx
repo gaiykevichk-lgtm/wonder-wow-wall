@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { Form, Input, Button, Card, message } from 'antd';
 import {
   PhoneOutlined,
@@ -64,6 +64,9 @@ const contactItems = [
 const ContactsPage: React.FC = () => {
   const [form] = Form.useForm();
   const submitContact = useSubmitContact();
+  const [mapFailed, setMapFailed] = useState(false);
+  const handleMapLoad = useCallback(() => setMapFailed(false), []);
+  const handleMapError = useCallback(() => setMapFailed(true), []);
 
   const handleSubmit = async () => {
     try {
@@ -363,36 +366,36 @@ const ContactsPage: React.FC = () => {
                 background: '#F5F5F5',
               }}
             >
-              <iframe
-                title="Офис Wonder Wow Wall"
-                src="https://yandex.ru/map-widget/v1/?ll=37.618423%2C55.751244&z=15&pt=37.618423%2C55.751244%2Cpm2gnm"
-                width="100%"
-                height="100%"
-                style={{ border: 'none', display: 'block' }}
-                loading="lazy"
-                onError={(e) => {
-                  const target = e.currentTarget;
-                  target.style.display = 'none';
-                  const fallback = target.nextElementSibling as HTMLElement | null;
-                  if (fallback) fallback.style.display = 'flex';
-                }}
-              />
-              <div
-                style={{
-                  display: 'none',
-                  height: '100%',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexDirection: 'column',
-                  gap: 12,
-                  color: GRAY_TEXT,
-                  fontFamily: FONT,
-                }}
-              >
-                <EnvironmentOutlined style={{ fontSize: 40 }} />
-                <span style={{ fontSize: 15 }}>Москва, ул. Дизайнерская, 14</span>
-                <span style={{ fontSize: 13 }}>Карта временно недоступна</span>
-              </div>
+              {!mapFailed && (
+                <iframe
+                  title="Офис Wonder Wow Wall"
+                  src="https://yandex.ru/map-widget/v1/?ll=37.618423%2C55.751244&z=15&pt=37.618423%2C55.751244%2Cpm2gnm"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 'none', display: 'block' }}
+                  loading="lazy"
+                  onLoad={handleMapLoad}
+                  onError={handleMapError}
+                />
+              )}
+              {mapFailed && (
+                <div
+                  style={{
+                    display: 'flex',
+                    height: '100%',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexDirection: 'column',
+                    gap: 12,
+                    color: GRAY_TEXT,
+                    fontFamily: FONT,
+                  }}
+                >
+                  <EnvironmentOutlined style={{ fontSize: 40 }} />
+                  <span style={{ fontSize: 15 }}>Москва, ул. Дизайнерская, 14</span>
+                  <span style={{ fontSize: 13 }}>Карта временно недоступна</span>
+                </div>
+              )}
             </div>
           </motion.div>
         </div>

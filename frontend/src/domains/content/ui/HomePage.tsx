@@ -1,6 +1,14 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Button, Card, Rate, Tag } from 'antd';
+import {
+  AppstoreOutlined,
+  ThunderboltOutlined,
+  AudioMutedOutlined,
+  CrownOutlined,
+  SafetyCertificateOutlined,
+  RocketOutlined,
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { products, categories, clientReviews } from '../../catalog/model/data';
 
@@ -361,13 +369,13 @@ const HowItWorksSection: React.FC = () => (
 
 // ─── Advantages Section ──────────────────────────────────────────────────────
 
-const advantages = [
-  { icon: '🎨', title: '100 000+ вариантов', desc: 'Огромный выбор дизайнов на любой вкус — от классики до авангарда.' },
-  { icon: '⚡', title: 'Монтаж за 2 часа', desc: 'Профессиональная установка в удобное для вас время без шума и пыли.' },
-  { icon: '🔇', title: 'Без шума и пыли', desc: 'Наша технология монтажа не требует грязных работ — чисто и аккуратно.' },
-  { icon: '💎', title: 'Гибкая подписка', desc: 'Меняйте дизайн стен так часто, как хотите — с подпиской это выгоднее.' },
-  { icon: '🛡️', title: 'Гарантия 5 лет', desc: 'На все материалы и работы. При любом дефекте — бесплатная замена.' },
-  { icon: '🚀', title: 'Доставка по РФ', desc: 'По Москве за 1 день, по России — от 3 рабочих дней.' },
+const advantages: { icon: React.ReactNode; title: string; desc: string }[] = [
+  { icon: <AppstoreOutlined />, title: '100 000+ вариантов', desc: 'Огромный выбор дизайнов на любой вкус — от классики до авангарда.' },
+  { icon: <ThunderboltOutlined />, title: 'Монтаж за 2 часа', desc: 'Профессиональная установка в удобное для вас время без шума и пыли.' },
+  { icon: <AudioMutedOutlined />, title: 'Без шума и пыли', desc: 'Наша технология монтажа не требует грязных работ — чисто и аккуратно.' },
+  { icon: <CrownOutlined />, title: 'Гибкая подписка', desc: 'Меняйте дизайн стен так часто, как хотите — с подпиской это выгоднее.' },
+  { icon: <SafetyCertificateOutlined />, title: 'Гарантия 5 лет', desc: 'На все материалы и работы. При любом дефекте — бесплатная замена.' },
+  { icon: <RocketOutlined />, title: 'Доставка по РФ', desc: 'По Москве за 1 день, по России — от 3 рабочих дней.' },
 ];
 
 const AdvantagesSection: React.FC = () => (
@@ -449,7 +457,8 @@ const AdvantagesSection: React.FC = () => (
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: 24,
+                  fontSize: 22,
+                  color: ACCENT,
                   flexShrink: 0,
                 }}
               >
