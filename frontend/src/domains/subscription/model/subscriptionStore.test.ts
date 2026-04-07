@@ -119,17 +119,6 @@ describe('subscriptionStore', () => {
     });
   });
 
-  describe('overlay discount', () => {
-    it('returns 0 without subscription', () => {
-      expect(useSubscriptionStore.getState().getOverlayDiscount()).toBe(0);
-    });
-
-    it('returns 1 (100%) with any subscription', () => {
-      useSubscriptionStore.getState().subscribe('starter');
-      expect(useSubscriptionStore.getState().getOverlayDiscount()).toBe(1);
-    });
-  });
-
   describe('modal state', () => {
     it('starts with modal closed', () => {
       const s = useSubscriptionStore.getState();

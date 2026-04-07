@@ -224,8 +224,8 @@ HTTP Response
 - Статусы: `placed → confirmed → in_progress → delivered → installed`
 
 **Subscription**
-- `Subscription` — id, user_id, plan_id, status, overlays_used_this_month, started_at, expires_at
-- `SubscriptionPlan` — Starter (4 900 ₽, 10/мес), Popular (9 900 ₽, 25/мес), Business (19 900 ₽, безлимит)
+- `Subscription` — id, user_id, plan_id, status, area_used_this_month_m2, started_at, expires_at
+- `SubscriptionPlan` — Starter (7 000 ₽, 15 м²/мес), Popular (12 000 ₽, 30 м²/мес), Business (18 000 ₽, безлимит)
 
 **User**
 - `User` — id, email, password_hash, name, phone, addresses[], created_at

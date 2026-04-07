@@ -78,7 +78,6 @@ interface SubscriptionState {
   getActivePlan: () => SubscriptionPlan | null;
   getRemainingAreaM2: () => number;
   hasSubscription: () => boolean;
-  getOverlayDiscount: () => number;
 }
 
 export const useSubscriptionStore = create<SubscriptionState>()(
@@ -146,13 +145,19 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       },
 
       hasSubscription: () => get().activePlanId !== null,
-
-      getOverlayDiscount: () => {
-        const plan = get().getActivePlan();
-        if (!plan) return 0;
-        return 1; // subscribers get overlays included in plan price
-      },
     }),
-    { name: 'wow-wall-subscription' }
+    {
+      name: 'wow-wall-subscription',
+      version: 2,
+      migrate: (persisted, version) => {
+        if (version < 2) {
+          const s = persisted as Record<string, unknown>;
+          delete s.overlaysUsed;
+          delete s.overlaysPerMonth;
+          if (!('areaUsedThisMonthM2' in s)) s.areaUsedThisMonthM2 = 0;
+        }
+        return persisted as SubscriptionState;
+      },
+    }
   )
 );
