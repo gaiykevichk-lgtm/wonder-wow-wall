@@ -472,10 +472,10 @@ export default function ConstructorPage() {
       {/* Page Header */}
       <div style={{ background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.04)', padding: '28px 24px' }}>
         <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-          <h1 style={{ fontSize: 28, fontWeight: 600, color: DARK, margin: '0 0 6px', letterSpacing: '-0.02em' }}>
+          <h1 className="page-header-title" style={{ fontSize: 28, fontWeight: 600, color: DARK, margin: '0 0 6px', letterSpacing: '-0.02em' }}>
             Конструктор стен
           </h1>
-          <p style={{ color: GRAY, margin: 0, fontSize: 15, lineHeight: 1.5 }}>
+          <p className="page-header-desc" style={{ color: GRAY, margin: 0, fontSize: 15, lineHeight: 1.5 }}>
             Разместите панели на виртуальной стене. Кликайте на ячейки или используйте кнопку «Добавить».
             Все дизайны накладок — {DESIGN_OVERLAY_PRICE.toLocaleString('ru-RU')} ₽/шт.
           </p>
@@ -491,8 +491,8 @@ export default function ConstructorPage() {
         }}
       >
         <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="preset-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <span style={{ fontWeight: 600, fontSize: 15, color: DARK }}>Пресеты интерьеров</span>
               <span style={{ fontSize: 12, color: GRAY }}>
                 Выберите комнату для реалистичного превью
@@ -943,7 +943,7 @@ export default function ConstructorPage() {
             }}
             styles={{ body: { padding: 18 } }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+            <div className="wall-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
               <div>
                 <span style={{ fontWeight: 600, fontSize: 14, color: DARK }}>Визуализация стены</span>
                 <span style={{ fontSize: 12, color: GRAY, marginLeft: 10 }}>
@@ -1450,14 +1450,17 @@ export default function ConstructorPage() {
               className="cost-summary-grid"
             >
               {/* Left: stats grid */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, auto)',
-                columnGap: 32,
-                rowGap: 4,
-                fontSize: 13,
-                justifyContent: 'start',
-              }}>
+              <div
+                className="cost-stats-grid"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, auto)',
+                  columnGap: 32,
+                  rowGap: 4,
+                  fontSize: 13,
+                  justifyContent: 'start',
+                }}
+              >
                 <span style={{ color: GRAY }}>Панелей: <strong style={{ color: DARK }}>{costs.panelCount} шт</strong></span>
                 <span style={{ color: GRAY }}>Покрытие: <strong style={{ color: DARK }}>{costs.totalArea.toFixed(2)} м²</strong></span>
                 <span style={{ color: GRAY }}>Стена: <strong style={{ color: DARK }}>{costs.wallArea.toFixed(2)} м²</strong></span>
@@ -1474,7 +1477,7 @@ export default function ConstructorPage() {
               </div>
 
               {/* Right: total + cart */}
-              <div style={{ display: 'flex', alignItems: 'stretch', gap: 10, flexShrink: 0 }}>
+              <div className="cost-actions" style={{ display: 'flex', alignItems: 'stretch', gap: 10, flexShrink: 0 }}>
                 <div
                   style={{
                     background: DARK,
@@ -1550,7 +1553,7 @@ export default function ConstructorPage() {
           <div style={{ position: 'absolute', bottom: -20, left: '40%', width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, position: 'relative', zIndex: 1 }}>
-            <div style={{
+            <div className="sub-banner-icon" style={{
               width: 48,
               height: 48,
               borderRadius: 14,
@@ -1563,10 +1566,10 @@ export default function ConstructorPage() {
               <CrownOutlined style={{ fontSize: 24, color: '#FFD54F' }} />
             </div>
             <div>
-              <div style={{ color: '#fff', fontWeight: 700, fontSize: 16, marginBottom: 2 }}>
+              <div className="sub-banner-text-title" style={{ color: '#fff', fontWeight: 700, fontSize: 16, marginBottom: 2 }}>
                 Оформите подписку — накладки бесплатно!
               </div>
-              <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, lineHeight: 1.4 }}>
+              <div className="sub-banner-text-desc" style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, lineHeight: 1.4 }}>
                 Платите только за базовые панели. Планы от <strong style={{ color: '#FFD54F' }}>{(7000).toLocaleString('ru-RU')} ₽/мес</strong> · экономия до 60% на каждом заказе
               </div>
             </div>
@@ -1627,14 +1630,76 @@ export default function ConstructorPage() {
         @media (max-width: 900px) {
           .constructor-layout {
             grid-template-columns: 1fr !important;
+            padding: 16px !important;
+            gap: 16px !important;
           }
         }
         @media (max-width: 768px) {
+          /* Cost summary: stack vertically */
           .cost-summary-grid {
             grid-template-columns: 1fr !important;
+            gap: 12px !important;
           }
+          /* Stats: 2 columns instead of 3 */
+          .cost-stats-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            column-gap: 16px !important;
+          }
+          /* Total + cart: full width */
+          .cost-actions {
+            width: 100%;
+            justify-content: stretch !important;
+          }
+          .cost-actions > * {
+            flex: 1 !important;
+          }
+          /* Sub banner */
           .sub-banner {
-            padding: 18px 20px !important;
+            padding: 16px 18px !important;
+            margin-left: 16px !important;
+            margin-right: 16px !important;
+            border-radius: 12px !important;
+          }
+          .sub-banner-text-title {
+            font-size: 14px !important;
+          }
+          .sub-banner-text-desc {
+            font-size: 12px !important;
+          }
+          .sub-banner-icon {
+            width: 40px !important;
+            height: 40px !important;
+          }
+          /* Preset header: stack */
+          .preset-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 8px !important;
+          }
+          /* Wall header: stack */
+          .wall-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+          }
+          /* Page header */
+          .page-header-title {
+            font-size: 22px !important;
+          }
+          .page-header-desc {
+            font-size: 13px !important;
+          }
+        }
+        @media (max-width: 480px) {
+          /* Very small: stats single column */
+          .cost-stats-grid {
+            grid-template-columns: 1fr !important;
+          }
+          /* Total + cart stack */
+          .cost-actions {
+            flex-direction: column !important;
+          }
+          .cost-actions > * {
+            justify-content: center !important;
           }
         }
       `}</style>
