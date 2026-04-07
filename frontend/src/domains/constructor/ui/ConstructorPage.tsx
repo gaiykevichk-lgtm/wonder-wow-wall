@@ -467,7 +467,7 @@ export default function ConstructorPage() {
   // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ paddingTop: 72, background: LIGHT_BG, minHeight: '100vh', fontFamily: FONT }}>
+    <div style={{ paddingTop: 72, background: LIGHT_BG, minHeight: '100vh', fontFamily: FONT, overflowX: 'hidden' }}>
       <PageMeta title="Конструктор" />
       {/* Page Header */}
       <div style={{ background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.04)', padding: '28px 24px' }}>
@@ -1599,6 +1599,7 @@ export default function ConstructorPage() {
 
       {isSubscriber && (
         <div
+          className="sub-banner"
           style={{
             marginTop: 20,
             borderRadius: 16,
@@ -1635,71 +1636,56 @@ export default function ConstructorPage() {
           }
         }
         @media (max-width: 768px) {
-          /* Cost summary: stack vertically */
           .cost-summary-grid {
             grid-template-columns: 1fr !important;
             gap: 12px !important;
           }
-          /* Stats: 2 columns instead of 3 */
           .cost-stats-grid {
             grid-template-columns: repeat(2, 1fr) !important;
             column-gap: 16px !important;
           }
-          /* Total + cart: full width */
           .cost-actions {
-            width: 100%;
-            justify-content: stretch !important;
+            width: 100% !important;
           }
           .cost-actions > * {
             flex: 1 !important;
+            min-width: 0 !important;
           }
-          /* Sub banner */
           .sub-banner {
             padding: 16px 18px !important;
             margin-left: 16px !important;
             margin-right: 16px !important;
+            max-width: calc(100% - 32px) !important;
             border-radius: 12px !important;
           }
-          .sub-banner-text-title {
-            font-size: 14px !important;
-          }
-          .sub-banner-text-desc {
-            font-size: 12px !important;
-          }
-          .sub-banner-icon {
-            width: 40px !important;
-            height: 40px !important;
-          }
-          /* Preset header: stack */
+          .sub-banner-text-title { font-size: 14px !important; }
+          .sub-banner-text-desc { font-size: 12px !important; }
+          .sub-banner-icon { width: 40px !important; height: 40px !important; }
           .preset-header {
             flex-direction: column !important;
             align-items: flex-start !important;
             gap: 8px !important;
           }
-          /* Wall header: stack */
           .wall-header {
             flex-direction: column !important;
             align-items: flex-start !important;
           }
-          /* Page header */
-          .page-header-title {
-            font-size: 22px !important;
-          }
-          .page-header-desc {
-            font-size: 13px !important;
-          }
+          .page-header-title { font-size: 22px !important; }
+          .page-header-desc { font-size: 13px !important; }
         }
         @media (max-width: 480px) {
-          /* Very small: stats single column */
           .cost-stats-grid {
             grid-template-columns: 1fr !important;
           }
-          /* Total + cart stack */
           .cost-actions {
             flex-direction: column !important;
           }
           .cost-actions > * {
             justify-content: center !important;
+          }
+          .sub-banner {
+            flex-direction: column !important;
+            align-items: flex-start !important;
           }
         }
       `}</style>
