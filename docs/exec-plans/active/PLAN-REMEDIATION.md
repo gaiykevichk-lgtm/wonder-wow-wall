@@ -127,6 +127,10 @@
 - [x] CTA кнопки: `#2D2D2D` через `colorPrimary` в theme
 - [x] Dev server работает (port 5173)
 
+### 3.4 Тех.долг (выявлен code review)
+- [ ] Переименовать `const BLUE = '#4CAF50'` → `const ACCENT = '#4CAF50'` (17 файлов)
+- [ ] Заменить `borderRadius: 20` → `borderRadius: 16` на карточках/контейнерах (~30 вхождений, 12 файлов)
+
 ---
 
 ## Фаза 4: Checkout и заказы — недостающие функции
