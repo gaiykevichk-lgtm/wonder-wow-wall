@@ -87,6 +87,10 @@
 - [ ] Обновить `layoutEngine.ts`:
   - `autoFillWall()` и `placeSinglePanel()` — убедиться, что с реальной маской порог 0.7 работает корректно
   - При наличии `obstacles` — добавить проверку пересечения панели с obstacle bounding box
+- [ ] **⚠️ Нормализация размера маски**: `autoFillWall()` индексирует `mask.data[y * width + x]`, предполагая что `width/height` маски === размеру фото. ML-модель выдаёт маску 512×512 (SegFormer input size). Необходимо:
+  - В `segmentationService.ts`: ресайзить выходную маску до размера исходного фото (bilinear interpolation на offscreen canvas)
+  - Валидация: `assert(mask.width === photo.width && mask.height === photo.height)` перед передачей в store
+  - Если размеры не совпадают — автоматический ресайз с warning в console
 
 ### 1.3 Тесты
 
@@ -177,14 +181,29 @@
 
 ### 2.5 Frontend — Замена WallCanvas → KonvaCanvas
 
+> **⚠️ Риск регрессии:** `WallCanvas.tsx` (526 строк, 7 callbacks, 13 props) НЕ покрыт unit-тестами. Прямая замена опасна. Стратегия:
+> 1. Сначала — `KonvaCanvas` работает параллельно с `WallCanvas` (dev-переключатель `?canvas=konva` в URL)
+> 2. Тестирование обоих вариантов на одних и тех же сценариях
+> 3. Только после проверки всех callbacks — удаление `WallCanvas`
+>
+> **⚠️ Координатная система:** Canvas API использует `ctx.getImageData()` / pixel-level координаты. Konva использует `node.getAbsolutePosition()` / Stage-relative координаты. `onMouseMove` в WallCanvas вычисляет `(offsetX - panX) / zoom` — в Konva аналог: `stage.getPointerPosition()` + `node.getRelativePointerPosition()`. При миграции проверить каждый из 7 callbacks на корректность координат.
+
 - [ ] Обновить `PhotoEditorPage.tsx`:
   - Заменить `<WallCanvas>` на `<KonvaCanvas>`
   - Layout: 3-column grid — `240px` (PanelPicker) | `1fr` (KonvaCanvas) | `280px` (Controls + Cost)
   - Фон страницы: `#FFFFFF`, разделители между колонками: `1px solid #F0F0F0`
   - Header секции: Inter 32px/800, цвет `#2D2D2D`; subtitle: Inter 15px/400, цвет `#6B7280`
   - Анимация входа: Framer Motion `AnimatePresence` + `motion.div` fadeUp
-- [ ] Удалить `WallCanvas.tsx` после полной миграции
-- [ ] Проверить, что все props и callbacks совместимы
+- [ ] **Параллельный режим Canvas (dev)**: добавить `useSearchParams` проверку `?canvas=konva` → рендерить `KonvaCanvas` или `WallCanvas`. Удалить переключатель после полной миграции.
+- [ ] Удалить `WallCanvas.tsx` после полной миграции и подтверждения всех 7 callbacks
+- [ ] Проверить, что все props и callbacks совместимы — чеклист:
+  - `onPanelClick` (select)
+  - `onPanelDrag` (координаты)
+  - `onMaskPaint` (кисть/ластик)
+  - `onHoverCell` (grid snap)
+  - `onZoom` (scale)
+  - `onPan` (offset)
+  - `onDeletePanel` (удаление)
 
 ### 2.5 Тесты
 
@@ -323,6 +342,14 @@
 - [ ] Перевести `visualizerStore.ts` на Zustand `persist` middleware:
   - Ключ: `wow-wall-visualizer`
   - `partialize`: сохранять scene, layout, selectedDesignId, selectedSizeKey, selectedColor (не сохранять undoStack, segmentationProgress)
+  - **⚠️ wallMask (Uint8Array) не сериализуется JSON.stringify автоматически!** Решение:
+    - `storage.setItem`: конвертировать `wallMask.data` (Uint8Array) → base64 строку перед сохранением
+    - `storage.getItem`: декодировать base64 → `new Uint8Array(...)` при восстановлении
+    - Использовать `createJSONStorage()` с кастомным `replacer/reviver` или отдельно обрабатывать в `onRehydrateStorage`
+  - **⚠️ wallMask сейчас НЕ персистится**: при restore из localStorage создаётся пустая маска через `createEmptyMask(width, height, 255)`. Необходимо:
+    - Включить wallMask в `partialize`
+    - В `migrate()`: если старый формат без wallMask — создать пустую маску fallback
+    - При восстановлении проекта: если wallMask битый/отсутствует — пересегментировать фото через `segmentScene()`
 - [ ] Создать `src/shared/api/visualizerApi.ts`:
   - Функции: `saveProject()`, `loadProjects()`, `loadProject(id)`, `deleteProject(id)`
   - TanStack Query хуки: `useVisualizerProjects()`, `useVisualizerProject(id)`, `useSaveProjectMutation()`
@@ -391,12 +418,12 @@
 
 | Фаза | Описание | Задач | Статус |
 |---|---|---|---|
-| 1 | ML-сегментация в браузере | 9 | ⬜ Не начата |
-| 2 | Миграция Canvas на react-konva + Design System | 19 | ⬜ Не начата |
+| 1 | ML-сегментация в браузере | 10 | ⬜ Не начата |
+| 2 | Миграция Canvas на react-konva + Design System | 20 | ⬜ Не начата |
 | 3 | Перспектива и калибровка | 12 | ⬜ Не начата |
 | 4 | Бэкенд — сохранение проектов | 17 | ⬜ Не начата |
 | 5 | UX-полировка | 12 | ⬜ Не начата |
-| **ИТОГО** | | **69** | **0%** |
+| **ИТОГО** | | **71** | **0%** |
 
 ---
 
@@ -470,11 +497,27 @@
 
 ## Риски и mitigation
 
-| Риск | Вероятность | Mitigation |
-|---|---|---|
-| SegFormer-B0 неточно определяет стену на российских интерьерах | Средняя | Ручная коррекция маски уже работает; можно попробовать модель B2 (точнее, но 80 MB) |
-| Первая загрузка модели 15 MB — плохой UX | Низкая | Progress bar + кэширование в IndexedDB (при повторных визитах — мгновенно) |
-| react-konva миграция ломает существующие тесты | Средняя | Поэтапная миграция: сначала KonvaCanvas рядом с WallCanvas, потом замена |
-| perspective-transform неточен для сильной перспективы | Низкая | 4-точечная коррекция пользователем компенсирует ошибки |
-| Размер фото в PostgreSQL (base64) замедляет API | Низкая | Ограничение 5 MB; при масштабировании — миграция на S3/файловое хранилище |
-| Визуальные расхождения с Design System | Низкая | Все цвета, тени, скругления, шрифты задокументированы в плане; code review по чеклисту |
+### 🔴 Высокий приоритет
+
+| Риск | Фаза | Вероятность | Mitigation |
+|---|---|---|---|
+| **ML-маска другого размера**: SegFormer выдаёт маску 512×512, а `autoFillWall()` индексирует `mask.data[y * width + x]` по размеру фото. Несовпадение → панели размещаются вне стены | 1 | **Высокая** | Задача 1.2: ресайз маски до размера фото в `segmentationService.ts` + валидация `mask.width === photo.width` |
+| **Canvas→Konva координатная регрессия**: WallCanvas (526 строк, 7 callbacks) НЕ покрыт unit-тестами. Canvas API и Konva используют разные координатные системы (`offsetX/Y` vs `getPointerPosition()`). Ошибка в одном callback → сломается painting/D&D/hover | 2 | **Высокая** | Задача 2.5: параллельный режим `?canvas=konva`, чеклист 7 callbacks, удаление WallCanvas только после полной проверки |
+
+### 🟠 Средний приоритет
+
+| Риск | Фаза | Вероятность | Mitigation |
+|---|---|---|---|
+| **wallMask не персистится**: текущий store при restore создаёт пустую маску `createEmptyMask(w, h, 255)`. Пользователь теряет нарисованную маску при перезагрузке страницы | 4 | **Средняя** | Задача 4.5: включить wallMask в `partialize`, fallback — пересегментация фото |
+| **Uint8Array не сериализуется в JSON**: `JSON.stringify(Uint8Array)` → `{}`. Zustand `persist` middleware молча сохранит пустой объект вместо маски | 4 | **Средняя** | Задача 4.5: кастомный storage с base64-кодированием Uint8Array |
+| SegFormer-B0 неточно определяет стену на российских интерьерах | 1 | Средняя | Ручная коррекция маски уже работает; можно попробовать модель B2 (точнее, но 80 MB) |
+| react-konva миграция ломает существующие тесты | 2 | Средняя | Поэтапная миграция: сначала KonvaCanvas рядом с WallCanvas, потом замена |
+
+### 🟢 Низкий приоритет
+
+| Риск | Фаза | Вероятность | Mitigation |
+|---|---|---|---|
+| Первая загрузка модели 15 MB — плохой UX | 1 | Низкая | Progress bar + кэширование в IndexedDB (при повторных визитах — мгновенно) |
+| perspective-transform неточен для сильной перспективы | 3 | Низкая | 4-точечная коррекция пользователем компенсирует ошибки |
+| Размер фото в PostgreSQL (base64) замедляет API | 4 | Низкая | Ограничение 5 MB; при масштабировании — миграция на S3/файловое хранилище |
+| Визуальные расхождения с Design System | 2–5 | Низкая | Все цвета, тени, скругления, шрифты задокументированы в плане; code review по чеклисту |
