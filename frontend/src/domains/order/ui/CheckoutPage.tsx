@@ -307,6 +307,7 @@ const CheckoutPage: React.FC = () => {
                 for (let i = 21; i < 24; i++) hours.push(i);
                 return hours;
               }}
+              disabledMinutes={(hour: number) => (hour === 20 ? [30] : [])}
               hideDisabledOptions
               style={{ ...inputStyle, width: '100%' }}
             />

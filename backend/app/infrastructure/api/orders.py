@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from app.application.order.use_cases import CreateOrder, GetOrderHistory, GetOrderDetails, CalculateWallCost
 from app.container import get_order_repo
@@ -34,6 +34,17 @@ class CreateOrderRequest(BaseModel):
     items: list[OrderItemRequest]
     address: AddressRequest
     installation_date: datetime | None = None
+
+    @field_validator("installation_date")
+    @classmethod
+    def validate_installation_date(cls, v: datetime | None) -> datetime | None:
+        if v is None:
+            return v
+        if v <= datetime.utcnow():
+            raise ValueError("installation_date must be in the future")
+        if v.hour < 9 or v.hour > 20 or (v.hour == 20 and v.minute > 0):
+            raise ValueError("installation_date must be within working hours (09:00–20:00)")
+        return v
 
 
 class OrderItemSchema(BaseModel):

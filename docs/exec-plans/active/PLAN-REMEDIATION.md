@@ -165,9 +165,9 @@
 - [x] 4 способа оплаты: карта, СБП, рассрочка, наличные
 
 ### 4.6 Тех.долг (выявлен code review)
-- [ ] CheckoutPage.tsx:304-308 — TimePicker позволяет 20:30 (выход за рабочие часы, нужен `disabledMinutes` для часа 20)
-- [ ] ProductPage.tsx:302,485 — hover-цвет `#0077ED` (голубой) не заменён на зелёный/тёмный при Phase 3
-- [ ] Backend orders.py — нет серверной валидации `installation_date` (будущая дата, рабочие часы)
+- [x] CheckoutPage.tsx — `disabledMinutes` для часа 20 (запрещён 20:30) ✅
+- [x] ProductPage.tsx — hover-цвет `#0077ED` → `#3d8b40` (2 места) ✅
+- [x] Backend orders.py — `field_validator` для `installation_date` (будущая дата + рабочие часы 9:00-20:00) + 2 теста ✅
 
 ---
 

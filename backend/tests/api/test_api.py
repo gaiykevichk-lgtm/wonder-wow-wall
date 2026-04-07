@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 from httpx import AsyncClient, ASGITransport
 from app.main import app
@@ -201,17 +203,44 @@ class TestOrders:
 
     @pytest.mark.asyncio
     async def test_create_order_with_installation_date(self, client):
+        from datetime import timedelta
+        token = await _register_and_get_token(client)
+        headers = {"Authorization": f"Bearer {token}"}
+        future_date = (datetime.utcnow() + timedelta(days=7)).replace(hour=14, minute=0, second=0, microsecond=0)
+
+        resp = await client.post("/api/orders", json={
+            "items": [{"design_id": "d-1", "design_name": "Test", "size_key": "300x300", "quantity": 1, "unit_price": 1000}],
+            "address": {"city": "Москва", "street": "Тверская", "building": "10"},
+            "installation_date": future_date.isoformat(),
+        }, headers=headers)
+        assert resp.status_code == 201
+        assert resp.json()["installation_date"] is not None
+
+    @pytest.mark.asyncio
+    async def test_create_order_past_installation_date_rejected(self, client):
         token = await _register_and_get_token(client)
         headers = {"Authorization": f"Bearer {token}"}
 
         resp = await client.post("/api/orders", json={
             "items": [{"design_id": "d-1", "design_name": "Test", "size_key": "300x300", "quantity": 1, "unit_price": 1000}],
             "address": {"city": "Москва", "street": "Тверская", "building": "10"},
-            "installation_date": "2026-05-20T14:00:00",
+            "installation_date": "2020-01-01T14:00:00",
         }, headers=headers)
-        assert resp.status_code == 201
-        assert resp.json()["installation_date"] is not None
-        assert "2026-05-20" in resp.json()["installation_date"]
+        assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_create_order_off_hours_installation_date_rejected(self, client):
+        from datetime import timedelta
+        token = await _register_and_get_token(client)
+        headers = {"Authorization": f"Bearer {token}"}
+        future_date = (datetime.utcnow() + timedelta(days=7)).replace(hour=3, minute=0, second=0, microsecond=0)
+
+        resp = await client.post("/api/orders", json={
+            "items": [{"design_id": "d-1", "design_name": "Test", "size_key": "300x300", "quantity": 1, "unit_price": 1000}],
+            "address": {"city": "Москва", "street": "Тверская", "building": "10"},
+            "installation_date": future_date.isoformat(),
+        }, headers=headers)
+        assert resp.status_code == 422
 
     @pytest.mark.asyncio
     async def test_create_order_without_installation_date(self, client):

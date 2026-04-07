@@ -299,7 +299,7 @@ export default function ProductPage() {
           <button
             onClick={handleAddToCart}
             style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#4CAF50', color: '#fff', border: 'none', height: 54, borderRadius: 8, fontWeight: 600, fontSize: 17, padding: '0 32px', cursor: 'pointer', transition: 'background 0.2s' }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#0077ED')}
+            onMouseEnter={e => (e.currentTarget.style.background = '#3d8b40')}
             onMouseLeave={e => (e.currentTarget.style.background = '#4CAF50')}
           >
             <ShoppingCartOutlined style={{ fontSize: 18 }} /> Добавить в корзину
@@ -482,7 +482,7 @@ export default function ProductPage() {
                 height: 56, borderRadius: 8, fontWeight: 600, fontSize: 17,
                 padding: '0 40px', cursor: 'pointer', transition: 'background 0.2s, transform 0.15s',
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#0077ED'; e.currentTarget.style.transform = 'scale(1.02)'; }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#3d8b40'; e.currentTarget.style.transform = 'scale(1.02)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = '#4CAF50'; e.currentTarget.style.transform = 'scale(1)'; }}
             >
               <ShoppingCartOutlined style={{ fontSize: 20 }} /> Добавить в корзину
