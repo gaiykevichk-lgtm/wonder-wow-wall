@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr
 
 from app.application.user.use_cases import Register, Login, GetProfile, UpdateProfile, ForgotPassword, ResetPassword
 from app.container import get_user_repo
+from app.infrastructure.security.rate_limit import limiter
 from app.utils.dependencies import get_current_user_id
 
 router = APIRouter()
@@ -53,7 +54,8 @@ class ResetPasswordRequest(BaseModel):
 # ─── Endpoints ───────────────────────────────────────────────────────
 
 @router.post("/register", response_model=AuthResponse, status_code=201)
-async def register(body: RegisterRequest, user_repo=Depends(get_user_repo)):
+@limiter.limit("3/minute")
+async def register(request: Request, body: RegisterRequest, user_repo=Depends(get_user_repo)):
     uc = Register(user_repo)
     try:
         result = await uc.execute(body.name, body.email, body.phone, body.password)
@@ -70,7 +72,8 @@ async def register(body: RegisterRequest, user_repo=Depends(get_user_repo)):
 
 
 @router.post("/login", response_model=AuthResponse)
-async def login(body: LoginRequest, user_repo=Depends(get_user_repo)):
+@limiter.limit("5/minute")
+async def login(request: Request, body: LoginRequest, user_repo=Depends(get_user_repo)):
     uc = Login(user_repo)
     try:
         result = await uc.execute(body.email, body.password)
@@ -111,13 +114,15 @@ async def update_profile(body: UpdateProfileRequest, user_id: str = Depends(get_
 
 
 @router.post("/forgot-password")
-async def forgot_password(body: ForgotPasswordRequest, user_repo=Depends(get_user_repo)):
+@limiter.limit("3/minute")
+async def forgot_password(request: Request, body: ForgotPasswordRequest, user_repo=Depends(get_user_repo)):
     uc = ForgotPassword(user_repo)
     return await uc.execute(body.email)
 
 
 @router.post("/reset-password")
-async def reset_password(body: ResetPasswordRequest, user_repo=Depends(get_user_repo)):
+@limiter.limit("5/minute")
+async def reset_password(request: Request, body: ResetPasswordRequest, user_repo=Depends(get_user_repo)):
     uc = ResetPassword(user_repo)
     try:
         return await uc.execute(body.email, body.token, body.new_password)

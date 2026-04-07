@@ -1,5 +1,7 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel, EmailStr
+
+from app.infrastructure.security.rate_limit import limiter
 
 router = APIRouter()
 
@@ -17,7 +19,8 @@ class CalculatorRequest(BaseModel):
 
 
 @router.post("/contacts")
-async def submit_contact(body: ContactRequest):
+@limiter.limit("5/minute")
+async def submit_contact(request: Request, body: ContactRequest):
     # In production: send email, save to DB
     return {"status": "sent", "message": "Спасибо! Мы свяжемся с вами в ближайшее время."}
 

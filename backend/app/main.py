@@ -1,8 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
 from app.infrastructure.api import auth, catalog, orders, subscriptions, projects, contacts
+from app.infrastructure.security.middleware import SecurityHeadersMiddleware
+from app.infrastructure.security.rate_limit import limiter
 
 app = FastAPI(
     title="Wonder Wow Wall API",
@@ -10,14 +14,23 @@ app = FastAPI(
     version="0.1.0",
 )
 
+# ─── Rate Limiting ──────────────────────────────────────────────────
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# ─── Security Headers ──────────────────────────────────────────────
+app.add_middleware(SecurityHeadersMiddleware)
+
+# ─── CORS ───────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"],
 )
 
+# ─── Routers ────────────────────────────────────────────────────────
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(catalog.router, prefix="/api", tags=["catalog"])
 app.include_router(orders.router, prefix="/api/orders", tags=["orders"])
