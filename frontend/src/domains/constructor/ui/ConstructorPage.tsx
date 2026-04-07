@@ -746,6 +746,17 @@ export default function ConstructorPage() {
                 alt={selectedDesign.name}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
+              {/* Color tint preview */}
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: selectedColor.hex,
+                  opacity: 0.3,
+                  pointerEvents: 'none',
+                  mixBlendMode: 'multiply',
+                }}
+              />
               <div
                 style={{
                   position: 'absolute',
@@ -1127,7 +1138,8 @@ export default function ConstructorPage() {
                         position: 'absolute',
                         inset: 0,
                         background: panel.color,
-                        opacity: isInteriorMode ? 0.15 : 0.2,
+                        opacity: 0.3,
+                        mixBlendMode: 'multiply',
                         borderRadius: 3,
                         pointerEvents: 'none',
                       }}
