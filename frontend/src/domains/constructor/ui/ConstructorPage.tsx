@@ -1435,25 +1435,28 @@ export default function ConstructorPage() {
               }}
               className="cost-summary-grid"
             >
-              {/* Left: stats rows */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 24px', fontSize: 13, alignItems: 'baseline' }}>
-                  <span style={{ color: GRAY }}>Панелей: <strong style={{ color: DARK }}>{costs.panelCount} шт</strong></span>
-                  <span style={{ color: GRAY }}>Покрытие: <strong style={{ color: DARK }}>{costs.totalArea.toFixed(2)} м²</strong></span>
-                  <span style={{ color: GRAY }}>Стена: <strong style={{ color: DARK }}>{costs.wallArea.toFixed(2)} м²</strong></span>
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 24px', fontSize: 12, alignItems: 'baseline' }}>
-                  <span style={{ color: GRAY }}>Базовые: {costs.totalBase.toLocaleString('ru-RU')} ₽</span>
-                  <span style={{ color: isSubscriber ? ACCENT : GRAY }}>
-                    Накладки: {isSubscriber ? '0 ₽ (подписка)' : `${costs.totalOverlay.toLocaleString('ru-RU')} ₽`}
+              {/* Left: stats grid */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, auto)',
+                columnGap: 32,
+                rowGap: 4,
+                fontSize: 13,
+                justifyContent: 'start',
+              }}>
+                <span style={{ color: GRAY }}>Панелей: <strong style={{ color: DARK }}>{costs.panelCount} шт</strong></span>
+                <span style={{ color: GRAY }}>Покрытие: <strong style={{ color: DARK }}>{costs.totalArea.toFixed(2)} м²</strong></span>
+                <span style={{ color: GRAY }}>Стена: <strong style={{ color: DARK }}>{costs.wallArea.toFixed(2)} м²</strong></span>
+                <span style={{ fontSize: 12, color: GRAY }}>Базовые: {costs.totalBase.toLocaleString('ru-RU')} ₽</span>
+                <span style={{ fontSize: 12, color: isSubscriber ? ACCENT : GRAY }}>
+                  Накладки: {isSubscriber ? '0 ₽ (подписка)' : `${costs.totalOverlay.toLocaleString('ru-RU')} ₽`}
+                </span>
+                {isSubscriber ? (
+                  <span style={{ fontSize: 12, color: ACCENT, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <CrownOutlined style={{ fontSize: 12 }} />
+                    Включены в подписку
                   </span>
-                  {isSubscriber && (
-                    <span style={{ color: ACCENT, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <CrownOutlined style={{ fontSize: 12 }} />
-                      Накладки включены в подписку
-                    </span>
-                  )}
-                </div>
+                ) : <span />}
               </div>
 
               {/* Right: total + buttons */}
