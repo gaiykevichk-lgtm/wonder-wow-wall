@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from app.application.catalog.use_cases import ListDesigns, GetDesignDetails, ListCategories, AddReview, ListReviews
-from app.container import design_repo, category_repo, review_repo
+from app.container import get_design_repo, get_category_repo, get_review_repo
 from app.utils.dependencies import get_current_user_id, get_optional_user_id
 
 router = APIRouter()
@@ -67,6 +67,7 @@ async def list_designs(
     sort: str = "name",
     offset: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
+    design_repo=Depends(get_design_repo),
 ):
     uc = ListDesigns(design_repo)
     designs, total = await uc.execute(category, search, sort, offset, limit)
@@ -86,7 +87,7 @@ async def list_designs(
 
 
 @router.get("/designs/{design_id}", response_model=DesignSchema)
-async def get_design(design_id: str):
+async def get_design(design_id: str, design_repo=Depends(get_design_repo)):
     uc = GetDesignDetails(design_repo)
     d = await uc.execute(design_id)
     if not d:
@@ -101,14 +102,14 @@ async def get_design(design_id: str):
 
 
 @router.get("/categories", response_model=list[CategorySchema])
-async def list_categories():
+async def list_categories(category_repo=Depends(get_category_repo)):
     uc = ListCategories(category_repo)
     cats = await uc.execute()
     return [{"id": c.id, "name": c.name, "slug": c.slug, "image": c.image, "count": c.count} for c in cats]
 
 
 @router.get("/designs/{design_id}/reviews", response_model=list[ReviewSchema])
-async def get_reviews(design_id: str, offset: int = 0, limit: int = 20):
+async def get_reviews(design_id: str, offset: int = 0, limit: int = 20, review_repo=Depends(get_review_repo)):
     uc = ListReviews(review_repo)
     reviews = await uc.execute(design_id, offset, limit)
     return [
@@ -119,7 +120,12 @@ async def get_reviews(design_id: str, offset: int = 0, limit: int = 20):
 
 
 @router.post("/designs/{design_id}/reviews", response_model=ReviewSchema, status_code=201)
-async def add_review(design_id: str, body: AddReviewRequest, user_id: str = Depends(get_current_user_id)):
+async def add_review(
+    design_id: str, body: AddReviewRequest,
+    user_id: str = Depends(get_current_user_id),
+    design_repo=Depends(get_design_repo),
+    review_repo=Depends(get_review_repo),
+):
     uc = AddReview(design_repo, review_repo)
     try:
         r = await uc.execute(design_id, user_id, "Пользователь", body.rating, body.text)

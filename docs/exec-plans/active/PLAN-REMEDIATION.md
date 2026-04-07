@@ -11,33 +11,33 @@
 > **Приоритет: КРИТИЧЕСКИЙ** — без БД данные теряются при рестарте, все остальные фазы зависят от персистентности.
 
 ### 1.1 Backend — Alembic-миграции
-- [ ] Настроить `alembic/env.py` для async engine (`sqlalchemy.ext.asyncio`)
-- [ ] Сгенерировать автомиграцию из ORM-моделей (`models.py` → `alembic revision --autogenerate`)
-- [ ] Проверить сгенерированные таблицы: `users`, `user_addresses`, `categories`, `designs`, `design_reviews`, `orders`, `order_items`, `subscriptions`, `projects`
-- [ ] Применить: `alembic upgrade head` → убедиться что все 9 таблиц созданы
+- [x] Настроить `alembic/env.py` для async engine (`sqlalchemy.ext.asyncio`)
+- [x] Сгенерировать автомиграцию из ORM-моделей (`models.py` → `alembic revision --autogenerate`)
+- [x] Проверить сгенерированные таблицы: `users`, `user_addresses`, `categories`, `designs`, `design_reviews`, `orders`, `order_items`, `subscriptions`, `projects`
+- [ ] Применить: `alembic upgrade head` → убедиться что все 9 таблиц созданы (требует Docker/PostgreSQL)
 
 ### 1.2 Backend — SQL-репозитории
-- [ ] `app/infrastructure/persistence/repositories/sql.py` — реализовать SQL-версии всех 6 репозиториев:
-  - [ ] `SqlDesignRepository` (list_designs с фильтрацией/сортировкой/пагинацией, get_by_id, get_by_slug)
-  - [ ] `SqlCategoryRepository` (list_all, get_by_id)
-  - [ ] `SqlReviewRepository` (list_by_design с пагинацией, add)
-  - [ ] `SqlOrderRepository` (create, get_by_id, list_by_user, update)
-  - [ ] `SqlSubscriptionRepository` (get_active_by_user, create, update)
-  - [ ] `SqlUserRepository` (create, get_by_id, get_by_email, update)
-- [ ] Каждый репозиторий наследует ABC из `domain/{context}/repositories.py`
-- [ ] Все операции через `async with session` (SQLAlchemy async)
+- [x] `app/infrastructure/persistence/repositories/sql.py` — реализовать SQL-версии всех 6 репозиториев:
+  - [x] `SqlDesignRepository` (list_designs с фильтрацией/сортировкой/пагинацией, get_by_id, get_by_slug)
+  - [x] `SqlCategoryRepository` (list_all, get_by_id)
+  - [x] `SqlReviewRepository` (list_by_design с пагинацией, add)
+  - [x] `SqlOrderRepository` (create, get_by_id, list_by_user, update)
+  - [x] `SqlSubscriptionRepository` (get_active_by_user, create, update)
+  - [x] `SqlUserRepository` (create, get_by_id, get_by_email, update)
+- [x] Каждый репозиторий наследует ABC из `domain/{context}/repositories.py`
+- [x] Все операции через `async with session` (SQLAlchemy async)
 
 ### 1.3 Backend — Переключение на SQL
-- [ ] Обновить `container.py` — использовать SQL-репозитории вместо in-memory
-- [ ] Создать seed-скрипт: заполнение БД начальными данными (12 дизайнов, 6 категорий, 3 плана подписки)
-- [ ] Добавить `get_db()` dependency в роутеры
-- [ ] Сохранить in-memory режим как fallback для тестов (переключение через env `USE_MEMORY_REPOS=true`)
+- [x] Обновить `container.py` — использовать SQL-репозитории вместо in-memory
+- [x] Создать seed-скрипт: заполнение БД начальными данными (12 дизайнов, 6 категорий) — `scripts/seed_db.py`
+- [x] Добавить `get_db()` dependency в роутеры (все 6 роутеров переведены на `Depends()`)
+- [x] Сохранить in-memory режим как fallback для тестов (переключение через env `USE_MEMORY_REPOS=true`)
 
 ### 1.4 Проверка
-- [ ] `docker compose up -d` → backend + PostgreSQL + Redis стартуют без ошибок
-- [ ] `alembic upgrade head` отрабатывает
-- [ ] Все 97 существующих бэкенд-тестов проходят (тесты остаются на in-memory)
-- [ ] Ручная проверка: регистрация → логин → создание заказа → рестарт → данные на месте
+- [ ] `docker compose up -d` → backend + PostgreSQL + Redis стартуют без ошибок (требует Docker)
+- [ ] `alembic upgrade head` отрабатывает (требует PostgreSQL)
+- [x] Все 97 существующих бэкенд-тестов проходят (тесты остаются на in-memory)
+- [ ] Ручная проверка: регистрация → логин → создание заказа → рестарт → данные на месте (требует Docker)
 - [ ] Фронтенд: каталог, авторизация, заказы работают через API без регрессий
 
 ---

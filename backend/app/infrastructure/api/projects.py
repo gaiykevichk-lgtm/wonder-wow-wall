@@ -1,15 +1,10 @@
-from datetime import datetime
-from uuid import uuid4
-
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from app.container import get_project_repo
 from app.utils.dependencies import get_current_user_id
 
 router = APIRouter()
-
-# In-memory project storage (will be replaced by DB)
-_projects: dict[str, dict] = {}
 
 
 class ProjectRequest(BaseModel):
@@ -34,62 +29,57 @@ class ProjectSchema(BaseModel):
 
 
 @router.post("", response_model=ProjectSchema, status_code=201)
-async def create_project(body: ProjectRequest, user_id: str = Depends(get_current_user_id)):
-    now = datetime.utcnow().isoformat()
-    project = {
-        "id": str(uuid4()),
-        "user_id": user_id,
-        "name": body.name,
-        "wall_cols": body.wall_cols,
-        "wall_rows": body.wall_rows,
-        "wall_color": body.wall_color,
-        "panels": body.panels,
-        "total_price": body.total_price,
-        "created_at": now,
-        "updated_at": now,
-    }
-    _projects[project["id"]] = project
+async def create_project(
+    body: ProjectRequest,
+    user_id: str = Depends(get_current_user_id),
+    repo=Depends(get_project_repo),
+):
+    project = await repo.create(user_id, body.model_dump())
     return project
 
 
 @router.get("", response_model=list[ProjectSchema])
-async def list_projects(user_id: str = Depends(get_current_user_id)):
-    return sorted(
-        [p for p in _projects.values() if p["user_id"] == user_id],
-        key=lambda p: p["created_at"],
-        reverse=True,
-    )
+async def list_projects(
+    user_id: str = Depends(get_current_user_id),
+    repo=Depends(get_project_repo),
+):
+    return await repo.list_by_user(user_id)
 
 
 @router.get("/{project_id}", response_model=ProjectSchema)
-async def get_project(project_id: str, user_id: str = Depends(get_current_user_id)):
-    project = _projects.get(project_id)
+async def get_project(
+    project_id: str,
+    user_id: str = Depends(get_current_user_id),
+    repo=Depends(get_project_repo),
+):
+    project = await repo.get_by_id(project_id)
     if not project or project["user_id"] != user_id:
         raise HTTPException(status_code=404, detail="Project not found")
     return project
 
 
 @router.put("/{project_id}", response_model=ProjectSchema)
-async def update_project(project_id: str, body: ProjectRequest, user_id: str = Depends(get_current_user_id)):
-    project = _projects.get(project_id)
+async def update_project(
+    project_id: str,
+    body: ProjectRequest,
+    user_id: str = Depends(get_current_user_id),
+    repo=Depends(get_project_repo),
+):
+    project = await repo.get_by_id(project_id)
     if not project or project["user_id"] != user_id:
         raise HTTPException(status_code=404, detail="Project not found")
-    project.update({
-        "name": body.name,
-        "wall_cols": body.wall_cols,
-        "wall_rows": body.wall_rows,
-        "wall_color": body.wall_color,
-        "panels": body.panels,
-        "total_price": body.total_price,
-        "updated_at": datetime.utcnow().isoformat(),
-    })
-    return project
+    updated = await repo.update(project_id, body.model_dump())
+    return updated
 
 
 @router.delete("/{project_id}")
-async def delete_project(project_id: str, user_id: str = Depends(get_current_user_id)):
-    project = _projects.get(project_id)
+async def delete_project(
+    project_id: str,
+    user_id: str = Depends(get_current_user_id),
+    repo=Depends(get_project_repo),
+):
+    project = await repo.get_by_id(project_id)
     if not project or project["user_id"] != user_id:
         raise HTTPException(status_code=404, detail="Project not found")
-    del _projects[project_id]
+    await repo.delete(project_id)
     return {"status": "deleted"}

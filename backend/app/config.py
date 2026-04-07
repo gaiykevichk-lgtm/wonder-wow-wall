@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     JWT_SECRET: str = "dev-secret-key-change-in-prod"
     JWT_EXPIRE_MINUTES: int = 1440
     CORS_ORIGINS: str = "http://localhost:3000"
+    USE_MEMORY_REPOS: bool = False
 
     # Derived
     @property

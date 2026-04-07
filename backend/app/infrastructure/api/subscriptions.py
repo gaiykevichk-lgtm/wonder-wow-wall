@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.application.subscription.use_cases import GetPlans, Subscribe, GetSubscriptionStatus, CancelSubscription
-from app.container import subscription_repo
+from app.container import get_subscription_repo
 from app.utils.dependencies import get_current_user_id
 
 router = APIRouter()
@@ -48,7 +48,7 @@ async def list_plans():
 
 
 @router.post("", response_model=SubscriptionSchema, status_code=201)
-async def subscribe(body: SubscribeRequest, user_id: str = Depends(get_current_user_id)):
+async def subscribe(body: SubscribeRequest, user_id: str = Depends(get_current_user_id), subscription_repo=Depends(get_subscription_repo)):
     uc = Subscribe(subscription_repo)
     try:
         sub = await uc.execute(user_id, body.plan_id)
@@ -58,7 +58,7 @@ async def subscribe(body: SubscribeRequest, user_id: str = Depends(get_current_u
 
 
 @router.get("/status", response_model=SubscriptionSchema | None)
-async def get_status(user_id: str = Depends(get_current_user_id)):
+async def get_status(user_id: str = Depends(get_current_user_id), subscription_repo=Depends(get_subscription_repo)):
     uc = GetSubscriptionStatus(subscription_repo)
     sub = await uc.execute(user_id)
     if not sub:
@@ -67,7 +67,7 @@ async def get_status(user_id: str = Depends(get_current_user_id)):
 
 
 @router.delete("")
-async def cancel(user_id: str = Depends(get_current_user_id)):
+async def cancel(user_id: str = Depends(get_current_user_id), subscription_repo=Depends(get_subscription_repo)):
     uc = CancelSubscription(subscription_repo)
     try:
         await uc.execute(user_id)

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
 
 from app.application.user.use_cases import Register, Login, GetProfile, UpdateProfile
-from app.container import user_repo
+from app.container import get_user_repo
 from app.utils.dependencies import get_current_user_id
 
 router = APIRouter()
@@ -43,7 +43,7 @@ class UpdateProfileRequest(BaseModel):
 # ─── Endpoints ───────────────────────────────────────────────────────
 
 @router.post("/register", response_model=AuthResponse, status_code=201)
-async def register(body: RegisterRequest):
+async def register(body: RegisterRequest, user_repo=Depends(get_user_repo)):
     uc = Register(user_repo)
     try:
         result = await uc.execute(body.name, body.email, body.phone, body.password)
@@ -60,7 +60,7 @@ async def register(body: RegisterRequest):
 
 
 @router.post("/login", response_model=AuthResponse)
-async def login(body: LoginRequest):
+async def login(body: LoginRequest, user_repo=Depends(get_user_repo)):
     uc = Login(user_repo)
     try:
         result = await uc.execute(body.email, body.password)
@@ -77,7 +77,7 @@ async def login(body: LoginRequest):
 
 
 @router.get("/me", response_model=UserResponse)
-async def me(user_id: str = Depends(get_current_user_id)):
+async def me(user_id: str = Depends(get_current_user_id), user_repo=Depends(get_user_repo)):
     uc = GetProfile(user_repo)
     user = await uc.execute(user_id)
     if not user:
@@ -89,7 +89,7 @@ async def me(user_id: str = Depends(get_current_user_id)):
 
 
 @router.patch("/me", response_model=UserResponse)
-async def update_profile(body: UpdateProfileRequest, user_id: str = Depends(get_current_user_id)):
+async def update_profile(body: UpdateProfileRequest, user_id: str = Depends(get_current_user_id), user_repo=Depends(get_user_repo)):
     uc = UpdateProfile(user_repo)
     user = await uc.execute(user_id, name=body.name, phone=body.phone)
     if not user:

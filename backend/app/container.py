@@ -1,8 +1,10 @@
 """Dependency container — wires use cases to repository implementations.
 
-Currently uses in-memory repositories. Switch to SQL implementations
-when PostgreSQL is connected.
+Provides FastAPI dependency functions for repository injection.
+Set USE_MEMORY_REPOS=true to use in-memory (for tests / no-DB dev).
 """
+
+from app.config import settings
 
 from app.domain.catalog.entities import Design, Category
 from app.domain.catalog.value_objects import Color
@@ -15,6 +17,10 @@ from app.infrastructure.persistence.repositories.memory import (
     InMemorySubscriptionRepository,
     InMemoryUserRepository,
 )
+from app.infrastructure.persistence.repositories.project_repo import (
+    InMemoryProjectRepository,
+)
+
 
 # ─── Seed Data ───────────────────────────────────────────────────────
 
@@ -78,11 +84,115 @@ SEED_DESIGNS = [
            rating=4.8, reviews_count=20, is_new=True),
 ]
 
-# ─── Repository Singletons ──────────────────────────────────────────
+# ─── In-Memory Singletons (used when USE_MEMORY_REPOS=true or for tests) ──
 
-design_repo = InMemoryDesignRepository(SEED_DESIGNS)
-category_repo = InMemoryCategoryRepository(SEED_CATEGORIES)
-review_repo = InMemoryReviewRepository()
-order_repo = InMemoryOrderRepository()
-subscription_repo = InMemorySubscriptionRepository()
-user_repo = InMemoryUserRepository()
+_mem_design_repo = InMemoryDesignRepository(SEED_DESIGNS)
+_mem_category_repo = InMemoryCategoryRepository(SEED_CATEGORIES)
+_mem_review_repo = InMemoryReviewRepository()
+_mem_order_repo = InMemoryOrderRepository()
+_mem_subscription_repo = InMemorySubscriptionRepository()
+_mem_user_repo = InMemoryUserRepository()
+_mem_project_repo = InMemoryProjectRepository()
+
+
+# ─── Backward-compatible aliases (used by existing tests) ────────────
+
+design_repo = _mem_design_repo
+category_repo = _mem_category_repo
+review_repo = _mem_review_repo
+order_repo = _mem_order_repo
+subscription_repo = _mem_subscription_repo
+user_repo = _mem_user_repo
+project_repo = _mem_project_repo
+
+
+# ─── FastAPI Dependencies ────────────────────────────────────────────
+
+def _get_sql_repos():
+    """Lazy import to avoid circular deps and DB connection at import time."""
+    from app.infrastructure.persistence.repositories.sql import (
+        SqlDesignRepository,
+        SqlCategoryRepository,
+        SqlReviewRepository,
+        SqlOrderRepository,
+        SqlSubscriptionRepository,
+        SqlUserRepository,
+    )
+    from app.infrastructure.persistence.repositories.project_repo import SqlProjectRepository
+    return {
+        "design": SqlDesignRepository,
+        "category": SqlCategoryRepository,
+        "review": SqlReviewRepository,
+        "order": SqlOrderRepository,
+        "subscription": SqlSubscriptionRepository,
+        "user": SqlUserRepository,
+        "project": SqlProjectRepository,
+    }
+
+
+async def _get_session():
+    """Yield async DB session."""
+    from app.infrastructure.persistence.database import async_session
+    async with async_session() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+
+async def get_design_repo():
+    if settings.USE_MEMORY_REPOS:
+        yield _mem_design_repo
+    else:
+        async for session in _get_session():
+            yield _get_sql_repos()["design"](session)
+
+
+async def get_category_repo():
+    if settings.USE_MEMORY_REPOS:
+        yield _mem_category_repo
+    else:
+        async for session in _get_session():
+            yield _get_sql_repos()["category"](session)
+
+
+async def get_review_repo():
+    if settings.USE_MEMORY_REPOS:
+        yield _mem_review_repo
+    else:
+        async for session in _get_session():
+            yield _get_sql_repos()["review"](session)
+
+
+async def get_order_repo():
+    if settings.USE_MEMORY_REPOS:
+        yield _mem_order_repo
+    else:
+        async for session in _get_session():
+            yield _get_sql_repos()["order"](session)
+
+
+async def get_subscription_repo():
+    if settings.USE_MEMORY_REPOS:
+        yield _mem_subscription_repo
+    else:
+        async for session in _get_session():
+            yield _get_sql_repos()["subscription"](session)
+
+
+async def get_user_repo():
+    if settings.USE_MEMORY_REPOS:
+        yield _mem_user_repo
+    else:
+        async for session in _get_session():
+            yield _get_sql_repos()["user"](session)
+
+
+async def get_project_repo():
+    if settings.USE_MEMORY_REPOS:
+        yield _mem_project_repo
+    else:
+        async for session in _get_session():
+            yield _get_sql_repos()["project"](session)

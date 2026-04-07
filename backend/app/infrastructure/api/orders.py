@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.application.order.use_cases import CreateOrder, GetOrderHistory, GetOrderDetails, CalculateWallCost
-from app.container import order_repo
+from app.container import get_order_repo
 from app.utils.dependencies import get_current_user_id
 
 router = APIRouter()
@@ -61,7 +61,7 @@ class CalculateRequest(BaseModel):
 # ─── Endpoints ───────────────────────────────────────────────────────
 
 @router.post("", response_model=OrderSchema, status_code=201)
-async def create_order(body: CreateOrderRequest, user_id: str = Depends(get_current_user_id)):
+async def create_order(body: CreateOrderRequest, user_id: str = Depends(get_current_user_id), order_repo=Depends(get_order_repo)):
     uc = CreateOrder(order_repo)
     order = await uc.execute(
         user_id=user_id,
@@ -72,14 +72,14 @@ async def create_order(body: CreateOrderRequest, user_id: str = Depends(get_curr
 
 
 @router.get("", response_model=list[OrderSchema])
-async def list_orders(user_id: str = Depends(get_current_user_id)):
+async def list_orders(user_id: str = Depends(get_current_user_id), order_repo=Depends(get_order_repo)):
     uc = GetOrderHistory(order_repo)
     orders = await uc.execute(user_id)
     return [_order_to_response(o) for o in orders]
 
 
 @router.get("/{order_id}", response_model=OrderSchema)
-async def get_order(order_id: str, user_id: str = Depends(get_current_user_id)):
+async def get_order(order_id: str, user_id: str = Depends(get_current_user_id), order_repo=Depends(get_order_repo)):
     uc = GetOrderDetails(order_repo)
     order = await uc.execute(order_id, user_id)
     if not order:
