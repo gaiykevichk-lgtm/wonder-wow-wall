@@ -454,6 +454,113 @@ export default function ProductPage() {
         </div>
       </section>
 
+      {/* ── In The Wild ───────────────────────────────────── */}
+      {product.usageExamples && product.usageExamples.length > 0 && (
+        <section style={{ maxWidth: 1080, margin: '96px auto 0', padding: '0 24px' }}>
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.2 }}
+            style={{ marginBottom: 48 }}
+          >
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
+              В интерьере
+            </div>
+            <h2 style={{ fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 700, color: '#1d1d1f', letterSpacing: '-0.025em', lineHeight: 1.1, margin: 0 }}>
+              {product.name}<br />в реальных пространствах.
+            </h2>
+          </motion.div>
+
+          {/* Layout: first image large, rest in 2-col */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+            {/* Hero image (first example) */}
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true, amount: 0.15 }}
+              style={{ position: 'relative', borderRadius: 28, overflow: 'hidden', cursor: 'default' }}
+            >
+              <div style={{ overflow: 'hidden', borderRadius: 28 }}>
+                <motion.img
+                  src={product.usageExamples[0].image}
+                  alt={product.usageExamples[0].room}
+                  whileHover={{ scale: 1.03 }}
+                  transition={{ duration: 0.8, ease }}
+                  style={{ width: '100%', height: 520, objectFit: 'cover', display: 'block' }}
+                />
+              </div>
+              {/* Dark gradient overlay */}
+              <div style={{
+                position: 'absolute', inset: 0, borderRadius: 28,
+                background: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.1) 45%, transparent 100%)',
+                pointerEvents: 'none',
+              }} />
+              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '32px 40px' }}>
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', background: 'rgba(255,255,255,0.15)',
+                  backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+                  borderRadius: 980, padding: '5px 14px', fontSize: 12, fontWeight: 600,
+                  color: '#fff', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 12,
+                }}>
+                  {product.usageExamples[0].room}
+                </div>
+                <p style={{ fontSize: 21, fontWeight: 600, color: '#fff', margin: 0, lineHeight: 1.3, letterSpacing: '-0.01em', maxWidth: 560 }}>
+                  {product.usageExamples[0].caption}
+                </p>
+              </div>
+            </motion.div>
+
+            {/* Remaining images in 2-col grid */}
+            {product.usageExamples.length > 1 && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 12 }}>
+                {product.usageExamples.slice(1).map((ex, idx) => (
+                  <motion.div
+                    key={idx}
+                    variants={fadeUp}
+                    initial="hidden"
+                    whileInView="show"
+                    viewport={{ once: true, amount: 0.2 }}
+                    style={{ position: 'relative', borderRadius: 24, overflow: 'hidden' }}
+                  >
+                    <div style={{ overflow: 'hidden', borderRadius: 24 }}>
+                      <motion.img
+                        src={ex.image}
+                        alt={ex.room}
+                        whileHover={{ scale: 1.04 }}
+                        transition={{ duration: 0.8, ease }}
+                        style={{ width: '100%', height: 340, objectFit: 'cover', display: 'block' }}
+                      />
+                    </div>
+                    <div style={{
+                      position: 'absolute', inset: 0, borderRadius: 24,
+                      background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.08) 50%, transparent 100%)',
+                      pointerEvents: 'none',
+                    }} />
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '24px 28px' }}>
+                      <div style={{
+                        display: 'inline-flex', alignItems: 'center',
+                        background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(12px)',
+                        WebkitBackdropFilter: 'blur(12px)', borderRadius: 980, padding: '4px 12px',
+                        fontSize: 11, fontWeight: 600, color: '#fff', letterSpacing: '0.04em',
+                        textTransform: 'uppercase', marginBottom: 10,
+                      }}>
+                        {ex.room}
+                      </div>
+                      <p style={{ fontSize: 16, fontWeight: 500, color: '#fff', margin: 0, lineHeight: 1.4, letterSpacing: '-0.01em' }}>
+                        {ex.caption}
+                      </p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* ── Feature tiles ─────────────────────────────────── */}
       <section style={{ maxWidth: 1080, margin: '96px auto 0', padding: '0 24px' }}>
         <motion.div

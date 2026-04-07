@@ -18,6 +18,7 @@ export interface PanelProduct {
   badge?: string;
   inStock: boolean;
   room: string[];
+  usageExamples?: { room: string; image: string; caption: string }[];
 }
 
 export interface Category {

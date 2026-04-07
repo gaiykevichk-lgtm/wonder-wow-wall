@@ -41,6 +41,11 @@ export const products: PanelProduct[] = [
     badge: 'Хит',
     inStock: true,
     room: ['Гостиная', 'Кабинет', 'Спальня'],
+    usageExamples: [
+      { room: 'Гостиная', image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200&h=800&fit=crop', caption: 'Тёплая текстура дуба создаёт атмосферу живого дерева. Каждая деталь в гармонии.' },
+      { room: 'Кабинет', image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&h=800&fit=crop', caption: 'Концентрация и стиль. Рабочее пространство нового уровня.' },
+      { room: 'Спальня', image: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=1200&h=800&fit=crop', caption: 'Отдых в окружении тепла натурального дерева. Ночь — это ритуал.' },
+    ],
   },
   {
     id: 'design-walnut',
@@ -66,6 +71,10 @@ export const products: PanelProduct[] = [
     badge: 'Премиум',
     inStock: true,
     room: ['Гостиная', 'Кабинет'],
+    usageExamples: [
+      { room: 'Гостиная', image: 'https://images.unsplash.com/photo-1600210492493-0946911123ea?w=1200&h=800&fit=crop', caption: 'Глубокий шоколадный тон — язык роскоши без лишних слов.' },
+      { room: 'Кабинет', image: 'https://images.unsplash.com/photo-1486946255434-2466348c2166?w=1200&h=800&fit=crop', caption: 'Библиотека, где хочется думать. Тёмный орех задаёт ритм.' },
+    ],
   },
   {
     id: 'design-ash',
@@ -90,6 +99,11 @@ export const products: PanelProduct[] = [
     reviews: 56,
     inStock: true,
     room: ['Спальня', 'Детская', 'Гостиная'],
+    usageExamples: [
+      { room: 'Спальня', image: 'https://images.unsplash.com/photo-1616047006789-b7af5afb8c20?w=1200&h=800&fit=crop', caption: 'Скандинавская простота. Светлый ясень дарит воздух и свет.' },
+      { room: 'Детская', image: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=1200&h=800&fit=crop', caption: 'Безопасный, лёгкий, радостный. Пространство для роста.' },
+      { room: 'Гостиная', image: 'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=1200&h=800&fit=crop', caption: 'Минимализм, который согревает. Нордический дух в каждой линии.' },
+    ],
   },
   {
     id: 'design-marble',
@@ -115,6 +129,11 @@ export const products: PanelProduct[] = [
     badge: 'Новинка',
     inStock: true,
     room: ['Гостиная', 'Ванная', 'Кухня'],
+    usageExamples: [
+      { room: 'Гостиная', image: 'https://images.unsplash.com/photo-1567767292278-a4f21aa2d36e?w=1200&h=800&fit=crop', caption: 'Мрамор — это вечный разговор о красоте. Бесконечно элегантно.' },
+      { room: 'Ванная', image: 'https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=1200&h=800&fit=crop', caption: 'Спа-атмосфера каждое утро. Белый мрамор как ритуал очищения.' },
+      { room: 'Кухня', image: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1200&h=800&fit=crop', caption: 'Кухня, достойная шеф-повара. Мрамор задаёт стандарт.' },
+    ],
   },
   {
     id: 'design-concrete',
@@ -139,6 +158,11 @@ export const products: PanelProduct[] = [
     reviews: 203,
     inStock: true,
     room: ['Гостиная', 'Кабинет', 'Кухня'],
+    usageExamples: [
+      { room: 'Гостиная', image: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=1200&h=800&fit=crop', caption: 'Индустриальный лофт. Бетон здесь не холодный — он честный.' },
+      { room: 'Кухня', image: 'https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=1200&h=800&fit=crop', caption: 'Функция и характер. Кухня, где интересно готовить.' },
+      { room: 'Кабинет', image: 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=1200&h=800&fit=crop', caption: 'Урбанистика как эстетика. Офис с позицией.' },
+    ],
   },
   {
     id: 'design-waves',
@@ -163,6 +187,10 @@ export const products: PanelProduct[] = [
     reviews: 98,
     inStock: true,
     room: ['Гостиная', 'Спальня'],
+    usageExamples: [
+      { room: 'Гостиная', image: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=1200&h=800&fit=crop', caption: 'Движение как стиль. Волны задают ритм всему пространству.' },
+      { room: 'Спальня', image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&h=800&fit=crop', caption: 'Глубина и спокойствие. Как будто смотришь в открытый океан.' },
+    ],
   },
   {
     id: 'design-gradient',
@@ -187,6 +215,11 @@ export const products: PanelProduct[] = [
     reviews: 78,
     inStock: true,
     room: ['Гостиная', 'Кафе', 'Офис'],
+    usageExamples: [
+      { room: 'Гостиная', image: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=1200&h=800&fit=crop', caption: 'Переход цвета меняет настроение комнаты от рассвета до заката.' },
+      { room: 'Кафе', image: 'https://images.unsplash.com/photo-1445116572660-236099ec97a0?w=1200&h=800&fit=crop', caption: 'Арт-объект, который держит гостей дольше. Каждая панель — разговор.' },
+      { room: 'Офис', image: 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=1200&h=800&fit=crop', caption: 'Цвет как инструмент. Градиент заряжает команду энергией.' },
+    ],
   },
   {
     id: 'design-hexagon',
@@ -212,6 +245,11 @@ export const products: PanelProduct[] = [
     reviews: 143,
     inStock: true,
     room: ['Ванная', 'Кухня', 'Прихожая'],
+    usageExamples: [
+      { room: 'Ванная', image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=1200&h=800&fit=crop', caption: 'Геометрия делает каждую плоскость высказыванием о форме.' },
+      { room: 'Кухня', image: 'https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=1200&h=800&fit=crop', caption: 'Фартук из гексагонов. Кухня, которую хочется показывать.' },
+      { room: 'Прихожая', image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&h=800&fit=crop', caption: 'Первое впечатление — самое важное. Гексагон его создаёт.' },
+    ],
   },
   {
     id: 'design-lines',
@@ -236,6 +274,11 @@ export const products: PanelProduct[] = [
     reviews: 89,
     inStock: true,
     room: ['Кабинет', 'Прихожая', 'Офис'],
+    usageExamples: [
+      { room: 'Кабинет', image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&h=800&fit=crop', caption: 'Ритм линий дисциплинирует мысль. Идеально для концентрации.' },
+      { room: 'Прихожая', image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&h=800&fit=crop', caption: 'Вертикаль уводит взгляд вверх. Пространство кажется выше.' },
+      { room: 'Офис', image: 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=1200&h=800&fit=crop', caption: 'Строгость как стиль. Офис, где принимают серьёзные решения.' },
+    ],
   },
   {
     id: 'design-tropical',
@@ -261,6 +304,11 @@ export const products: PanelProduct[] = [
     badge: 'Новинка',
     inStock: true,
     room: ['Спальня', 'Гостиная', 'Детская'],
+    usageExamples: [
+      { room: 'Спальня', image: 'https://images.unsplash.com/photo-1466781659-3bc5ee1b0e51?w=1200&h=800&fit=crop', caption: 'Природа внутри. Тропики дарят сон среди листвы.' },
+      { room: 'Гостиная', image: 'https://images.unsplash.com/photo-1585128792020-803d29415281?w=1200&h=800&fit=crop', caption: 'Зеленью дышит каждый угол. Живой интерьер без ухода.' },
+      { room: 'Детская', image: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=1200&h=800&fit=crop', caption: 'Дети растут в окружении природы. Пространство для воображения.' },
+    ],
   },
   {
     id: 'design-botanical',
@@ -285,6 +333,11 @@ export const products: PanelProduct[] = [
     reviews: 42,
     inStock: true,
     room: ['Спальня', 'Гостиная', 'Кафе'],
+    usageExamples: [
+      { room: 'Спальня', image: 'https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=1200&h=800&fit=crop', caption: 'Нежность ботаники как утренний свет. Просыпаться приятно.' },
+      { room: 'Гостиная', image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200&h=800&fit=crop', caption: 'Иллюстрации оживляют стену. Как страница из любимой книги.' },
+      { room: 'Кафе', image: 'https://images.unsplash.com/photo-1445116572660-236099ec97a0?w=1200&h=800&fit=crop', caption: 'Атмосфера, в которую хочется возвращаться снова и снова.' },
+    ],
   },
   {
     id: 'design-pure-white',
@@ -309,6 +362,11 @@ export const products: PanelProduct[] = [
     reviews: 167,
     inStock: true,
     room: ['Любое помещение'],
+    usageExamples: [
+      { room: 'Гостиная', image: 'https://images.unsplash.com/photo-1540518614846-7eded433c457?w=1200&h=800&fit=crop', caption: 'Абсолютная чистота. Белый не просто цвет — это состояние.' },
+      { room: 'Ванная', image: 'https://images.unsplash.com/photo-1507652955-f3dcef5a3be5?w=1200&h=800&fit=crop', caption: 'Свет и простота. Ванная как место тишины.' },
+      { room: 'Кухня', image: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1200&h=800&fit=crop', caption: 'Белый усиливает естественный свет. Кухня дышит.' },
+    ],
   },
 ];
 
