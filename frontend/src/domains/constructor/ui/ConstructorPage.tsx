@@ -634,11 +634,12 @@ export default function ConstructorPage() {
           padding: '20px 24px',
           maxWidth: 1400,
           margin: '0 auto',
+          boxSizing: 'border-box',
         }}
         className="constructor-layout"
       >
         {/* ─── LEFT SIDEBAR ─────────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
           {/* Wall settings */}
           <Card
             style={{
@@ -933,7 +934,7 @@ export default function ConstructorPage() {
         </div>
 
         {/* ─── RIGHT - Wall Canvas ──────────────────────────────────────────── */}
-        <div>
+        <div style={{ minWidth: 0 }}>
           <Card
             style={{
               borderRadius: 16,
