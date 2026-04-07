@@ -41,7 +41,7 @@ export function ShopHeader() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const textColor = '#1d1d1f';
+  const textColor = '#2D2D2D';
 
   return (
     <>
@@ -111,7 +111,7 @@ export function ShopHeader() {
                     textDecoration: 'none',
                     fontSize: 12,
                     fontWeight: isActive ? 600 : 400,
-                    color: '#1d1d1f',
+                    color: '#2D2D2D',
                     opacity: isActive ? 1 : 0.8,
                     transition: 'opacity 0.3s',
                     position: 'relative',
@@ -128,7 +128,7 @@ export function ShopHeader() {
             {activePlan() ? (
               <Tag
                 icon={<CrownOutlined />}
-                color="#0071e3"
+                color="#4CAF50"
                 style={{
                   borderRadius: 20,
                   fontWeight: 600,
@@ -148,8 +148,8 @@ export function ShopHeader() {
                 className="sub-btn-desktop"
                 style={{
                   borderRadius: 20,
-                  border: '1px solid #0071e3',
-                  color: '#0071e3',
+                  border: '1px solid #4CAF50',
+                  color: '#4CAF50',
                   background: 'transparent',
                   fontWeight: 600,
                   fontSize: 12,
@@ -164,7 +164,7 @@ export function ShopHeader() {
               icon={<HeartOutlined style={{ fontSize: 18 }} />}
               style={{ color: textColor, transition: 'color 0.3s' }}
             />
-            <Badge count={totalItems()} size="small" color="#0071e3">
+            <Badge count={totalItems()} size="small" color="#4CAF50">
               <Button
                 type="text"
                 icon={<ShoppingOutlined style={{ fontSize: 18 }} />}
@@ -228,7 +228,7 @@ export function ShopHeader() {
                 textDecoration: 'none',
                 fontSize: 16,
                 fontWeight: location.pathname === item.path ? 600 : 400,
-                color: location.pathname === item.path ? '#0071e3' : '#1d1d1f',
+                color: location.pathname === item.path ? '#4CAF50' : '#2D2D2D',
                 padding: '12px 16px',
                 borderRadius: 8,
                 background: location.pathname === item.path ? 'rgba(0,113,227,0.08)' : 'transparent',

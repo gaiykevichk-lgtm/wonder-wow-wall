@@ -6,7 +6,7 @@ import { useRegisterMutation } from '../api/authApi';
 import { ApiError } from '../../../shared/api';
 
 const { Title, Text } = Typography;
-const BLUE = '#0071e3';
+const BLUE = '#4CAF50';
 
 export default function RegisterPage() {
   const registerMutation = useRegisterMutation();
@@ -30,7 +30,7 @@ export default function RegisterPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#FBFBFD',
+        background: '#FAFAFA',
         padding: '96px 16px 48px',
       }}
     >
@@ -49,8 +49,8 @@ export default function RegisterPage() {
         >
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
             <img src="/logo.png" alt="Wonder Wow Wall" style={{ height: 48, marginBottom: 16 }} />
-            <Title level={3} style={{ margin: 0, fontWeight: 600, color: '#1d1d1f' }}>Регистрация</Title>
-            <Text style={{ color: '#86868b' }}>Создайте аккаунт для сохранения проектов</Text>
+            <Title level={3} style={{ margin: 0, fontWeight: 600, color: '#2D2D2D' }}>Регистрация</Title>
+            <Text style={{ color: '#6B7280' }}>Создайте аккаунт для сохранения проектов</Text>
           </div>
 
           <Form layout="vertical" onFinish={onFinish} size="large" requiredMark={false}>
@@ -110,7 +110,7 @@ export default function RegisterPage() {
                 htmlType="submit"
                 block
                 loading={registerMutation.isPending}
-                style={{ background: BLUE, borderColor: BLUE, borderRadius: 980, height: 44 }}
+                style={{ background: BLUE, borderColor: BLUE, borderRadius: 8, height: 44 }}
               >
                 Создать аккаунт
               </Button>
@@ -120,7 +120,7 @@ export default function RegisterPage() {
           <Divider style={{ margin: '16px 0', fontSize: 13, color: '#999' }}>или</Divider>
 
           <div style={{ textAlign: 'center' }}>
-            <Text style={{ color: '#86868b' }}>Уже есть аккаунт? </Text>
+            <Text style={{ color: '#6B7280' }}>Уже есть аккаунт? </Text>
             <Link to="/login" style={{ color: BLUE, fontWeight: 600 }}>
               Войти
             </Link>

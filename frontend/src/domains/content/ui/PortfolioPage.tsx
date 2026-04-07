@@ -4,9 +4,9 @@ import { motion } from 'framer-motion';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
-const BLUE = '#0071e3';
-const DARK = '#1d1d1f';
-const GRAY_TEXT = '#86868b';
+const BLUE = '#4CAF50';
+const DARK = '#2D2D2D';
+const GRAY_TEXT = '#6B7280';
 const FONT = 'Inter, sans-serif';
 const MAX_WIDTH: React.CSSProperties = { maxWidth: 1080, margin: '0 auto' };
 
@@ -195,7 +195,7 @@ const PortfolioPage: React.FC = () => {
   return (
     <div style={{ fontFamily: FONT, paddingTop: 72 }}>
       {/* Hero */}
-      <section style={{ background: '#F5F5F7', padding: '120px 24px' }}>
+      <section style={{ background: '#F5F5F5', padding: '120px 24px' }}>
         <div style={{ ...MAX_WIDTH, textAlign: 'center' }}>
           <motion.div
             variants={stagger}
@@ -266,10 +266,10 @@ const PortfolioPage: React.FC = () => {
                 key={f.key}
                 onClick={() => setActiveFilter(f.key)}
                 style={{
-                  background: activeFilter === f.key ? DARK : '#F5F5F7',
+                  background: activeFilter === f.key ? DARK : '#F5F5F5',
                   color: activeFilter === f.key ? '#fff' : DARK,
                   border: 'none',
-                  borderRadius: 980,
+                  borderRadius: 8,
                   padding: '8px 22px',
                   fontFamily: FONT,
                   fontWeight: 600,

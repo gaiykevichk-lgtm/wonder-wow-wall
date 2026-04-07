@@ -153,7 +153,7 @@ export default function CatalogPage() {
       {/* Page Header */}
       <div
         style={{
-          background: '#F5F5F7',
+          background: '#F5F5F5',
           padding: '120px 40px',
         }}
       >
@@ -162,7 +162,7 @@ export default function CatalogPage() {
             style={{
               fontSize: 48,
               fontWeight: 600,
-              color: '#1d1d1f',
+              color: '#2D2D2D',
               margin: 0,
               lineHeight: 1.08,
               letterSpacing: '-0.03em',
@@ -170,7 +170,7 @@ export default function CatalogPage() {
           >
             Каталог дизайнов
           </h1>
-          <p style={{ margin: '12px 0 0', fontSize: 17, color: '#86868b' }}>
+          <p style={{ margin: '12px 0 0', fontSize: 17, color: '#6B7280' }}>
             {filtered.length} из {products.length} товаров
           </p>
         </div>
@@ -188,13 +188,13 @@ export default function CatalogPage() {
             padding: '12px 0',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#86868b' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#6B7280' }}>
             <FilterOutlined />
             <span style={{ fontWeight: 500, fontSize: 14 }}>Фильтры</span>
           </div>
 
           <Input
-            prefix={<SearchOutlined style={{ color: '#86868b' }} />}
+            prefix={<SearchOutlined style={{ color: '#6B7280' }} />}
             placeholder="Поиск по названию или материалу..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -202,7 +202,7 @@ export default function CatalogPage() {
               flex: '1 1 220px',
               minWidth: 180,
               maxWidth: 320,
-              borderRadius: 980,
+              borderRadius: 8,
               height: 38,
               border: '1px solid rgba(0,0,0,0.08)',
             }}
@@ -212,7 +212,7 @@ export default function CatalogPage() {
           <Select
             value={sortKey}
             onChange={(val) => setSortKey(val as SortKey)}
-            style={{ width: 180, borderRadius: 980 }}
+            style={{ width: 180, borderRadius: 8 }}
             options={[
               { value: 'popular', label: 'По популярности' },
               { value: 'price-asc', label: 'Цена: по возрастанию' },
@@ -222,7 +222,7 @@ export default function CatalogPage() {
           />
 
           <div style={{ flex: '1 1 200px', minWidth: 180, maxWidth: 280 }}>
-            <div style={{ fontSize: 12, color: '#86868b', marginBottom: 4 }}>
+            <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>
               Цена: {priceRange[0].toLocaleString('ru-RU')} ₽ — {priceRange[1].toLocaleString('ru-RU')} ₽
             </div>
             <Slider
@@ -234,8 +234,8 @@ export default function CatalogPage() {
               onChange={(val) => setPriceRange(val as [number, number])}
               tooltip={{ formatter: (v) => `${v?.toLocaleString('ru-RU')} ₽` }}
               styles={{
-                track: { background: '#0071e3' },
-                handle: { borderColor: '#0071e3' },
+                track: { background: '#4CAF50' },
+                handle: { borderColor: '#4CAF50' },
               }}
             />
           </div>
@@ -245,7 +245,7 @@ export default function CatalogPage() {
             onChange={(val) => setFilterStyle(val)}
             allowClear
             placeholder="Стиль"
-            style={{ width: 160, borderRadius: 980 }}
+            style={{ width: 160, borderRadius: 8 }}
             options={uniqueStyles.map((s) => ({ value: s, label: s }))}
           />
 
@@ -254,7 +254,7 @@ export default function CatalogPage() {
             onChange={(val) => setFilterColor(val)}
             allowClear
             placeholder="Цвет"
-            style={{ width: 160, borderRadius: 980 }}
+            style={{ width: 160, borderRadius: 8 }}
             options={uniqueColors.map((c) => ({
               value: c.name,
               label: (
@@ -270,7 +270,7 @@ export default function CatalogPage() {
             type={filterNew ? 'primary' : 'default'}
             onClick={() => setFilterNew(!filterNew)}
             style={{
-              borderRadius: 980,
+              borderRadius: 8,
               height: 38,
               fontWeight: 500,
               fontSize: 14,
@@ -288,9 +288,9 @@ export default function CatalogPage() {
               style={{
                 width: 38,
                 height: 38,
-                borderRadius: 980,
-                background: viewMode === 'grid' ? '#1d1d1f' : 'transparent',
-                color: viewMode === 'grid' ? '#FFFFFF' : '#86868b',
+                borderRadius: 8,
+                background: viewMode === 'grid' ? '#2D2D2D' : 'transparent',
+                color: viewMode === 'grid' ? '#FFFFFF' : '#6B7280',
                 border: 'none',
               }}
             />
@@ -301,9 +301,9 @@ export default function CatalogPage() {
               style={{
                 width: 38,
                 height: 38,
-                borderRadius: 980,
-                background: viewMode === 'list' ? '#1d1d1f' : 'transparent',
-                color: viewMode === 'list' ? '#FFFFFF' : '#86868b',
+                borderRadius: 8,
+                background: viewMode === 'list' ? '#2D2D2D' : 'transparent',
+                color: viewMode === 'list' ? '#FFFFFF' : '#6B7280',
                 border: 'none',
               }}
             />
@@ -325,13 +325,13 @@ export default function CatalogPage() {
               onClick={() => handleCategoryChange(cat.key)}
               style={{
                 padding: '8px 18px',
-                borderRadius: 980,
+                borderRadius: 8,
                 border: 'none',
                 cursor: 'pointer',
                 fontSize: 14,
                 fontWeight: activeCategory === cat.key ? 600 : 400,
-                background: activeCategory === cat.key ? '#1d1d1f' : 'rgba(0,0,0,0.04)',
-                color: activeCategory === cat.key ? '#FFFFFF' : '#1d1d1f',
+                background: activeCategory === cat.key ? '#2D2D2D' : 'rgba(0,0,0,0.04)',
+                color: activeCategory === cat.key ? '#FFFFFF' : '#2D2D2D',
                 transition: 'all 0.8s cubic-bezier(0.25, 0.1, 0.25, 1.0)',
               }}
             >
@@ -366,11 +366,11 @@ export default function CatalogPage() {
             style={{
               textAlign: 'center',
               padding: '120px 20px',
-              color: '#86868b',
+              color: '#6B7280',
             }}
           >
             <div style={{ fontSize: 48, marginBottom: 16 }}>🔍</div>
-            <h3 style={{ fontSize: 22, fontWeight: 600, color: '#1d1d1f', margin: '0 0 8px' }}>
+            <h3 style={{ fontSize: 22, fontWeight: 600, color: '#2D2D2D', margin: '0 0 8px' }}>
               Ничего не найдено
             </h3>
             <p style={{ fontSize: 15, margin: 0 }}>
@@ -460,7 +460,7 @@ function GridCard({ product, index, hovered, isFavorite, onToggleFavorite, onHov
           transform: hovered ? 'translateY(-2px) scale(1.01)' : 'translateY(0) scale(1)',
         }}
         cover={
-          <div style={{ position: 'relative', height: 220, overflow: 'hidden', background: '#F5F5F7' }}>
+          <div style={{ position: 'relative', height: 220, overflow: 'hidden', background: '#F5F5F5' }}>
             <img
               src={product.image}
               alt={product.name}
@@ -480,10 +480,10 @@ function GridCard({ product, index, hovered, isFavorite, onToggleFavorite, onHov
                   position: 'absolute',
                   top: 12,
                   left: 12,
-                  background: '#0071e3',
+                  background: '#4CAF50',
                   color: '#FFFFFF',
                   border: 'none',
-                  borderRadius: 980,
+                  borderRadius: 8,
                   fontWeight: 600,
                   fontSize: 11,
                   padding: '2px 10px',
@@ -496,7 +496,7 @@ function GridCard({ product, index, hovered, isFavorite, onToggleFavorite, onHov
             {/* Favorite button */}
             <Button
               type="text"
-              icon={isFavorite ? <HeartFilled style={{ color: '#ff4d4f', fontSize: 18 }} /> : <HeartOutlined style={{ fontSize: 18, color: '#86868b' }} />}
+              icon={isFavorite ? <HeartFilled style={{ color: '#ff4d4f', fontSize: 18 }} /> : <HeartOutlined style={{ fontSize: 18, color: '#6B7280' }} />}
               onClick={(e) => { e.stopPropagation(); onToggleFavorite(product.id); }}
               style={{
                 position: 'absolute',
@@ -529,10 +529,10 @@ function GridCard({ product, index, hovered, isFavorite, onToggleFavorite, onHov
               <Button
                 onClick={(e) => onAddToCart(e, product)}
                 style={{
-                  background: '#0071e3',
+                  background: '#4CAF50',
                   color: '#FFFFFF',
                   border: 'none',
-                  borderRadius: 980,
+                  borderRadius: 8,
                   fontWeight: 600,
                   fontSize: 13,
                   height: 36,
@@ -550,7 +550,7 @@ function GridCard({ product, index, hovered, isFavorite, onToggleFavorite, onHov
         <div
           style={{
             fontSize: 11,
-            color: '#86868b',
+            color: '#6B7280',
             textTransform: 'uppercase',
             letterSpacing: '0.5px',
             marginBottom: 6,
@@ -564,7 +564,7 @@ function GridCard({ product, index, hovered, isFavorite, onToggleFavorite, onHov
           style={{
             fontSize: 16,
             fontWeight: 600,
-            color: '#1d1d1f',
+            color: '#2D2D2D',
             marginBottom: 8,
             lineHeight: 1.3,
           }}
@@ -580,16 +580,16 @@ function GridCard({ product, index, hovered, isFavorite, onToggleFavorite, onHov
             value={product.rating}
             style={{ fontSize: 12, color: '#F59E0B' }}
           />
-          <span style={{ fontSize: 12, color: '#86868b' }}>({product.reviews})</span>
+          <span style={{ fontSize: 12, color: '#6B7280' }}>({product.reviews})</span>
         </div>
 
         {/* Price + Color dots */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <span style={{ fontSize: 20, fontWeight: 600, color: '#1d1d1f' }}>
+            <span style={{ fontSize: 20, fontWeight: 600, color: '#2D2D2D' }}>
               {product.price.toLocaleString('ru-RU')} ₽
             </span>
-            <span style={{ fontSize: 12, color: '#86868b', marginLeft: 4 }}>
+            <span style={{ fontSize: 12, color: '#6B7280', marginLeft: 4 }}>
               {product.priceUnit}
             </span>
           </div>
@@ -610,7 +610,7 @@ function GridCard({ product, index, hovered, isFavorite, onToggleFavorite, onHov
               />
             ))}
             {product.colors.length > 4 && (
-              <span style={{ fontSize: 11, color: '#86868b', lineHeight: '14px' }}>
+              <span style={{ fontSize: 11, color: '#6B7280', lineHeight: '14px' }}>
                 +{product.colors.length - 4}
               </span>
             )}
@@ -643,7 +643,7 @@ function ListCard({ product, index, onAddToCart, onNavigate }: ListCardProps) {
         style={{
           display: 'flex',
           gap: 20,
-          background: '#FBFBFD',
+          background: '#FAFAFA',
           border: 'none',
           borderRadius: 20,
           overflow: 'hidden',
@@ -681,10 +681,10 @@ function ListCard({ product, index, onAddToCart, onNavigate }: ListCardProps) {
                 position: 'absolute',
                 top: 10,
                 left: 10,
-                background: '#0071e3',
+                background: '#4CAF50',
                 color: '#FFFFFF',
                 border: 'none',
-                borderRadius: 980,
+                borderRadius: 8,
                 fontWeight: 600,
                 fontSize: 11,
                 padding: '2px 10px',
@@ -707,15 +707,15 @@ function ListCard({ product, index, onAddToCart, onNavigate }: ListCardProps) {
             minWidth: 0,
           }}
         >
-          <div style={{ fontSize: 11, color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          <div style={{ fontSize: 11, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             {product.categoryLabel} · {product.material}
           </div>
-          <div style={{ fontSize: 17, fontWeight: 600, color: '#1d1d1f', lineHeight: 1.3 }}>
+          <div style={{ fontSize: 17, fontWeight: 600, color: '#2D2D2D', lineHeight: 1.3 }}>
             {product.name}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <Rate disabled allowHalf value={product.rating} style={{ fontSize: 12, color: '#F59E0B' }} />
-            <span style={{ fontSize: 12, color: '#86868b' }}>({product.reviews})</span>
+            <span style={{ fontSize: 12, color: '#6B7280' }}>({product.reviews})</span>
           </div>
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
             {product.colors.map((c) => (
@@ -748,18 +748,18 @@ function ListCard({ product, index, onAddToCart, onNavigate }: ListCardProps) {
           }}
         >
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 22, fontWeight: 600, color: '#1d1d1f', whiteSpace: 'nowrap' }}>
+            <div style={{ fontSize: 22, fontWeight: 600, color: '#2D2D2D', whiteSpace: 'nowrap' }}>
               {product.price.toLocaleString('ru-RU')} ₽
             </div>
-            <div style={{ fontSize: 12, color: '#86868b' }}>{product.priceUnit}</div>
+            <div style={{ fontSize: 12, color: '#6B7280' }}>{product.priceUnit}</div>
           </div>
           <Button
             onClick={(e) => onAddToCart(e, product)}
             style={{
-              background: '#0071e3',
+              background: '#4CAF50',
               color: '#FFFFFF',
               border: 'none',
-              borderRadius: 980,
+              borderRadius: 8,
               fontWeight: 600,
               fontSize: 13,
               height: 38,

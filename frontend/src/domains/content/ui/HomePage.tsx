@@ -26,13 +26,13 @@ const containerVariants = {
 
 const SECTION_PADDING: React.CSSProperties = { padding: '120px 24px' };
 const MAX_WIDTH: React.CSSProperties = { maxWidth: 1080, margin: '0 auto' };
-const ACCENT = '#0071e3';
-const DARK = '#1d1d1f';
-const GRAY_TEXT = '#86868b';
-const LIGHT_BG = '#F5F5F7';
+const ACCENT = '#4CAF50';
+const DARK = '#2D2D2D';
+const GRAY_TEXT = '#6B7280';
+const LIGHT_BG = '#F5F5F5';
 const SUBTLE_BORDER = 'rgba(0,0,0,0.04)';
 const CARD_RADIUS = 20;
-const PILL_RADIUS = 980;
+const PILL_RADIUS = 8;
 
 // ─── Hero Section ─────────────────────────────────────────────────────────────
 

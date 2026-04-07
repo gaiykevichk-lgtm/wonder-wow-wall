@@ -21,9 +21,9 @@ import { useCartStore } from '../model/cartStore';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
-const BLUE = '#0071e3';
-const DARK = '#1d1d1f';
-const GRAY_TEXT = '#86868b';
+const BLUE = '#4CAF50';
+const DARK = '#2D2D2D';
+const GRAY_TEXT = '#6B7280';
 const FONT = 'Inter, sans-serif';
 
 const MAX_WIDTH: React.CSSProperties = { maxWidth: 1080, margin: '0 auto' };
@@ -110,7 +110,7 @@ const CheckoutPage: React.FC = () => {
               background: DARK,
               color: '#fff',
               border: 'none',
-              borderRadius: 980,
+              borderRadius: 8,
               height: 52,
               padding: '0 32px',
               fontFamily: FONT,
@@ -309,7 +309,7 @@ const CheckoutPage: React.FC = () => {
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <div style={{ paddingTop: 72, minHeight: '100vh', background: '#F5F5F7', padding: '72px 24px 80px' }}>
+    <div style={{ paddingTop: 72, minHeight: '100vh', background: '#F5F5F5', padding: '72px 24px 80px' }}>
       <div style={{ ...MAX_WIDTH }}>
         {/* Page title */}
         <motion.h1
@@ -396,7 +396,7 @@ const CheckoutPage: React.FC = () => {
                       background: '#fff',
                       color: DARK,
                       border: '1px solid rgba(0,0,0,0.04)',
-                      borderRadius: 980,
+                      borderRadius: 8,
                       height: 48,
                       padding: '0 24px',
                       fontFamily: FONT,
@@ -413,7 +413,7 @@ const CheckoutPage: React.FC = () => {
                     background: DARK,
                     color: '#fff',
                     border: 'none',
-                    borderRadius: 980,
+                    borderRadius: 8,
                     height: 48,
                     padding: '0 32px',
                     fontFamily: FONT,
@@ -558,7 +558,7 @@ const CheckoutPage: React.FC = () => {
               <div
                 style={{
                   marginTop: 20,
-                  background: '#F5F5F7',
+                  background: '#F5F5F5',
                   borderRadius: 10,
                   padding: '14px 16px',
                   display: 'flex',

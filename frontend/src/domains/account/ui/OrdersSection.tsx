@@ -21,20 +21,20 @@ function OrderCard({ order }: { order: Order }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Space>
             <ShoppingOutlined />
-            <Text strong style={{ color: '#1d1d1f' }}>Заказ {order.number}</Text>
+            <Text strong style={{ color: '#2D2D2D' }}>Заказ {order.number}</Text>
           </Space>
           <Tag color={ORDER_STATUS_COLORS[order.status]}>{ORDER_STATUS_LABELS[order.status]}</Tag>
         </div>
       }
       extra={
-        <Button type="text" icon={<EyeOutlined />} onClick={() => setExpanded(!expanded)} style={{ borderRadius: 980 }}>
+        <Button type="text" icon={<EyeOutlined />} onClick={() => setExpanded(!expanded)} style={{ borderRadius: 8 }}>
           {expanded ? 'Скрыть' : 'Подробнее'}
         </Button>
       }
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: expanded ? 16 : 0 }}>
-        <Text type="secondary" style={{ color: '#86868b' }}>Дата: {new Date(order.date).toLocaleDateString('ru-RU')}</Text>
-        <Text strong style={{ fontSize: 16, color: '#1d1d1f' }}>{order.total.toLocaleString('ru-RU')} ₽</Text>
+        <Text type="secondary" style={{ color: '#6B7280' }}>Дата: {new Date(order.date).toLocaleDateString('ru-RU')}</Text>
+        <Text strong style={{ fontSize: 16, color: '#2D2D2D' }}>{order.total.toLocaleString('ru-RU')} ₽</Text>
       </div>
 
       {expanded && (
@@ -55,7 +55,7 @@ function OrderCard({ order }: { order: Order }) {
                   alignItems: 'center',
                   gap: 12,
                   padding: '8px 12px',
-                  background: '#F5F5F7',
+                  background: '#F5F5F5',
                   borderRadius: 14,
                 }}
               >
@@ -75,20 +75,20 @@ function OrderCard({ order }: { order: Order }) {
                   🎨
                 </div>
                 <div style={{ flex: 1 }}>
-                  <Text strong style={{ color: '#1d1d1f' }}>{item.name}</Text>
+                  <Text strong style={{ color: '#2D2D2D' }}>{item.name}</Text>
                   <div>
-                    <Text type="secondary" style={{ fontSize: 13, color: '#86868b' }}>
+                    <Text type="secondary" style={{ fontSize: 13, color: '#6B7280' }}>
                       {item.size} · {item.color} · {item.quantity} шт.
                     </Text>
                   </div>
                 </div>
-                <Text strong style={{ color: '#1d1d1f' }}>{(item.price * item.quantity).toLocaleString('ru-RU')} ₽</Text>
+                <Text strong style={{ color: '#2D2D2D' }}>{(item.price * item.quantity).toLocaleString('ru-RU')} ₽</Text>
               </div>
             ))}
           </div>
 
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
-            <Text type="secondary" style={{ fontSize: 13, color: '#86868b' }}>Адрес доставки: {order.address}</Text>
+            <Text type="secondary" style={{ fontSize: 13, color: '#6B7280' }}>Адрес доставки: {order.address}</Text>
           </div>
         </>
       )}
@@ -123,7 +123,7 @@ export default function OrdersSection() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <Title level={3} style={{ margin: 0, color: '#1d1d1f', fontWeight: 600 }}>Мои заказы</Title>
+      <Title level={3} style={{ margin: 0, color: '#2D2D2D', fontWeight: 600 }}>Мои заказы</Title>
 
       {isLoading ? (
         <Card style={{ borderRadius: 20 }}>

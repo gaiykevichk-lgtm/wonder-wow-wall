@@ -23,15 +23,15 @@ const fadeUp = {
 /* ─── Stepper ─────────────────────────────────────────────── */
 function Stepper({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: '#E8E8ED', borderRadius: 980, padding: 4 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: '#E8E8ED', borderRadius: 8, padding: 4 }}>
       <button
         onClick={() => onChange(Math.max(1, value - 1))}
-        style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: value <= 1 ? 'transparent' : '#fff', cursor: 'pointer', fontSize: 18, color: '#1d1d1f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 400, lineHeight: 1, transition: 'background 0.2s' }}
+        style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: value <= 1 ? 'transparent' : '#fff', cursor: 'pointer', fontSize: 18, color: '#2D2D2D', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 400, lineHeight: 1, transition: 'background 0.2s' }}
       >−</button>
-      <span style={{ width: 40, textAlign: 'center', fontSize: 15, fontWeight: 600, color: '#1d1d1f' }}>{value}</span>
+      <span style={{ width: 40, textAlign: 'center', fontSize: 15, fontWeight: 600, color: '#2D2D2D' }}>{value}</span>
       <button
         onClick={() => onChange(Math.min(100, value + 1))}
-        style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#fff', cursor: 'pointer', fontSize: 18, color: '#1d1d1f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 400, lineHeight: 1, transition: 'background 0.2s' }}
+        style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#fff', cursor: 'pointer', fontSize: 18, color: '#2D2D2D', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 400, lineHeight: 1, transition: 'background 0.2s' }}
       >+</button>
     </div>
   );
@@ -45,11 +45,11 @@ function FeatureTile({ icon, title, body }: { icon: string; title: string; body:
       initial="hidden"
       whileInView="show"
       viewport={{ once: true, amount: 0.3 }}
-      style={{ background: '#F5F5F7', borderRadius: 24, padding: '40px 36px', display: 'flex', flexDirection: 'column', gap: 16 }}
+      style={{ background: '#F5F5F5', borderRadius: 24, padding: '40px 36px', display: 'flex', flexDirection: 'column', gap: 16 }}
     >
       <div style={{ fontSize: 40 }}>{icon}</div>
-      <div style={{ fontSize: 21, fontWeight: 600, color: '#1d1d1f', letterSpacing: '-0.02em', lineHeight: 1.2 }}>{title}</div>
-      <div style={{ fontSize: 15, color: '#86868b', lineHeight: 1.6 }}>{body}</div>
+      <div style={{ fontSize: 21, fontWeight: 600, color: '#2D2D2D', letterSpacing: '-0.02em', lineHeight: 1.2 }}>{title}</div>
+      <div style={{ fontSize: 15, color: '#6B7280', lineHeight: 1.6 }}>{body}</div>
     </motion.div>
   );
 }
@@ -122,10 +122,10 @@ export default function ProductPage() {
     return (
       <div style={{ paddingTop: 72, background: '#fff', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
         <div style={{ fontSize: 64 }}>🔍</div>
-        <h2 style={{ fontSize: 28, fontWeight: 600, color: '#1d1d1f', margin: 0 }}>Товар не найден</h2>
+        <h2 style={{ fontSize: 28, fontWeight: 600, color: '#2D2D2D', margin: 0 }}>Товар не найден</h2>
         <button
           onClick={() => navigate('/catalog')}
-          style={{ background: '#0071e3', color: '#fff', border: 'none', height: 50, borderRadius: 980, fontWeight: 600, fontSize: 16, padding: '0 28px', cursor: 'pointer' }}
+          style={{ background: '#4CAF50', color: '#fff', border: 'none', height: 50, borderRadius: 8, fontWeight: 600, fontSize: 16, padding: '0 28px', cursor: 'pointer' }}
         >
           Вернуться в каталог
         </button>
@@ -195,12 +195,12 @@ export default function ProductPage() {
           >
             <div style={{ maxWidth: 1080, margin: '0 auto', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
               <div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: '#1d1d1f' }}>{product.name}</div>
-                <div style={{ fontSize: 13, color: '#86868b' }}>{product.price.toLocaleString('ru-RU')} ₽{product.priceUnit}</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#2D2D2D' }}>{product.name}</div>
+                <div style={{ fontSize: 13, color: '#6B7280' }}>{product.price.toLocaleString('ru-RU')} ₽{product.priceUnit}</div>
               </div>
               <button
                 onClick={handleAddToCart}
-                style={{ background: '#0071e3', color: '#fff', border: 'none', height: 40, borderRadius: 980, fontWeight: 600, fontSize: 14, padding: '0 22px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                style={{ background: '#4CAF50', color: '#fff', border: 'none', height: 40, borderRadius: 8, fontWeight: 600, fontSize: 14, padding: '0 22px', cursor: 'pointer', whiteSpace: 'nowrap' }}
               >
                 Добавить в корзину
               </button>
@@ -214,14 +214,14 @@ export default function ProductPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             onClick={() => navigate(-1)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: '#0071e3', fontSize: 14, fontWeight: 500, padding: 0 }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: '#4CAF50', fontSize: 14, fontWeight: 500, padding: 0 }}
           >
             <LeftOutlined style={{ fontSize: 11 }} /> Назад
           </button>
-          <span style={{ color: '#d2d2d7', fontSize: 14 }}>·</span>
-          <span style={{ color: '#86868b', fontSize: 14, cursor: 'pointer' }} onClick={() => navigate('/catalog')}>Каталог</span>
-          <span style={{ color: '#d2d2d7', fontSize: 14 }}>·</span>
-          <span style={{ color: '#1d1d1f', fontSize: 14, fontWeight: 500 }}>{product.name}</span>
+          <span style={{ color: '#E5E7EB', fontSize: 14 }}>·</span>
+          <span style={{ color: '#6B7280', fontSize: 14, cursor: 'pointer' }} onClick={() => navigate('/catalog')}>Каталог</span>
+          <span style={{ color: '#E5E7EB', fontSize: 14 }}>·</span>
+          <span style={{ color: '#2D2D2D', fontSize: 14, fontWeight: 500 }}>{product.name}</span>
         </div>
       </div>
 
@@ -232,7 +232,7 @@ export default function ProductPage() {
           initial="hidden"
           animate="show"
           custom={0}
-          style={{ fontSize: 13, fontWeight: 600, color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}
+          style={{ fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}
         >
           {product.categoryLabel} · {product.material}
         </motion.div>
@@ -242,7 +242,7 @@ export default function ProductPage() {
           initial="hidden"
           animate="show"
           custom={0.1}
-          style={{ fontSize: 'clamp(48px, 8vw, 80px)', fontWeight: 700, color: '#1d1d1f', letterSpacing: '-0.03em', lineHeight: 1.0, margin: '0 0 20px' }}
+          style={{ fontSize: 'clamp(48px, 8vw, 80px)', fontWeight: 700, color: '#2D2D2D', letterSpacing: '-0.03em', lineHeight: 1.0, margin: '0 0 20px' }}
         >
           {product.name}
         </motion.h1>
@@ -252,7 +252,7 @@ export default function ProductPage() {
           initial="hidden"
           animate="show"
           custom={0.2}
-          style={{ fontSize: 19, color: '#86868b', lineHeight: 1.6, margin: '0 auto 28px', maxWidth: 560 }}
+          style={{ fontSize: 19, color: '#6B7280', lineHeight: 1.6, margin: '0 auto 28px', maxWidth: 560 }}
         >
           {product.description}
         </motion.p>
@@ -269,7 +269,7 @@ export default function ProductPage() {
               <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
             </svg>
           ))}
-          <span style={{ fontSize: 14, color: '#86868b', marginLeft: 4 }}>{product.rating} ({product.reviews} отзывов)</span>
+          <span style={{ fontSize: 14, color: '#6B7280', marginLeft: 4 }}>{product.rating} ({product.reviews} отзывов)</span>
         </motion.div>
 
         <motion.div
@@ -277,14 +277,14 @@ export default function ProductPage() {
           initial="hidden"
           animate="show"
           custom={0.3}
-          style={{ fontSize: 36, fontWeight: 600, color: '#1d1d1f', letterSpacing: '-0.02em', marginBottom: 28 }}
+          style={{ fontSize: 36, fontWeight: 600, color: '#2D2D2D', letterSpacing: '-0.02em', marginBottom: 28 }}
         >
           {product.price.toLocaleString('ru-RU')} ₽
-          <span style={{ fontSize: 17, color: '#86868b', fontWeight: 400, marginLeft: 6 }}>{product.priceUnit}</span>
+          <span style={{ fontSize: 17, color: '#6B7280', fontWeight: 400, marginLeft: 6 }}>{product.priceUnit}</span>
         </motion.div>
 
         {product.badge && (
-          <motion.div variants={fadeUp} initial="hidden" animate="show" custom={0.32} style={{ display: 'inline-flex', alignItems: 'center', background: '#0071e3', color: '#fff', borderRadius: 980, padding: '4px 14px', fontSize: 13, fontWeight: 600, marginBottom: 24 }}>
+          <motion.div variants={fadeUp} initial="hidden" animate="show" custom={0.32} style={{ display: 'inline-flex', alignItems: 'center', background: '#4CAF50', color: '#fff', borderRadius: 8, padding: '4px 14px', fontSize: 13, fontWeight: 600, marginBottom: 24 }}>
             {product.badge}
           </motion.div>
         )}
@@ -298,15 +298,15 @@ export default function ProductPage() {
         >
           <button
             onClick={handleAddToCart}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#0071e3', color: '#fff', border: 'none', height: 54, borderRadius: 980, fontWeight: 600, fontSize: 17, padding: '0 32px', cursor: 'pointer', transition: 'background 0.2s' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#4CAF50', color: '#fff', border: 'none', height: 54, borderRadius: 8, fontWeight: 600, fontSize: 17, padding: '0 32px', cursor: 'pointer', transition: 'background 0.2s' }}
             onMouseEnter={e => (e.currentTarget.style.background = '#0077ED')}
-            onMouseLeave={e => (e.currentTarget.style.background = '#0071e3')}
+            onMouseLeave={e => (e.currentTarget.style.background = '#4CAF50')}
           >
             <ShoppingCartOutlined style={{ fontSize: 18 }} /> Добавить в корзину
           </button>
           <button
             onClick={() => setLiked((v) => !v)}
-            style={{ width: 54, height: 54, borderRadius: '50%', border: '1.5px solid #E8E8ED', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, transition: 'border-color 0.2s', color: liked ? '#FF3B30' : '#1d1d1f' }}
+            style={{ width: 54, height: 54, borderRadius: '50%', border: '1.5px solid #E8E8ED', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, transition: 'border-color 0.2s', color: liked ? '#FF3B30' : '#2D2D2D' }}
           >
             {liked ? '♥' : <HeartOutlined />}
           </button>
@@ -325,7 +325,7 @@ export default function ProductPage() {
         transition={{ duration: 1.0, ease, delay: 0.5 }}
         style={{ margin: '48px auto 0', maxWidth: 1080, padding: '0 24px' }}
       >
-        <div style={{ background: '#F5F5F7', borderRadius: 32, overflow: 'hidden', position: 'relative' }}>
+        <div style={{ background: '#F5F5F5', borderRadius: 32, overflow: 'hidden', position: 'relative' }}>
           <motion.img
             key={selectedImage}
             src={gallery[selectedImage]}
@@ -346,7 +346,7 @@ export default function ProductPage() {
                 onClick={() => setSelectedImage(idx)}
                 style={{
                   width: 72, height: 72, borderRadius: 14, overflow: 'hidden', border: 'none',
-                  outline: selectedImage === idx ? '2px solid #0071e3' : '2px solid transparent',
+                  outline: selectedImage === idx ? '2px solid #4CAF50' : '2px solid transparent',
                   outlineOffset: 2, cursor: 'pointer', padding: 0, transition: 'outline 0.25s',
                 }}
               >
@@ -358,7 +358,7 @@ export default function ProductPage() {
       </motion.div>
 
       {/* ── Configuration ─────────────────────────────────── */}
-      <section style={{ background: '#F5F5F7', marginTop: 80, padding: '64px 24px' }}>
+      <section style={{ background: '#F5F5F5', marginTop: 80, padding: '64px 24px' }}>
         <div style={{ maxWidth: 680, margin: '0 auto' }}>
 
           {/* Color */}
@@ -369,8 +369,8 @@ export default function ProductPage() {
             viewport={{ once: true, amount: 0.4 }}
             style={{ marginBottom: 48, textAlign: 'center' }}
           >
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>Выберите цвет</div>
-            <div style={{ fontSize: 17, fontWeight: 600, color: '#1d1d1f', marginBottom: 20 }}>{product.colors[selectedColor].name}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>Выберите цвет</div>
+            <div style={{ fontSize: 17, fontWeight: 600, color: '#2D2D2D', marginBottom: 20 }}>{product.colors[selectedColor].name}</div>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 14, flexWrap: 'wrap' }}>
               {product.colors.map((color, idx) => (
                 <button
@@ -398,7 +398,7 @@ export default function ProductPage() {
             viewport={{ once: true, amount: 0.4 }}
             style={{ marginBottom: 48, textAlign: 'center' }}
           >
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 20 }}>Размер</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 20 }}>Размер</div>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
               {product.sizes.map((size, idx) => (
                 <button
@@ -406,14 +406,14 @@ export default function ProductPage() {
                   onClick={() => setSelectedSize(idx)}
                   style={{
                     padding: '10px 20px',
-                    borderRadius: 980,
+                    borderRadius: 8,
                     fontSize: 14,
                     fontWeight: 600,
                     cursor: 'pointer',
                     border: '1.5px solid',
-                    borderColor: selectedSize === idx ? '#0071e3' : '#D1D5DB',
-                    background: selectedSize === idx ? '#0071e3' : '#FFFFFF',
-                    color: selectedSize === idx ? '#FFFFFF' : '#1d1d1f',
+                    borderColor: selectedSize === idx ? '#4CAF50' : '#D1D5DB',
+                    background: selectedSize === idx ? '#4CAF50' : '#FFFFFF',
+                    color: selectedSize === idx ? '#FFFFFF' : '#2D2D2D',
                     transition: 'all 0.25s cubic-bezier(0.25, 0.1, 0.25, 1)',
                   }}
                 >
@@ -432,12 +432,12 @@ export default function ProductPage() {
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', borderRadius: 20, padding: '24px 32px' }}
           >
             <div>
-              <div style={{ fontSize: 13, color: '#86868b', fontWeight: 500, marginBottom: 10 }}>Количество (м²)</div>
+              <div style={{ fontSize: 13, color: '#6B7280', fontWeight: 500, marginBottom: 10 }}>Количество (м²)</div>
               <Stepper value={quantity} onChange={setQuantity} />
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 13, color: '#86868b', fontWeight: 500, marginBottom: 4 }}>Итого</div>
-              <div style={{ fontSize: 32, fontWeight: 700, color: '#1d1d1f', letterSpacing: '-0.02em' }}>{totalPrice} ₽</div>
+              <div style={{ fontSize: 13, color: '#6B7280', fontWeight: 500, marginBottom: 4 }}>Итого</div>
+              <div style={{ fontSize: 32, fontWeight: 700, color: '#2D2D2D', letterSpacing: '-0.02em' }}>{totalPrice} ₽</div>
             </div>
           </motion.div>
 
@@ -453,12 +453,12 @@ export default function ProductPage() {
               onClick={handleAddToCart}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 10,
-                background: '#0071e3', color: '#fff', border: 'none',
-                height: 56, borderRadius: 980, fontWeight: 600, fontSize: 17,
+                background: '#4CAF50', color: '#fff', border: 'none',
+                height: 56, borderRadius: 8, fontWeight: 600, fontSize: 17,
                 padding: '0 40px', cursor: 'pointer', transition: 'background 0.2s, transform 0.15s',
               }}
               onMouseEnter={e => { e.currentTarget.style.background = '#0077ED'; e.currentTarget.style.transform = 'scale(1.02)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#0071e3'; e.currentTarget.style.transform = 'scale(1)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#4CAF50'; e.currentTarget.style.transform = 'scale(1)'; }}
             >
               <ShoppingCartOutlined style={{ fontSize: 20 }} /> Добавить в корзину
             </button>
@@ -476,10 +476,10 @@ export default function ProductPage() {
             viewport={{ once: true, amount: 0.2 }}
             style={{ marginBottom: 48 }}
           >
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
               В интерьере
             </div>
-            <h2 style={{ fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 700, color: '#1d1d1f', letterSpacing: '-0.025em', lineHeight: 1.1, margin: 0 }}>
+            <h2 style={{ fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 700, color: '#2D2D2D', letterSpacing: '-0.025em', lineHeight: 1.1, margin: 0 }}>
               {product.name}<br />в реальных пространствах.
             </h2>
           </motion.div>
@@ -514,7 +514,7 @@ export default function ProductPage() {
                 <div style={{
                   display: 'inline-flex', alignItems: 'center', background: 'rgba(255,255,255,0.15)',
                   backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-                  borderRadius: 980, padding: '5px 14px', fontSize: 12, fontWeight: 600,
+                  borderRadius: 8, padding: '5px 14px', fontSize: 12, fontWeight: 600,
                   color: '#fff', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 12,
                 }}>
                   {product.usageExamples[0].room}
@@ -555,7 +555,7 @@ export default function ProductPage() {
                       <div style={{
                         display: 'inline-flex', alignItems: 'center',
                         background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(12px)',
-                        WebkitBackdropFilter: 'blur(12px)', borderRadius: 980, padding: '4px 12px',
+                        WebkitBackdropFilter: 'blur(12px)', borderRadius: 8, padding: '4px 12px',
                         fontSize: 11, fontWeight: 600, color: '#fff', letterSpacing: '0.04em',
                         textTransform: 'uppercase', marginBottom: 10,
                       }}>
@@ -582,8 +582,8 @@ export default function ProductPage() {
           viewport={{ once: true, amount: 0.2 }}
           style={{ textAlign: 'center', marginBottom: 48 }}
         >
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Почему Wonder Wow</div>
-          <h2 style={{ fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 700, color: '#1d1d1f', letterSpacing: '-0.025em', lineHeight: 1.1 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Почему Wonder Wow</div>
+          <h2 style={{ fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 700, color: '#2D2D2D', letterSpacing: '-0.025em', lineHeight: 1.1 }}>
             Сделано для вашего дома
           </h2>
         </motion.div>
@@ -605,7 +605,7 @@ export default function ProductPage() {
         <div
           style={{
             borderRadius: 32, overflow: 'hidden', position: 'relative', height: 420,
-            background: `linear-gradient(135deg, #1d1d1f 0%, #3a3a3c 100%)`,
+            background: `linear-gradient(135deg, #2D2D2D 0%, #3a3a3c 100%)`,
             display: 'flex', alignItems: 'center',
           }}
         >
@@ -626,7 +626,7 @@ export default function ProductPage() {
             </p>
             <button
               onClick={handleAddToCart}
-              style={{ background: '#fff', color: '#1d1d1f', border: 'none', height: 48, borderRadius: 980, fontWeight: 600, fontSize: 15, padding: '0 24px', cursor: 'pointer' }}
+              style={{ background: '#fff', color: '#2D2D2D', border: 'none', height: 48, borderRadius: 8, fontWeight: 600, fontSize: 15, padding: '0 24px', cursor: 'pointer' }}
             >
               Купить
             </button>
@@ -642,7 +642,7 @@ export default function ProductPage() {
           whileInView="show"
           viewport={{ once: true, amount: 0.2 }}
         >
-          <h2 style={{ fontSize: 28, fontWeight: 700, color: '#1d1d1f', letterSpacing: '-0.02em', marginBottom: 32, textAlign: 'center' }}>
+          <h2 style={{ fontSize: 28, fontWeight: 700, color: '#2D2D2D', letterSpacing: '-0.02em', marginBottom: 32, textAlign: 'center' }}>
             Характеристики
           </h2>
           <div style={{ borderRadius: 20, overflow: 'hidden', border: '1px solid rgba(0,0,0,0.06)' }}>
@@ -653,11 +653,11 @@ export default function ProductPage() {
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   padding: '18px 24px',
                   borderBottom: idx < arr.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none',
-                  background: idx % 2 === 0 ? '#fff' : '#FBFBFD',
+                  background: idx % 2 === 0 ? '#fff' : '#FAFAFA',
                 }}
               >
-                <span style={{ fontSize: 15, color: '#86868b', fontWeight: 500 }}>{key}</span>
-                <span style={{ fontSize: 15, color: '#1d1d1f', fontWeight: 600 }}>{value}</span>
+                <span style={{ fontSize: 15, color: '#6B7280', fontWeight: 500 }}>{key}</span>
+                <span style={{ fontSize: 15, color: '#2D2D2D', fontWeight: 600 }}>{value}</span>
               </div>
             ))}
           </div>
@@ -672,20 +672,20 @@ export default function ProductPage() {
           whileInView="show"
           viewport={{ once: true, amount: 0.2 }}
         >
-          <h2 style={{ fontSize: 28, fontWeight: 700, color: '#1d1d1f', letterSpacing: '-0.02em', marginBottom: 8, textAlign: 'center' }}>
+          <h2 style={{ fontSize: 28, fontWeight: 700, color: '#2D2D2D', letterSpacing: '-0.02em', marginBottom: 8, textAlign: 'center' }}>
             Отзывы
           </h2>
           <div style={{ textAlign: 'center', marginBottom: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             <StarFilled style={{ color: '#FF9500', fontSize: 18 }} />
-            <span style={{ fontSize: 17, fontWeight: 600, color: '#1d1d1f' }}>{product.rating.toFixed(1)}</span>
-            <span style={{ fontSize: 15, color: '#86868b' }}>({product.reviews} {(() => { const n = product.reviews % 100; const d = n % 10; if (n > 10 && n < 20) return 'отзывов'; if (d === 1) return 'отзыв'; if (d >= 2 && d <= 4) return 'отзыва'; return 'отзывов'; })()})</span>
+            <span style={{ fontSize: 17, fontWeight: 600, color: '#2D2D2D' }}>{product.rating.toFixed(1)}</span>
+            <span style={{ fontSize: 15, color: '#6B7280' }}>({product.reviews} {(() => { const n = product.reviews % 100; const d = n % 10; if (n > 10 && n < 20) return 'отзывов'; if (d === 1) return 'отзыв'; if (d >= 2 && d <= 4) return 'отзыва'; return 'отзывов'; })()})</span>
           </div>
 
           {/* Review list */}
           {reviewsLoading ? (
             <Skeleton active paragraph={{ rows: 3 }} />
           ) : reviews.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '32px 0', color: '#86868b', fontSize: 15 }}>
+            <div style={{ textAlign: 'center', padding: '32px 0', color: '#6B7280', fontSize: 15 }}>
               Пока нет отзывов. Будьте первым!
             </div>
           ) : (
@@ -695,17 +695,17 @@ export default function ProductPage() {
                   <div
                     key={review.id}
                     style={{
-                      background: '#F5F5F7', borderRadius: 16, padding: '20px 24px',
+                      background: '#F5F5F5', borderRadius: 16, padding: '20px 24px',
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#E8E8ED', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <UserOutlined style={{ color: '#86868b', fontSize: 16 }} />
+                          <UserOutlined style={{ color: '#6B7280', fontSize: 16 }} />
                         </div>
-                        <span style={{ fontSize: 15, fontWeight: 600, color: '#1d1d1f' }}>{review.author}</span>
+                        <span style={{ fontSize: 15, fontWeight: 600, color: '#2D2D2D' }}>{review.author}</span>
                       </div>
-                      <span style={{ fontSize: 13, color: '#86868b' }}>
+                      <span style={{ fontSize: 13, color: '#6B7280' }}>
                         {new Date(review.date).toLocaleDateString('ru-RU')}
                       </span>
                     </div>
@@ -714,7 +714,7 @@ export default function ProductPage() {
                         <StarFilled key={star} style={{ fontSize: 14, color: star <= review.rating ? '#FF9500' : '#E8E8ED' }} />
                       ))}
                     </div>
-                    <div style={{ fontSize: 15, color: '#1d1d1f', lineHeight: 1.5 }}>{review.text}</div>
+                    <div style={{ fontSize: 15, color: '#2D2D2D', lineHeight: 1.5 }}>{review.text}</div>
                   </div>
                 ))}
               </div>
@@ -733,12 +733,12 @@ export default function ProductPage() {
           )}
 
           {/* Add review form */}
-          <div style={{ marginTop: 32, background: '#F5F5F7', borderRadius: 20, padding: '24px 28px' }}>
+          <div style={{ marginTop: 32, background: '#F5F5F5', borderRadius: 20, padding: '24px 28px' }}>
             {isAuth ? (
               <>
-                <div style={{ fontSize: 17, fontWeight: 600, color: '#1d1d1f', marginBottom: 16 }}>Оставить отзыв</div>
+                <div style={{ fontSize: 17, fontWeight: 600, color: '#2D2D2D', marginBottom: 16 }}>Оставить отзыв</div>
                 <div style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize: 14, color: '#86868b', marginBottom: 6 }}>Оценка</div>
+                  <div style={{ fontSize: 14, color: '#6B7280', marginBottom: 6 }}>Оценка</div>
                   <Rate value={reviewRating} onChange={setReviewRating} style={{ fontSize: 24 }} />
                 </div>
                 <Input.TextArea
@@ -768,20 +768,20 @@ export default function ProductPage() {
                       },
                     );
                   }}
-                  style={{ borderRadius: 980, height: 44, padding: '0 32px', fontWeight: 600, fontSize: 15 }}
+                  style={{ borderRadius: 8, height: 44, padding: '0 32px', fontWeight: 600, fontSize: 15 }}
                 >
                   Отправить
                 </Button>
               </>
             ) : (
               <div style={{ textAlign: 'center', padding: '12px 0' }}>
-                <div style={{ fontSize: 15, color: '#86868b', marginBottom: 12 }}>
+                <div style={{ fontSize: 15, color: '#6B7280', marginBottom: 12 }}>
                   Авторизуйтесь, чтобы оставить отзыв
                 </div>
                 <Button
                   type="primary"
                   onClick={() => navigate('/auth')}
-                  style={{ borderRadius: 980, height: 40, padding: '0 28px', fontWeight: 600 }}
+                  style={{ borderRadius: 8, height: 40, padding: '0 28px', fontWeight: 600 }}
                 >
                   Войти
                 </Button>
@@ -800,7 +800,7 @@ export default function ProductPage() {
             whileInView="show"
             viewport={{ once: true, amount: 0.2 }}
           >
-            <h2 style={{ fontSize: 28, fontWeight: 700, color: '#1d1d1f', letterSpacing: '-0.02em', marginBottom: 32 }}>
+            <h2 style={{ fontSize: 28, fontWeight: 700, color: '#2D2D2D', letterSpacing: '-0.02em', marginBottom: 32 }}>
               Похожие дизайны
             </h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
@@ -810,7 +810,7 @@ export default function ProductPage() {
                   whileHover={{ y: -6, boxShadow: '0 20px 60px rgba(0,0,0,0.1)' }}
                   transition={{ duration: 0.4, ease }}
                   onClick={() => navigate(`/product/${related.id}`)}
-                  style={{ borderRadius: 24, overflow: 'hidden', cursor: 'pointer', background: '#F5F5F7' }}
+                  style={{ borderRadius: 24, overflow: 'hidden', cursor: 'pointer', background: '#F5F5F5' }}
                 >
                   <img
                     src={related.image}
@@ -818,17 +818,17 @@ export default function ProductPage() {
                     style={{ width: '100%', height: 220, objectFit: 'cover', display: 'block' }}
                   />
                   <div style={{ padding: '16px 20px 20px' }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
                       {related.categoryLabel}
                     </div>
-                    <div style={{ fontSize: 17, fontWeight: 600, color: '#1d1d1f', marginBottom: 8 }}>
+                    <div style={{ fontSize: 17, fontWeight: 600, color: '#2D2D2D', marginBottom: 8 }}>
                       {related.name}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                      <span style={{ fontSize: 17, fontWeight: 700, color: '#1d1d1f' }}>
+                      <span style={{ fontSize: 17, fontWeight: 700, color: '#2D2D2D' }}>
                         {related.price.toLocaleString('ru-RU')} ₽
                       </span>
-                      <span style={{ fontSize: 13, color: '#86868b' }}>{related.priceUnit}</span>
+                      <span style={{ fontSize: 13, color: '#6B7280' }}>{related.priceUnit}</span>
                     </div>
                   </div>
                 </motion.div>
@@ -840,15 +840,15 @@ export default function ProductPage() {
 
       {/* ── Bottom rooms ──────────────────────────────────── */}
       {product.room.length > 0 && (
-        <div style={{ background: '#F5F5F7', padding: '48px 24px', textAlign: 'center' }}>
-          <div style={{ fontSize: 13, color: '#86868b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
+        <div style={{ background: '#F5F5F5', padding: '48px 24px', textAlign: 'center' }}>
+          <div style={{ fontSize: 13, color: '#6B7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
             Подходит для
           </div>
           <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 10 }}>
             {product.room.map((r) => (
               <span
                 key={r}
-                style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 980, padding: '8px 18px', fontSize: 14, fontWeight: 500, color: '#1d1d1f' }}
+                style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 8, padding: '8px 18px', fontSize: 14, fontWeight: 500, color: '#2D2D2D' }}
               >
                 {r}
               </span>

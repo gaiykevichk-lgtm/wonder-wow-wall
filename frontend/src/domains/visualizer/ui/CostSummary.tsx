@@ -86,10 +86,10 @@ export function CostSummary({
         </div>
         {hasSubscription && (
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <Tag icon={<CrownOutlined />} color="#0071e3" style={{ margin: 0 }}>
+            <Tag icon={<CrownOutlined />} color="#4CAF50" style={{ margin: 0 }}>
               Подписка
             </Tag>
-            <Text style={{ color: '#0071e3', fontWeight: 600 }}>
+            <Text style={{ color: '#4CAF50', fontWeight: 600 }}>
               −{fmt(cost.overlayDiscount)} ₽
             </Text>
           </div>
@@ -103,7 +103,7 @@ export function CostSummary({
       {/* Total */}
       <div
         style={{
-          borderTop: '2px solid #1d1d1f',
+          borderTop: '2px solid #2D2D2D',
           paddingTop: 8,
           display: 'flex',
           justifyContent: 'space-between',
@@ -113,7 +113,7 @@ export function CostSummary({
         <Text strong style={{ fontSize: 16 }}>
           Итого
         </Text>
-        <Title level={4} style={{ margin: 0, color: '#1d1d1f' }}>
+        <Title level={4} style={{ margin: 0, color: '#2D2D2D' }}>
           {fmt(cost.totalCost)} ₽
         </Title>
       </div>
@@ -127,9 +127,9 @@ export function CostSummary({
         disabled={cost.totalPanels === 0}
         onClick={onAddToCart}
         style={{
-          background: '#1d1d1f',
-          borderColor: '#1d1d1f',
-          borderRadius: 980,
+          background: '#2D2D2D',
+          borderColor: '#2D2D2D',
+          borderRadius: 8,
           height: 48,
           fontWeight: 600,
         }}
@@ -140,7 +140,7 @@ export function CostSummary({
         block
         onClick={onSave}
         disabled={cost.totalPanels === 0}
-        style={{ borderRadius: 980 }}
+        style={{ borderRadius: 8 }}
       >
         Сохранить проект
       </Button>

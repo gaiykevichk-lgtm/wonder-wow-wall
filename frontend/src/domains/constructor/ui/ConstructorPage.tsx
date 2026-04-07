@@ -52,15 +52,15 @@ const CELL_SIZE_MM = 300; // 30 cm grid cell
 const CELL_PX = 60; // pixels per cell on screen
 const GAP_PX = 2;
 
-const BLUE = '#0071e3';
-const DARK = '#1d1d1f';
-const GRAY = '#86868b';
-const LIGHT_BG = '#F5F5F7';
+const BLUE = '#4CAF50';
+const DARK = '#2D2D2D';
+const GRAY = '#6B7280';
+const LIGHT_BG = '#F5F5F5';
 
 const EASE_APPLE: [number, number, number, number] = [0.25, 0.1, 0.25, 1.0];
 
 const WALL_COLORS = [
-  { label: 'Белая', value: '#F5F5F7' },
+  { label: 'Белая', value: '#F5F5F5' },
   { label: 'Светло-серая', value: '#E8E8E8' },
   { label: 'Бежевая', value: '#F5E6D3' },
   { label: 'Тёмная', value: '#2C2C2C' },
@@ -453,7 +453,7 @@ export default function ConstructorPage() {
                 { label: 'Интерьер', value: 'interior' },
               ]}
               style={{
-                borderRadius: 980,
+                borderRadius: 8,
                 padding: 2,
                 background: 'rgba(0,0,0,0.04)',
               }}
@@ -483,7 +483,7 @@ export default function ConstructorPage() {
                 width: 160,
                 height: 100,
                 borderRadius: 16,
-                background: 'linear-gradient(135deg, #F5F5F7 0%, #E8E8E8 100%)',
+                background: 'linear-gradient(135deg, #F5F5F5 0%, #E8E8E8 100%)',
                 border: wallMode === 'grid' ? `2px solid ${BLUE}` : '2px solid rgba(0,0,0,0.06)',
                 cursor: 'pointer',
                 display: 'flex',
@@ -827,7 +827,7 @@ export default function ConstructorPage() {
                   color: '#fff',
                   border: 'none',
                   height: 38,
-                  borderRadius: 980,
+                  borderRadius: 8,
                   fontWeight: 600,
                   fontSize: 13,
                 }}
@@ -840,7 +840,7 @@ export default function ConstructorPage() {
                   onClick={handleFillWall}
                   style={{
                     height: 38,
-                    borderRadius: 980,
+                    borderRadius: 8,
                     border: '1px solid #D1D5DB',
                     fontWeight: 500,
                     fontSize: 13,
@@ -916,7 +916,7 @@ export default function ConstructorPage() {
                   color: '#fff',
                   border: 'none',
                   height: 38,
-                  borderRadius: 980,
+                  borderRadius: 8,
                   fontWeight: 600,
                 }}
               >
@@ -925,7 +925,7 @@ export default function ConstructorPage() {
               <Button
                 icon={<UndoOutlined />}
                 onClick={handleClear}
-                style={{ height: 38, borderRadius: 980, border: '1px solid #D1D5DB', color: GRAY }}
+                style={{ height: 38, borderRadius: 8, border: '1px solid #D1D5DB', color: GRAY }}
               >
                 Очистить
               </Button>
@@ -993,7 +993,7 @@ export default function ConstructorPage() {
                 {isInteriorMode && (
                   <Tag
                     color="blue"
-                    style={{ margin: 0, borderRadius: 980, fontSize: 11, fontWeight: 500 }}
+                    style={{ margin: 0, borderRadius: 8, fontSize: 11, fontWeight: 500 }}
                   >
                     Интерьер: {selectedPreset?.room}
                   </Tag>

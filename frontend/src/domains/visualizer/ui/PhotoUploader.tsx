@@ -64,7 +64,7 @@ export function PhotoUploader({ onUpload, loading }: PhotoUploaderProps) {
         justifyContent: 'center',
         gap: 24,
         padding: 64,
-        border: `2px dashed ${dragActive ? '#0071e3' : 'rgba(0,0,0,0.04)'}`,
+        border: `2px dashed ${dragActive ? '#4CAF50' : 'rgba(0,0,0,0.04)'}`,
         borderRadius: 20,
         background: dragActive ? 'rgba(0, 113, 227, 0.04)' : '#FAFAFA',
         cursor: 'pointer',
@@ -89,13 +89,13 @@ export function PhotoUploader({ onUpload, loading }: PhotoUploaderProps) {
         <CameraOutlined
           style={{
             fontSize: 36,
-            color: dragActive ? '#0071e3' : '#86868b',
+            color: dragActive ? '#4CAF50' : '#6B7280',
           }}
         />
       </div>
 
       <div style={{ textAlign: 'center' }}>
-        <Title level={4} style={{ margin: 0, color: '#1d1d1f' }}>
+        <Title level={4} style={{ margin: 0, color: '#2D2D2D' }}>
           Загрузите фото стены
         </Title>
         <Text type="secondary" style={{ fontSize: 14 }}>
@@ -124,9 +124,9 @@ export function PhotoUploader({ onUpload, loading }: PhotoUploaderProps) {
               input?.click();
             }}
             style={{
-              background: '#1d1d1f',
-              borderColor: '#1d1d1f',
-              borderRadius: 980,
+              background: '#2D2D2D',
+              borderColor: '#2D2D2D',
+              borderRadius: 8,
               height: 48,
               paddingInline: 32,
               fontWeight: 600,
@@ -155,7 +155,7 @@ export function PhotoUploader({ onUpload, loading }: PhotoUploaderProps) {
             }}
             className="mobile-camera-btn"
             style={{
-              borderRadius: 980,
+              borderRadius: 8,
               height: 48,
               paddingInline: 24,
             }}
@@ -179,8 +179,8 @@ export function PhotoUploader({ onUpload, loading }: PhotoUploaderProps) {
           maxWidth: 400,
         }}
       >
-        <Text style={{ fontSize: 13, color: '#86868b' }}>
-          <strong style={{ color: '#1d1d1f' }}>Советы для лучшего результата:</strong>
+        <Text style={{ fontSize: 13, color: '#6B7280' }}>
+          <strong style={{ color: '#2D2D2D' }}>Советы для лучшего результата:</strong>
           <br />
           — Фотографируйте стену фронтально
           <br />

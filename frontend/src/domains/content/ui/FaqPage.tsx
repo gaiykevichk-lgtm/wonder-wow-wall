@@ -6,9 +6,9 @@ import { useNavigate } from 'react-router-dom';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
-const BLUE = '#0071e3';
-const DARK = '#1d1d1f';
-const GRAY_TEXT = '#86868b';
+const BLUE = '#4CAF50';
+const DARK = '#2D2D2D';
+const GRAY_TEXT = '#6B7280';
 const FONT = 'Inter, sans-serif';
 const MAX_WIDTH: React.CSSProperties = { maxWidth: 1080, margin: '0 auto' };
 
@@ -215,7 +215,7 @@ const FaqPage: React.FC = () => {
   return (
     <div style={{ fontFamily: FONT, paddingTop: 72 }}>
       {/* Hero */}
-      <section style={{ background: '#F5F5F7', padding: '120px 24px' }}>
+      <section style={{ background: '#F5F5F5', padding: '120px 24px' }}>
         <div style={{ ...MAX_WIDTH, textAlign: 'center' }}>
           <motion.div
             variants={stagger}
@@ -296,7 +296,7 @@ const FaqPage: React.FC = () => {
                       width: 36,
                       height: 36,
                       borderRadius: 8,
-                      background: '#F5F5F7',
+                      background: '#F5F5F5',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -337,7 +337,7 @@ const FaqPage: React.FC = () => {
       </section>
 
       {/* Contact CTA */}
-      <section style={{ background: '#F5F5F7', padding: '0 24px 88px' }}>
+      <section style={{ background: '#F5F5F5', padding: '0 24px 88px' }}>
         <div style={{ ...MAX_WIDTH }}>
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -388,7 +388,7 @@ const FaqPage: React.FC = () => {
                   background: BLUE,
                   color: '#fff',
                   border: 'none',
-                  borderRadius: 980,
+                  borderRadius: 8,
                   height: 52,
                   padding: '0 28px',
                   fontFamily: FONT,
@@ -409,7 +409,7 @@ const FaqPage: React.FC = () => {
                   background: 'transparent',
                   color: '#fff',
                   border: '1px solid rgba(255,255,255,0.35)',
-                  borderRadius: 980,
+                  borderRadius: 8,
                   height: 52,
                   padding: '0 28px',
                   fontFamily: FONT,

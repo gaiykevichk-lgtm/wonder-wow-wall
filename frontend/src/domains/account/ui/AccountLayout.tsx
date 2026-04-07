@@ -12,7 +12,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../auth/model/authStore';
 
 const { Title, Text } = Typography;
-const BLUE = '#0071e3';
+const BLUE = '#4CAF50';
 
 const MENU_ITEMS = [
   { key: '/account', icon: <UserOutlined />, label: 'Профиль' },
@@ -50,7 +50,7 @@ export default function AccountLayout() {
         style={{
           width: 260,
           flexShrink: 0,
-          background: '#F5F5F7',
+          background: '#F5F5F5',
           borderRadius: 20,
           padding: '24px 0',
           height: 'fit-content',
@@ -65,8 +65,8 @@ export default function AccountLayout() {
             icon={<UserOutlined />}
             style={{ background: BLUE, marginBottom: 12 }}
           />
-          <Title level={5} style={{ margin: 0, color: '#1d1d1f', fontWeight: 600 }}>{user?.name || 'Пользователь'}</Title>
-          <Text type="secondary" style={{ fontSize: 13, color: '#86868b' }}>{user?.email}</Text>
+          <Title level={5} style={{ margin: 0, color: '#2D2D2D', fontWeight: 600 }}>{user?.name || 'Пользователь'}</Title>
+          <Text type="secondary" style={{ fontSize: 13, color: '#6B7280' }}>{user?.email}</Text>
         </div>
 
         <Menu
@@ -87,7 +87,7 @@ export default function AccountLayout() {
             icon={<LogoutOutlined />}
             onClick={handleLogout}
             block
-            style={{ textAlign: 'left', justifyContent: 'flex-start', fontSize: 14, borderRadius: 980 }}
+            style={{ textAlign: 'left', justifyContent: 'flex-start', fontSize: 14, borderRadius: 8 }}
           >
             Выйти
           </Button>

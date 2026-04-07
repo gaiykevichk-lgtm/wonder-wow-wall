@@ -13,9 +13,9 @@ import { motion } from 'framer-motion';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
-const BLUE = '#0071e3';
-const DARK = '#1d1d1f';
-const GRAY_TEXT = '#86868b';
+const BLUE = '#4CAF50';
+const DARK = '#2D2D2D';
+const GRAY_TEXT = '#6B7280';
 const FONT = 'Inter, sans-serif';
 const SECTION_PAD: React.CSSProperties = { padding: '120px 24px' };
 const MAX_WIDTH: React.CSSProperties = { maxWidth: 1080, margin: '0 auto' };
@@ -39,7 +39,7 @@ const stagger = {
 const HeroSection: React.FC = () => (
   <section
     style={{
-      background: '#F5F5F7',
+      background: '#F5F5F5',
       ...SECTION_PAD,
       paddingTop: 96,
       paddingBottom: 96,
@@ -227,7 +227,7 @@ const techFeatures = [
 ];
 
 const TechnologySection: React.FC = () => (
-  <section style={{ background: '#F5F5F7', ...SECTION_PAD }}>
+  <section style={{ background: '#F5F5F5', ...SECTION_PAD }}>
     <div style={{ ...MAX_WIDTH }}>
       <motion.div
         variants={stagger}
@@ -424,7 +424,7 @@ const NumbersSection: React.FC = () => (
 // ─── Eco Section ──────────────────────────────────────────────────────────────
 
 const EcoSection: React.FC = () => (
-  <section style={{ background: '#F5F5F7', ...SECTION_PAD }}>
+  <section style={{ background: '#F5F5F5', ...SECTION_PAD }}>
     <div style={{ ...MAX_WIDTH }}>
       <motion.div
         variants={stagger}

@@ -6,7 +6,7 @@ import { useLoginMutation } from '../api/authApi';
 import { ApiError } from '../../../shared/api';
 
 const { Title, Text } = Typography;
-const BLUE = '#0071e3';
+const BLUE = '#4CAF50';
 
 export default function LoginPage() {
   const loginMutation = useLoginMutation();
@@ -32,7 +32,7 @@ export default function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#FBFBFD',
+        background: '#FAFAFA',
         padding: '96px 16px 48px',
       }}
     >
@@ -51,8 +51,8 @@ export default function LoginPage() {
         >
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
             <img src="/logo.png" alt="Wonder Wow Wall" style={{ height: 48, marginBottom: 16 }} />
-            <Title level={3} style={{ margin: 0, fontWeight: 600, color: '#1d1d1f' }}>Вход в аккаунт</Title>
-            <Text style={{ color: '#86868b' }}>Войдите, чтобы управлять заказами и проектами</Text>
+            <Title level={3} style={{ margin: 0, fontWeight: 600, color: '#2D2D2D' }}>Вход в аккаунт</Title>
+            <Text style={{ color: '#6B7280' }}>Войдите, чтобы управлять заказами и проектами</Text>
           </div>
 
           <Form layout="vertical" onFinish={onFinish} size="large" requiredMark={false}>
@@ -85,7 +85,7 @@ export default function LoginPage() {
                 htmlType="submit"
                 block
                 loading={loginMutation.isPending}
-                style={{ background: BLUE, borderColor: BLUE, borderRadius: 980, height: 44 }}
+                style={{ background: BLUE, borderColor: BLUE, borderRadius: 8, height: 44 }}
               >
                 Войти
               </Button>
@@ -95,7 +95,7 @@ export default function LoginPage() {
           <Divider style={{ margin: '16px 0', fontSize: 13, color: '#999' }}>или</Divider>
 
           <div style={{ textAlign: 'center' }}>
-            <Text style={{ color: '#86868b' }}>Нет аккаунта? </Text>
+            <Text style={{ color: '#6B7280' }}>Нет аккаунта? </Text>
             <Link to="/register" style={{ color: BLUE, fontWeight: 600 }}>
               Зарегистрироваться
             </Link>

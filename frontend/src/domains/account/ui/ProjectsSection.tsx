@@ -5,7 +5,7 @@ import { useAccountStore } from '../model/accountStore';
 import { useProjects, useDeleteProject } from '../api/accountApi';
 
 const { Title, Text } = Typography;
-const BLUE = '#0071e3';
+const BLUE = '#4CAF50';
 const CELL_PX = 20; // smaller preview
 const GAP_PX = 1;
 
@@ -54,12 +54,12 @@ function ProjectPreview({ project }: { project: ReturnType<typeof useAccountStor
         {/* Info */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
-            <Title level={5} style={{ margin: '0 0 4px', color: '#1d1d1f', fontWeight: 600 }}>{project.name}</Title>
-            <Text type="secondary" style={{ fontSize: 13, color: '#86868b' }}>
+            <Title level={5} style={{ margin: '0 0 4px', color: '#2D2D2D', fontWeight: 600 }}>{project.name}</Title>
+            <Text type="secondary" style={{ fontSize: 13, color: '#6B7280' }}>
               Стена: {project.wallCols * 30}x{project.wallRows * 30} см · {project.panels.length} панелей
             </Text>
             <br />
-            <Text type="secondary" style={{ fontSize: 13, color: '#86868b' }}>
+            <Text type="secondary" style={{ fontSize: 13, color: '#6B7280' }}>
               Обновлён: {new Date(project.updatedAt).toLocaleDateString('ru-RU')}
             </Text>
           </div>
@@ -73,7 +73,7 @@ function ProjectPreview({ project }: { project: ReturnType<typeof useAccountStor
                 icon={<EditOutlined />}
                 size="small"
                 onClick={() => navigate(`/account/constructor?project=${project.id}`)}
-                style={{ background: BLUE, borderColor: BLUE, borderRadius: 980 }}
+                style={{ background: BLUE, borderColor: BLUE, borderRadius: 8 }}
               >
                 Открыть
               </Button>
@@ -83,7 +83,7 @@ function ProjectPreview({ project }: { project: ReturnType<typeof useAccountStor
                 okText="Да"
                 cancelText="Нет"
               >
-                <Button type="text" danger icon={<DeleteOutlined />} size="small" style={{ borderRadius: 980 }} />
+                <Button type="text" danger icon={<DeleteOutlined />} size="small" style={{ borderRadius: 8 }} />
               </Popconfirm>
             </Space>
           </div>
@@ -100,12 +100,12 @@ export default function ProjectsSection() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Title level={3} style={{ margin: 0, color: '#1d1d1f', fontWeight: 600 }}>Мои проекты</Title>
+        <Title level={3} style={{ margin: 0, color: '#2D2D2D', fontWeight: 600 }}>Мои проекты</Title>
         <Button
           type="primary"
           icon={<AppstoreOutlined />}
           onClick={() => navigate('/account/constructor')}
-          style={{ background: BLUE, borderColor: BLUE, borderRadius: 980 }}
+          style={{ background: BLUE, borderColor: BLUE, borderRadius: 8 }}
         >
           Новый проект
         </Button>
@@ -116,9 +116,9 @@ export default function ProjectsSection() {
           <Empty
             description={
               <div>
-                <Text type="secondary" style={{ fontSize: 15, color: '#86868b' }}>У вас пока нет сохранённых проектов</Text>
+                <Text type="secondary" style={{ fontSize: 15, color: '#6B7280' }}>У вас пока нет сохранённых проектов</Text>
                 <br />
-                <Text type="secondary" style={{ fontSize: 13, color: '#86868b' }}>
+                <Text type="secondary" style={{ fontSize: 13, color: '#6B7280' }}>
                   Перейдите в конструктор, чтобы создать свой первый проект
                 </Text>
               </div>
@@ -129,7 +129,7 @@ export default function ProjectsSection() {
               type="primary"
               icon={<AppstoreOutlined />}
               onClick={() => navigate('/account/constructor')}
-              style={{ background: BLUE, borderColor: BLUE, borderRadius: 980, marginTop: 8 }}
+              style={{ background: BLUE, borderColor: BLUE, borderRadius: 8, marginTop: 8 }}
             >
               Создать проект
             </Button>

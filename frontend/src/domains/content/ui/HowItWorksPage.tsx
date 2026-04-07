@@ -15,9 +15,9 @@ import { motion } from 'framer-motion';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
-const BLUE = '#0071e3';
-const DARK = '#1d1d1f';
-const GRAY_TEXT = '#86868b';
+const BLUE = '#4CAF50';
+const DARK = '#2D2D2D';
+const GRAY_TEXT = '#6B7280';
 const FONT = 'Inter, sans-serif';
 const SECTION_PAD: React.CSSProperties = { padding: '120px 24px' };
 const MAX_WIDTH: React.CSSProperties = { maxWidth: 1080, margin: '0 auto' };
@@ -148,7 +148,7 @@ const faqItems = [
 const HowItWorksPage: React.FC = () => (
   <div style={{ fontFamily: FONT, paddingTop: 72 }}>
     {/* Hero */}
-    <section style={{ background: '#F5F5F7', padding: '120px 24px 120px' }}>
+    <section style={{ background: '#F5F5F5', padding: '120px 24px 120px' }}>
       <div style={{ ...MAX_WIDTH, textAlign: 'center' }}>
         <motion.div
           variants={stagger}
@@ -280,7 +280,7 @@ const HowItWorksPage: React.FC = () => (
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 8,
-                    background: '#F5F5F7',
+                    background: '#F5F5F5',
                     borderRadius: 8,
                     padding: '8px 14px',
                     alignSelf: 'flex-start',
@@ -298,7 +298,7 @@ const HowItWorksPage: React.FC = () => (
     </section>
 
     {/* Guarantees */}
-    <section style={{ background: '#F5F5F7', ...SECTION_PAD }}>
+    <section style={{ background: '#F5F5F5', ...SECTION_PAD }}>
       <div style={{ ...MAX_WIDTH }}>
         <motion.div
           variants={stagger}

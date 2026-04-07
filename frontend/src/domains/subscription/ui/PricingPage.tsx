@@ -6,9 +6,9 @@ import { useNavigate } from 'react-router-dom';
 import { BASE_PANEL_PRICES, DESIGN_OVERLAY_PRICE } from '../../../shared/config/constants';
 import { useSubscriptionStore, SUBSCRIPTION_PLANS } from '../model/subscriptionStore';
 
-const BLUE = '#0071e3';
-const DARK = '#1d1d1f';
-const GRAY_TEXT = '#86868b';
+const BLUE = '#4CAF50';
+const DARK = '#2D2D2D';
+const GRAY_TEXT = '#6B7280';
 const FONT = 'Inter, sans-serif';
 const MAX_WIDTH: React.CSSProperties = { maxWidth: 1080, margin: '0 auto' };
 
@@ -53,12 +53,12 @@ const PlanCard: React.FC<{
       styles={{ body: { padding: '36px 28px' } }}
     >
       {plan.popular && (
-        <Tag style={{ position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', background: BLUE, color: '#fff', border: 'none', borderRadius: 980, fontFamily: FONT, fontWeight: 600, fontSize: 12, padding: '4px 16px', whiteSpace: 'nowrap' }}>
+        <Tag style={{ position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', background: BLUE, color: '#fff', border: 'none', borderRadius: 8, fontFamily: FONT, fontWeight: 600, fontSize: 12, padding: '4px 16px', whiteSpace: 'nowrap' }}>
           Популярный
         </Tag>
       )}
       {isActive && (
-        <Tag icon={<CrownOutlined />} style={{ position: 'absolute', top: -14, right: 16, background: BLUE, color: '#fff', border: 'none', borderRadius: 980, fontFamily: FONT, fontWeight: 600, fontSize: 12, padding: '4px 12px' }}>
+        <Tag icon={<CrownOutlined />} style={{ position: 'absolute', top: -14, right: 16, background: BLUE, color: '#fff', border: 'none', borderRadius: 8, fontFamily: FONT, fontWeight: 600, fontSize: 12, padding: '4px 12px' }}>
           Ваш план
         </Tag>
       )}
@@ -94,7 +94,7 @@ const PlanCard: React.FC<{
           background: isActive ? '#E8E8E8' : plan.popular ? BLUE : DARK,
           color: isActive ? GRAY_TEXT : '#fff',
           border: 'none',
-          borderRadius: 980,
+          borderRadius: 8,
           height: 50,
           width: '100%',
           fontFamily: FONT,
@@ -122,7 +122,7 @@ const PricingPage: React.FC = () => {
         background: activeTab === key ? DARK : 'transparent',
         color: activeTab === key ? '#fff' : DARK,
         border: `1.5px solid ${activeTab === key ? DARK : 'rgba(0,0,0,0.04)'}`,
-        borderRadius: 980,
+        borderRadius: 8,
         padding: '10px 28px',
         fontFamily: FONT,
         fontWeight: 600,
@@ -138,7 +138,7 @@ const PricingPage: React.FC = () => {
   return (
     <div style={{ fontFamily: FONT, paddingTop: 72 }}>
       {/* Hero */}
-      <section style={{ background: '#F5F5F7', padding: '120px 24px' }}>
+      <section style={{ background: '#F5F5F5', padding: '120px 24px' }}>
         <div style={{ ...MAX_WIDTH, textAlign: 'center' }}>
           <motion.div variants={stagger} initial="hidden" animate="visible" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
             <motion.span variants={fadeUp} custom={0} style={{ fontSize: 12, fontWeight: 600, color: GRAY_TEXT, textTransform: 'uppercase', letterSpacing: '2px' }}>
@@ -173,7 +173,7 @@ const PricingPage: React.FC = () => {
             <Button
               size="small"
               onClick={cancelSubscription}
-              style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 980, fontWeight: 500 }}
+              style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 8, fontWeight: 500 }}
             >
               Отменить подписку
             </Button>
@@ -202,7 +202,7 @@ const PricingPage: React.FC = () => {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                         <h3 style={{ fontSize: 22, fontWeight: 600, color: DARK, margin: 0 }}>{item.size}</h3>
                         <p style={{ fontSize: 13, color: GRAY_TEXT, margin: 0, lineHeight: 1.5 }}>{item.desc}</p>
-                        <div style={{ background: '#F5F5F7', borderRadius: 10, padding: '14px 16px' }}>
+                        <div style={{ background: '#F5F5F5', borderRadius: 10, padding: '14px 16px' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 6 }}>
                             <span style={{ color: GRAY_TEXT }}>Базовая панель:</span>
                             <span style={{ fontWeight: 600, color: DARK }}>{item.basePrice.toLocaleString('ru-RU')} ₽</span>
@@ -240,7 +240,7 @@ const PricingPage: React.FC = () => {
                   <p style={{ fontSize: 17, fontWeight: 600, color: '#fff', margin: '0 0 4px' }}>Рассчитайте стоимость вашей стены</p>
                   <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', margin: 0 }}>Используйте конструктор — укажите размеры, выберите дизайн, получите точную смету.</p>
                 </div>
-                <Button size="large" icon={<ArrowRightOutlined />} onClick={() => navigate('/constructor')} style={{ background: BLUE, color: '#fff', border: 'none', borderRadius: 980, height: 48, padding: '0 28px', fontWeight: 600, flexShrink: 0 }}>
+                <Button size="large" icon={<ArrowRightOutlined />} onClick={() => navigate('/constructor')} style={{ background: BLUE, color: '#fff', border: 'none', borderRadius: 8, height: 48, padding: '0 28px', fontWeight: 600, flexShrink: 0 }}>
                   Открыть конструктор
                 </Button>
               </motion.div>
@@ -282,7 +282,7 @@ const PricingPage: React.FC = () => {
                 ))}
               </div>
 
-              <motion.div variants={fadeUp} custom={4} style={{ background: '#F5F5F7', borderRadius: 20, padding: '24px 28px' }}>
+              <motion.div variants={fadeUp} custom={4} style={{ background: '#F5F5F5', borderRadius: 20, padding: '24px 28px' }}>
                 <h3 style={{ fontSize: 16, fontWeight: 600, color: DARK, margin: '0 0 12px' }}>Как работает подписка?</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {[

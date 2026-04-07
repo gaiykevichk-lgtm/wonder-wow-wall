@@ -272,10 +272,10 @@ export default function PhotoEditorPage() {
                 onClick={() => setEditingMask(!editingMask)}
                 style={{
                   padding: '6px 16px',
-                  borderRadius: 980,
-                  border: `1px solid ${editingMask ? '#0071e3' : 'rgba(0,0,0,0.04)'}`,
+                  borderRadius: 8,
+                  border: `1px solid ${editingMask ? '#4CAF50' : 'rgba(0,0,0,0.04)'}`,
                   background: editingMask ? 'rgba(0,113,227,0.08)' : '#FFF',
-                  color: editingMask ? '#0071e3' : '#86868b',
+                  color: editingMask ? '#4CAF50' : '#6B7280',
                   cursor: 'pointer',
                   fontSize: 13,
                   fontWeight: 500,
@@ -291,10 +291,10 @@ export default function PhotoEditorPage() {
                 }}
                 style={{
                   padding: '6px 16px',
-                  borderRadius: 980,
+                  borderRadius: 8,
                   border: '1px solid rgba(0,0,0,0.04)',
                   background: '#FFF',
-                  color: '#86868b',
+                  color: '#6B7280',
                   cursor: 'pointer',
                   fontSize: 13,
                 }}

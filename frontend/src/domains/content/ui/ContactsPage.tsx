@@ -11,8 +11,8 @@ import { useSubmitContact } from '../../../shared/api/contactsApi';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
-const DARK = '#1d1d1f';
-const GRAY_TEXT = '#86868b';
+const DARK = '#2D2D2D';
+const GRAY_TEXT = '#6B7280';
 const FONT = 'Inter, sans-serif';
 const MAX_WIDTH: React.CSSProperties = { maxWidth: 1080, margin: '0 auto' };
 
@@ -93,7 +93,7 @@ const ContactsPage: React.FC = () => {
   return (
     <div style={{ paddingTop: 72, minHeight: '100vh', background: '#fff' }}>
       {/* Header */}
-      <section style={{ background: '#F5F5F7', padding: '120px 24px' }}>
+      <section style={{ background: '#F5F5F5', padding: '120px 24px' }}>
         <div style={{ ...MAX_WIDTH, textAlign: 'center' }}>
           <motion.div
             variants={stagger}
@@ -201,7 +201,7 @@ const ContactsPage: React.FC = () => {
                         width: 44,
                         height: 44,
                         borderRadius: 10,
-                        background: '#F5F5F7',
+                        background: '#F5F5F5',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -316,7 +316,7 @@ const ContactsPage: React.FC = () => {
                     background: DARK,
                     color: '#fff',
                     border: 'none',
-                    borderRadius: 980,
+                    borderRadius: 8,
                     height: 52,
                     padding: '0 36px',
                     fontFamily: FONT,

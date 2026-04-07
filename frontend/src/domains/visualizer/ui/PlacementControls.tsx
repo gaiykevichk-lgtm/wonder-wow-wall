@@ -72,9 +72,9 @@ export function PlacementControls({
           icon={<AppstoreOutlined />}
           onClick={onAutoFill}
           style={{
-            background: '#0071e3',
-            borderColor: '#0071e3',
-            borderRadius: 980,
+            background: '#4CAF50',
+            borderColor: '#4CAF50',
+            borderRadius: 8,
           }}
         >
           Заполнить стену
@@ -85,7 +85,7 @@ export function PlacementControls({
             icon={<DeleteOutlined />}
             onClick={onClearAll}
             disabled={panelCount === 0}
-            style={{ borderRadius: 980 }}
+            style={{ borderRadius: 8 }}
           />
         </Tooltip>
       </div>

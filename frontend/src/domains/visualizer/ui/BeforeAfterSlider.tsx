@@ -129,7 +129,7 @@ export function BeforeAfterSlider({
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: 14,
-            color: '#1d1d1f',
+            color: '#2D2D2D',
             fontWeight: 600,
           }}
         >

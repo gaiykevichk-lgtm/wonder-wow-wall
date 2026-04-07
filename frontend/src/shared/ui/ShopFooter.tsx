@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 
 export function ShopFooter() {
   return (
-    <footer style={{ background: '#F5F5F7', color: '#1d1d1f', padding: '48px 24px 24px' }}>
+    <footer style={{ background: '#F5F5F5', color: '#2D2D2D', padding: '48px 24px 24px' }}>
       <div style={{ maxWidth: 1280, margin: '0 auto' }}>
         <div
           style={{
@@ -21,7 +21,7 @@ export function ShopFooter() {
               alt="Wonder Wow Wall"
               style={{ height: 48, marginBottom: 16 }}
             />
-            <p style={{ fontSize: 12, color: '#86868b', lineHeight: 1.6, marginBottom: 20 }}>
+            <p style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.6, marginBottom: 20 }}>
               Инновационный сервис отделки стен модульными пластинами.
               100 000+ вариантов дизайна.
             </p>
@@ -37,12 +37,12 @@ export function ShopFooter() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: 11,
-                    color: '#86868b',
+                    color: '#6B7280',
                     cursor: 'pointer',
                     transition: 'color 0.2s',
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = '#1d1d1f')}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = '#86868b')}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = '#2D2D2D')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = '#6B7280')}
                 >
                   {s}
                 </div>
@@ -59,7 +59,7 @@ export function ShopFooter() {
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
                 marginBottom: 16,
-                color: '#1d1d1f',
+                color: '#2D2D2D',
               }}
             >
               Навигация
@@ -83,7 +83,7 @@ export function ShopFooter() {
                   marginBottom: 10,
                   transition: 'color 0.2s',
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = '#1d1d1f')}
+                onMouseEnter={(e) => (e.currentTarget.style.color = '#2D2D2D')}
                 onMouseLeave={(e) => (e.currentTarget.style.color = '#424245')}
               >
                 {item.label}
@@ -100,19 +100,19 @@ export function ShopFooter() {
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
                 marginBottom: 16,
-                color: '#1d1d1f',
+                color: '#2D2D2D',
               }}
             >
               Контакты
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#86868b', fontSize: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#6B7280', fontSize: 12 }}>
                 <PhoneOutlined /> +7 (800) 555-35-35
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#86868b', fontSize: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#6B7280', fontSize: 12 }}>
                 <MailOutlined /> info@wonderwowwall.ru
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#86868b', fontSize: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#6B7280', fontSize: 12 }}>
                 <EnvironmentOutlined /> Москва, ул. Дизайна, 1
               </div>
             </div>
@@ -127,12 +127,12 @@ export function ShopFooter() {
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
                 marginBottom: 16,
-                color: '#1d1d1f',
+                color: '#2D2D2D',
               }}
             >
               Подписка на новинки
             </h4>
-            <p style={{ fontSize: 12, color: '#86868b', marginBottom: 12, lineHeight: 1.5 }}>
+            <p style={{ fontSize: 12, color: '#6B7280', marginBottom: 12, lineHeight: 1.5 }}>
               Получайте информацию о новых дизайнах и акциях
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -140,18 +140,18 @@ export function ShopFooter() {
                 placeholder="Ваш email"
                 style={{
                   background: '#fff',
-                  border: '1px solid #d2d2d7',
-                  color: '#1d1d1f',
-                  borderRadius: 980,
+                  border: '1px solid #E5E7EB',
+                  color: '#2D2D2D',
+                  borderRadius: 8,
                 }}
               />
               <Button
                 type="primary"
                 icon={<SendOutlined />}
                 style={{
-                  background: '#0071e3',
+                  background: '#4CAF50',
                   border: 'none',
-                  borderRadius: 980,
+                  borderRadius: 8,
                 }}
               />
             </div>
@@ -161,7 +161,7 @@ export function ShopFooter() {
         {/* Bottom */}
         <div
           style={{
-            borderTop: '1px solid #d2d2d7',
+            borderTop: '1px solid #E5E7EB',
             paddingTop: 16,
             display: 'flex',
             justifyContent: 'space-between',
@@ -170,14 +170,14 @@ export function ShopFooter() {
             gap: 16,
           }}
         >
-          <span style={{ fontSize: 12, color: '#86868b' }}>
+          <span style={{ fontSize: 12, color: '#6B7280' }}>
             &copy; 2026 Wonder Wow Wall. Все права защищены.
           </span>
           <div style={{ display: 'flex', gap: 24 }}>
-            <span style={{ fontSize: 12, color: '#86868b', cursor: 'pointer' }}>
+            <span style={{ fontSize: 12, color: '#6B7280', cursor: 'pointer' }}>
               Политика конфиденциальности
             </span>
-            <span style={{ fontSize: 12, color: '#86868b', cursor: 'pointer' }}>
+            <span style={{ fontSize: 12, color: '#6B7280', cursor: 'pointer' }}>
               Пользовательское соглашение
             </span>
           </div>

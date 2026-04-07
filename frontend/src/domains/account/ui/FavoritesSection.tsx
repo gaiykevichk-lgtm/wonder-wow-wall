@@ -6,7 +6,7 @@ import { products } from '../../catalog/model/data';
 import { useCartStore } from '../../order/model/cartStore';
 
 const { Title, Text } = Typography;
-const BLUE = '#0071e3';
+const BLUE = '#4CAF50';
 
 export default function FavoritesSection() {
   const favoriteIds = useAccountStore((s) => s.favoriteIds);
@@ -18,16 +18,16 @@ export default function FavoritesSection() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <Title level={3} style={{ margin: 0, color: '#1d1d1f', fontWeight: 600 }}>Избранное</Title>
+      <Title level={3} style={{ margin: 0, color: '#2D2D2D', fontWeight: 600 }}>Избранное</Title>
 
       {favoriteProducts.length === 0 ? (
         <Card style={{ borderRadius: 20, textAlign: 'center', padding: 40 }}>
           <Empty
             description={
               <div>
-                <Text type="secondary" style={{ fontSize: 15, color: '#86868b' }}>Нет избранных дизайнов</Text>
+                <Text type="secondary" style={{ fontSize: 15, color: '#6B7280' }}>Нет избранных дизайнов</Text>
                 <br />
-                <Text type="secondary" style={{ fontSize: 13, color: '#86868b' }}>
+                <Text type="secondary" style={{ fontSize: 13, color: '#6B7280' }}>
                   Нажмите ❤ на карточке товара, чтобы добавить в избранное
                 </Text>
               </div>
@@ -37,7 +37,7 @@ export default function FavoritesSection() {
             <Button
               type="primary"
               onClick={() => navigate('/catalog')}
-              style={{ background: BLUE, borderColor: BLUE, borderRadius: 980, marginTop: 8 }}
+              style={{ background: BLUE, borderColor: BLUE, borderRadius: 8, marginTop: 8 }}
             >
               Перейти в каталог
             </Button>
@@ -51,7 +51,7 @@ export default function FavoritesSection() {
               hoverable
               style={{ borderRadius: 20, overflow: 'hidden' }}
               cover={
-                <div style={{ position: 'relative', height: 180, background: '#F5F5F7' }}>
+                <div style={{ position: 'relative', height: 180, background: '#F5F5F5' }}>
                   <div
                     style={{
                       width: '100%',
@@ -72,10 +72,10 @@ export default function FavoritesSection() {
               }
               onClick={() => navigate(`/product/${product.id}`)}
             >
-              <Title level={5} style={{ margin: '0 0 4px', fontSize: 14, color: '#1d1d1f', fontWeight: 600 }}>{product.name}</Title>
+              <Title level={5} style={{ margin: '0 0 4px', fontSize: 14, color: '#2D2D2D', fontWeight: 600 }}>{product.name}</Title>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                 <Rate disabled value={product.rating} style={{ fontSize: 12 }} />
-                <Text type="secondary" style={{ fontSize: 12, color: '#86868b' }}>({product.reviews})</Text>
+                <Text type="secondary" style={{ fontSize: 12, color: '#6B7280' }}>({product.reviews})</Text>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text strong style={{ fontSize: 16, color: BLUE }}>
@@ -99,7 +99,7 @@ export default function FavoritesSection() {
                       size: product.sizes[0]?.label || '',
                     });
                   }}
-                  style={{ background: BLUE, borderColor: BLUE, borderRadius: 980 }}
+                  style={{ background: BLUE, borderColor: BLUE, borderRadius: 8 }}
                 >
                   В корзину
                 </Button>
