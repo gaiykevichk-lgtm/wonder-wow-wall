@@ -1471,8 +1471,8 @@ export default function ConstructorPage() {
                 ) : <span />}
               </div>
 
-              {/* Right: total + buttons */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+              {/* Right: total + cart */}
+              <div style={{ display: 'flex', alignItems: 'stretch', gap: 10, flexShrink: 0 }}>
                 <div
                   style={{
                     background: DARK,
@@ -1489,22 +1489,28 @@ export default function ConstructorPage() {
                     {costs.total.toLocaleString('ru-RU')} ₽
                   </span>
                 </div>
-                <Button
-                  icon={<ShoppingCartOutlined />}
+                <div
                   onClick={handleAddToCart}
                   style={{
                     background: ACCENT,
                     color: '#fff',
-                    border: 'none',
-                    height: 'auto',
-                    padding: '10px 20px',
                     borderRadius: 12,
                     fontWeight: 600,
                     fontSize: 14,
+                    padding: '0 20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'opacity 0.15s',
                   }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
                 >
+                  <ShoppingCartOutlined />
                   В корзину
-                </Button>
+                </div>
               </div>
             </div>
           </Card>
