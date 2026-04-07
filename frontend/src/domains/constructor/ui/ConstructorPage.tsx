@@ -135,6 +135,7 @@ export default function ConstructorPage() {
   const [hoveredCell, setHoveredCell] = useState<{ col: number; row: number } | null>(null);
 
   const wallRef = useRef<HTMLDivElement>(null);
+  const wasDraggingRef = useRef(false);
   const presetScrollRef = useRef<HTMLDivElement>(null);
   const { addItem } = useCartStore();
   const hasSub = useSubscriptionStore((s) => s.hasSubscription);
@@ -360,6 +361,7 @@ export default function ConstructorPage() {
     e.preventDefault();
     e.stopPropagation();
     setDraggedId(id);
+    wasDraggingRef.current = false;
   }, []);
 
   const getCellFromEvent = useCallback(
@@ -382,6 +384,7 @@ export default function ConstructorPage() {
       setHoveredCell(cell);
 
       if (!draggedId || !cell) return;
+      wasDraggingRef.current = true;
       const panel = placedPanels.find((p) => p.id === draggedId);
       if (!panel) return;
 
@@ -395,12 +398,14 @@ export default function ConstructorPage() {
   );
 
   const handleWallMouseUp = useCallback(() => {
+    if (draggedId) wasDraggingRef.current = true;
     setDraggedId(null);
-  }, []);
+  }, [draggedId]);
 
   const handleWallClick = useCallback(
     (e: React.MouseEvent) => {
       if (draggedId) return;
+      if (wasDraggingRef.current) { wasDraggingRef.current = false; return; }
       const cell = getCellFromEvent(e);
       if (cell) handleClickCell(cell.col, cell.row);
     },
