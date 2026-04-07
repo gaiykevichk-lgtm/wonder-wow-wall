@@ -332,6 +332,71 @@ const ContactsPage: React.FC = () => {
           </motion.div>
         </div>
       </section>
+
+      {/* Map */}
+      <section style={{ padding: '0 24px 120px' }}>
+        <div style={{ ...MAX_WIDTH }}>
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.1 }}
+            transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1.0] }}
+          >
+            <h2
+              style={{
+                fontFamily: FONT,
+                fontSize: 24,
+                fontWeight: 600,
+                color: DARK,
+                margin: '0 0 24px',
+                letterSpacing: '-0.03em',
+              }}
+            >
+              Как нас найти
+            </h2>
+            <div
+              style={{
+                borderRadius: 16,
+                overflow: 'hidden',
+                border: '1px solid rgba(0,0,0,0.04)',
+                height: 400,
+                background: '#F5F5F5',
+              }}
+            >
+              <iframe
+                title="Офис Wonder Wow Wall"
+                src="https://yandex.ru/map-widget/v1/?ll=37.618423%2C55.751244&z=15&pt=37.618423%2C55.751244%2Cpm2gnm"
+                width="100%"
+                height="100%"
+                style={{ border: 'none', display: 'block' }}
+                loading="lazy"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  target.style.display = 'none';
+                  const fallback = target.nextElementSibling as HTMLElement | null;
+                  if (fallback) fallback.style.display = 'flex';
+                }}
+              />
+              <div
+                style={{
+                  display: 'none',
+                  height: '100%',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexDirection: 'column',
+                  gap: 12,
+                  color: GRAY_TEXT,
+                  fontFamily: FONT,
+                }}
+              >
+                <EnvironmentOutlined style={{ fontSize: 40 }} />
+                <span style={{ fontSize: 15 }}>Москва, ул. Дизайнерская, 14</span>
+                <span style={{ fontSize: 13 }}>Карта временно недоступна</span>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
     </div>
   );
 };

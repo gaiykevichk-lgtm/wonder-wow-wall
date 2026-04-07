@@ -359,6 +359,219 @@ const HowItWorksSection: React.FC = () => (
   </section>
 );
 
+// ─── Advantages Section ──────────────────────────────────────────────────────
+
+const advantages = [
+  { icon: '🎨', title: '100 000+ вариантов', desc: 'Огромный выбор дизайнов на любой вкус — от классики до авангарда.' },
+  { icon: '⚡', title: 'Монтаж за 2 часа', desc: 'Профессиональная установка в удобное для вас время без шума и пыли.' },
+  { icon: '🔇', title: 'Без шума и пыли', desc: 'Наша технология монтажа не требует грязных работ — чисто и аккуратно.' },
+  { icon: '💎', title: 'Гибкая подписка', desc: 'Меняйте дизайн стен так часто, как хотите — с подпиской это выгоднее.' },
+  { icon: '🛡️', title: 'Гарантия 5 лет', desc: 'На все материалы и работы. При любом дефекте — бесплатная замена.' },
+  { icon: '🚀', title: 'Доставка по РФ', desc: 'По Москве за 1 день, по России — от 3 рабочих дней.' },
+];
+
+const AdvantagesSection: React.FC = () => (
+  <section style={{ background: LIGHT_BG, ...SECTION_PADDING }}>
+    <div style={{ ...MAX_WIDTH }}>
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.15 }}
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 48 }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+          <motion.span
+            variants={fadeUpVariants}
+            custom={0}
+            style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: 12,
+              fontWeight: 600,
+              color: GRAY_TEXT,
+              textTransform: 'uppercase',
+              letterSpacing: '2px',
+            }}
+          >
+            Почему мы
+          </motion.span>
+          <motion.h2
+            variants={fadeUpVariants}
+            custom={1}
+            style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: 'clamp(32px, 3vw, 36px)',
+              fontWeight: 600,
+              color: DARK,
+              margin: 0,
+              textAlign: 'center',
+              letterSpacing: '-0.03em',
+            }}
+          >
+            Наши преимущества
+          </motion.h2>
+        </div>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+            gap: 20,
+            width: '100%',
+          }}
+        >
+          {advantages.map((item, i) => (
+            <motion.div
+              key={item.title}
+              variants={fadeUpVariants}
+              custom={i * 0.1 + 2}
+              whileHover={{
+                translateY: -2,
+                boxShadow: '0 8px 24px rgba(0,0,0,0.06)',
+                transition: { duration: 0.5, ease: APPLE_EASE },
+              }}
+              style={{
+                background: '#fff',
+                borderRadius: CARD_RADIUS,
+                padding: '28px 24px',
+                display: 'flex',
+                gap: 16,
+                alignItems: 'flex-start',
+                transition: `box-shadow 0.5s cubic-bezier(${APPLE_EASE.join(',')})`,
+              }}
+            >
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 14,
+                  background: LIGHT_BG,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 24,
+                  flexShrink: 0,
+                }}
+              >
+                {item.icon}
+              </div>
+              <div>
+                <div
+                  style={{
+                    fontFamily: 'Inter, sans-serif',
+                    fontWeight: 600,
+                    fontSize: 16,
+                    color: DARK,
+                    marginBottom: 6,
+                  }}
+                >
+                  {item.title}
+                </div>
+                <div
+                  style={{
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: 14,
+                    color: GRAY_TEXT,
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {item.desc}
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
+    </div>
+  </section>
+);
+
+// ─── Promo Banner Section ────────────────────────────────────────────────────
+
+const PromoBannerSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => (
+  <section style={{ background: '#fff', ...SECTION_PADDING }}>
+    <div style={{ ...MAX_WIDTH }}>
+      <motion.div
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.3 }}
+        variants={fadeUpVariants}
+        custom={0}
+        style={{
+          background: `linear-gradient(135deg, ${ACCENT} 0%, #2E7D32 100%)`,
+          borderRadius: CARD_RADIUS,
+          padding: '56px 48px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 32,
+          flexWrap: 'wrap',
+        }}
+        className="promo-banner-inner"
+      >
+        <div style={{ maxWidth: 480 }}>
+          <div
+            style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: 13,
+              fontWeight: 600,
+              color: 'rgba(255,255,255,0.8)',
+              textTransform: 'uppercase',
+              letterSpacing: '2px',
+              marginBottom: 12,
+            }}
+          >
+            Специальное предложение
+          </div>
+          <h2
+            style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: 'clamp(28px, 3vw, 36px)',
+              fontWeight: 600,
+              color: '#fff',
+              margin: '0 0 12px',
+              lineHeight: 1.2,
+              letterSpacing: '-0.03em',
+            }}
+          >
+            Скидка 15% на первый заказ
+          </h2>
+          <p
+            style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: 16,
+              color: 'rgba(255,255,255,0.85)',
+              margin: 0,
+              lineHeight: 1.6,
+            }}
+          >
+            Оформите заказ до конца месяца и получите скидку на весь ассортимент
+            панелей. Акция действует для новых клиентов.
+          </p>
+        </div>
+        <Button
+          onClick={onCatalog}
+          size="large"
+          style={{
+            background: '#fff',
+            color: ACCENT,
+            border: 'none',
+            borderRadius: PILL_RADIUS,
+            height: 52,
+            padding: '0 32px',
+            fontFamily: 'Inter, sans-serif',
+            fontWeight: 600,
+            fontSize: 15,
+            flexShrink: 0,
+          }}
+        >
+          Выбрать панели
+        </Button>
+      </motion.div>
+    </div>
+  </section>
+);
+
 // ─── Categories Section ───────────────────────────────────────────────────────
 
 const CategoriesSection: React.FC<{ onCategory: (key: string) => void }> = ({ onCategory }) => {
@@ -1056,6 +1269,8 @@ const HomePage: React.FC = () => {
     <div style={{ fontFamily: 'Inter, sans-serif' }}>
       <HeroSection onCatalog={handleCatalog} onConstructor={handleConstructor} />
       <HowItWorksSection />
+      <AdvantagesSection />
+      <PromoBannerSection onCatalog={handleCatalog} />
       <CategoriesSection onCategory={handleCategory} />
       <PopularProductsSection onProduct={handleProduct} onAllProducts={handleCatalog} />
       <CalculatorCTASection onConstructor={handleConstructor} />
@@ -1068,6 +1283,7 @@ const HomePage: React.FC = () => {
           .hero-grid .hero-images { order: -1; }
           .cta-calc-grid { grid-template-columns: 1fr !important; padding: 28px 20px !important; }
           .cta-banner-inner { padding: 36px 20px !important; }
+          .promo-banner-inner { padding: 32px 20px !important; flex-direction: column !important; text-align: center !important; }
         }
       `}</style>
     </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Tag } from 'antd';
 import { motion } from 'framer-motion';
+import { ImageBeforeAfter } from '../../../shared/ui/ImageBeforeAfter';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
@@ -43,6 +44,7 @@ const projects = [
     title: 'Скандинавская гостиная',
     desc: 'Деревянные панели светлого ясеня создают уютную атмосферу скандинавского стиля. Площадь: 34 м².',
     image: 'https://images.unsplash.com/photo-1723810779771-f5895e975ba1?w=600&h=500&fit=crop',
+    beforeImage: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=600&h=500&fit=crop',
   },
   {
     id: '2',
@@ -59,6 +61,7 @@ const projects = [
     title: 'Акцентная стена бара',
     desc: '3D-панели в форме волны с подсветкой создают атмосферное пространство для гостей заведения.',
     image: 'https://images.unsplash.com/photo-1521607630287-ee2e81ad3ced?w=600&h=500&fit=crop',
+    beforeImage: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=600&h=500&fit=crop',
   },
   {
     id: '4',
@@ -67,6 +70,7 @@ const projects = [
     title: 'Спальня в стиле лофт',
     desc: 'Бетонные панели с фактурой грубого камня органично вписались в интерьер городского лофта.',
     image: 'https://images.unsplash.com/photo-1555794812-7f4102b3773b?w=600&h=500&fit=crop',
+    beforeImage: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&h=500&fit=crop',
   },
   {
     id: '5',
@@ -90,6 +94,7 @@ const projects = [
 
 const ProjectCard: React.FC<{ project: typeof projects[0]; index: number }> = ({ project, index }) => {
   const [hovered, setHovered] = useState(false);
+  const hasBeforeAfter = !!project.beforeImage;
 
   return (
     <motion.div
@@ -108,50 +113,77 @@ const ProjectCard: React.FC<{ project: typeof projects[0]; index: number }> = ({
         transition: 'box-shadow 0.3s ease',
       }}
     >
-      {/* Image */}
-      <div style={{ position: 'relative', height: 240, overflow: 'hidden' }}>
-        <img
-          src={project.image}
-          alt={project.title}
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            display: 'block',
-            transform: hovered ? 'scale(1.04)' : 'scale(1)',
-            transition: 'transform 0.4s ease',
-          }}
-        />
-        {/* Overlay */}
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: hovered
-              ? 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.2) 60%, transparent 100%)'
-              : 'linear-gradient(to top, rgba(0,0,0,0.45) 0%, transparent 60%)',
-            transition: 'background 0.3s ease',
-          }}
-        />
-        {/* Type tag */}
-        <Tag
-          style={{
-            position: 'absolute',
-            top: 14,
-            left: 14,
-            background: ACCENT,
-            color: '#fff',
-            border: 'none',
-            borderRadius: 16,
-            fontFamily: FONT,
-            fontWeight: 600,
-            fontSize: 12,
-            padding: '3px 12px',
-          }}
-        >
-          {project.typeLabel}
-        </Tag>
-      </div>
+      {/* Image or Before/After slider */}
+      {hasBeforeAfter ? (
+        <div style={{ position: 'relative' }}>
+          <ImageBeforeAfter
+            beforeSrc={project.beforeImage!}
+            afterSrc={project.image}
+            height={240}
+            borderRadius={0}
+          />
+          <Tag
+            style={{
+              position: 'absolute',
+              top: 14,
+              left: 14,
+              background: ACCENT,
+              color: '#fff',
+              border: 'none',
+              borderRadius: 16,
+              fontFamily: FONT,
+              fontWeight: 600,
+              fontSize: 12,
+              padding: '3px 12px',
+              zIndex: 5,
+            }}
+          >
+            {project.typeLabel}
+          </Tag>
+        </div>
+      ) : (
+        <div style={{ position: 'relative', height: 240, overflow: 'hidden' }}>
+          <img
+            src={project.image}
+            alt={project.title}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              display: 'block',
+              transform: hovered ? 'scale(1.04)' : 'scale(1)',
+              transition: 'transform 0.4s ease',
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: hovered
+                ? 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.2) 60%, transparent 100%)'
+                : 'linear-gradient(to top, rgba(0,0,0,0.45) 0%, transparent 60%)',
+              transition: 'background 0.3s ease',
+            }}
+          />
+          <Tag
+            style={{
+              position: 'absolute',
+              top: 14,
+              left: 14,
+              background: ACCENT,
+              color: '#fff',
+              border: 'none',
+              borderRadius: 16,
+              fontFamily: FONT,
+              fontWeight: 600,
+              fontSize: 12,
+              padding: '3px 12px',
+            }}
+          >
+            {project.typeLabel}
+          </Tag>
+        </div>
+      )}
 
       {/* Info */}
       <div style={{ padding: '20px 22px 24px' }}>

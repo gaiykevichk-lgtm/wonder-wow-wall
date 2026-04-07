@@ -70,6 +70,7 @@ export function ShopFooter() {
               { to: '/pricing', label: 'Тарифы' },
               { to: '/portfolio', label: 'Портфолио' },
               { to: '/about', label: 'О компании' },
+              { to: '/blog', label: 'Блог' },
               { to: '/faq', label: 'FAQ' },
             ].map((item) => (
               <Link

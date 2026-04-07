@@ -21,6 +21,7 @@ const NAV_ITEMS = [
   { path: '/visualizer', label: 'Фото-редактор' },
   { path: '/how-it-works', label: 'Как это работает' },
   { path: '/portfolio', label: 'Портфолио' },
+  { path: '/blog', label: 'Блог' },
   { path: '/about', label: 'О нас' },
   { path: '/contacts', label: 'Контакты' },
 ];

@@ -27,6 +27,8 @@ const ContactsPage = lazy(() => import('../domains/content/ui/ContactsPage'));
 const HowItWorksPage = lazy(() => import('../domains/content/ui/HowItWorksPage'));
 const PortfolioPage = lazy(() => import('../domains/content/ui/PortfolioPage'));
 const FaqPage = lazy(() => import('../domains/content/ui/FaqPage'));
+const BlogPage = lazy(() => import('../domains/content/ui/BlogPage'));
+const BlogPostPage = lazy(() => import('../domains/content/ui/BlogPostPage'));
 
 // ─── Domain: Auth ───────────────────────────────────────────────────────────
 const LoginPage = lazy(() => import('../domains/auth/ui/LoginPage'));
@@ -67,6 +69,8 @@ export function AppRouter() {
           <Route path="/portfolio" element={<PortfolioPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/faq" element={<FaqPage />} />
+          <Route path="/blog" element={<BlogPage />} />
+          <Route path="/blog/:slug" element={<BlogPostPage />} />
 
           {/* Auth routes */}
           <Route path="/login" element={<LoginPage />} />

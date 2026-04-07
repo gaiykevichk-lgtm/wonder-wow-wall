@@ -297,6 +297,72 @@ const HowItWorksPage: React.FC = () => (
       </div>
     </section>
 
+    {/* Video */}
+    <section style={{ background: '#F5F5F5', ...SECTION_PAD }}>
+      <div style={{ ...MAX_WIDTH }}>
+        <motion.div
+          variants={stagger}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.15 }}
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 32 }}
+        >
+          <motion.h2
+            variants={fadeUp}
+            custom={0}
+            style={{
+              fontFamily: FONT,
+              fontSize: 'clamp(28px, 3vw, 36px)',
+              fontWeight: 600,
+              color: DARK,
+              margin: 0,
+              textAlign: 'center',
+              letterSpacing: '-0.03em',
+            }}
+          >
+            Посмотрите, как это выглядит
+          </motion.h2>
+          <motion.p
+            variants={fadeUp}
+            custom={1}
+            style={{
+              fontFamily: FONT,
+              fontSize: 16,
+              color: GRAY_TEXT,
+              margin: 0,
+              textAlign: 'center',
+              maxWidth: 520,
+              lineHeight: 1.65,
+            }}
+          >
+            Короткое видео о процессе установки панелей — от распаковки до результата.
+          </motion.p>
+          <motion.div
+            variants={fadeUp}
+            custom={2}
+            style={{
+              width: '100%',
+              borderRadius: 16,
+              overflow: 'hidden',
+              aspectRatio: '16 / 9',
+              background: '#000',
+            }}
+          >
+            <iframe
+              title="Монтаж панелей Wonder Wow Wall"
+              src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+              width="100%"
+              height="100%"
+              style={{ border: 'none', display: 'block' }}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              loading="lazy"
+            />
+          </motion.div>
+        </motion.div>
+      </div>
+    </section>
+
     {/* Guarantees */}
     <section style={{ background: '#F5F5F5', ...SECTION_PAD }}>
       <div style={{ ...MAX_WIDTH }}>
