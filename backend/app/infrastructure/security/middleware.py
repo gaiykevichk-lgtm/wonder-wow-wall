@@ -1,4 +1,4 @@
-"""Security middleware: rate limiting and security headers."""
+"""Security headers middleware."""
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request

@@ -26,6 +26,6 @@ async def submit_contact(request: Request, body: ContactRequest):
 
 
 @router.post("/calculator")
-async def calculate(body: CalculatorRequest):
+async def calculate(request: Request, body: CalculatorRequest):
     from app.domain.order.services import calculate_wall_cost
     return calculate_wall_cost(body.panels, body.has_subscription)

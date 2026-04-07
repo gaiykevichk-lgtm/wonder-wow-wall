@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from app.container import get_project_repo
@@ -30,6 +30,7 @@ class ProjectSchema(BaseModel):
 
 @router.post("", response_model=ProjectSchema, status_code=201)
 async def create_project(
+    request: Request,
     body: ProjectRequest,
     user_id: str = Depends(get_current_user_id),
     repo=Depends(get_project_repo),
@@ -40,6 +41,7 @@ async def create_project(
 
 @router.get("", response_model=list[ProjectSchema])
 async def list_projects(
+    request: Request,
     user_id: str = Depends(get_current_user_id),
     repo=Depends(get_project_repo),
 ):
@@ -48,6 +50,7 @@ async def list_projects(
 
 @router.get("/{project_id}", response_model=ProjectSchema)
 async def get_project(
+    request: Request,
     project_id: str,
     user_id: str = Depends(get_current_user_id),
     repo=Depends(get_project_repo),
@@ -60,6 +63,7 @@ async def get_project(
 
 @router.put("/{project_id}", response_model=ProjectSchema)
 async def update_project(
+    request: Request,
     project_id: str,
     body: ProjectRequest,
     user_id: str = Depends(get_current_user_id),
@@ -74,6 +78,7 @@ async def update_project(
 
 @router.delete("/{project_id}")
 async def delete_project(
+    request: Request,
     project_id: str,
     user_id: str = Depends(get_current_user_id),
     repo=Depends(get_project_repo),

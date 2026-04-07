@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from app.application.subscription.use_cases import GetPlans, Subscribe, GetSubscriptionStatus, CancelSubscription
@@ -37,7 +37,7 @@ class SubscriptionSchema(BaseModel):
 # ─── Endpoints ───────────────────────────────────────────────────────
 
 @router.get("/plans", response_model=list[PlanSchema])
-async def list_plans():
+async def list_plans(request: Request):
     uc = GetPlans()
     plans = await uc.execute()
     return [
@@ -48,7 +48,7 @@ async def list_plans():
 
 
 @router.post("", response_model=SubscriptionSchema, status_code=201)
-async def subscribe(body: SubscribeRequest, user_id: str = Depends(get_current_user_id), subscription_repo=Depends(get_subscription_repo)):
+async def subscribe(request: Request, body: SubscribeRequest, user_id: str = Depends(get_current_user_id), subscription_repo=Depends(get_subscription_repo)):
     uc = Subscribe(subscription_repo)
     try:
         sub = await uc.execute(user_id, body.plan_id)
@@ -58,7 +58,7 @@ async def subscribe(body: SubscribeRequest, user_id: str = Depends(get_current_u
 
 
 @router.get("/status", response_model=SubscriptionSchema | None)
-async def get_status(user_id: str = Depends(get_current_user_id), subscription_repo=Depends(get_subscription_repo)):
+async def get_status(request: Request, user_id: str = Depends(get_current_user_id), subscription_repo=Depends(get_subscription_repo)):
     uc = GetSubscriptionStatus(subscription_repo)
     sub = await uc.execute(user_id)
     if not sub:
@@ -67,7 +67,7 @@ async def get_status(user_id: str = Depends(get_current_user_id), subscription_r
 
 
 @router.delete("")
-async def cancel(user_id: str = Depends(get_current_user_id), subscription_repo=Depends(get_subscription_repo)):
+async def cancel(request: Request, user_id: str = Depends(get_current_user_id), subscription_repo=Depends(get_subscription_repo)):
     uc = CancelSubscription(subscription_repo)
     try:
         await uc.execute(user_id)

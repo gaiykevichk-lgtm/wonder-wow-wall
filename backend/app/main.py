@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -40,5 +40,5 @@ app.include_router(contacts.router, prefix="/api", tags=["contacts"])
 
 
 @app.get("/api/health")
-async def health():
+async def health(request: Request):
     return {"status": "ok"}
