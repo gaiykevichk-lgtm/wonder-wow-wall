@@ -104,7 +104,7 @@ export interface ApiPlan {
   name: string;
   price: number;
   period: string;
-  overlays_per_month: number;
+  area_limit_m2: number;
   popular: boolean;
   features: string[];
 }
@@ -113,8 +113,8 @@ export interface ApiSubscription {
   id: string;
   plan_id: string;
   status: string;
-  overlays_used_this_month: number;
-  remaining_overlays: number;
+  area_used_this_month_m2: number;
+  remaining_area_m2: number;
   started_at: string;
   expires_at: string;
 }

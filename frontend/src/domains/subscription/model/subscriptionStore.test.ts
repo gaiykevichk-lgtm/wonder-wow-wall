@@ -5,7 +5,7 @@ const reset = () =>
   useSubscriptionStore.setState({
     activePlanId: null,
     subscribedAt: null,
-    overlaysUsedThisMonth: 0,
+    areaUsedThisMonthM2: 0,
     isModalOpen: false,
     selectedPlanId: null,
     modalStep: 'select',
@@ -27,9 +27,14 @@ describe('subscriptionStore', () => {
       expect(ids).toEqual(['starter', 'popular', 'business']);
     });
 
-    it('plans have correct prices', () => {
+    it('plans have correct prices (ТЗ)', () => {
       const prices = SUBSCRIPTION_PLANS.map((p) => p.price);
-      expect(prices).toEqual([4900, 9900, 19900]);
+      expect(prices).toEqual([7000, 12000, 18000]);
+    });
+
+    it('plans have correct area limits (ТЗ)', () => {
+      const limits = SUBSCRIPTION_PLANS.map((p) => p.areaLimitM2);
+      expect(limits).toEqual([15, 30, 0]);
     });
 
     it('popular plan is marked as popular', () => {
@@ -37,9 +42,9 @@ describe('subscriptionStore', () => {
       expect(popular?.popular).toBe(true);
     });
 
-    it('business plan has unlimited overlays (0)', () => {
+    it('business plan has unlimited area (0)', () => {
       const biz = SUBSCRIPTION_PLANS.find((p) => p.id === 'business');
-      expect(biz?.overlaysPerMonth).toBe(0);
+      expect(biz?.areaLimitM2).toBe(0);
     });
   });
 
@@ -66,51 +71,51 @@ describe('subscriptionStore', () => {
       const s = useSubscriptionStore.getState();
       expect(s.activePlanId).toBeNull();
       expect(s.subscribedAt).toBeNull();
-      expect(s.overlaysUsedThisMonth).toBe(0);
+      expect(s.areaUsedThisMonthM2).toBe(0);
       expect(s.hasSubscription()).toBe(false);
     });
   });
 
-  describe('overlay usage', () => {
-    it('useOverlay returns false without subscription', () => {
-      expect(useSubscriptionStore.getState().useOverlay(1)).toBe(false);
+  describe('area usage', () => {
+    it('useArea returns false without subscription', () => {
+      expect(useSubscriptionStore.getState().useArea(1)).toBe(false);
     });
 
-    it('useOverlay tracks usage for starter plan', () => {
-      useSubscriptionStore.getState().subscribe('starter');
-      const ok = useSubscriptionStore.getState().useOverlay(3);
+    it('useArea tracks usage for starter plan', () => {
+      useSubscriptionStore.getState().subscribe('starter'); // 15 m²
+      const ok = useSubscriptionStore.getState().useArea(3.5);
       expect(ok).toBe(true);
-      expect(useSubscriptionStore.getState().overlaysUsedThisMonth).toBe(3);
+      expect(useSubscriptionStore.getState().areaUsedThisMonthM2).toBe(3.5);
     });
 
-    it('useOverlay rejects when exceeding limit', () => {
-      useSubscriptionStore.getState().subscribe('starter'); // 10 per month
-      useSubscriptionStore.getState().useOverlay(8);
-      const ok = useSubscriptionStore.getState().useOverlay(5); // 8+5 > 10
+    it('useArea rejects when exceeding limit', () => {
+      useSubscriptionStore.getState().subscribe('starter'); // 15 m²
+      useSubscriptionStore.getState().useArea(12);
+      const ok = useSubscriptionStore.getState().useArea(5); // 12+5 > 15
       expect(ok).toBe(false);
-      expect(useSubscriptionStore.getState().overlaysUsedThisMonth).toBe(8); // unchanged
+      expect(useSubscriptionStore.getState().areaUsedThisMonthM2).toBe(12); // unchanged
     });
 
-    it('business plan allows unlimited overlays', () => {
-      useSubscriptionStore.getState().subscribe('business'); // overlaysPerMonth = 0
-      const ok = useSubscriptionStore.getState().useOverlay(100);
+    it('business plan allows unlimited area', () => {
+      useSubscriptionStore.getState().subscribe('business'); // areaLimitM2 = 0
+      const ok = useSubscriptionStore.getState().useArea(100);
       expect(ok).toBe(true);
-      expect(useSubscriptionStore.getState().overlaysUsedThisMonth).toBe(100);
+      expect(useSubscriptionStore.getState().areaUsedThisMonthM2).toBe(100);
     });
 
-    it('getRemainingOverlays returns correct value', () => {
-      useSubscriptionStore.getState().subscribe('starter'); // 10
-      useSubscriptionStore.getState().useOverlay(3);
-      expect(useSubscriptionStore.getState().getRemainingOverlays()).toBe(7);
+    it('getRemainingAreaM2 returns correct value', () => {
+      useSubscriptionStore.getState().subscribe('starter'); // 15 m²
+      useSubscriptionStore.getState().useArea(3);
+      expect(useSubscriptionStore.getState().getRemainingAreaM2()).toBe(12);
     });
 
-    it('getRemainingOverlays returns Infinity for business', () => {
+    it('getRemainingAreaM2 returns Infinity for business', () => {
       useSubscriptionStore.getState().subscribe('business');
-      expect(useSubscriptionStore.getState().getRemainingOverlays()).toBe(Infinity);
+      expect(useSubscriptionStore.getState().getRemainingAreaM2()).toBe(Infinity);
     });
 
-    it('getRemainingOverlays returns 0 without subscription', () => {
-      expect(useSubscriptionStore.getState().getRemainingOverlays()).toBe(0);
+    it('getRemainingAreaM2 returns 0 without subscription', () => {
+      expect(useSubscriptionStore.getState().getRemainingAreaM2()).toBe(0);
     });
   });
 

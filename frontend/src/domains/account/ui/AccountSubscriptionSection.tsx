@@ -8,8 +8,8 @@ const ACCENT = '#4CAF50';
 export default function AccountSubscriptionSection() {
   const activePlan = useSubscriptionStore((s) => s.getActivePlan);
   const subscribedAt = useSubscriptionStore((s) => s.subscribedAt);
-  const overlaysUsed = useSubscriptionStore((s) => s.overlaysUsedThisMonth);
-  const remaining = useSubscriptionStore((s) => s.getRemainingOverlays);
+  const areaUsed = useSubscriptionStore((s) => s.areaUsedThisMonthM2);
+  const remaining = useSubscriptionStore((s) => s.getRemainingAreaM2);
   const cancelSubscription = useSubscriptionStore((s) => s.cancelSubscription);
   const openModal = useSubscriptionStore((s) => s.openModal);
 
@@ -130,11 +130,11 @@ export default function AccountSubscriptionSection() {
               ? new Date(new Date(subscribedAt).getTime() + 30 * 86400000).toLocaleDateString('ru-RU')
               : '—'}
           </Descriptions.Item>
-          <Descriptions.Item label="Использовано накладок">
-            {overlaysUsed} шт.
+          <Descriptions.Item label="Использовано площади">
+            {areaUsed} м²
           </Descriptions.Item>
           <Descriptions.Item label="Осталось">
-            {remainingCount === Infinity ? 'Безлимит' : `${remainingCount} шт.`}
+            {remainingCount === Infinity ? 'Безлимит' : `${remainingCount} м²`}
           </Descriptions.Item>
         </Descriptions>
       </Card>

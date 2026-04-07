@@ -11,16 +11,16 @@ class SubscriptionPlan:
     name: str = ""
     price: int = 0
     period: str = "мес"
-    overlays_per_month: int = 0  # 0 = unlimited
+    area_limit_m2: float = 0  # 0 = unlimited
     popular: bool = False
     features: list[str] = field(default_factory=list)
 
 
 SUBSCRIPTION_PLANS: list[SubscriptionPlan] = [
     SubscriptionPlan(
-        id="starter", name="Стартовый", price=4900, overlays_per_month=10,
+        id="starter", name="Стартовый", price=7000, area_limit_m2=15,
         features=[
-            "До 10 накладок в месяц (любой размер)",
+            "До 15 м² накладок в месяц",
             "Все дизайны из каталога",
             "Бесплатная доставка по Москве",
             "Замена повреждённых накладок",
@@ -28,9 +28,9 @@ SUBSCRIPTION_PLANS: list[SubscriptionPlan] = [
         ],
     ),
     SubscriptionPlan(
-        id="popular", name="Популярный", price=9900, overlays_per_month=25, popular=True,
+        id="popular", name="Популярный", price=12000, area_limit_m2=30, popular=True,
         features=[
-            "До 25 накладок в месяц (любой размер)",
+            "До 30 м² накладок в месяц",
             "Все дизайны + эксклюзивные коллекции",
             "Бесплатная доставка по РФ",
             "Приоритетная замена повреждённых",
@@ -40,9 +40,9 @@ SUBSCRIPTION_PLANS: list[SubscriptionPlan] = [
         ],
     ),
     SubscriptionPlan(
-        id="business", name="Бизнес", price=19900, overlays_per_month=0,
+        id="business", name="Бизнес", price=18000, area_limit_m2=0,
         features=[
-            "Безлимитные накладки (любой размер)",
+            "Безлимитная площадь накладок",
             "Эксклюзивные и кастомные дизайны",
             "VIP-доставка по всей РФ",
             "Замена в течение 24 часов",
@@ -63,7 +63,7 @@ class Subscription:
     user_id: str = ""
     plan_id: str = ""
     status: SubscriptionStatus = SubscriptionStatus.ACTIVE
-    overlays_used_this_month: int = 0
+    area_used_this_month_m2: float = 0.0
     started_at: datetime = field(default_factory=datetime.utcnow)
     expires_at: datetime = field(default_factory=lambda: datetime.utcnow() + timedelta(days=30))
 
@@ -72,23 +72,23 @@ class Subscription:
             raise ValueError("Can only cancel active subscriptions")
         self.status = SubscriptionStatus.CANCELLED
 
-    def use_overlay(self, count: int) -> bool:
+    def use_area(self, area_m2: float) -> bool:
         plan = self._get_plan()
         if not plan:
             return False
-        if plan.overlays_per_month > 0 and self.overlays_used_this_month + count > plan.overlays_per_month:
+        if plan.area_limit_m2 > 0 and self.area_used_this_month_m2 + area_m2 > plan.area_limit_m2:
             return False
-        self.overlays_used_this_month += count
+        self.area_used_this_month_m2 += area_m2
         return True
 
     @property
-    def remaining_overlays(self) -> int | float:
+    def remaining_area_m2(self) -> float:
         plan = self._get_plan()
         if not plan:
-            return 0
-        if plan.overlays_per_month == 0:
+            return 0.0
+        if plan.area_limit_m2 == 0:
             return float("inf")
-        return max(0, plan.overlays_per_month - self.overlays_used_this_month)
+        return max(0.0, plan.area_limit_m2 - self.area_used_this_month_m2)
 
     def _get_plan(self) -> SubscriptionPlan | None:
         return next((p for p in SUBSCRIPTION_PLANS if p.id == self.plan_id), None)

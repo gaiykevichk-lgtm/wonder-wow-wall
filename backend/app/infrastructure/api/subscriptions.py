@@ -15,7 +15,7 @@ class PlanSchema(BaseModel):
     name: str
     price: int
     period: str
-    overlays_per_month: int
+    area_limit_m2: float
     popular: bool
     features: list[str]
 
@@ -28,8 +28,8 @@ class SubscriptionSchema(BaseModel):
     id: str
     plan_id: str
     status: str
-    overlays_used_this_month: int
-    remaining_overlays: float
+    area_used_this_month_m2: float
+    remaining_area_m2: float
     started_at: str
     expires_at: str
 
@@ -42,7 +42,7 @@ async def list_plans(request: Request):
     plans = await uc.execute()
     return [
         {"id": p.id, "name": p.name, "price": p.price, "period": p.period,
-         "overlays_per_month": p.overlays_per_month, "popular": p.popular, "features": p.features}
+         "area_limit_m2": p.area_limit_m2, "popular": p.popular, "features": p.features}
         for p in plans
     ]
 
@@ -77,13 +77,13 @@ async def cancel(request: Request, user_id: str = Depends(get_current_user_id), 
 
 
 def _sub_response(sub) -> dict:
-    remaining = sub.remaining_overlays
+    remaining = sub.remaining_area_m2
     return {
         "id": sub.id,
         "plan_id": sub.plan_id,
         "status": sub.status.value if hasattr(sub.status, "value") else sub.status,
-        "overlays_used_this_month": sub.overlays_used_this_month,
-        "remaining_overlays": remaining if remaining != float("inf") else -1,
+        "area_used_this_month_m2": sub.area_used_this_month_m2,
+        "remaining_area_m2": remaining if remaining != float("inf") else -1,
         "started_at": sub.started_at.isoformat(),
         "expires_at": sub.expires_at.isoformat(),
     }

@@ -6,13 +6,13 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     id: 'starter',
     name: 'Стартовый',
-    desc: 'До 10 накладок в месяц',
-    price: 4900,
+    desc: 'До 15 м² в месяц',
+    price: 7000,
     period: 'мес',
-    overlaysPerMonth: 10,
+    areaLimitM2: 15,
     popular: false,
     features: [
-      'До 10 накладок в месяц (любой размер)',
+      'До 15 м² накладок в месяц',
       'Все дизайны из каталога',
       'Бесплатная доставка по Москве',
       'Замена повреждённых накладок',
@@ -22,13 +22,13 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     id: 'popular',
     name: 'Популярный',
-    desc: 'До 25 накладок в месяц',
-    price: 9900,
+    desc: 'До 30 м² в месяц',
+    price: 12000,
     period: 'мес',
-    overlaysPerMonth: 25,
+    areaLimitM2: 30,
     popular: true,
     features: [
-      'До 25 накладок в месяц (любой размер)',
+      'До 30 м² накладок в месяц',
       'Все дизайны + эксклюзивные коллекции',
       'Бесплатная доставка по РФ',
       'Приоритетная замена повреждённых',
@@ -40,13 +40,13 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     id: 'business',
     name: 'Бизнес',
-    desc: 'Безлимитные обновления',
-    price: 19900,
+    desc: 'Безлимитная площадь',
+    price: 18000,
     period: 'мес',
-    overlaysPerMonth: 0,
+    areaLimitM2: 0,
     popular: false,
     features: [
-      'Безлимитные накладки (любой размер)',
+      'Безлимитная площадь накладок',
       'Эксклюзивные и кастомные дизайны',
       'VIP-доставка по всей РФ',
       'Замена в течение 24 часов',
@@ -61,7 +61,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
 interface SubscriptionState {
   activePlanId: string | null;
   subscribedAt: string | null;
-  overlaysUsedThisMonth: number;
+  areaUsedThisMonthM2: number;
 
   isModalOpen: boolean;
   selectedPlanId: string | null;
@@ -73,10 +73,10 @@ interface SubscriptionState {
   selectPlan: (planId: string) => void;
   subscribe: (planId: string) => void;
   cancelSubscription: () => void;
-  useOverlay: (count: number) => boolean;
+  useArea: (areaM2: number) => boolean;
 
   getActivePlan: () => SubscriptionPlan | null;
-  getRemainingOverlays: () => number;
+  getRemainingAreaM2: () => number;
   hasSubscription: () => boolean;
   getOverlayDiscount: () => number;
 }
@@ -86,7 +86,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
     (set, get) => ({
       activePlanId: null,
       subscribedAt: null,
-      overlaysUsedThisMonth: 0,
+      areaUsedThisMonthM2: 0,
 
       isModalOpen: false,
       selectedPlanId: null,
@@ -110,7 +110,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         set({
           activePlanId: planId,
           subscribedAt: new Date().toISOString(),
-          overlaysUsedThisMonth: 0,
+          areaUsedThisMonthM2: 0,
           modalStep: 'success',
         }),
 
@@ -118,17 +118,17 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         set({
           activePlanId: null,
           subscribedAt: null,
-          overlaysUsedThisMonth: 0,
+          areaUsedThisMonthM2: 0,
         }),
 
-      useOverlay: (count) => {
+      useArea: (areaM2) => {
         const state = get();
         const plan = SUBSCRIPTION_PLANS.find((p) => p.id === state.activePlanId);
         if (!plan) return false;
-        if (plan.overlaysPerMonth > 0 && state.overlaysUsedThisMonth + count > plan.overlaysPerMonth) {
+        if (plan.areaLimitM2 > 0 && state.areaUsedThisMonthM2 + areaM2 > plan.areaLimitM2) {
           return false;
         }
-        set({ overlaysUsedThisMonth: state.overlaysUsedThisMonth + count });
+        set({ areaUsedThisMonthM2: state.areaUsedThisMonthM2 + areaM2 });
         return true;
       },
 
@@ -137,12 +137,12 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         return SUBSCRIPTION_PLANS.find((p) => p.id === activePlanId) || null;
       },
 
-      getRemainingOverlays: () => {
+      getRemainingAreaM2: () => {
         const state = get();
         const plan = SUBSCRIPTION_PLANS.find((p) => p.id === state.activePlanId);
         if (!plan) return 0;
-        if (plan.overlaysPerMonth === 0) return Infinity;
-        return Math.max(0, plan.overlaysPerMonth - state.overlaysUsedThisMonth);
+        if (plan.areaLimitM2 === 0) return Infinity;
+        return Math.max(0, plan.areaLimitM2 - state.areaUsedThisMonthM2);
       },
 
       hasSubscription: () => get().activePlanId !== null,

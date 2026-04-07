@@ -141,7 +141,7 @@ class SubscriptionModel(Base):
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     plan_id: Mapped[str] = mapped_column(String(20), nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="active")
-    overlays_used_this_month: Mapped[int] = mapped_column(Integer, default=0)
+    area_used_this_month_m2: Mapped[float] = mapped_column(Float, default=0.0)
     started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 

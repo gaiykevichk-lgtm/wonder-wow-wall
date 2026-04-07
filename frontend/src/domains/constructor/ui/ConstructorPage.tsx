@@ -954,7 +954,7 @@ export default function ConstructorPage() {
             >
               <CrownOutlined style={{ marginRight: 6, fontSize: 14 }} />
               <strong>Подписка «{activePlan()?.name}»</strong> — накладки включены в план! Вы платите только за базовые панели.
-              {activePlan()?.overlaysPerMonth ? ` Осталось ${activePlan()!.overlaysPerMonth} накладок в этом месяце.` : ' Безлимитные накладки.'}
+              {activePlan()?.areaLimitM2 ? ` Лимит: ${activePlan()!.areaLimitM2} м² в месяц.` : ' Безлимитная площадь.'}
             </div>
           ) : (
             <div

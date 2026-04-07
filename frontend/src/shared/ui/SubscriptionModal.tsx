@@ -257,7 +257,7 @@ function StepSuccess({ plan, onClose }: { plan: SubscriptionPlan; onClose: () =>
       </h2>
       <p style={{ fontSize: 15, color: '#6B7280', margin: '0 0 20px', lineHeight: 1.6 }}>
         План «{plan.name}» активирован. Вам доступно{' '}
-        {plan.overlaysPerMonth === 0 ? 'неограниченное количество' : `до ${plan.overlaysPerMonth}`}{' '}
+        {plan.areaLimitM2 === 0 ? 'неограниченную площадь' : `до ${plan.areaLimitM2} м²`}{' '}
         накладок в месяц.
       </p>
 

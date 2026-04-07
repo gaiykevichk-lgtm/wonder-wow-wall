@@ -101,7 +101,7 @@ def _subscription_to_domain(m: SubscriptionModel) -> Subscription:
     return Subscription(
         id=m.id, user_id=m.user_id, plan_id=m.plan_id,
         status=SubscriptionStatus(m.status),
-        overlays_used_this_month=m.overlays_used_this_month,
+        area_used_this_month_m2=m.area_used_this_month_m2,
         started_at=m.started_at, expires_at=m.expires_at,
     )
 
@@ -342,7 +342,7 @@ class SqlSubscriptionRepository(SubscriptionRepository):
         model = SubscriptionModel(
             id=subscription.id, user_id=subscription.user_id,
             plan_id=subscription.plan_id, status=subscription.status.value,
-            overlays_used_this_month=subscription.overlays_used_this_month,
+            area_used_this_month_m2=subscription.area_used_this_month_m2,
             started_at=subscription.started_at, expires_at=subscription.expires_at,
         )
         self._session.add(model)
@@ -353,7 +353,7 @@ class SqlSubscriptionRepository(SubscriptionRepository):
         model = await self._session.get(SubscriptionModel, subscription.id)
         if model:
             model.status = subscription.status.value
-            model.overlays_used_this_month = subscription.overlays_used_this_month
+            model.area_used_this_month_m2 = subscription.area_used_this_month_m2
         await self._session.flush()
         return subscription
 

@@ -46,19 +46,19 @@ describe('API Types', () => {
 
   it('ApiPlan has features array', () => {
     const plan: ApiPlan = {
-      id: 'starter', name: 'Стартовый', price: 4900, period: 'месяц',
-      overlays_per_month: 4, popular: false, features: ['Feature 1', 'Feature 2'],
+      id: 'starter', name: 'Стартовый', price: 7000, period: 'месяц',
+      area_limit_m2: 15, popular: false, features: ['Feature 1', 'Feature 2'],
     };
     expect(plan.features).toHaveLength(2);
   });
 
-  it('ApiSubscription has remaining_overlays', () => {
+  it('ApiSubscription has remaining_area_m2', () => {
     const sub: ApiSubscription = {
       id: '1', plan_id: 'starter', status: 'active',
-      overlays_used_this_month: 2, remaining_overlays: 2,
+      area_used_this_month_m2: 2, remaining_area_m2: 13,
       started_at: '2024-01-01', expires_at: '2024-02-01',
     };
-    expect(sub.remaining_overlays).toBe(2);
+    expect(sub.remaining_area_m2).toBe(13);
   });
 
   it('ApiProject has wall dimensions', () => {
