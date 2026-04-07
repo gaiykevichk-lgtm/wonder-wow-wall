@@ -15,8 +15,9 @@
 - **Без GPU-серверов** — бэкенд только для CRUD (сохранение проектов)
 - **Минимум кастомного кода** — `react-konva` вместо raw Canvas, `perspective-transform` вместо WebGL
 - **Инкрементально** — каждая фаза даёт рабочий результат, можно остановиться после любой
-- **Пресеты-first** — 10 готовых интерьеров с масками позволяют работать без ML-сегментации
 - **Визуал по Design System** — цвета, тени, скругления, анимации строго по [DESIGN-SYSTEM.md](../../design-docs/DESIGN-SYSTEM.md)
+
+> **Примечание:** Пресеты интерьеров (10 готовых фонов с масками) относятся к домену **constructor**, а не visualizer — см. [CONTENT-REQUIREMENTS.md, раздел 7](../../CONTENT-REQUIREMENTS.md). Пресеты описаны там как «готовые фоны интерьеров, куда пользователь размещает панели прямо в конструкторе». План пресетов для конструктора — отдельный документ.
 
 ---
 
@@ -52,88 +53,13 @@
 
 ---
 
-## Фаза 1: Пресеты интерьеров + ML-сегментация
+## Фаза 1: ML-сегментация в браузере
 
-> **Цель:** Два способа получить маску стены: (А) выбрать из 10 готовых пресетов интерьеров с подготовленными масками, (Б) загрузить своё фото и получить маску через ML в браузере.
-> **Контент:** Пресеты согласно [CONTENT-REQUIREMENTS.md, раздел 7](../../CONTENT-REQUIREMENTS.md) — 10 интерьеров × 3 файла (фото 2048×1365 WEBP + маска PNG grayscale + превью 300×200 WEBP)
-> **ML:** `@huggingface/transformers` + SegFormer-B0 (ADE20K, 150 классов)
-> **Результат:** Пользователь может сразу работать с пресетом (без ожидания ML) или загрузить своё фото и получить реальную маску
+> **Цель:** Заменить заглушку (белая маска) на реальное распознавание стены и объектов при загрузке пользовательского фото.
+> **Технология:** `@huggingface/transformers` + SegFormer-B0 (ADE20K, 150 классов)
+> **Результат:** После загрузки фото пользователь видит реальную маску стены с распознанными объектами
 
-### 1.1 Frontend — Данные и типы пресетов
-
-- [ ] Добавить тип `InteriorPreset` в `model/types.ts`:
-  ```typescript
-  interface InteriorPreset {
-    id: string;               // 'preset-tv-zone'
-    name: string;             // 'ТВ-зона'
-    room: string;             // 'Гостиная'
-    photo: string;            // '/images/presets/tv-zone.webp'
-    mask: string;             // '/images/presets/tv-zone-mask.png'
-    preview: string;          // '/images/presets/tv-zone-preview.webp'
-    wallWidthCm: number;      // 400
-    wallHeightCm: number;     // 270
-    pixelsPerCm: number;      // 2048 / wallWidthCm
-    description: string;      // 'Акцентная стена за телевизором'
-  }
-  ```
-- [ ] Создать `src/domains/visualizer/model/presets.ts` — массив из 10 пресетов с калибровочными данными:
-  - ТВ-зона (гостиная), Изголовье кровати, Кухонный фартук, Прихожая, Рабочий кабинет, Детская, Ванная, Столовая, Каминная зона, Офис/переговорная
-  - Каждый с `wallWidthCm`, `wallHeightCm` и вычисленным `pixelsPerCm`
-- [ ] Подготовить файловую структуру контента:
-  ```
-  /public/images/presets/
-  ├── tv-zone.webp             (2048×1365, до 200 КБ, WEBP 85%)
-  ├── tv-zone-mask.png         (2048×1365, grayscale 8-bit, до 50 КБ)
-  ├── tv-zone-preview.webp     (300×200, до 20 КБ)
-  ├── bedroom.webp / -mask.png / -preview.webp
-  ├── kitchen.webp / -mask.png / -preview.webp
-  ├── hallway.webp / -mask.png / -preview.webp
-  ├── office-home.webp / -mask.png / -preview.webp
-  ├── kids-room.webp / -mask.png / -preview.webp
-  ├── bathroom.webp / -mask.png / -preview.webp
-  ├── dining.webp / -mask.png / -preview.webp
-  ├── fireplace.webp / -mask.png / -preview.webp
-  └── office-meeting.webp / -mask.png / -preview.webp
-  ```
-  **Требования к фото пресетов** (из CONTENT-REQUIREMENTS):
-  - Камера фронтально к стене, штатив на высоте ~120 см
-  - Стена однотонная, 30–50% кадра, равномерное освещение
-  - Без зеркал/стекла (блики), EXIF удалён, sRGB
-  - Маска: белый (#FFFFFF) = стена, чёрный (#000000) = не стена
-
-### 1.2 Frontend — UI выбора пресетов
-
-- [ ] Создать `src/domains/visualizer/ui/PresetPicker.tsx`:
-  - Горизонтальная лента превью-карточек (scroll) или grid 2×5
-  - **Стиль карточки пресета** (по Design System):
-    - Размер превью: 300×200 px (из контентных требований)
-    - Border: `1px solid #E5E7EB`, border-radius: `12px`
-    - Тень: `0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)`
-    - Hover: `translateY(-4px)`, тень `0 12px 40px rgba(0,0,0,0.1)`, transition `0.3s ease`
-    - Подпись: название зоны — Inter 13px/500, цвет `#6B7280`; помещение — Inter 12px/400, цвет `#9CA3AF`
-    - Выбранный пресет: border `2px solid #4CAF50`
-  - Кнопка «Загрузить своё фото» — Secondary стиль: transparent bg, border `#E5E7EB`, текст `#2D2D2D`, border-radius `8px`, высота `36px`
-  - Анимация входа: Framer Motion `fadeUp` (opacity 0→1, y 20→0, duration 0.5s) с `stagger` 0.05s между карточками
-- [ ] Обновить `PhotoEditorPage.tsx`:
-  - Начальный экран: `PresetPicker` + `PhotoUploader` (вкладки или секции)
-  - Заголовок «Выберите интерьер» — Inter 24px/700, цвет `#2D2D2D`
-  - Подзаголовок «или загрузите фото своей стены» — Inter 15px/400, цвет `#6B7280`
-- [ ] Обновить `visualizerStore.ts`:
-  - Action `loadPreset(presetId: string)`:
-    - Загрузить фото пресета (`<img>.src = preset.photo`)
-    - Загрузить маску PNG → декодировать в `WallMask` (Uint8Array grayscale)
-    - Установить калибровку из пресета (`pixelsPerCm`, `method: 'preset'`)
-    - `segmentationStatus: 'ready'` — без ожидания ML
-  - Добавить `sceneSource: 'upload' | 'preset'` в store — для отличия поведения
-
-### 1.3 Frontend — Загрузка и декодирование маски из PNG
-
-- [ ] Создать функцию `loadMaskFromPng(url: string): Promise<WallMask>` в `lib/maskUtils.ts`:
-  - Загрузить PNG через `<img>` → отрисовать на offscreen canvas → `getImageData()` → извлечь R-канал → `Uint8Array`
-  - Валидация: размер маски должен совпадать с размером фото (2048×1365)
-  - Формат: grayscale — значение R = значение маски (0 или 255)
-
-### 1.4 Frontend — ML-сегментация для пользовательских фото
+### 1.1 Frontend — Сервис сегментации
 
 - [ ] Установить `@huggingface/transformers` (`npm install @huggingface/transformers`)
 - [ ] Создать `src/domains/visualizer/lib/segmentationService.ts`:
@@ -143,32 +69,31 @@
   - Извлечение класса `wall` → `WallMask` (Uint8Array, 0/255)
   - Извлечение классов `door`, `window`, `furniture`, `table`, `chair`, `sofa`, `bed` → `Obstacle[]`
   - Кэширование модели (модель кэшируется в IndexedDB автоматически библиотекой)
-  - Graceful fallback: если браузер не поддерживает WASM/WebGPU — показать `PresetPicker` и предложить выбрать пресет
+  - Graceful fallback: если браузер не поддерживает WASM/WebGPU — возвращать пустую маску с сообщением «Отметьте стену кистью»
+
+### 1.2 Frontend — Интеграция в store и UI
+
 - [ ] Обновить `visualizerStore.ts`:
   - В action `uploadPhoto()`: заменить mock-маску на вызов `segmentScene()`
   - Добавить `segmentationProgress: number` (0–100) для прогресс-бара
   - Статусы: `idle` → `uploading` → `loading-model` → `segmenting` → `ready` / `error`
 - [ ] Обновить `PhotoEditorPage.tsx`:
-  - **Прогресс-бар** загрузки модели: Ant Design `Progress` компонент, цвет `#4CAF50` (акцент для статусов)
+  - **Прогресс-бар** загрузки модели: Ant Design `Progress` компонент, цвет `#4CAF50` (акцент для статусов — по Design System)
   - Текстовые статусы — Inter 15px/400, цвет `#6B7280`:
     - «Загружаем модель распознавания...» (при первом использовании, ~15 MB)
     - «Распознаём стену...»
     - «Готово» — бейдж Inter 13px/500, фон `#4CAF50`, текст `#FFFFFF`, border-radius `6px`
-  - При ошибке: fallback — показать `PresetPicker` + сообщение «Выберите пресет или отметьте стену кистью»
+  - При ошибке: fallback на ручную маску — сообщение «Отметьте стену кистью» (Inter 15px/400, цвет `#6B7280`)
 - [ ] Обновить `layoutEngine.ts`:
   - `autoFillWall()` и `placeSinglePanel()` — убедиться, что с реальной маской порог 0.7 работает корректно
   - При наличии `obstacles` — добавить проверку пересечения панели с obstacle bounding box
 
-### 1.5 Тесты
+### 1.3 Тесты
 
 - [ ] Unit-тесты `segmentationService.test.ts`:
   - Mock `pipeline()` → проверить преобразование результата в `WallMask` и `Obstacle[]`
   - Тест fallback при ошибке загрузки модели
   - Тест кэширования (повторный вызов не инициализирует модель)
-- [ ] Unit-тест `loadMaskFromPng()` в `maskUtils.test.ts`:
-  - Загрузка grayscale PNG → корректный `Uint8Array`
-  - Несовпадение размеров → ошибка
-- [ ] Unit-тесты пресетов: `loadPreset()` → scene source = 'preset', калибровка из данных пресета
 - [ ] Обновить `layoutEngine.test.ts`:
   - Тесты размещения с реальной маской (не полностью белой)
   - Тесты коллизии панель-obstacle
@@ -281,8 +206,7 @@
 ### 3.1 Frontend — Калибровка масштаба
 
 - [ ] Создать `src/domains/visualizer/ui/CalibrationOverlay.tsx`:
-  - **Для пресетов:** калибровка берётся автоматически из `InteriorPreset.pixelsPerCm` — UI калибровки не показывается
-  - **Для пользовательских фото:** режим калибровки:
+  - Режим калибровки:
     - Выбор из пресетов объектов: дверь = 200 см, розетка = 8 см, окно = 120 см — Ant Design `Select`, border-radius `8px`
     - Или ввод своего значения: Ant Design `InputNumber`, суффикс «см»
     - 2 клика на фото: отмечает начало и конец известного объекта
@@ -293,7 +217,7 @@
   - Кнопка «Калибровать» в toolbar: `RulerOutlined` из `@ant-design/icons`, Secondary стиль
   - Подсказка: «Укажите два конца объекта известного размера» — Inter 13px/400, цвет `#6B7280`
 - [ ] Обновить `visualizerStore.ts`:
-  - Action `setCalibration(pixelsPerCm: number, method: 'manual' | 'preset')`
+  - Action `setCalibration(pixelsPerCm: number, method: 'manual')`
   - Пересчёт размеров панелей при изменении калибровки
 - [ ] Обновить `layoutEngine.ts`:
   - Использовать `calibration.pixelsPerCm` вместо fallback `width / 400`
@@ -335,7 +259,7 @@
   - Идентичная трансформация (прямоугольник → прямоугольник)
   - Трапецоидная перспектива
   - Обратная трансформация (экран → стена)
-- [ ] Unit-тест `CalibrationOverlay`: выбор пресета → расчёт pixelsPerCm
+- [ ] Unit-тест `CalibrationOverlay`: выбор объекта + 2 клика → расчёт pixelsPerCm
 
 ---
 
@@ -424,7 +348,7 @@
 
 - [ ] Создать `src/domains/visualizer/ui/OnboardingTooltips.tsx`:
   - 4 шага (Ant Design `Tour` компонент):
-    1. «Выберите готовый интерьер или загрузите фото» → подсветка PresetPicker / PhotoUploader
+    1. «Загрузите фото своей стены» → подсветка PhotoUploader
     2. «Подправьте маску стены при необходимости» → подсветка MaskToolbar
     3. «Выберите дизайн и размер панелей» → подсветка PanelPicker
     4. «Нажмите "Авто" для заполнения стены» → подсветка PlacementControls
@@ -449,7 +373,7 @@
 
 ### 5.3 Frontend — Визуальная полировка
 
-- [ ] Skeleton loading в PanelPicker и PresetPicker: Ant Design `Skeleton.Image`, border-radius `12px`
+- [ ] Skeleton loading в PanelPicker: Ant Design `Skeleton.Image`, border-radius `12px`
 - [ ] Анимация появления панели: Konva `Tween` — opacity `0 → 0.85`, `scaleX/Y: 0.95 → 1`, duration `200ms`, easing `EaseOut`
 - [ ] Fullscreen mode: кнопка `FullscreenOutlined` → `document.requestFullscreen()` на контейнере canvas
 - [ ] Кнопка «Примерить на фото» в ConstructorPage: `CameraOutlined`, Secondary стиль, навигация на `/visualizer`
@@ -467,26 +391,26 @@
 
 | Фаза | Описание | Задач | Статус |
 |---|---|---|---|
-| 1 | Пресеты интерьеров + ML-сегментация | 18 | ⬜ Не начата |
+| 1 | ML-сегментация в браузере | 9 | ⬜ Не начата |
 | 2 | Миграция Canvas на react-konva + Design System | 19 | ⬜ Не начата |
 | 3 | Перспектива и калибровка | 12 | ⬜ Не начата |
 | 4 | Бэкенд — сохранение проектов | 17 | ⬜ Не начата |
 | 5 | UX-полировка | 12 | ⬜ Не начата |
-| **ИТОГО** | | **78** | **0%** |
+| **ИТОГО** | | **69** | **0%** |
 
 ---
 
 ## Зависимости между фазами
 
 ```
-Фаза 1 (пресеты + ML) ──┐
+Фаза 1 (ML-сегментация) ──┐
                           ├──→ Фаза 3 (перспектива) ──→ Фаза 5 (полировка)
 Фаза 2 (react-konva)  ──┘
                               Фаза 4 (бэкенд) ────────→ Фаза 5 (полировка)
 ```
 
 - **Фазы 1 и 2** — независимы, можно делать параллельно
-- **Фаза 1** рекомендуется начать с пресетов (1.1–1.3), затем ML (1.4) — пресеты дают рабочий результат быстрее
+- **Фаза 1** — ML-сегментация, fallback на ручную маску при ошибках
 - **Фаза 3** — зависит от Фазы 2 (нужен Konva для рендеринга перспективных панелей)
 - **Фаза 4** — полностью независима, можно делать параллельно с любой другой
 - **Фаза 5** — финальная, зависит от всех предыдущих
@@ -548,11 +472,9 @@
 
 | Риск | Вероятность | Mitigation |
 |---|---|---|
-| Пресеты: нет готовых фото интерьеров | Высокая | Стартовать с 3–5 пресетов (Unsplash stock), маски создать вручную в Photoshop/Figma. Остальные 5–7 добавить позже |
-| Пресеты: маска не совпадает с фото по размеру | Низкая | Валидация в `loadMaskFromPng()` — размеры маски === размеры фото |
-| SegFormer-B0 неточно определяет стену на российских интерьерах | Средняя | Ручная коррекция маски уже работает; пресеты как fallback; можно попробовать модель B2 (точнее, но 80 MB) |
-| Первая загрузка модели 15 MB — плохой UX | Низкая | Progress bar + кэширование в IndexedDB + пресеты не требуют ML |
+| SegFormer-B0 неточно определяет стену на российских интерьерах | Средняя | Ручная коррекция маски уже работает; можно попробовать модель B2 (точнее, но 80 MB) |
+| Первая загрузка модели 15 MB — плохой UX | Низкая | Progress bar + кэширование в IndexedDB (при повторных визитах — мгновенно) |
 | react-konva миграция ломает существующие тесты | Средняя | Поэтапная миграция: сначала KonvaCanvas рядом с WallCanvas, потом замена |
-| perspective-transform неточен для сильной перспективы | Низкая | 4-точечная коррекция пользователем компенсирует ошибки; для пресетов перспектива минимальна (фронтальная съёмка) |
+| perspective-transform неточен для сильной перспективы | Низкая | 4-точечная коррекция пользователем компенсирует ошибки |
 | Размер фото в PostgreSQL (base64) замедляет API | Низкая | Ограничение 5 MB; при масштабировании — миграция на S3/файловое хранилище |
 | Визуальные расхождения с Design System | Низкая | Все цвета, тени, скругления, шрифты задокументированы в плане; code review по чеклисту |
