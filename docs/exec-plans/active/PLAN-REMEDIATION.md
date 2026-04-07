@@ -314,31 +314,38 @@
 > Зависимости: Фаза 1 (PostgreSQL), Фаза 5.3 (forgot-password/Redis)
 
 ### 9.1 Backend — CSRF-защита
-- [ ] Добавить CSRF-middleware или использовать double-submit cookie pattern
-- [ ] Для SPA с JWT: убедиться что CORS настроен strict (конкретный origin, не `*`)
-- [ ] Обновить `config.py`: в production `CORS_ORIGINS` — только домен фронтенда
+- [x] Для SPA с JWT: CORS настроен strict (конкретный origin, не `*`)
+- [x] `allow_methods` и `allow_headers` — явные списки вместо `["*"]`
+- [x] Обновить `config.py`: `CORS_ORIGINS` — конкретный origin фронтенда
+- ~~CSRF-middleware~~ — не нужен для SPA с JWT Bearer token (не cookies)
 
 ### 9.2 Backend — Rate limiting
-- [ ] Добавить зависимость `slowapi` в requirements.txt
-- [ ] Настроить лимиты:
+- [x] Добавить зависимость `slowapi==0.1.9` в requirements.txt
+- [x] Настроить лимиты:
   - `POST /auth/login` — 5 req/min (защита от brute-force)
   - `POST /auth/register` — 3 req/min
   - `POST /auth/forgot-password` — 3 req/min
+  - `POST /auth/reset-password` — 5 req/min
   - `POST /contacts` — 5 req/min
-  - Общий: 60 req/min на пользователя
-- [ ] Хранение состояния в Redis (уже в docker-compose)
+  - Глобальный `default_limits=["60/minute"]` (⚠️ применяется только к эндпоинтам с `request: Request`)
+- [ ] Хранение состояния в Redis (уже в docker-compose) — TODO для production
 
 ### 9.3 Backend — Hardening
-- [ ] Убрать dev-значения JWT_SECRET из кода (только через .env, с проверкой при старте)
-- [ ] Добавить проверку: если `JWT_SECRET == "dev-secret-key-change-in-prod"` и `ENV != "development"` → raise error
-- [ ] CORS: заменить `allow_methods=["*"]` и `allow_headers=["*"]` на конкретные списки
-- [ ] Добавить Security headers middleware: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection
+- [x] JWT_SECRET guard: `RuntimeError` при `ENV=production` + дефолтный секрет
+- [x] `ENV` setting в config (development/production)
+- [x] CORS: `allow_methods` и `allow_headers` — конкретные списки
+- [x] Security headers middleware: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy, Permissions-Policy
 
 ### 9.4 Проверка
-- [ ] Brute-force логина: после 5 попыток → 429 Too Many Requests
-- [ ] CORS: запрос с чужого origin → отклонён
-- [ ] Security headers присутствуют в response
-- [ ] Все существующие тесты проходят
+- [x] Brute-force логина: после 5 попыток → 429 Too Many Requests (тест)
+- [x] CORS: запрос с чужого origin → отклонён (тест)
+- [x] Security headers присутствуют в response (тест)
+- [x] Все существующие тесты проходят: 130 backend, 183 frontend
+
+### 9.5 Тех.долг (выявлен code review)
+- [ ] `config.py:1` — удалить неиспользуемый `import os`
+- [ ] `middleware.py:1` — исправить docstring (убрать "rate limiting")
+- [ ] Глобальный rate limit 60/min не работает на orders/subscriptions/projects/catalog (нет `request: Request`)
 
 ---
 
