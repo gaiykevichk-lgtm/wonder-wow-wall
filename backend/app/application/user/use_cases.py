@@ -62,8 +62,11 @@ class UpdateProfile:
 
 
 class ForgotPassword:
-    """Generate a 6-digit reset token and store it in memory (placeholder for Redis)."""
-    # In-memory store: {email: {"token": str, "expires": datetime}}
+    """Generate a 6-digit reset token and store it in memory (placeholder for Redis).
+
+    WARNING: _tokens is an in-memory dict — works only with a single uvicorn worker.
+    Replace with Redis/DB storage before scaling to multiple workers.
+    """
     _tokens: dict = {}
 
     def __init__(self, repo: UserRepository):
@@ -71,12 +74,12 @@ class ForgotPassword:
 
     async def execute(self, email: str) -> dict:
         from datetime import datetime, timedelta
-        import random
+        import secrets
         user = await self.repo.get_by_email(email)
         if not user:
             # Don't reveal whether the email exists
             return {"status": "sent"}
-        token = f"{random.randint(100000, 999999)}"
+        token = f"{secrets.randbelow(900000) + 100000}"
         ForgotPassword._tokens[email.lower()] = {
             "token": token,
             "expires": datetime.utcnow() + timedelta(minutes=15),

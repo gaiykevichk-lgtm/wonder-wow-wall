@@ -14,14 +14,14 @@ const STATUS_STEPS: OrderStatus[] = ['placed', 'confirmed', 'in_progress', 'deli
 function OrderCard({ order }: { order: Order }) {
   const [expanded, setExpanded] = useState(false);
   const currentStep = STATUS_STEPS.indexOf(order.status);
-  const addItem = useCartStore((s) => s.addItem);
+  const addItemWithQuantity = useCartStore((s) => s.addItemWithQuantity);
   const setCartOpen = useCartStore((s) => s.setOpen);
 
   const handleRepeatOrder = () => {
     order.items.forEach((item) => {
-      for (let i = 0; i < item.quantity; i++) {
-        addItem({
-          id: `${item.id}-${Date.now()}-${i}`,
+      addItemWithQuantity(
+        {
+          id: `${item.id}-repeat-${Date.now()}`,
           productId: item.id,
           name: item.name,
           image: item.image,
@@ -30,8 +30,9 @@ function OrderCard({ order }: { order: Order }) {
           color: '',
           colorName: item.color,
           size: item.size,
-        });
-      }
+        },
+        item.quantity,
+      );
     });
     setCartOpen(true);
   };

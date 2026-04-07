@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Badge, Button, Drawer, Input, Tag, Tooltip } from 'antd';
 import {
   ShoppingOutlined,
@@ -30,7 +30,6 @@ export function ShopHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
-  const searchRef = useRef<any>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const setCartOpen = useCartStore((s) => s.setOpen);
@@ -176,7 +175,6 @@ export function ShopHeader() {
             )}
             {searchOpen ? (
               <Input
-                ref={searchRef}
                 size="small"
                 placeholder="Поиск..."
                 value={searchValue}
@@ -273,7 +271,7 @@ export function ShopHeader() {
                 color: location.pathname === item.path ? '#4CAF50' : '#2D2D2D',
                 padding: '12px 16px',
                 borderRadius: 8,
-                background: location.pathname === item.path ? 'rgba(0,113,227,0.08)' : 'transparent',
+                background: location.pathname === item.path ? 'rgba(76,175,80,0.08)' : 'transparent',
               }}
             >
               {item.label}
