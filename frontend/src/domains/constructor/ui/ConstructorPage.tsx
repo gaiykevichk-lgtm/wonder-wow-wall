@@ -1503,7 +1503,8 @@ export default function ConstructorPage() {
                     borderRadius: 12,
                     fontWeight: 600,
                     fontSize: 14,
-                    padding: '12px 20px',
+                    padding: '14px 20px',
+                    minHeight: 48,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -1511,6 +1512,7 @@ export default function ConstructorPage() {
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
                     transition: 'opacity 0.15s',
+                    boxSizing: 'border-box',
                   }}
                   onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
                   onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
