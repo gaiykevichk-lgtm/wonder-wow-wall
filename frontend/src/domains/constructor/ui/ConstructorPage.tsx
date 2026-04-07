@@ -1423,21 +1423,10 @@ export default function ConstructorPage() {
                 <span style={{ fontSize: 12, color: isSubscriber ? ACCENT : GRAY }}>
                   Накладки: {isSubscriber ? '0 ₽ (подписка)' : `${costs.totalOverlay.toLocaleString('ru-RU')} ₽`}
                 </span>
-                {/* Subscription hint inline */}
-                {isSubscriber ? (
-                  <span style={{ fontSize: 11, color: '#2E7D32', display: 'flex', alignItems: 'center', gap: 4 }}>
+                {isSubscriber && (
+                  <span style={{ fontSize: 12, color: ACCENT, display: 'flex', alignItems: 'center', gap: 4 }}>
                     <CrownOutlined style={{ fontSize: 12 }} />
-                    «{activePlan()?.name}» — накладки включены
-                    {activePlan()?.areaLimitM2 ? ` · лимит ${activePlan()!.areaLimitM2} м²/мес` : ''}
-                  </span>
-                ) : (
-                  <span
-                    onClick={() => openSubModal()}
-                    style={{ fontSize: 11, color: '#F57F17', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                  >
-                    <InfoCircleOutlined style={{ fontSize: 11 }} />
-                    Подписка от {(7000).toLocaleString('ru-RU')} ₽/мес — накладки бесплатно
-                    <span style={{ textDecoration: 'underline' }}>→</span>
+                    Накладки включены в подписку
                   </span>
                 )}
               </div>
@@ -1488,6 +1477,104 @@ export default function ConstructorPage() {
         </div>
       </div>
 
+      {/* ─── Full-width subscription banner ────────────────────────────── */}
+      {!isSubscriber && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2, ease: EASE_APPLE }}
+          onClick={() => openSubModal()}
+          style={{
+            marginTop: 20,
+            borderRadius: 16,
+            padding: '24px 32px',
+            background: 'linear-gradient(135deg, #1B5E20 0%, #2E7D32 40%, #43A047 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 20,
+            cursor: 'pointer',
+            position: 'relative',
+            overflow: 'hidden',
+            flexWrap: 'wrap',
+          }}
+          className="sub-banner"
+        >
+          {/* Decorative circles */}
+          <div style={{ position: 'absolute', top: -30, right: -30, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
+          <div style={{ position: 'absolute', bottom: -20, left: '40%', width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, position: 'relative', zIndex: 1 }}>
+            <div style={{
+              width: 48,
+              height: 48,
+              borderRadius: 14,
+              background: 'rgba(255,255,255,0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              <CrownOutlined style={{ fontSize: 24, color: '#FFD54F' }} />
+            </div>
+            <div>
+              <div style={{ color: '#fff', fontWeight: 700, fontSize: 16, marginBottom: 2 }}>
+                Оформите подписку — накладки бесплатно!
+              </div>
+              <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, lineHeight: 1.4 }}>
+                Платите только за базовые панели. Планы от <strong style={{ color: '#FFD54F' }}>{(7000).toLocaleString('ru-RU')} ₽/мес</strong> · экономия до 60% на каждом заказе
+              </div>
+            </div>
+          </div>
+
+          <Button
+            size="large"
+            style={{
+              background: '#fff',
+              color: '#1B5E20',
+              border: 'none',
+              borderRadius: 12,
+              fontWeight: 700,
+              fontSize: 14,
+              height: 44,
+              paddingInline: 28,
+              position: 'relative',
+              zIndex: 1,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              flexShrink: 0,
+            }}
+          >
+            Подробнее о подписке
+          </Button>
+        </motion.div>
+      )}
+
+      {isSubscriber && (
+        <div
+          style={{
+            marginTop: 20,
+            borderRadius: 16,
+            padding: '16px 28px',
+            background: 'linear-gradient(135deg, #E8F5E9, #C8E6C9)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            border: '1px solid #A5D6A7',
+          }}
+        >
+          <CrownOutlined style={{ fontSize: 20, color: '#2E7D32' }} />
+          <div>
+            <span style={{ fontWeight: 600, fontSize: 14, color: '#1B5E20' }}>
+              Подписка «{activePlan()?.name}»
+            </span>
+            <span style={{ fontSize: 13, color: '#2E7D32', marginLeft: 8 }}>
+              — накладки включены в план. Вы платите только за базовые панели.
+              {activePlan()?.areaLimitM2 ? ` Лимит: ${activePlan()!.areaLimitM2} м²/мес.` : ' Безлимитная площадь.'}
+            </span>
+          </div>
+        </div>
+      )}
+
       <style>{`
         @media (max-width: 900px) {
           .constructor-layout {
@@ -1497,6 +1584,9 @@ export default function ConstructorPage() {
         @media (max-width: 768px) {
           .cost-summary-grid {
             grid-template-columns: 1fr !important;
+          }
+          .sub-banner {
+            padding: 18px 20px !important;
           }
         }
       `}</style>
