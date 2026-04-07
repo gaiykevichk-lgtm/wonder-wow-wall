@@ -1496,10 +1496,11 @@ export default function ConstructorPage() {
                     background: ACCENT,
                     color: '#fff',
                     border: 'none',
-                    height: 40,
-                    borderRadius: 10,
+                    height: 'auto',
+                    padding: '10px 20px',
+                    borderRadius: 12,
                     fontWeight: 600,
-                    paddingInline: 20,
+                    fontSize: 14,
                   }}
                 >
                   В корзину
