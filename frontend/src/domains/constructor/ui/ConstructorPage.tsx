@@ -36,11 +36,28 @@ interface PlacedPanel {
 
 type PanelSizeKey = '30x30' | '30x60' | '60x60';
 
+type WallMode = 'grid' | 'interior';
+
+interface InteriorPreset {
+  id: string;
+  room: string;
+  image: string;
+  caption: string;
+  productName: string;
+}
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const CELL_SIZE_MM = 300; // 30 cm grid cell
 const CELL_PX = 60; // pixels per cell on screen
 const GAP_PX = 2;
+
+const BLUE = '#0071e3';
+const DARK = '#1d1d1f';
+const GRAY = '#86868b';
+const LIGHT_BG = '#F5F5F7';
+
+const EASE_APPLE: [number, number, number, number] = [0.25, 0.1, 0.25, 1.0];
 
 const WALL_COLORS = [
   { label: 'Белая', value: '#F5F5F7' },
@@ -57,8 +74,18 @@ const SIZE_OPTIONS: { key: PanelSizeKey; label: string; wCells: number; hCells: 
 ];
 
 const FONT = 'Inter, sans-serif';
-const BLUE = '#0071e3';
-const DARK = '#1d1d1f';
+
+// ─── Interior Presets ────────────────────────────────────────────────────────
+
+const INTERIOR_PRESETS: InteriorPreset[] = products.flatMap((product) =>
+  (product.usageExamples || []).map((ex, idx) => ({
+    id: `${product.id}-${idx}`,
+    room: ex.room,
+    image: ex.image,
+    caption: ex.caption,
+    productName: product.name,
+  }))
+);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -83,9 +110,13 @@ function cellsOverlap(
 
 export default function ConstructorPage() {
   // Wall settings
-  const [wallCols, setWallCols] = useState(13); // ~4m width
-  const [wallRows, setWallRows] = useState(9); // ~2.7m height
-  const [wallColor, setWallColor] = useState('#F5F5F7');
+  const [wallCols, setWallCols] = useState(13);
+  const [wallRows, setWallRows] = useState(9);
+  const [wallColor, setWallColor] = useState(LIGHT_BG);
+
+  // Wall mode & presets
+  const [wallMode, setWallMode] = useState<WallMode>('grid');
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
 
   // Panel selection
   const [selectedDesignId, setSelectedDesignId] = useState(products[0].id);
@@ -98,6 +129,7 @@ export default function ConstructorPage() {
   const [hoveredCell, setHoveredCell] = useState<{ col: number; row: number } | null>(null);
 
   const wallRef = useRef<HTMLDivElement>(null);
+  const presetScrollRef = useRef<HTMLDivElement>(null);
   const { addItem } = useCartStore();
   const hasSub = useSubscriptionStore((s) => s.hasSubscription);
   const activePlan = useSubscriptionStore((s) => s.getActivePlan);
@@ -106,11 +138,14 @@ export default function ConstructorPage() {
   const selectedDesign = products.find((p) => p.id === selectedDesignId) || products[0];
   const selectedColor = selectedDesign.colors[selectedColorIdx] || selectedDesign.colors[0];
   const selectedSize = SIZE_OPTIONS.find((s) => s.key === selectedSizeKey)!;
+  const selectedPreset = selectedPresetId ? INTERIOR_PRESETS.find((p) => p.id === selectedPresetId) || null : null;
 
   const wallWidthMm = wallCols * CELL_SIZE_MM;
   const wallHeightMm = wallRows * CELL_SIZE_MM;
   const wallWidthPx = wallCols * (CELL_PX + GAP_PX) + GAP_PX;
   const wallHeightPx = wallRows * (CELL_PX + GAP_PX) + GAP_PX;
+
+  const isInteriorMode = wallMode === 'interior' && selectedPreset !== null;
 
   // ─── Calculations ──────────────────────────────────────────────────────────
 
@@ -152,10 +187,30 @@ export default function ConstructorPage() {
     [placedPanels, wallCols, wallRows]
   );
 
+  // ─── Preset selection ─────────────────────────────────────────────────────
+
+  const handleSelectPreset = useCallback((presetId: string | null) => {
+    setSelectedPresetId(presetId);
+    if (presetId) {
+      setWallMode('interior');
+    } else {
+      setWallMode('grid');
+    }
+  }, []);
+
+  const handleModeChange = useCallback((value: string | number) => {
+    const mode = value as WallMode;
+    setWallMode(mode);
+    if (mode === 'grid') {
+      setSelectedPresetId(null);
+    } else if (mode === 'interior' && !selectedPresetId && INTERIOR_PRESETS.length > 0) {
+      setSelectedPresetId(INTERIOR_PRESETS[0].id);
+    }
+  }, [selectedPresetId]);
+
   // ─── Actions ───────────────────────────────────────────────────────────────
 
   const handleAddToWall = useCallback(() => {
-    // Find first available position
     const { wCells, hCells } = selectedSize;
     for (let r = 0; r <= wallRows - hCells; r++) {
       for (let c = 0; c <= wallCols - wCells; c++) {
@@ -217,7 +272,6 @@ export default function ConstructorPage() {
   const handleFillWall = useCallback(() => {
     const { wCells, hCells } = selectedSize;
     const newPanels: PlacedPanel[] = [];
-    // Create a copy of existing occupancy
     const allPanels = [...placedPanels];
 
     for (let r = 0; r <= wallRows - hCells; r++) {
@@ -260,7 +314,6 @@ export default function ConstructorPage() {
       return;
     }
 
-    // Group by design + size + color
     const groups = new Map<string, { panel: PlacedPanel; count: number }>();
     for (const panel of placedPanels) {
       const key = `${panel.designId}__${panel.sizeMm}__${panel.color}`;
@@ -362,21 +415,164 @@ export default function ConstructorPage() {
   // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ paddingTop: 72, background: '#F5F5F7', minHeight: '100vh', fontFamily: FONT }}>
+    <div style={{ paddingTop: 72, background: LIGHT_BG, minHeight: '100vh', fontFamily: FONT }}>
       {/* Page Header */}
       <div style={{ background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.04)', padding: '28px 24px' }}>
         <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-          <h1 style={{ fontSize: 28, fontWeight: 600, color: '#1A1A1A', margin: '0 0 6px' }}>
+          <h1 style={{ fontSize: 28, fontWeight: 600, color: DARK, margin: '0 0 6px', letterSpacing: '-0.02em' }}>
             Конструктор стен
           </h1>
-          <p style={{ color: '#86868b', margin: 0, fontSize: 15 }}>
+          <p style={{ color: GRAY, margin: 0, fontSize: 15, lineHeight: 1.5 }}>
             Разместите панели на виртуальной стене. Кликайте на ячейки или используйте кнопку «Добавить».
             Все дизайны накладок — {DESIGN_OVERLAY_PRICE.toLocaleString('ru-RU')} ₽/шт.
           </p>
         </div>
       </div>
 
-      {/* Content */}
+      {/* ─── PRESET SELECTOR (full width) ─────────────────────────────────────── */}
+      <div
+        style={{
+          background: '#fff',
+          borderBottom: '1px solid rgba(0,0,0,0.04)',
+          padding: '20px 0 20px',
+        }}
+      >
+        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontWeight: 600, fontSize: 15, color: DARK }}>Пресеты интерьеров</span>
+              <span style={{ fontSize: 12, color: GRAY }}>
+                Выберите комнату для реалистичного превью
+              </span>
+            </div>
+            <Segmented
+              value={wallMode}
+              onChange={handleModeChange}
+              options={[
+                { label: 'Сетка', value: 'grid' },
+                { label: 'Интерьер', value: 'interior' },
+              ]}
+              style={{
+                borderRadius: 980,
+                padding: 2,
+                background: 'rgba(0,0,0,0.04)',
+              }}
+            />
+          </div>
+
+          <div
+            ref={presetScrollRef}
+            style={{
+              display: 'flex',
+              gap: 12,
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              paddingBottom: 8,
+              scrollbarWidth: 'thin',
+              scrollBehavior: 'smooth',
+            }}
+          >
+            {/* "No background" option */}
+            <motion.div
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              transition={{ duration: 0.2, ease: EASE_APPLE }}
+              onClick={() => handleSelectPreset(null)}
+              style={{
+                minWidth: 160,
+                width: 160,
+                height: 100,
+                borderRadius: 16,
+                background: 'linear-gradient(135deg, #F5F5F7 0%, #E8E8E8 100%)',
+                border: wallMode === 'grid' ? `2px solid ${BLUE}` : '2px solid rgba(0,0,0,0.06)',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                flexShrink: 0,
+                transition: 'border-color 0.3s cubic-bezier(0.25, 0.1, 0.25, 1)',
+                transform: wallMode === 'grid' ? 'scale(1.02)' : 'scale(1)',
+              }}
+            >
+              <AppstoreOutlined style={{ fontSize: 22, color: wallMode === 'grid' ? BLUE : GRAY }} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: wallMode === 'grid' ? BLUE : DARK }}>
+                Без фона
+              </span>
+            </motion.div>
+
+            {/* Preset cards */}
+            {INTERIOR_PRESETS.map((preset) => {
+              const isSelected = selectedPresetId === preset.id;
+              return (
+                <motion.div
+                  key={preset.id}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  transition={{ duration: 0.2, ease: EASE_APPLE }}
+                  onClick={() => handleSelectPreset(preset.id)}
+                  style={{
+                    minWidth: 160,
+                    width: 160,
+                    height: 100,
+                    borderRadius: 16,
+                    overflow: 'hidden',
+                    position: 'relative',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    border: isSelected ? `2px solid ${BLUE}` : '2px solid rgba(0,0,0,0.06)',
+                    transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+                    transition: 'border-color 0.3s cubic-bezier(0.25, 0.1, 0.25, 1), transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1)',
+                    boxShadow: isSelected ? `0 0 0 1px ${BLUE}, 0 4px 16px rgba(0,113,227,0.15)` : '0 2px 8px rgba(0,0,0,0.06)',
+                  }}
+                >
+                  <img
+                    src={preset.image}
+                    alt={preset.room}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      display: 'block',
+                    }}
+                  />
+                  {/* Gradient overlay at bottom */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: 44,
+                      background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 100%)',
+                      pointerEvents: 'none',
+                    }}
+                  />
+                  {/* Room label */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: 8,
+                      left: 10,
+                      right: 10,
+                    }}
+                  >
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#fff', lineHeight: 1.2 }}>
+                      {preset.room}
+                    </div>
+                    <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', lineHeight: 1.3, marginTop: 1 }}>
+                      {preset.productName}
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* ─── MAIN CONTENT (sidebar + wall) ────────────────────────────────────── */}
       <div
         style={{
           display: 'grid',
@@ -391,15 +587,23 @@ export default function ConstructorPage() {
         {/* ─── LEFT SIDEBAR ─────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Wall settings */}
-          <Card style={{ borderRadius: 20, border: '1px solid rgba(0,0,0,0.04)' }} styles={{ body: { padding: 18 } }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, fontWeight: 600, fontSize: 14, color: '#1A1A1A' }}>
-              <ColumnWidthOutlined style={{ color: '#86868b' }} />
+          <Card
+            style={{
+              borderRadius: 20,
+              border: '1px solid rgba(0,0,0,0.04)',
+              backdropFilter: 'blur(20px)',
+              background: 'rgba(255,255,255,0.85)',
+            }}
+            styles={{ body: { padding: 18 } }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, fontWeight: 600, fontSize: 14, color: DARK }}>
+              <ColumnWidthOutlined style={{ color: GRAY }} />
               Параметры стены
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
               <div>
-                <div style={{ fontSize: 12, color: '#86868b', marginBottom: 4 }}>Ширина (ячейки × 30см)</div>
+                <div style={{ fontSize: 12, color: GRAY, marginBottom: 4 }}>Ширина (ячейки × 30см)</div>
                 <Select
                   value={wallCols}
                   onChange={(v) => { setWallCols(v); setPlacedPanels([]); }}
@@ -415,7 +619,7 @@ export default function ConstructorPage() {
                 />
               </div>
               <div>
-                <div style={{ fontSize: 12, color: '#86868b', marginBottom: 4 }}>Высота (ячейки × 30см)</div>
+                <div style={{ fontSize: 12, color: GRAY, marginBottom: 4 }}>Высота (ячейки × 30см)</div>
                 <Select
                   value={wallRows}
                   onChange={(v) => { setWallRows(v); setPlacedPanels([]); }}
@@ -431,36 +635,85 @@ export default function ConstructorPage() {
               </div>
             </div>
 
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#86868b', marginBottom: 6 }}>
-                <BgColorsOutlined /> Цвет стены
-              </div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {WALL_COLORS.map((c) => (
-                  <Tooltip title={c.label} key={c.value}>
-                    <div
-                      onClick={() => setWallColor(c.value)}
-                      style={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: 6,
-                        background: c.value,
-                        border: wallColor === c.value ? '2px solid #1d1d1f' : '1px solid #D1D5DB',
-                        cursor: 'pointer',
-                        transition: 'border 0.15s',
-                        boxSizing: 'border-box',
-                      }}
-                    />
-                  </Tooltip>
-                ))}
-              </div>
-            </div>
+            {/* Wall color — only in grid mode */}
+            <AnimatePresence>
+              {!isInteriorMode && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25, ease: EASE_APPLE }}
+                  style={{ overflow: 'hidden' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: GRAY, marginBottom: 6 }}>
+                    <BgColorsOutlined /> Цвет стены
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {WALL_COLORS.map((c) => (
+                      <Tooltip title={c.label} key={c.value}>
+                        <div
+                          onClick={() => setWallColor(c.value)}
+                          style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: 6,
+                            background: c.value,
+                            border: wallColor === c.value ? `2px solid ${DARK}` : '1px solid #D1D5DB',
+                            cursor: 'pointer',
+                            transition: 'border 0.15s',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </Tooltip>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Interior preset info */}
+            <AnimatePresence>
+              {isInteriorMode && selectedPreset && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25, ease: EASE_APPLE }}
+                  style={{ overflow: 'hidden' }}
+                >
+                  <div
+                    style={{
+                      background: `linear-gradient(135deg, rgba(0,113,227,0.06) 0%, rgba(0,113,227,0.02) 100%)`,
+                      borderRadius: 10,
+                      padding: '10px 12px',
+                      fontSize: 12,
+                      color: DARK,
+                      lineHeight: 1.5,
+                      border: `1px solid rgba(0,113,227,0.1)`,
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, marginBottom: 2, color: BLUE }}>
+                      {selectedPreset.room} — {selectedPreset.productName}
+                    </div>
+                    <div style={{ color: GRAY }}>{selectedPreset.caption}</div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </Card>
 
           {/* Design selection */}
-          <Card style={{ borderRadius: 20, border: '1px solid rgba(0,0,0,0.04)' }} styles={{ body: { padding: 18 } }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, fontWeight: 600, fontSize: 14, color: '#1A1A1A' }}>
-              <AppstoreOutlined style={{ color: '#86868b' }} />
+          <Card
+            style={{
+              borderRadius: 20,
+              border: '1px solid rgba(0,0,0,0.04)',
+              backdropFilter: 'blur(20px)',
+              background: 'rgba(255,255,255,0.85)',
+            }}
+            styles={{ body: { padding: 18 } }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, fontWeight: 600, fontSize: 14, color: DARK }}>
+              <AppstoreOutlined style={{ color: GRAY }} />
               Дизайн накладки
             </div>
 
@@ -475,7 +728,7 @@ export default function ConstructorPage() {
             />
 
             {/* Preview */}
-            <div style={{ borderRadius: 10, overflow: 'hidden', height: 120, marginBottom: 12, background: '#eee', position: 'relative' }}>
+            <div style={{ borderRadius: 12, overflow: 'hidden', height: 120, marginBottom: 12, background: '#eee', position: 'relative' }}>
               <img
                 src={selectedDesign.image}
                 alt={selectedDesign.name}
@@ -487,9 +740,10 @@ export default function ConstructorPage() {
                   bottom: 8,
                   right: 8,
                   background: 'rgba(0,0,0,0.7)',
+                  backdropFilter: 'blur(10px)',
                   color: '#fff',
-                  borderRadius: 6,
-                  padding: '3px 8px',
+                  borderRadius: 8,
+                  padding: '4px 10px',
                   fontSize: 11,
                   fontWeight: 600,
                 }}
@@ -500,7 +754,7 @@ export default function ConstructorPage() {
 
             {/* Color */}
             <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 12, color: '#86868b', marginBottom: 4 }}>
+              <div style={{ fontSize: 12, color: GRAY, marginBottom: 4 }}>
                 Оттенок: {selectedColor.name}
               </div>
               <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
@@ -513,9 +767,11 @@ export default function ConstructorPage() {
                         height: 26,
                         borderRadius: '50%',
                         background: c.hex,
-                        border: selectedColorIdx === idx ? '2px solid #1d1d1f' : '1px solid #D1D5DB',
+                        border: selectedColorIdx === idx ? `2px solid ${DARK}` : '1px solid #D1D5DB',
                         cursor: 'pointer',
                         boxSizing: 'border-box',
+                        transition: 'border-color 0.2s, transform 0.2s',
+                        transform: selectedColorIdx === idx ? 'scale(1.15)' : 'scale(1)',
                       }}
                     />
                   </Tooltip>
@@ -525,7 +781,7 @@ export default function ConstructorPage() {
 
             {/* Size */}
             <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 12, color: '#86868b', marginBottom: 4 }}>Размер панели</div>
+              <div style={{ fontSize: 12, color: GRAY, marginBottom: 4 }}>Размер панели</div>
               <Radio.Group
                 value={selectedSizeKey}
                 onChange={(e) => setSelectedSizeKey(e.target.value)}
@@ -537,12 +793,20 @@ export default function ConstructorPage() {
             </div>
 
             {/* Price breakdown for selected size */}
-            <div style={{ background: '#F9FAFB', borderRadius: 8, padding: '8px 10px', marginBottom: 12, fontSize: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#86868b', marginBottom: 3 }}>
+            <div
+              style={{
+                background: LIGHT_BG,
+                borderRadius: 10,
+                padding: '10px 12px',
+                marginBottom: 12,
+                fontSize: 12,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: GRAY, marginBottom: 3 }}>
                 <span>Панель ({selectedSize.label}):</span>
                 <span>{BASE_PANEL_PRICES[`${selectedSize.widthMm}x${selectedSize.heightMm}`]?.toLocaleString('ru-RU')} ₽</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#86868b', marginBottom: 3 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: GRAY, marginBottom: 3 }}>
                 <span>Накладка (дизайн):</span>
                 <span>{DESIGN_OVERLAY_PRICE.toLocaleString('ru-RU')} ₽</span>
               </div>
@@ -589,29 +853,37 @@ export default function ConstructorPage() {
           </Card>
 
           {/* Cost summary */}
-          <Card style={{ borderRadius: 20, border: '1px solid rgba(0,0,0,0.04)' }} styles={{ body: { padding: 18 } }}>
-            <div style={{ fontWeight: 600, fontSize: 14, color: '#1A1A1A', marginBottom: 12 }}>
+          <Card
+            style={{
+              borderRadius: 20,
+              border: '1px solid rgba(0,0,0,0.04)',
+              backdropFilter: 'blur(20px)',
+              background: 'rgba(255,255,255,0.85)',
+            }}
+            styles={{ body: { padding: 18 } }}
+          >
+            <div style={{ fontWeight: 600, fontSize: 14, color: DARK, marginBottom: 12 }}>
               Расчёт стоимости
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                <span style={{ color: '#86868b' }}>Панелей:</span>
-                <span style={{ fontWeight: 500, color: '#1A1A1A' }}>{costs.panelCount} шт</span>
+                <span style={{ color: GRAY }}>Панелей:</span>
+                <span style={{ fontWeight: 500, color: DARK }}>{costs.panelCount} шт</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                <span style={{ color: '#86868b' }}>Покрытие:</span>
-                <span style={{ fontWeight: 500, color: '#1A1A1A' }}>{costs.totalArea.toFixed(2)} м²</span>
+                <span style={{ color: GRAY }}>Покрытие:</span>
+                <span style={{ fontWeight: 500, color: DARK }}>{costs.totalArea.toFixed(2)} м²</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                <span style={{ color: '#86868b' }}>Площадь стены:</span>
-                <span style={{ fontWeight: 500, color: '#1A1A1A' }}>{costs.wallArea.toFixed(2)} м²</span>
+                <span style={{ color: GRAY }}>Площадь стены:</span>
+                <span style={{ fontWeight: 500, color: DARK }}>{costs.wallArea.toFixed(2)} м²</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#86868b' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: GRAY }}>
                 <span>├ Базовые панели:</span>
                 <span>{costs.totalBase.toLocaleString('ru-RU')} ₽</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: isSubscriber ? '#0071e3' : '#86868b' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: isSubscriber ? BLUE : GRAY }}>
                 <span>└ Накладки (дизайн):</span>
                 <span>{isSubscriber ? '0 ₽ (подписка)' : `${costs.totalOverlay.toLocaleString('ru-RU')} ₽`}</span>
               </div>
@@ -620,8 +892,8 @@ export default function ConstructorPage() {
             <div
               style={{
                 background: DARK,
-                borderRadius: 10,
-                padding: '12px 14px',
+                borderRadius: 12,
+                padding: '14px 16px',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
@@ -629,7 +901,7 @@ export default function ConstructorPage() {
               }}
             >
               <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>Итого:</span>
-              <span style={{ fontSize: 22, fontWeight: 600, color: '#fff' }}>
+              <span style={{ fontSize: 22, fontWeight: 600, color: '#fff', letterSpacing: '-0.01em' }}>
                 {costs.total.toLocaleString('ru-RU')} ₽
               </span>
             </div>
@@ -653,7 +925,7 @@ export default function ConstructorPage() {
               <Button
                 icon={<UndoOutlined />}
                 onClick={handleClear}
-                style={{ height: 38, borderRadius: 980, border: '1px solid #D1D5DB', color: '#86868b' }}
+                style={{ height: 38, borderRadius: 980, border: '1px solid #D1D5DB', color: GRAY }}
               >
                 Очистить
               </Button>
@@ -662,7 +934,17 @@ export default function ConstructorPage() {
 
           {/* Subscription banner or info */}
           {isSubscriber ? (
-            <div style={{ padding: '12px 14px', background: '#F5F5F7', borderRadius: 10, fontSize: 12, color: '#2E7D32', lineHeight: 1.6, border: '1px solid #C8E6C9' }}>
+            <div
+              style={{
+                padding: '12px 14px',
+                background: LIGHT_BG,
+                borderRadius: 12,
+                fontSize: 12,
+                color: '#2E7D32',
+                lineHeight: 1.6,
+                border: '1px solid #C8E6C9',
+              }}
+            >
               <CrownOutlined style={{ marginRight: 6, fontSize: 14 }} />
               <strong>Подписка «{activePlan()?.name}»</strong> — накладки включены в план! Вы платите только за базовые панели.
               {activePlan()?.overlaysPerMonth ? ` Осталось ${activePlan()!.overlaysPerMonth} накладок в этом месяце.` : ' Безлимитные накладки.'}
@@ -670,7 +952,17 @@ export default function ConstructorPage() {
           ) : (
             <div
               onClick={() => openSubModal()}
-              style={{ padding: '12px 14px', background: '#FFF8E1', borderRadius: 10, fontSize: 12, color: '#F57F17', lineHeight: 1.6, cursor: 'pointer', border: '1px solid #FFE082', transition: 'background 0.2s' }}
+              style={{
+                padding: '12px 14px',
+                background: '#FFF8E1',
+                borderRadius: 12,
+                fontSize: 12,
+                color: '#F57F17',
+                lineHeight: 1.6,
+                cursor: 'pointer',
+                border: '1px solid #FFE082',
+                transition: 'background 0.2s',
+              }}
             >
               <InfoCircleOutlined style={{ marginRight: 6 }} />
               <strong>Оформите подписку</strong> — и накладки будут бесплатны! Планы от {(4900).toLocaleString('ru-RU')} ₽/мес.
@@ -681,16 +973,34 @@ export default function ConstructorPage() {
 
         {/* ─── RIGHT - Wall Canvas ──────────────────────────────────────────── */}
         <div>
-          <Card style={{ borderRadius: 20, border: '1px solid rgba(0,0,0,0.04)' }} styles={{ body: { padding: 18 } }}>
+          <Card
+            style={{
+              borderRadius: 20,
+              border: '1px solid rgba(0,0,0,0.04)',
+              backdropFilter: 'blur(20px)',
+              background: 'rgba(255,255,255,0.85)',
+            }}
+            styles={{ body: { padding: 18 } }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
               <div>
-                <span style={{ fontWeight: 600, fontSize: 14, color: '#1A1A1A' }}>Визуализация стены</span>
-                <span style={{ fontSize: 12, color: '#86868b', marginLeft: 10 }}>
+                <span style={{ fontWeight: 600, fontSize: 14, color: DARK }}>Визуализация стены</span>
+                <span style={{ fontSize: 12, color: GRAY, marginLeft: 10 }}>
                   {(wallWidthMm / 1000).toFixed(1)} × {(wallHeightMm / 1000).toFixed(1)} м · ячейка 30×30 см
                 </span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#86868b' }}>
-                <DragOutlined /> Перетаскивайте панели · Кликните на ячейку для размещения
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {isInteriorMode && (
+                  <Tag
+                    color="blue"
+                    style={{ margin: 0, borderRadius: 980, fontSize: 11, fontWeight: 500 }}
+                  >
+                    Интерьер: {selectedPreset?.room}
+                  </Tag>
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: GRAY }}>
+                  <DragOutlined /> Перетаскивайте · Кликните для размещения
+                </div>
               </div>
             </div>
 
@@ -705,8 +1015,12 @@ export default function ConstructorPage() {
                   position: 'relative',
                   width: wallWidthPx,
                   height: wallHeightPx,
-                  background: wallColor,
-                  borderRadius: 8,
+                  background: isInteriorMode && selectedPreset
+                    ? `url(${selectedPreset.image})`
+                    : wallColor,
+                  backgroundSize: isInteriorMode ? 'cover' : undefined,
+                  backgroundPosition: isInteriorMode ? 'center' : undefined,
+                  borderRadius: 10,
                   boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
                   cursor: draggedId ? 'grabbing' : 'pointer',
                   userSelect: 'none',
@@ -715,6 +1029,7 @@ export default function ConstructorPage() {
                   gridTemplateRows: `repeat(${wallRows}, ${CELL_PX}px)`,
                   gap: `${GAP_PX}px`,
                   padding: `${GAP_PX}px`,
+                  overflow: 'hidden',
                 }}
               >
                 {/* Grid cells */}
@@ -725,15 +1040,22 @@ export default function ConstructorPage() {
                     col >= p.col && col < p.col + p.widthCells &&
                     row >= p.row && row < p.row + p.heightCells
                   );
+
+                  const gridCellBg = isInteriorMode
+                    ? (isOccupied ? 'transparent' : 'rgba(255,255,255,0.04)')
+                    : (isOccupied ? 'transparent' : (wallColor === '#2C2C2C' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'));
+
                   return (
                     <div
                       key={`cell-${col}-${row}`}
                       style={{
                         width: CELL_PX,
                         height: CELL_PX,
-                        background: isOccupied ? 'transparent' : (wallColor === '#2C2C2C' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'),
+                        background: gridCellBg,
                         borderRadius: 2,
                         pointerEvents: 'none',
+                        border: isInteriorMode && !isOccupied ? '1px solid rgba(255,255,255,0.08)' : 'none',
+                        boxSizing: 'border-box',
                       }}
                     />
                   );
@@ -776,7 +1098,11 @@ export default function ConstructorPage() {
                       backgroundPosition: 'center',
                       borderRadius: 3,
                       cursor: draggedId === panel.id ? 'grabbing' : 'grab',
-                      boxShadow: draggedId === panel.id ? '0 4px 16px rgba(0,0,0,0.25)' : '0 1px 4px rgba(0,0,0,0.10)',
+                      boxShadow: draggedId === panel.id
+                        ? '0 8px 24px rgba(0,0,0,0.30)'
+                        : isInteriorMode
+                          ? '0 2px 8px rgba(0,0,0,0.20)'
+                          : '0 1px 4px rgba(0,0,0,0.10)',
                       zIndex: draggedId === panel.id ? 20 : 10,
                       transition: draggedId === panel.id ? 'none' : 'box-shadow 0.15s',
                       overflow: 'visible',
@@ -788,11 +1114,23 @@ export default function ConstructorPage() {
                         position: 'absolute',
                         inset: 0,
                         background: panel.color,
-                        opacity: 0.2,
+                        opacity: isInteriorMode ? 0.15 : 0.2,
                         borderRadius: 3,
                         pointerEvents: 'none',
                       }}
                     />
+                    {/* Interior mode: subtle border for panel visibility */}
+                    {isInteriorMode && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          borderRadius: 3,
+                          border: '1px solid rgba(255,255,255,0.3)',
+                          pointerEvents: 'none',
+                        }}
+                      />
+                    )}
                     {/* Size label */}
                     {panel.widthCells >= 2 && (
                       <div
@@ -803,6 +1141,7 @@ export default function ConstructorPage() {
                           fontSize: 9,
                           color: '#fff',
                           background: 'rgba(0,0,0,0.5)',
+                          backdropFilter: 'blur(4px)',
                           borderRadius: 3,
                           padding: '1px 4px',
                           pointerEvents: 'none',
@@ -854,10 +1193,15 @@ export default function ConstructorPage() {
                       flexDirection: 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: wallColor === '#2C2C2C' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.15)',
+                      color: isInteriorMode
+                        ? 'rgba(255,255,255,0.6)'
+                        : wallColor === '#2C2C2C'
+                          ? 'rgba(255,255,255,0.25)'
+                          : 'rgba(0,0,0,0.15)',
                       fontSize: 14,
                       pointerEvents: 'none',
                       gap: 8,
+                      textShadow: isInteriorMode ? '0 1px 4px rgba(0,0,0,0.4)' : 'none',
                     }}
                   >
                     <AppstoreOutlined style={{ fontSize: 32 }} />
@@ -870,13 +1214,12 @@ export default function ConstructorPage() {
             {/* Panel legend below wall */}
             {placedPanels.length > 0 && (
               <div style={{ marginTop: 14 }}>
-                <div style={{ fontSize: 12, color: '#86868b', marginBottom: 6 }}>
+                <div style={{ fontSize: 12, color: GRAY, marginBottom: 6 }}>
                   Размещённые панели ({costs.panelCount} шт)
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   <AnimatePresence>
                     {(() => {
-                      // Group panels by design + size + color
                       const groups = new Map<string, { name: string; size: string; color: string; colorName: string; count: number; image: string }>();
                       for (const p of placedPanels) {
                         const key = `${p.designId}__${p.sizeMm}__${p.color}`;
@@ -891,15 +1234,15 @@ export default function ConstructorPage() {
                           initial={{ opacity: 0, scale: 0.9 }}
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.9 }}
-                          transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1.0] }}
+                          transition={{ duration: 0.15, ease: EASE_APPLE }}
                         >
                           <Tag
                             style={{
-                              borderRadius: 6,
-                              padding: '3px 8px',
+                              borderRadius: 8,
+                              padding: '4px 10px',
                               display: 'flex',
                               alignItems: 'center',
-                              gap: 5,
+                              gap: 6,
                               fontSize: 12,
                               border: '1px solid rgba(0,0,0,0.04)',
                               background: '#fff',
