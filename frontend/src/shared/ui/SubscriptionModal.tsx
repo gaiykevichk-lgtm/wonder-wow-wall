@@ -1,6 +1,7 @@
-import { Modal, Button, Input, Card, Tag, Form, message } from 'antd';
+import { Modal, Button, Input, Card, Tag, Form, message, Checkbox } from 'antd';
 import { CheckOutlined, CrownOutlined, ThunderboltOutlined, RocketOutlined } from '@ant-design/icons';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import {
   useSubscriptionStore,
   SUBSCRIPTION_PLANS,
@@ -170,6 +171,26 @@ function StepForm({
           <Input placeholder="ivan@example.com" style={{ borderRadius: 8, height: 40 }} />
         </Form.Item>
 
+        <Form.Item
+          name="privacyConsent"
+          valuePropName="checked"
+          rules={[
+            {
+              validator: (_, value) =>
+                value ? Promise.resolve() : Promise.reject(new Error('Необходимо дать согласие')),
+            },
+          ]}
+        >
+          <Checkbox>
+            <span style={{ fontSize: 13, color: '#6B7280' }}>
+              Я даю согласие на{' '}
+              <Link to="/privacy-policy" target="_blank" style={{ color: ACCENT }}>
+                обработку персональных данных
+              </Link>
+            </span>
+          </Checkbox>
+        </Form.Item>
+
         <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
           <Button
             onClick={onBack}
@@ -196,8 +217,7 @@ function StepForm({
       </Form>
 
       <div style={{ fontSize: 11, color: '#9CA3AF', textAlign: 'center', lineHeight: 1.5 }}>
-        Оформляя подписку, вы соглашаетесь с условиями сервиса.
-        Отменить можно в любой момент без штрафов.
+        Отменить подписку можно в любой момент без штрафов.
       </div>
     </div>
   );

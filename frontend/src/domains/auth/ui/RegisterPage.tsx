@@ -1,4 +1,4 @@
-import { Form, Input, Button, Card, Typography, Divider, message, Tooltip } from 'antd';
+import { Form, Input, Button, Card, Typography, Divider, message, Tooltip, Checkbox } from 'antd';
 import { UserOutlined, MailOutlined, LockOutlined, PhoneOutlined, GoogleOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -102,6 +102,26 @@ export default function RegisterPage() {
               ]}
             >
               <Input.Password prefix={<LockOutlined />} placeholder="Подтвердите пароль" />
+            </Form.Item>
+
+            <Form.Item
+              name="privacyConsent"
+              valuePropName="checked"
+              rules={[
+                {
+                  validator: (_, value) =>
+                    value ? Promise.resolve() : Promise.reject(new Error('Необходимо дать согласие')),
+                },
+              ]}
+            >
+              <Checkbox>
+                <span style={{ fontSize: 13, color: '#6B7280' }}>
+                  Я даю согласие на{' '}
+                  <Link to="/privacy-policy" target="_blank" style={{ color: ACCENT }}>
+                    обработку персональных данных
+                  </Link>
+                </span>
+              </Checkbox>
             </Form.Item>
 
             <Form.Item>

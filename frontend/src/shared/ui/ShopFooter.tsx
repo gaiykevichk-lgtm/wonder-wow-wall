@@ -175,9 +175,12 @@ export function ShopFooter() {
             &copy; 2026 Wonder Wow Wall. Все права защищены.
           </span>
           <div style={{ display: 'flex', gap: 24 }}>
-            <span style={{ fontSize: 12, color: '#6B7280', cursor: 'pointer' }}>
+            <Link
+              to="/privacy-policy"
+              style={{ fontSize: 12, color: '#6B7280', textDecoration: 'none' }}
+            >
               Политика конфиденциальности
-            </span>
+            </Link>
             <span style={{ fontSize: 12, color: '#6B7280', cursor: 'pointer' }}>
               Пользовательское соглашение
             </span>

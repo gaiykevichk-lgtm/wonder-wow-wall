@@ -29,6 +29,7 @@ const PortfolioPage = lazy(() => import('../domains/content/ui/PortfolioPage'));
 const FaqPage = lazy(() => import('../domains/content/ui/FaqPage'));
 const BlogPage = lazy(() => import('../domains/content/ui/BlogPage'));
 const BlogPostPage = lazy(() => import('../domains/content/ui/BlogPostPage'));
+const PrivacyPolicyPage = lazy(() => import('../domains/content/ui/PrivacyPolicyPage'));
 
 // ─── Domain: Auth ───────────────────────────────────────────────────────────
 const LoginPage = lazy(() => import('../domains/auth/ui/LoginPage'));
@@ -71,6 +72,7 @@ export function AppRouter() {
           <Route path="/faq" element={<FaqPage />} />
           <Route path="/blog" element={<BlogPage />} />
           <Route path="/blog/:slug" element={<BlogPostPage />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
 
           {/* Auth routes */}
           <Route path="/login" element={<LoginPage />} />

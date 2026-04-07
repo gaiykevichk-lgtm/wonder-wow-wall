@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Form, Input, Button, Card, message } from 'antd';
+import { Form, Input, Button, Card, message, Checkbox } from 'antd';
 import {
   PhoneOutlined,
   MailOutlined,
@@ -7,10 +7,12 @@ import {
   ClockCircleOutlined,
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { useSubmitContact } from '../../../shared/api/contactsApi';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
+const ACCENT = '#4CAF50';
 const DARK = '#2D2D2D';
 const GRAY_TEXT = '#6B7280';
 const FONT = 'Inter, sans-serif';
@@ -310,6 +312,26 @@ const ContactsPage: React.FC = () => {
                     style={{ borderRadius: 8, fontFamily: FONT }}
                     placeholder="Опишите ваш запрос, и мы ответим как можно скорее..."
                   />
+                </Form.Item>
+
+                <Form.Item
+                  name="privacyConsent"
+                  valuePropName="checked"
+                  rules={[
+                    {
+                      validator: (_, value) =>
+                        value ? Promise.resolve() : Promise.reject(new Error('Необходимо дать согласие')),
+                    },
+                  ]}
+                >
+                  <Checkbox>
+                    <span style={{ fontFamily: FONT, fontSize: 13, color: GRAY_TEXT }}>
+                      Я даю согласие на{' '}
+                      <Link to="/privacy-policy" target="_blank" style={{ color: ACCENT }}>
+                        обработку персональных данных
+                      </Link>
+                    </span>
+                  </Checkbox>
                 </Form.Item>
 
                 <Button

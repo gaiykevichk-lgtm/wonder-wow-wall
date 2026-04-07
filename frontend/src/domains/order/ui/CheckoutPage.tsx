@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Button,
   Card,
@@ -10,6 +10,7 @@ import {
   message,
   DatePicker,
   TimePicker,
+  Checkbox,
 } from 'antd';
 import {
   UserOutlined,
@@ -160,7 +161,7 @@ const CheckoutPage: React.FC = () => {
 
   const handleNext = async () => {
     const fieldsToValidate: string[][] = [
-      ['firstName', 'lastName', 'phone', 'email'],
+      ['firstName', 'lastName', 'phone', 'email', 'privacyConsent'],
       delivery !== 'pickup' ? ['address', 'installationDate', 'installationTime'] : ['installationDate', 'installationTime'],
       [],
     ];
@@ -218,6 +219,25 @@ const CheckoutPage: React.FC = () => {
         ]}
       >
         <Input style={inputStyle} placeholder="ivan@example.com" />
+      </Form.Item>
+      <Form.Item
+        name="privacyConsent"
+        valuePropName="checked"
+        rules={[
+          {
+            validator: (_, value) =>
+              value ? Promise.resolve() : Promise.reject(new Error('Необходимо дать согласие')),
+          },
+        ]}
+      >
+        <Checkbox>
+          <span style={{ fontFamily: FONT, fontSize: 13, color: GRAY_TEXT }}>
+            Я даю согласие на{' '}
+            <Link to="/privacy-policy" target="_blank" style={{ color: ACCENT }}>
+              обработку персональных данных
+            </Link>
+          </span>
+        </Checkbox>
       </Form.Item>
     </div>
   );
