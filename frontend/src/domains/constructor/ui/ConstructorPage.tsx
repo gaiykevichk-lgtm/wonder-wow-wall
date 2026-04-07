@@ -53,6 +53,10 @@ interface InteriorPreset {
 const CELL_SIZE_MM = 300; // 30 cm grid cell
 const CELL_PX = 60; // pixels per cell on screen
 const GAP_PX = 2;
+const MAX_COLS = 20;
+const MAX_ROWS = 12;
+const INTERIOR_W = MAX_COLS * (CELL_PX + GAP_PX) + GAP_PX; // fixed background width
+const INTERIOR_H = MAX_ROWS * (CELL_PX + GAP_PX) + GAP_PX; // fixed background height
 
 const ACCENT = '#4CAF50';
 const DARK = '#2D2D2D';
@@ -1028,33 +1032,44 @@ export default function ConstructorPage() {
             </div>
 
             <div style={{ overflowX: 'auto', overflowY: 'auto', paddingBottom: 4 }}>
-              <div
-                ref={wallRef}
-                onMouseMove={handleWallMouseMove}
-                onMouseUp={handleWallMouseUp}
-                onMouseLeave={() => { setDraggedId(null); setHoveredCell(null); }}
-                onClick={handleWallClick}
-                style={{
-                  position: 'relative',
-                  width: wallWidthPx,
-                  height: wallHeightPx,
-                  background: isInteriorMode && selectedPreset
-                    ? `url(${selectedPreset.image})`
-                    : wallColor,
-                  backgroundSize: isInteriorMode ? 'cover' : undefined,
-                  backgroundPosition: isInteriorMode ? 'center' : undefined,
-                  borderRadius: 10,
-                  boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
-                  cursor: draggedId ? 'grabbing' : 'pointer',
-                  userSelect: 'none',
-                  display: 'grid',
-                  gridTemplateColumns: `repeat(${wallCols}, ${CELL_PX}px)`,
-                  gridTemplateRows: `repeat(${wallRows}, ${CELL_PX}px)`,
-                  gap: `${GAP_PX}px`,
-                  padding: `${GAP_PX}px`,
-                  overflow: 'hidden',
-                }}
-              >
+              {/* Wall: interior mode has fixed background, grid mode sizes to grid */}
+              {isInteriorMode && selectedPreset ? (
+                <div
+                  style={{
+                    position: 'relative',
+                    width: INTERIOR_W,
+                    height: INTERIOR_H,
+                    background: `url(${selectedPreset.image})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    borderRadius: 10,
+                    boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.05)', pointerEvents: 'none' }} />
+                  <div
+                    ref={wallRef}
+                    onMouseMove={handleWallMouseMove}
+                    onMouseUp={handleWallMouseUp}
+                    onMouseLeave={() => { setDraggedId(null); setHoveredCell(null); }}
+                    onClick={handleWallClick}
+                    style={{
+                      position: 'relative',
+                      width: wallWidthPx,
+                      height: wallHeightPx,
+                      cursor: draggedId ? 'grabbing' : 'pointer',
+                      userSelect: 'none',
+                      display: 'grid',
+                      gridTemplateColumns: `repeat(${wallCols}, ${CELL_PX}px)`,
+                      gridTemplateRows: `repeat(${wallRows}, ${CELL_PX}px)`,
+                      gap: `${GAP_PX}px`,
+                      padding: `${GAP_PX}px`,
+                    }}
+                  >
                 {/* Grid cells */}
                 {Array.from({ length: wallRows * wallCols }).map((_, idx) => {
                   const col = idx % wallCols;
@@ -1231,6 +1246,177 @@ export default function ConstructorPage() {
                   </div>
                 )}
               </div>
+                </div>
+              ) : (
+                <div
+                  ref={wallRef}
+                  onMouseMove={handleWallMouseMove}
+                  onMouseUp={handleWallMouseUp}
+                  onMouseLeave={() => { setDraggedId(null); setHoveredCell(null); }}
+                  onClick={handleWallClick}
+                  style={{
+                    position: 'relative',
+                    width: wallWidthPx,
+                    height: wallHeightPx,
+                    background: wallColor,
+                    borderRadius: 10,
+                    boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+                    cursor: draggedId ? 'grabbing' : 'pointer',
+                    userSelect: 'none',
+                    display: 'grid',
+                    gridTemplateColumns: `repeat(${wallCols}, ${CELL_PX}px)`,
+                    gridTemplateRows: `repeat(${wallRows}, ${CELL_PX}px)`,
+                    gap: `${GAP_PX}px`,
+                    padding: `${GAP_PX}px`,
+                    overflow: 'hidden',
+                  }}
+                >
+                {/* Grid cells (grid mode) */}
+                {Array.from({ length: wallRows * wallCols }).map((_, idx) => {
+                  const col = idx % wallCols;
+                  const row = Math.floor(idx / wallCols);
+                  const isOccupied = placedPanels.some((p) =>
+                    col >= p.col && col < p.col + p.widthCells &&
+                    row >= p.row && row < p.row + p.heightCells
+                  );
+                  const gridCellBg = isOccupied ? 'transparent' : (wallColor === '#2C2C2C' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)');
+                  return (
+                    <div
+                      key={`cell-${col}-${row}`}
+                      style={{
+                        width: CELL_PX,
+                        height: CELL_PX,
+                        background: gridCellBg,
+                        borderRadius: 2,
+                        pointerEvents: 'none',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  );
+                })}
+                {ghostVisible && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: GAP_PX + ghostVisible.col * (CELL_PX + GAP_PX),
+                      top: GAP_PX + ghostVisible.row * (CELL_PX + GAP_PX),
+                      width: ghostVisible.wCells * CELL_PX + (ghostVisible.wCells - 1) * GAP_PX,
+                      height: ghostVisible.hCells * CELL_PX + (ghostVisible.hCells - 1) * GAP_PX,
+                      background: `url(${selectedDesign.image})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      opacity: 0.4,
+                      borderRadius: 4,
+                      border: `2px dashed ${ACCENT}`,
+                      pointerEvents: 'none',
+                      zIndex: 5,
+                    }}
+                  />
+                )}
+                {placedPanels.map((panel) => (
+                  <div
+                    key={panel.id}
+                    className="placed-panel"
+                    onMouseDown={(e) => handlePanelMouseDown(e, panel.id)}
+                    style={{
+                      position: 'absolute',
+                      left: GAP_PX + panel.col * (CELL_PX + GAP_PX),
+                      top: GAP_PX + panel.row * (CELL_PX + GAP_PX),
+                      width: panel.widthCells * CELL_PX + (panel.widthCells - 1) * GAP_PX,
+                      height: panel.heightCells * CELL_PX + (panel.heightCells - 1) * GAP_PX,
+                      backgroundImage: `url(${panel.designImage})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      borderRadius: 3,
+                      cursor: draggedId === panel.id ? 'grabbing' : 'grab',
+                      boxShadow: draggedId === panel.id
+                        ? '0 8px 24px rgba(0,0,0,0.30)'
+                        : '0 1px 4px rgba(0,0,0,0.10)',
+                      zIndex: draggedId === panel.id ? 20 : 10,
+                      transition: draggedId === panel.id ? 'none' : 'box-shadow 0.15s',
+                      overflow: 'visible',
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        background: panel.color,
+                        opacity: 0.55,
+                        mixBlendMode: 'color',
+                        borderRadius: 3,
+                        pointerEvents: 'none',
+                      }}
+                    />
+                    {panel.widthCells >= 2 && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: 3,
+                          left: 4,
+                          fontSize: 9,
+                          color: '#fff',
+                          background: 'rgba(0,0,0,0.5)',
+                          backdropFilter: 'blur(4px)',
+                          borderRadius: 3,
+                          padding: '1px 4px',
+                          pointerEvents: 'none',
+                        }}
+                      >
+                        {panel.sizeMm}
+                      </div>
+                    )}
+                    <button
+                      className="panel-delete-btn"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => { e.stopPropagation(); handleDeletePanel(panel.id); }}
+                      style={{
+                        position: 'absolute',
+                        top: -6,
+                        right: -6,
+                        width: 16,
+                        height: 16,
+                        borderRadius: '50%',
+                        background: 'rgba(220,38,38,0.85)',
+                        color: '#fff',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: 10,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        lineHeight: 1,
+                        padding: 0,
+                        zIndex: 30,
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                {placedPanels.length === 0 && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: wallColor === '#2C2C2C'
+                        ? 'rgba(255,255,255,0.25)'
+                        : 'rgba(0,0,0,0.15)',
+                      fontSize: 14,
+                      pointerEvents: 'none',
+                      gap: 8,
+                    }}
+                  >
+                    <AppstoreOutlined style={{ fontSize: 32 }} />
+                    Кликните на ячейку или нажмите «Добавить»
+                  </div>
+                )}
+                </div>
+              )}
             </div>
 
             {/* Panel legend below wall */}
