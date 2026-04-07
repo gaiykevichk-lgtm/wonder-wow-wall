@@ -67,10 +67,16 @@ async def list_designs(
     sort: str = "name",
     offset: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
+    color: str | None = None,
+    style: str | None = None,
+    is_new: bool | None = None,
     design_repo=Depends(get_design_repo),
 ):
     uc = ListDesigns(design_repo)
-    designs, total = await uc.execute(category, search, sort, offset, limit)
+    designs, total = await uc.execute(
+        category, search, sort, offset, limit,
+        color=color, style=style, is_new=is_new,
+    )
     return {
         "items": [
             {

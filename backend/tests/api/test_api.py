@@ -107,6 +107,36 @@ class TestCatalog:
         assert resp.status_code == 200
         assert resp.json()["total"] == 1
 
+    @pytest.mark.asyncio
+    async def test_filter_by_style(self, client):
+        resp = await client.get("/api/designs?style=Природа")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] >= 1
+        assert all(item["style"] == "Природа" for item in data["items"])
+
+    @pytest.mark.asyncio
+    async def test_filter_by_is_new(self, client):
+        resp = await client.get("/api/designs?is_new=true")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] >= 1
+        assert all(item["is_new"] is True for item in data["items"])
+
+    @pytest.mark.asyncio
+    async def test_filter_by_color(self, client):
+        resp = await client.get("/api/designs?color=Зелёный")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] >= 1
+
+    @pytest.mark.asyncio
+    async def test_combined_filters(self, client):
+        resp = await client.get("/api/designs?style=Природа&is_new=true")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert all(item["style"] == "Природа" and item["is_new"] is True for item in data["items"])
+
 
 class TestSubscriptions:
     @pytest.mark.asyncio

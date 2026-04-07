@@ -24,6 +24,7 @@ class InMemoryDesignRepository(DesignRepository):
 
     async def list_designs(
         self, category_id=None, search=None, sort_by="name", offset=0, limit=20,
+        *, color=None, style=None, is_new=None,
     ):
         result = list(self._designs)
         if category_id:
@@ -31,6 +32,14 @@ class InMemoryDesignRepository(DesignRepository):
         if search:
             q = search.lower()
             result = [d for d in result if q in d.name.lower() or q in d.description.lower()]
+        if color:
+            color_lower = color.lower()
+            result = [d for d in result if any(c.name.lower() == color_lower for c in d.colors)]
+        if style:
+            style_lower = style.lower()
+            result = [d for d in result if d.style.lower() == style_lower]
+        if is_new is not None:
+            result = [d for d in result if d.is_new == is_new]
         if sort_by == "price":
             result.sort(key=lambda d: d.price)
         elif sort_by == "rating":

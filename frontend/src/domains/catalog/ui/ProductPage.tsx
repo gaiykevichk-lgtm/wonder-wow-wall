@@ -1,12 +1,13 @@
 import { useState, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { message, Skeleton } from 'antd';
-import { ShoppingCartOutlined, HeartOutlined, LeftOutlined } from '@ant-design/icons';
+import { message, Skeleton, Rate, Input, Button } from 'antd';
+import { ShoppingCartOutlined, HeartOutlined, LeftOutlined, StarFilled, UserOutlined } from '@ant-design/icons';
 import { motion, useScroll, useMotionValueEvent, AnimatePresence } from 'framer-motion';
 import { products as mockProducts } from '../model/data';
-import { useDesign, useDesigns } from '../api/catalogApi';
-import { apiDesignToProduct } from '../api/adapters';
+import { useDesign, useDesigns, useDesignReviews, useAddReview } from '../api/catalogApi';
+import { apiDesignToProduct, apiReviewToReview } from '../api/adapters';
 import { useCartStore } from '../../order/model/cartStore';
+import { useAuthStore } from '../../auth/model/authStore';
 
 const ease = [0.25, 0.1, 0.25, 1.0] as const;
 
@@ -61,6 +62,13 @@ export default function ProductPage() {
 
   const { data: apiDesign, isLoading, isError } = useDesign(id || '');
   const { data: allDesigns } = useDesigns();
+  const { data: reviewsData, isLoading: reviewsLoading } = useDesignReviews(id || '');
+  const addReviewMutation = useAddReview(id || '');
+  const isAuth = useAuthStore((s) => s.isAuth);
+
+  const reviews = useMemo(() => {
+    return reviewsData ? reviewsData.map(apiReviewToReview) : [];
+  }, [reviewsData]);
 
   const product = useMemo(() => {
     if (apiDesign) return apiDesignToProduct(apiDesign);
@@ -73,6 +81,10 @@ export default function ProductPage() {
   const [quantity, setQuantity] = useState(1);
   const [liked, setLiked] = useState(false);
   const [stickyVisible, setStickyVisible] = useState(false);
+  const [reviewText, setReviewText] = useState('');
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewsPage, setReviewsPage] = useState(1);
+  const REVIEWS_PER_PAGE = 5;
 
   const heroRef = useRef<HTMLDivElement>(null);
   const { scrollY } = useScroll();
@@ -648,6 +660,133 @@ export default function ProductPage() {
                 <span style={{ fontSize: 15, color: '#1d1d1f', fontWeight: 600 }}>{value}</span>
               </div>
             ))}
+          </div>
+        </motion.div>
+      </section>
+
+      {/* ── Reviews ────────────────────────────────────────── */}
+      <section style={{ maxWidth: 780, margin: '96px auto 0', padding: '0 24px' }}>
+        <motion.div
+          variants={fadeUp}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+        >
+          <h2 style={{ fontSize: 28, fontWeight: 700, color: '#1d1d1f', letterSpacing: '-0.02em', marginBottom: 8, textAlign: 'center' }}>
+            Отзывы
+          </h2>
+          <div style={{ textAlign: 'center', marginBottom: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <StarFilled style={{ color: '#FF9500', fontSize: 18 }} />
+            <span style={{ fontSize: 17, fontWeight: 600, color: '#1d1d1f' }}>{product.rating.toFixed(1)}</span>
+            <span style={{ fontSize: 15, color: '#86868b' }}>({product.reviews} {product.reviews === 1 ? 'отзыв' : product.reviews < 5 ? 'отзыва' : 'отзывов'})</span>
+          </div>
+
+          {/* Review list */}
+          {reviewsLoading ? (
+            <Skeleton active paragraph={{ rows: 3 }} />
+          ) : reviews.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px 0', color: '#86868b', fontSize: 15 }}>
+              Пока нет отзывов. Будьте первым!
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {reviews.slice(0, reviewsPage * REVIEWS_PER_PAGE).map((review) => (
+                  <div
+                    key={review.id}
+                    style={{
+                      background: '#F5F5F7', borderRadius: 16, padding: '20px 24px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#E8E8ED', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <UserOutlined style={{ color: '#86868b', fontSize: 16 }} />
+                        </div>
+                        <span style={{ fontSize: 15, fontWeight: 600, color: '#1d1d1f' }}>{review.author}</span>
+                      </div>
+                      <span style={{ fontSize: 13, color: '#86868b' }}>
+                        {new Date(review.date).toLocaleDateString('ru-RU')}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 2, marginBottom: 8 }}>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <StarFilled key={star} style={{ fontSize: 14, color: star <= review.rating ? '#FF9500' : '#E8E8ED' }} />
+                      ))}
+                    </div>
+                    <div style={{ fontSize: 15, color: '#1d1d1f', lineHeight: 1.5 }}>{review.text}</div>
+                  </div>
+                ))}
+              </div>
+              {reviews.length > reviewsPage * REVIEWS_PER_PAGE && (
+                <div style={{ textAlign: 'center', marginTop: 20 }}>
+                  <Button
+                    type="link"
+                    onClick={() => setReviewsPage((p) => p + 1)}
+                    style={{ fontSize: 15, fontWeight: 600, color: '#0066CC' }}
+                  >
+                    Показать ещё
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Add review form */}
+          <div style={{ marginTop: 32, background: '#F5F5F7', borderRadius: 20, padding: '24px 28px' }}>
+            {isAuth ? (
+              <>
+                <div style={{ fontSize: 17, fontWeight: 600, color: '#1d1d1f', marginBottom: 16 }}>Оставить отзыв</div>
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 14, color: '#86868b', marginBottom: 6 }}>Оценка</div>
+                  <Rate value={reviewRating} onChange={setReviewRating} style={{ fontSize: 24 }} />
+                </div>
+                <Input.TextArea
+                  value={reviewText}
+                  onChange={(e) => setReviewText(e.target.value)}
+                  placeholder="Расскажите о вашем опыте…"
+                  rows={3}
+                  maxLength={500}
+                  style={{ borderRadius: 12, resize: 'none', marginBottom: 12, border: '1px solid rgba(0,0,0,0.1)' }}
+                />
+                <Button
+                  type="primary"
+                  loading={addReviewMutation.isPending}
+                  disabled={!reviewText.trim() || reviewRating < 1}
+                  onClick={() => {
+                    addReviewMutation.mutate(
+                      { rating: reviewRating, text: reviewText.trim() },
+                      {
+                        onSuccess: () => {
+                          setReviewText('');
+                          setReviewRating(5);
+                          message.success('Отзыв добавлен!');
+                        },
+                        onError: () => {
+                          message.error('Не удалось отправить отзыв');
+                        },
+                      },
+                    );
+                  }}
+                  style={{ borderRadius: 980, height: 44, padding: '0 32px', fontWeight: 600, fontSize: 15 }}
+                >
+                  Отправить
+                </Button>
+              </>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '12px 0' }}>
+                <div style={{ fontSize: 15, color: '#86868b', marginBottom: 12 }}>
+                  Авторизуйтесь, чтобы оставить отзыв
+                </div>
+                <Button
+                  type="primary"
+                  onClick={() => navigate('/auth')}
+                  style={{ borderRadius: 980, height: 40, padding: '0 28px', fontWeight: 600 }}
+                >
+                  Войти
+                </Button>
+              </div>
+            )}
           </div>
         </motion.div>
       </section>

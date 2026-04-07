@@ -39,6 +39,9 @@ export default function CatalogPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
+  const [filterColor, setFilterColor] = useState<string | null>(null);
+  const [filterStyle, setFilterStyle] = useState<string | null>(null);
+  const [filterNew, setFilterNew] = useState(false);
 
   // API data with fallback to mocks
   const { data: designsData, isLoading: designsLoading } = useDesigns();
@@ -86,6 +89,17 @@ export default function CatalogPage() {
     });
   };
 
+  const uniqueStyles = useMemo(() => {
+    const styles = new Set(products.map((p) => p.style).filter(Boolean));
+    return Array.from(styles).sort();
+  }, [products]);
+
+  const uniqueColors = useMemo(() => {
+    const colorMap = new Map<string, string>();
+    products.forEach((p) => p.colors.forEach((c) => { if (!colorMap.has(c.name)) colorMap.set(c.name, c.hex); }));
+    return Array.from(colorMap.entries()).map(([name, hex]) => ({ name, hex })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [products]);
+
   const filtered = useMemo(() => {
     let list = [...products];
 
@@ -105,6 +119,16 @@ export default function CatalogPage() {
 
     list = list.filter((p) => p.price >= priceRange[0] && p.price <= priceRange[1]);
 
+    if (filterColor) {
+      list = list.filter((p) => p.colors.some((c) => c.name === filterColor));
+    }
+    if (filterStyle) {
+      list = list.filter((p) => p.style === filterStyle);
+    }
+    if (filterNew) {
+      list = list.filter((p) => p.badge === 'Новинка');
+    }
+
     switch (sortKey) {
       case 'price-asc':
         list.sort((a, b) => a.price - b.price);
@@ -122,7 +146,7 @@ export default function CatalogPage() {
     }
 
     return list;
-  }, [activeCategory, search, priceRange, sortKey]);
+  }, [activeCategory, search, priceRange, sortKey, filterColor, filterStyle, filterNew]);
 
   return (
     <div style={{ paddingTop: 72, minHeight: '100vh', background: '#FFFFFF' }}>
@@ -215,6 +239,46 @@ export default function CatalogPage() {
               }}
             />
           </div>
+
+          <Select
+            value={filterStyle}
+            onChange={(val) => setFilterStyle(val)}
+            allowClear
+            placeholder="Стиль"
+            style={{ width: 160, borderRadius: 980 }}
+            options={uniqueStyles.map((s) => ({ value: s, label: s }))}
+          />
+
+          <Select
+            value={filterColor}
+            onChange={(val) => setFilterColor(val)}
+            allowClear
+            placeholder="Цвет"
+            style={{ width: 160, borderRadius: 980 }}
+            options={uniqueColors.map((c) => ({
+              value: c.name,
+              label: (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 14, height: 14, borderRadius: '50%', background: c.hex, display: 'inline-block', border: '1px solid rgba(0,0,0,0.1)', flexShrink: 0 }} />
+                  {c.name}
+                </span>
+              ),
+            }))}
+          />
+
+          <Button
+            type={filterNew ? 'primary' : 'default'}
+            onClick={() => setFilterNew(!filterNew)}
+            style={{
+              borderRadius: 980,
+              height: 38,
+              fontWeight: 500,
+              fontSize: 14,
+              border: filterNew ? 'none' : '1px solid rgba(0,0,0,0.08)',
+            }}
+          >
+            Новинки
+          </Button>
 
           <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
             <Button

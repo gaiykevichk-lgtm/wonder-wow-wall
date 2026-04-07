@@ -132,6 +132,7 @@ class SqlDesignRepository(DesignRepository):
     async def list_designs(
         self, category_id: str | None = None, search: str | None = None,
         sort_by: str = "name", offset: int = 0, limit: int = 20,
+        *, color: str | None = None, style: str | None = None, is_new: bool | None = None,
     ) -> tuple[list[Design], int]:
         query = select(DesignModel)
         count_query = select(func.count()).select_from(DesignModel)
@@ -149,6 +150,22 @@ class SqlDesignRepository(DesignRepository):
             )
             query = query.where(search_filter)
             count_query = count_query.where(search_filter)
+
+        if color:
+            # JSON array search: colors column contains objects with "name" key
+            from sqlalchemy import cast, String
+            color_filter = func.lower(cast(DesignModel.colors, String)).like(f'%{color.lower()}%')
+            query = query.where(color_filter)
+            count_query = count_query.where(color_filter)
+
+        if style:
+            style_filter = func.lower(DesignModel.style) == style.lower()
+            query = query.where(style_filter)
+            count_query = count_query.where(style_filter)
+
+        if is_new is not None:
+            query = query.where(DesignModel.is_new == is_new)
+            count_query = count_query.where(DesignModel.is_new == is_new)
 
         sort_map = {
             "name": asc(DesignModel.name),

@@ -9,8 +9,12 @@ class ListDesigns:
     async def execute(
         self, category_id: str | None = None, search: str | None = None,
         sort_by: str = "name", offset: int = 0, limit: int = 20,
+        *, color: str | None = None, style: str | None = None, is_new: bool | None = None,
     ) -> tuple[list[Design], int]:
-        return await self.repo.list_designs(category_id, search, sort_by, offset, limit)
+        return await self.repo.list_designs(
+            category_id, search, sort_by, offset, limit,
+            color=color, style=style, is_new=is_new,
+        )
 
 
 class GetDesignDetails:

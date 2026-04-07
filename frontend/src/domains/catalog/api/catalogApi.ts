@@ -19,6 +19,9 @@ export function useDesigns(params?: {
   sort?: string;
   offset?: number;
   limit?: number;
+  color?: string;
+  style?: string;
+  is_new?: boolean;
 }) {
   const searchParams = new URLSearchParams();
   if (params?.category) searchParams.set('category', params.category);
@@ -26,6 +29,9 @@ export function useDesigns(params?: {
   if (params?.sort) searchParams.set('sort', params.sort);
   if (params?.offset) searchParams.set('offset', String(params.offset));
   if (params?.limit) searchParams.set('limit', String(params.limit));
+  if (params?.color) searchParams.set('color', params.color);
+  if (params?.style) searchParams.set('style', params.style);
+  if (params?.is_new !== undefined) searchParams.set('is_new', String(params.is_new));
   const qs = searchParams.toString();
 
   return useQuery({
