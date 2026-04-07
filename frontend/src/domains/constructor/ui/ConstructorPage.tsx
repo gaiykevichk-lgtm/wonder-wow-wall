@@ -752,9 +752,9 @@ export default function ConstructorPage() {
                   position: 'absolute',
                   inset: 0,
                   background: selectedColor.hex,
-                  opacity: 0.3,
+                  opacity: 0.55,
                   pointerEvents: 'none',
-                  mixBlendMode: 'multiply',
+                  mixBlendMode: 'color',
                 }}
               />
               <div
@@ -1138,8 +1138,8 @@ export default function ConstructorPage() {
                         position: 'absolute',
                         inset: 0,
                         background: panel.color,
-                        opacity: 0.3,
-                        mixBlendMode: 'multiply',
+                        opacity: 0.55,
+                        mixBlendMode: 'color',
                         borderRadius: 3,
                         pointerEvents: 'none',
                       }}
