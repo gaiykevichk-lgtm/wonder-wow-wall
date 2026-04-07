@@ -46,6 +46,10 @@ class InMemoryDesignRepository(DesignRepository):
     async def get_by_slug(self, slug):
         return next((d for d in self._designs if d.slug == slug), None)
 
+    async def update(self, design):
+        self._designs = [d if d.id != design.id else design for d in self._designs]
+        return design
+
 
 class InMemoryCategoryRepository(CategoryRepository):
     def __init__(self, categories: list[Category] | None = None):

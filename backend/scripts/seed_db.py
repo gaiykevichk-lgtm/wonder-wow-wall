@@ -9,8 +9,7 @@ Requires DATABASE_URL in .env or environment.
 import asyncio
 
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
 from app.config import settings
 from app.infrastructure.persistence.models import CategoryModel, DesignModel
@@ -79,7 +78,7 @@ SEED_DESIGNS = [
 
 async def seed():
     engine = create_async_engine(settings.DATABASE_URL, echo=True)
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with async_session() as session:
         # Check if data already exists

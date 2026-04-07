@@ -72,7 +72,7 @@ def upgrade() -> None:
         "design_reviews",
         sa.Column("id", sa.String(36), primary_key=True),
         sa.Column("design_id", sa.String(36), sa.ForeignKey("designs.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("user_id", sa.String(36), sa.ForeignKey("users.id"), nullable=False),
+        sa.Column("user_id", sa.String(36), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
         sa.Column("user_name", sa.String(255), server_default=""),
         sa.Column("rating", sa.Integer, nullable=False),
         sa.Column("text", sa.Text, server_default=""),

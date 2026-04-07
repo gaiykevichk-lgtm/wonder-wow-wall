@@ -12,13 +12,13 @@
 
 ### 1.1 Backend — Alembic-миграции
 - [x] Настроить `alembic/env.py` для async engine (`sqlalchemy.ext.asyncio`)
-- [x] Сгенерировать автомиграцию из ORM-моделей (`models.py` → `alembic revision --autogenerate`)
-- [x] Проверить сгенерированные таблицы: `users`, `user_addresses`, `categories`, `designs`, `design_reviews`, `orders`, `order_items`, `subscriptions`, `projects`
+- [x] Написать ручную миграцию `001_initial_schema.py` (9 таблиц, FK constraints, ON DELETE CASCADE)
+- [x] Проверить соответствие миграции и `models.py` — все таблицы/колонки/типы совпадают
 - [ ] Применить: `alembic upgrade head` → убедиться что все 9 таблиц созданы (требует Docker/PostgreSQL)
 
 ### 1.2 Backend — SQL-репозитории
-- [x] `app/infrastructure/persistence/repositories/sql.py` — реализовать SQL-версии всех 6 репозиториев:
-  - [x] `SqlDesignRepository` (list_designs с фильтрацией/сортировкой/пагинацией, get_by_id, get_by_slug)
+- [x] `sql.py` — 6 SQL-репозиториев + `project_repo.py` (SqlProjectRepository):
+  - [x] `SqlDesignRepository` (list_designs с фильтрацией/сортировкой/пагинацией, get_by_id, get_by_slug, update)
   - [x] `SqlCategoryRepository` (list_all, get_by_id)
   - [x] `SqlReviewRepository` (list_by_design с пагинацией, add)
   - [x] `SqlOrderRepository` (create, get_by_id, list_by_user, update)
@@ -28,15 +28,24 @@
 - [x] Все операции через `async with session` (SQLAlchemy async)
 
 ### 1.3 Backend — Переключение на SQL
-- [x] Обновить `container.py` — использовать SQL-репозитории вместо in-memory
-- [x] Создать seed-скрипт: заполнение БД начальными данными (12 дизайнов, 6 категорий) — `scripts/seed_db.py`
-- [x] Добавить `get_db()` dependency в роутеры (все 6 роутеров переведены на `Depends()`)
-- [x] Сохранить in-memory режим как fallback для тестов (переключение через env `USE_MEMORY_REPOS=true`)
+- [x] Обновить `container.py` — FastAPI `Depends(get_db_session)` с кешированием per-request (единая сессия на запрос)
+- [x] Создать seed-скрипт: `scripts/seed_db.py` (12 дизайнов, 6 категорий)
+- [x] Добавить `Depends()` в роутеры (все 6 роутеров переведены)
+- [x] Сохранить in-memory режим как fallback для тестов (`USE_MEMORY_REPOS=true`)
+
+### 1.5 Code review (07.04.2026)
+- [x] **CRITICAL FIX**: Единая сессия per-request — заменены вложенные async-генераторы на `Depends(get_db_session)` с кешированием FastAPI
+- [x] **CRITICAL FIX**: `DesignRepository.update()` — добавлен в ABC, InMemory и SQL реализации; `AddReview` use case теперь персистит rating+reviews_count
+- [x] **CRITICAL FIX**: Убрано дублирование `reviews_count++` из `SqlReviewRepository.add()` — теперь управляется только через use case + design_repo.update()
+- [x] **FIX**: `design_reviews.user_id` FK теперь с `ON DELETE CASCADE`
+- [x] **FIX**: `seed_db.py` — `async_sessionmaker` вместо legacy `sessionmaker`
+- [ ] **TODO**: Интеграционные тесты для SQL-репозиториев (требует PostgreSQL)
+- [ ] **TODO**: Seed-данные дублируются между `container.py` и `seed_db.py` — вынести в общий источник
 
 ### 1.4 Проверка
 - [ ] `docker compose up -d` → backend + PostgreSQL + Redis стартуют без ошибок (требует Docker)
 - [ ] `alembic upgrade head` отрабатывает (требует PostgreSQL)
-- [x] Все 97 существующих бэкенд-тестов проходят (тесты остаются на in-memory)
+- [x] Все 97 существующих бэкенд-тестов проходят (тесты на in-memory, `USE_MEMORY_REPOS=true`)
 - [ ] Ручная проверка: регистрация → логин → создание заказа → рестарт → данные на месте (требует Docker)
 - [ ] Фронтенд: каталог, авторизация, заказы работают через API без регрессий
 

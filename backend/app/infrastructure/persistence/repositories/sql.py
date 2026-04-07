@@ -171,6 +171,19 @@ class SqlDesignRepository(DesignRepository):
         row = result.scalar_one_or_none()
         return _design_to_domain(row) if row else None
 
+    async def update(self, design: Design) -> Design:
+        model = await self._session.get(DesignModel, design.id)
+        if model:
+            model.name = design.name
+            model.slug = design.slug
+            model.rating = design.rating
+            model.reviews_count = design.reviews_count
+            model.is_new = design.is_new
+            model.is_popular = design.is_popular
+            model.colors = [{"hex": c.hex, "name": c.name} for c in design.colors]
+        await self._session.flush()
+        return design
+
 
 class SqlCategoryRepository(CategoryRepository):
 
@@ -213,10 +226,6 @@ class SqlReviewRepository(ReviewRepository):
         )
         self._session.add(model)
         await self._session.flush()
-        # Update reviews_count on design
-        design = await self._session.get(DesignModel, review.design_id)
-        if design:
-            design.reviews_count = (design.reviews_count or 0) + 1
         return review
 
 

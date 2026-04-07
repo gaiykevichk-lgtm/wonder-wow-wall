@@ -19,6 +19,10 @@ class DesignRepository(ABC):
     async def get_by_slug(self, slug: str) -> Design | None:
         ...
 
+    @abstractmethod
+    async def update(self, design: Design) -> Design:
+        ...
+
 
 class CategoryRepository(ABC):
     @abstractmethod

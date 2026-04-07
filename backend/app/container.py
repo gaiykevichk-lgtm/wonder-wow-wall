@@ -4,6 +4,8 @@ Provides FastAPI dependency functions for repository injection.
 Set USE_MEMORY_REPOS=true to use in-memory (for tests / no-DB dev).
 """
 
+from fastapi import Depends
+
 from app.config import settings
 
 from app.domain.catalog.entities import Design, Category
@@ -108,30 +110,40 @@ project_repo = _mem_project_repo
 
 # ─── FastAPI Dependencies ────────────────────────────────────────────
 
-def _get_sql_repos():
+_sql_repo_classes: dict | None = None
+
+
+def _get_sql_repo_classes() -> dict:
     """Lazy import to avoid circular deps and DB connection at import time."""
-    from app.infrastructure.persistence.repositories.sql import (
-        SqlDesignRepository,
-        SqlCategoryRepository,
-        SqlReviewRepository,
-        SqlOrderRepository,
-        SqlSubscriptionRepository,
-        SqlUserRepository,
-    )
-    from app.infrastructure.persistence.repositories.project_repo import SqlProjectRepository
-    return {
-        "design": SqlDesignRepository,
-        "category": SqlCategoryRepository,
-        "review": SqlReviewRepository,
-        "order": SqlOrderRepository,
-        "subscription": SqlSubscriptionRepository,
-        "user": SqlUserRepository,
-        "project": SqlProjectRepository,
-    }
+    global _sql_repo_classes
+    if _sql_repo_classes is None:
+        from app.infrastructure.persistence.repositories.sql import (
+            SqlDesignRepository,
+            SqlCategoryRepository,
+            SqlReviewRepository,
+            SqlOrderRepository,
+            SqlSubscriptionRepository,
+            SqlUserRepository,
+        )
+        from app.infrastructure.persistence.repositories.project_repo import SqlProjectRepository
+        _sql_repo_classes = {
+            "design": SqlDesignRepository,
+            "category": SqlCategoryRepository,
+            "review": SqlReviewRepository,
+            "order": SqlOrderRepository,
+            "subscription": SqlSubscriptionRepository,
+            "user": SqlUserRepository,
+            "project": SqlProjectRepository,
+        }
+    return _sql_repo_classes
 
 
-async def _get_session():
-    """Yield async DB session."""
+async def get_db_session():
+    """Yield a single async DB session per request.
+
+    FastAPI caches Depends() results per request, so all repos
+    in the same request share this session — single transaction.
+    """
     from app.infrastructure.persistence.database import async_session
     async with async_session() as session:
         try:
@@ -142,57 +154,43 @@ async def _get_session():
             raise
 
 
-async def get_design_repo():
+def get_design_repo(session=Depends(get_db_session)):
     if settings.USE_MEMORY_REPOS:
-        yield _mem_design_repo
-    else:
-        async for session in _get_session():
-            yield _get_sql_repos()["design"](session)
+        return _mem_design_repo
+    return _get_sql_repo_classes()["design"](session)
 
 
-async def get_category_repo():
+def get_category_repo(session=Depends(get_db_session)):
     if settings.USE_MEMORY_REPOS:
-        yield _mem_category_repo
-    else:
-        async for session in _get_session():
-            yield _get_sql_repos()["category"](session)
+        return _mem_category_repo
+    return _get_sql_repo_classes()["category"](session)
 
 
-async def get_review_repo():
+def get_review_repo(session=Depends(get_db_session)):
     if settings.USE_MEMORY_REPOS:
-        yield _mem_review_repo
-    else:
-        async for session in _get_session():
-            yield _get_sql_repos()["review"](session)
+        return _mem_review_repo
+    return _get_sql_repo_classes()["review"](session)
 
 
-async def get_order_repo():
+def get_order_repo(session=Depends(get_db_session)):
     if settings.USE_MEMORY_REPOS:
-        yield _mem_order_repo
-    else:
-        async for session in _get_session():
-            yield _get_sql_repos()["order"](session)
+        return _mem_order_repo
+    return _get_sql_repo_classes()["order"](session)
 
 
-async def get_subscription_repo():
+def get_subscription_repo(session=Depends(get_db_session)):
     if settings.USE_MEMORY_REPOS:
-        yield _mem_subscription_repo
-    else:
-        async for session in _get_session():
-            yield _get_sql_repos()["subscription"](session)
+        return _mem_subscription_repo
+    return _get_sql_repo_classes()["subscription"](session)
 
 
-async def get_user_repo():
+def get_user_repo(session=Depends(get_db_session)):
     if settings.USE_MEMORY_REPOS:
-        yield _mem_user_repo
-    else:
-        async for session in _get_session():
-            yield _get_sql_repos()["user"](session)
+        return _mem_user_repo
+    return _get_sql_repo_classes()["user"](session)
 
 
-async def get_project_repo():
+def get_project_repo(session=Depends(get_db_session)):
     if settings.USE_MEMORY_REPOS:
-        yield _mem_project_repo
-    else:
-        async for session in _get_session():
-            yield _get_sql_repos()["project"](session)
+        return _mem_project_repo
+    return _get_sql_repo_classes()["project"](session)

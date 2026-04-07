@@ -47,6 +47,7 @@ class AddReview:
             text=text,
         )
         design.add_review(review)
+        await self.design_repo.update(design)
         return await self.review_repo.add(review)
 
 
