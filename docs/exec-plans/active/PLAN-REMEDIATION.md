@@ -254,33 +254,33 @@
 > Зависимости: Фаза 4.3 (кнопки «Примерить на фото»)
 
 ### 7.1 Frontend — UI удаления панели
-- [ ] WallCanvas: по клику на размещённую панель — показать кнопку удаления (крестик)
-- [ ] Вызывать `removePanel(panelId)` из visualizerStore
+- [x] WallCanvas: по клику на размещённую панель — показать кнопку удаления (крестик)
+- [x] Вызывать `removePanel(panelId)` из visualizerStore
 
 ### 7.2 Frontend — Hover-эффект
-- [ ] WallCanvas: подсветка ячейки при наведении в ручном режиме (полупрозрачный прямоугольник)
+- [x] WallCanvas: подсветка ячейки при наведении в ручном режиме (полупрозрачный прямоугольник)
 
 ### 7.3 Frontend — Сохранение проекта в localStorage
-- [ ] Добавить Zustand persist в visualizerStore (ключ: `wow-wall-visualizer`)
-- [ ] Persist: scene (без imageData — только URL/blob ref), layout, selections
-- [ ] Кнопка «Сохранить» → message.success()
+- [x] Добавить Zustand persist в visualizerStore (ключ: `wow-wall-visualizer`)
+- [x] Persist: scene (без imageData — только URL/blob ref), layout, selections
+- [x] Кнопка «Сохранить» → message.success()
 
 ### 7.4 Frontend — Экспорт изображения
-- [ ] Кнопка «Скачать» (DownloadOutlined) → canvas.toBlob('image/jpeg', 0.92) → download
-- [ ] Имя файла: `wow-wall-visualizer-{timestamp}.jpg`
+- [x] Кнопка «Скачать» (DownloadOutlined) → canvas.toBlob('image/jpeg', 0.92) → download
+- [x] Имя файла: `wow-wall-visualizer-{timestamp}.jpg`
 
 ### 7.5 Frontend — Акцентная зона (UI)
-- [ ] Режим «Зона» в PlacementControls: при активации рисование прямоугольника на Canvas
-- [ ] mousedown → mousemove → mouseup = AccentZone { x, y, width, height }
-- [ ] Передать зону в autoFillWall() (уже поддерживает accentZone)
+- [x] Режим «Зона» в PlacementControls: при активации рисование прямоугольника на Canvas
+- [x] mousedown → mousemove → mouseup = AccentZone { x, y, width, height }
+- [x] Передать зону в autoFillWall() (уже поддерживает accentZone)
 
 ### 7.6 Проверка
-- [ ] Клик на панель → удаление работает
-- [ ] Hover подсвечивает ячейку при наведении
-- [ ] Сохранение: перезагрузка → проект восстанавливается
-- [ ] Скачивание: JPEG-файл сохраняется
-- [ ] Акцентная зона: рисование + авторазмещение в зоне
-- [ ] Все 90 тестов визуализатора проходят
+- [x] Клик на панель → удаление работает
+- [x] Hover подсвечивает ячейку при наведении
+- [x] Сохранение: перезагрузка → проект восстанавливается
+- [x] Скачивание: JPEG-файл сохраняется
+- [x] Акцентная зона: рисование + авторазмещение в зоне
+- [x] Все 90 тестов визуализатора проходят
 
 ---
 
@@ -289,22 +289,22 @@
 > **Приоритет: СРЕДНИЙ** — юридическое требование для работы с персональными данными.
 
 ### 8.1 Frontend — Согласие на обработку ПД
-- [ ] Checkbox «Согласен с политикой обработки персональных данных» на:
+- [x] Checkbox «Согласен с политикой обработки персональных данных» на:
   - RegisterPage
   - CheckoutPage (шаг контактов)
   - ContactsPage (форма обратной связи)
   - SubscriptionModal (шаг формы)
-- [ ] Ссылка на `/privacy-policy`
+- [x] Ссылка на `/privacy-policy`
 
 ### 8.2 Frontend — Страница политики конфиденциальности
-- [ ] `content/ui/PrivacyPolicyPage.tsx` — текст политики (шаблон 152-ФЗ)
-- [ ] Маршрут `/privacy-policy`
-- [ ] Ссылка в футере
+- [x] `content/ui/PrivacyPolicyPage.tsx` — текст политики (шаблон 152-ФЗ)
+- [x] Маршрут `/privacy-policy`
+- [x] Ссылка в футере
 
 ### 8.3 Проверка
-- [ ] Без checkbox формы не отправляются (валидация)
-- [ ] Страница политики доступна и содержит все обязательные разделы
-- [ ] Ссылки работают из всех форм
+- [x] Без checkbox формы не отправляются (валидация)
+- [x] Страница политики доступна и содержит все обязательные разделы
+- [x] Ссылки работают из всех форм
 
 ---
 
@@ -343,9 +343,13 @@
 - [x] Все существующие тесты проходят: 130 backend, 183 frontend
 
 ### 9.5 Тех.долг (выявлен code review)
-- [ ] `config.py:1` — удалить неиспользуемый `import os`
-- [ ] `middleware.py:1` — исправить docstring (убрать "rate limiting")
-- [ ] Глобальный rate limit 60/min не работает на orders/subscriptions/projects/catalog (нет `request: Request`)
+- [x] `config.py:1` — удалить неиспользуемый `import os`
+- [x] `middleware.py:1` — исправить docstring (убрать "rate limiting")
+- [x] Глобальный rate limit 60/min — добавлен `request: Request` во все эндпоинты
+
+### 9.6 Тех.долг (выявлен повторной проверкой 07.04.2026)
+- [ ] `test_security.py` — добавить тест rate limit для `/reset-password` (5/min декоратор есть, теста нет)
+- [ ] `test_security.py` — добавить тест JWT guard для production mode (`ENV=production` + дефолтный секрет → RuntimeError)
 
 ---
 
@@ -385,8 +389,12 @@
 - [x] TypeScript 0 errors, 183 frontend + 130 backend тестов pass
 
 ### 10.6 Тех.долг (выявлен code review)
-- [ ] `frontend/nginx.conf` — `add_header` в location `/assets/` и regex перезаписывает server-level security headers (nginx inheritance). Перенести security headers в каждый location или использовать `include`
-- [ ] `backend/` — добавить `.dockerignore` (исключить `__pycache__`, `.pytest_cache`, `tests/`, `.env`, `*.md`)
+- [x] `frontend/nginx.conf` — security headers дублированы в каждом location блоке с `add_header`
+- [x] `backend/` — добавлен `.dockerignore`
+
+### 10.7 Тех.долг (выявлен повторной проверкой 07.04.2026)
+- [ ] `docker-compose.yml:29` — `CORS_ORIGINS=http://localhost` → параметризовать: `CORS_ORIGINS=${CORS_ORIGINS:-http://localhost}`
+- [ ] `PageMeta.tsx` — добавить `<meta name="twitter:image" content={img} />` для корректного превью в Twitter
 
 ---
 
@@ -422,6 +430,11 @@
 - [ ] Chrome DevTools → эмуляция iPhone SE, iPad (требует браузер)
 - [ ] Все страницы корректно отображаются без горизонтальной прокрутки (визуальная проверка)
 - [x] TypeScript 0 errors, 183 frontend + 130 backend тестов pass
+
+### 11.5 Тех.долг (выявлен code review + повторная проверка 07.04.2026)
+- [x] `SupportFab.tsx` — добавлен `aria-label="Открыть поддержку"`
+- [x] `PhotoEditorPage.tsx` — удалён хрупкий inline `<style>` с `[style*="..."]`, правило перенесено в `index.css` через `.visualizer-layout`
+- [x] `WallCanvas.tsx` — `touchDist` вынесен на уровень модуля
 
 ---
 
