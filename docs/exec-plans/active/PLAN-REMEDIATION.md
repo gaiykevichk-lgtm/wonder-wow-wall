@@ -479,6 +479,11 @@
 - [x] Frontend: 184 теста pass (vitest run)
 - [x] TypeScript: 0 ошибок (tsc --noEmit)
 
+### 12.9 Code review (07.04.2026)
+- [ ] **NON-CRITICAL**: `subscriptionStore.ts:150-154` — `getOverlayDiscount()` мёртвый код (вызывается только в тестах), имя и комментарий используют старую терминологию «overlays». Рекомендация: удалить или переименовать в `getSubscriptionDiscount()`
+- [ ] **NON-CRITICAL**: `subscriptionStore.ts:156` — Zustand persist без `version`/`migrate` — старые localStorage-данные с `overlaysUsed` не очищаются. Рекомендация: добавить `version: 2` + `migrate()`
+- [ ] **NON-CRITICAL**: `backend/README.md:227-228` — документация ссылается на старые поля (`overlays_used_this_month`) и цены (4 900 / 9 900 / 19 900 ₽)
+
 ---
 
 ## Сводная таблица
