@@ -422,29 +422,34 @@ export default function ConstructorPage() {
 
   // ─── Grid dragging (interior mode) ────────────────────────────────────────
 
-  const handleInteriorPointerDown = useCallback((e: React.PointerEvent) => {
-    // Only start grid drag if clicking on the interior background (not on the grid itself)
-    if (e.target === interiorRef.current || (e.target as HTMLElement).dataset.interiorBg) {
-      e.preventDefault();
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
-      gridDragRef.current = {
-        active: true,
-        startX: e.clientX,
-        startY: e.clientY,
-        origX: gridOffset.x,
-        origY: gridOffset.y,
-      };
-    }
-  }, [gridOffset]);
+  const handleGridPointerDown = useCallback((e: React.PointerEvent) => {
+    if (!isInteriorMode) return;
+    // Only start grid drag on empty cells (not on placed panels or delete buttons)
+    const el = e.target as HTMLElement;
+    if (el.closest('.placed-panel') || el.closest('.panel-delete-btn')) return;
+    if (draggedId) return;
+    e.preventDefault();
+    wallRef.current?.setPointerCapture(e.pointerId);
+    gridDragRef.current = {
+      active: true,
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: gridOffset.x,
+      origY: gridOffset.y,
+    };
+  }, [isInteriorMode, gridOffset, draggedId]);
 
-  const handleInteriorPointerMove = useCallback((e: React.PointerEvent) => {
+  const handleGridPointerMove = useCallback((e: React.PointerEvent) => {
     if (!gridDragRef.current.active) return;
     const dx = e.clientX - gridDragRef.current.startX;
     const dy = e.clientY - gridDragRef.current.startY;
+    if (!wasDraggingRef.current && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
+      wasDraggingRef.current = true;
+    }
     setGridOffset({ x: gridDragRef.current.origX + dx, y: gridDragRef.current.origY + dy });
   }, []);
 
-  const handleInteriorPointerUp = useCallback(() => {
+  const handleGridPointerUp = useCallback(() => {
     gridDragRef.current.active = false;
   }, []);
 
@@ -1068,10 +1073,6 @@ export default function ConstructorPage() {
               {isInteriorMode && selectedPreset ? (
                 <div
                   ref={interiorRef}
-                  data-interior-bg="true"
-                  onPointerDown={handleInteriorPointerDown}
-                  onPointerMove={handleInteriorPointerMove}
-                  onPointerUp={handleInteriorPointerUp}
                   style={{
                     position: 'relative',
                     width: '100%',
@@ -1082,13 +1083,14 @@ export default function ConstructorPage() {
                     borderRadius: 10,
                     boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
                     overflow: 'hidden',
-                    cursor: 'grab',
-                    touchAction: 'none',
                   }}
                 >
-                  <div data-interior-bg="true" style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.05)', pointerEvents: 'none' }} />
+                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.05)', pointerEvents: 'none' }} />
                   <div
                     ref={wallRef}
+                    onPointerDown={handleGridPointerDown}
+                    onPointerMove={handleGridPointerMove}
+                    onPointerUp={handleGridPointerUp}
                     onMouseMove={handleWallMouseMove}
                     onMouseUp={handleWallMouseUp}
                     onMouseLeave={() => { setDraggedId(null); setHoveredCell(null); }}
@@ -1099,8 +1101,9 @@ export default function ConstructorPage() {
                       top: `calc(50% - ${wallHeightPx / 2}px + ${gridOffset.y}px)`,
                       width: wallWidthPx,
                       height: wallHeightPx,
-                      cursor: draggedId ? 'grabbing' : 'pointer',
+                      cursor: draggedId ? 'grabbing' : 'grab',
                       userSelect: 'none',
+                      touchAction: 'none',
                       display: 'grid',
                       gridTemplateColumns: `repeat(${wallCols}, ${CELL_PX}px)`,
                       gridTemplateRows: `repeat(${wallRows}, ${CELL_PX}px)`,
@@ -1280,7 +1283,8 @@ export default function ConstructorPage() {
                     }}
                   >
                     <AppstoreOutlined style={{ fontSize: 32 }} />
-                    Кликните на ячейку или нажмите «Добавить»
+                    Кликните на ячейку для размещения
+                    <span style={{ fontSize: 12, opacity: 0.7 }}>Зажмите сетку и перетаскивайте для позиционирования</span>
                   </div>
                 )}
               </div>
