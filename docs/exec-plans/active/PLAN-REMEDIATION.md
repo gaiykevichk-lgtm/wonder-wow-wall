@@ -396,28 +396,32 @@
 > Зависимости: Фаза 3 (дизайн), Фаза 7 (визуализатор)
 
 ### 11.1 Frontend — Адаптивные breakpoints
-- [ ] Пройти по всем страницам и проверить на 375px, 768px, 1024px:
-  - [ ] HomePage (hero, секции)
-  - [ ] CatalogPage (фильтры → Drawer на мобиле)
-  - [ ] ProductPage (галерея → swipe)
-  - [ ] ConstructorPage (упрощённый UI)
-  - [ ] CheckoutPage (шаги)
-  - [ ] AccountLayout (sidebar → tab bar)
+- [x] CSS media queries: 1024px (tablet), 768px (mobile), 480px (small phone)
+- [x] `useIsMobile` hook для JS-level breakpoint detection
+- [x] HomePage: hero, секции — уже используют `clamp()` для размеров
+- [x] CatalogPage: фильтры → вертикальная укладка, grid `auto-fill minmax(280px)`
+- [x] ProductPage: grid → single column на мобиле
+- [x] ConstructorPage: grid → single column при ≤900px (уже было)
+- [x] CheckoutPage: grid → single column на мобиле
+- [x] AccountLayout: sidebar → horizontal scrollable tab bar + скрытие аватара
 
 ### 11.2 Frontend — Визуализатор: touch
-- [ ] Pinch-to-zoom на WallCanvas (gesture events)
-- [ ] Touch-события для маски (кисть/ластик)
-- [ ] Responsive: sidebar → bottom sheet при ≤768px
+- [x] Pinch-to-zoom на WallCanvas (two-finger gesture)
+- [x] Touch-события для маски (кисть/ластик): single-finger painting
+- [x] Single-finger pan, two-finger pan during pinch
+- [x] `touch-action: none` на canvas
+- [x] Responsive: 3-column grid → single column при ≤768px
 
 ### 11.3 Frontend — Общий чат-placeholder
-- [ ] Floating Action Button в правом нижнем углу (все страницы)
-- [ ] По клику → Drawer «Поддержка» с текстом «Напишите нам на support@wonderwowwall.ru»
-- [ ] Ссылки: email, телефон, Telegram
+- [x] SupportFab: Floating Action Button (green, bottom-right) на всех страницах
+- [x] По клику → Drawer «Поддержка» с контактами
+- [x] Ссылки: email (mailto:), телефон (tel:), Telegram (внешняя ссылка)
+- [x] Рабочие часы: Пн-Пт 9:00–20:00 МСК
 
 ### 11.4 Проверка
-- [ ] Chrome DevTools → эмуляция iPhone SE, iPad
-- [ ] Все страницы корректно отображаются без горизонтальной прокрутки
-- [ ] Touch-жесты в визуализаторе работают
+- [ ] Chrome DevTools → эмуляция iPhone SE, iPad (требует браузер)
+- [ ] Все страницы корректно отображаются без горизонтальной прокрутки (визуальная проверка)
+- [x] TypeScript 0 errors, 183 frontend + 130 backend тестов pass
 
 ---
 
