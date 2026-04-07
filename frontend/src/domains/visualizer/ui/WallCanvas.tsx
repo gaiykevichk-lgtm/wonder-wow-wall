@@ -1,6 +1,6 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { CloseCircleFilled } from '@ant-design/icons';
-import type { Scene, PlacedPanel, MaskTool, Point, AccentZone } from '../model/types';
+import type { Scene, PlacedPanel, MaskTool, Point, AccentZone, PlacementMode } from '../model/types';
 import { wallMaskToImageData } from '../lib/maskUtils';
 
 interface WallCanvasProps {
@@ -12,7 +12,7 @@ interface WallCanvasProps {
   brushSize: number;
   zoom: number;
   panOffset: Point;
-  placementMode: 'manual' | 'auto' | 'accent';
+  placementMode: PlacementMode;
   hoverCell: Point | null;
   cellSizePx: { w: number; h: number } | null;
   onCanvasClick?: (x: number, y: number) => void;
@@ -56,6 +56,7 @@ export function WallCanvas({
   // Accent zone drawing state
   const isDrawingZoneRef = useRef(false);
   const zoneStartRef = useRef<Point>({ x: 0, y: 0 });
+  const [zoneDragEnd, setZoneDragEnd] = useState<Point | null>(null);
 
   // Load photo image
   useEffect(() => {
@@ -109,6 +110,21 @@ export function WallCanvas({
       ctx.setLineDash([]);
     }
 
+    // Draw accent zone preview while dragging
+    if (zoneDragEnd && isDrawingZoneRef.current) {
+      const zx = Math.min(zoneStartRef.current.x, zoneDragEnd.x);
+      const zy = Math.min(zoneStartRef.current.y, zoneDragEnd.y);
+      const zw = Math.abs(zoneDragEnd.x - zoneStartRef.current.x);
+      const zh = Math.abs(zoneDragEnd.y - zoneStartRef.current.y);
+      ctx.fillStyle = 'rgba(76, 175, 80, 0.12)';
+      ctx.fillRect(zx, zy, zw, zh);
+      ctx.strokeStyle = '#4CAF50';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 4]);
+      ctx.strokeRect(zx, zy, zw, zh);
+      ctx.setLineDash([]);
+    }
+
     // Draw panels
     for (const panel of panels) {
       ctx.fillStyle = panel.color || '#CCCCCC';
@@ -133,7 +149,7 @@ export function WallCanvas({
     }
 
     ctx.restore();
-  }, [scene, panels, maskVisible, maskOpacity, imageLoaded, hoverCell, cellSizePx, placementMode, maskTool, selectedPanelId]);
+  }, [scene, panels, maskVisible, maskOpacity, imageLoaded, hoverCell, cellSizePx, placementMode, maskTool, selectedPanelId, zoneDragEnd]);
 
   useEffect(() => {
     render();
@@ -218,6 +234,13 @@ export function WallCanvas({
         return;
       }
 
+      // Accent zone drag preview
+      if (isDrawingZoneRef.current) {
+        const point = getImageCoords(e);
+        setZoneDragEnd(point);
+        return;
+      }
+
       // Hover highlight in manual mode
       if (placementMode === 'manual' && !maskTool) {
         const point = getImageCoords(e);
@@ -247,6 +270,7 @@ export function WallCanvas({
       // Finish accent zone drawing
       if (isDrawingZoneRef.current) {
         isDrawingZoneRef.current = false;
+        setZoneDragEnd(null);
         const endPoint = getImageCoords(e);
         const zone: AccentZone = {
           topLeft: {
@@ -332,12 +356,16 @@ export function WallCanvas({
       {/* Delete button for selected panel */}
       {selectedPanelId && (() => {
         const panel = panels.find((p) => p.id === selectedPanelId);
-        if (!panel || !canvasRef.current) return null;
-        const rect = canvasRef.current.getBoundingClientRect();
-        const scaleX = rect.width / canvasRef.current.width;
-        const scaleY = rect.height / canvasRef.current.height;
-        const btnX = (panel.x + panel.renderWidth) * scaleX - 12;
-        const btnY = panel.y * scaleY - 12;
+        if (!panel || !canvasRef.current || !containerRef.current) return null;
+        // Compute position relative to the container using both rects
+        const containerRect = containerRef.current.getBoundingClientRect();
+        const canvasRect = canvasRef.current.getBoundingClientRect();
+        // Canvas-to-screen scale (includes CSS zoom)
+        const scaleX = canvasRect.width / canvasRef.current.width;
+        const scaleY = canvasRect.height / canvasRef.current.height;
+        // Panel corner in screen coords, offset by canvas position relative to container
+        const btnX = (canvasRect.left - containerRect.left) + (panel.x + panel.renderWidth) * scaleX - 12;
+        const btnY = (canvasRect.top - containerRect.top) + panel.y * scaleY - 12;
         return (
           <button
             data-testid="panel-delete-btn"

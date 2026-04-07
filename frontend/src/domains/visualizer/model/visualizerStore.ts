@@ -17,6 +17,7 @@ import type {
 } from './types';
 import { calculateCost } from '../lib/costCalculator';
 import { autoFillWall } from '../lib/layoutEngine';
+import { createEmptyMask } from '../lib/maskUtils';
 
 interface VisualizerState {
   // Scene
@@ -67,7 +68,7 @@ interface VisualizerState {
   recalculateCost: (hasSubscription: boolean) => void;
 
   // Persistence
-  saveToLocalStorage: () => void;
+  saveToLocalStorage: () => boolean;
   loadFromLocalStorage: () => boolean;
 
   // Reset
@@ -238,8 +239,9 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => ({
     try {
       localStorage.setItem('wow-wall-visualizer', JSON.stringify(data));
     } catch {
-      // Silently fail if storage is full
+      return false;
     }
+    return true;
   },
   loadFromLocalStorage: () => {
     try {
@@ -247,11 +249,12 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => ({
       if (!raw) return false;
       const data = JSON.parse(raw);
       if (!data.scene?.photo?.url) return false;
+      const { width, height } = data.scene.photo;
       set({
         scene: {
           photo: data.scene.photo,
-          wallMask: null,
-          objectMask: null,
+          wallMask: width && height ? createEmptyMask(width, height, 255) : null,
+          objectMask: { obstacles: [] },
           calibration: data.scene.calibration ?? null,
           segmentationStatus: data.scene.segmentationStatus ?? 'ready',
         },

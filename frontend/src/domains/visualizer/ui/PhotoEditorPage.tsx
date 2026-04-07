@@ -175,8 +175,12 @@ export default function PhotoEditorPage() {
 
   // Save project to localStorage
   const handleSave = useCallback(() => {
-    store.saveToLocalStorage();
-    message.success('Проект сохранён');
+    const saved = store.saveToLocalStorage();
+    if (saved) {
+      message.success('Проект сохранён');
+    } else {
+      message.warning('Не удалось сохранить — недостаточно места в хранилище');
+    }
   }, [store]);
 
   // Export canvas as JPEG
@@ -191,7 +195,7 @@ export default function PhotoEditorPage() {
         a.href = url;
         a.download = `wow-wall-visualizer-${Date.now()}.jpg`;
         a.click();
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
         message.success('Изображение сохранено');
       },
       'image/jpeg',
