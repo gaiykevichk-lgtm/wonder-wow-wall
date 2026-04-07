@@ -678,7 +678,7 @@ export default function ProductPage() {
           <div style={{ textAlign: 'center', marginBottom: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             <StarFilled style={{ color: '#FF9500', fontSize: 18 }} />
             <span style={{ fontSize: 17, fontWeight: 600, color: '#1d1d1f' }}>{product.rating.toFixed(1)}</span>
-            <span style={{ fontSize: 15, color: '#86868b' }}>({product.reviews} {product.reviews === 1 ? 'отзыв' : product.reviews < 5 ? 'отзыва' : 'отзывов'})</span>
+            <span style={{ fontSize: 15, color: '#86868b' }}>({product.reviews} {(() => { const n = product.reviews % 100; const d = n % 10; if (n > 10 && n < 20) return 'отзывов'; if (d === 1) return 'отзыв'; if (d >= 2 && d <= 4) return 'отзыва'; return 'отзывов'; })()})</span>
           </div>
 
           {/* Review list */}

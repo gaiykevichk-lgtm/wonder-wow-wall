@@ -146,7 +146,7 @@ export default function CatalogPage() {
     }
 
     return list;
-  }, [activeCategory, search, priceRange, sortKey, filterColor, filterStyle, filterNew]);
+  }, [products, activeCategory, search, priceRange, sortKey, filterColor, filterStyle, filterNew]);
 
   return (
     <div style={{ paddingTop: 72, minHeight: '100vh', background: '#FFFFFF' }}>

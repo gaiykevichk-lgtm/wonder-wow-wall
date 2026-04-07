@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.application.catalog.use_cases import ListDesigns, GetDesignDetails, ListCategories, AddReview, ListReviews
 from app.container import get_design_repo, get_category_repo, get_review_repo
@@ -54,8 +54,8 @@ class ReviewSchema(BaseModel):
 
 
 class AddReviewRequest(BaseModel):
-    rating: int
-    text: str
+    rating: int = Field(ge=1, le=5)
+    text: str = Field(min_length=1, max_length=500)
 
 
 # ─── Endpoints ───────────────────────────────────────────────────────

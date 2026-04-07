@@ -154,7 +154,8 @@ class SqlDesignRepository(DesignRepository):
         if color:
             # JSON array search: colors column contains objects with "name" key
             from sqlalchemy import cast, String
-            color_filter = func.lower(cast(DesignModel.colors, String)).like(f'%{color.lower()}%')
+            safe_color = color.lower().replace('%', r'\%').replace('_', r'\_')
+            color_filter = func.lower(cast(DesignModel.colors, String)).like(f'%{safe_color}%', escape='\\')
             query = query.where(color_filter)
             count_query = count_query.where(color_filter)
 
