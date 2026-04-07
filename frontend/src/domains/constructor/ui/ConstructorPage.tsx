@@ -135,8 +135,15 @@ export default function ConstructorPage() {
   const [hoveredCell, setHoveredCell] = useState<{ col: number; row: number } | null>(null);
 
   const wallRef = useRef<HTMLDivElement>(null);
+  const interiorRef = useRef<HTMLDivElement>(null);
   const wasDraggingRef = useRef(false);
   const presetScrollRef = useRef<HTMLDivElement>(null);
+
+  // Grid offset within interior photo (draggable positioning)
+  const [gridOffset, setGridOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const gridDragRef = useRef<{ active: boolean; startX: number; startY: number; origX: number; origY: number }>({
+    active: false, startX: 0, startY: 0, origX: 0, origY: 0,
+  });
   const { addItem } = useCartStore();
   const hasSub = useSubscriptionStore((s) => s.hasSubscription);
   const activePlan = useSubscriptionStore((s) => s.getActivePlan);
@@ -198,6 +205,7 @@ export default function ConstructorPage() {
 
   const handleSelectPreset = useCallback((presetId: string | null) => {
     setSelectedPresetId(presetId);
+    setGridOffset({ x: 0, y: 0 });
     if (presetId) {
       setWallMode('interior');
     } else {
@@ -412,6 +420,34 @@ export default function ConstructorPage() {
     [draggedId, getCellFromEvent, handleClickCell]
   );
 
+  // ─── Grid dragging (interior mode) ────────────────────────────────────────
+
+  const handleInteriorPointerDown = useCallback((e: React.PointerEvent) => {
+    // Only start grid drag if clicking on the interior background (not on the grid itself)
+    if (e.target === interiorRef.current || (e.target as HTMLElement).dataset.interiorBg) {
+      e.preventDefault();
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      gridDragRef.current = {
+        active: true,
+        startX: e.clientX,
+        startY: e.clientY,
+        origX: gridOffset.x,
+        origY: gridOffset.y,
+      };
+    }
+  }, [gridOffset]);
+
+  const handleInteriorPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!gridDragRef.current.active) return;
+    const dx = e.clientX - gridDragRef.current.startX;
+    const dy = e.clientY - gridDragRef.current.startY;
+    setGridOffset({ x: gridDragRef.current.origX + dx, y: gridDragRef.current.origY + dy });
+  }, []);
+
+  const handleInteriorPointerUp = useCallback(() => {
+    gridDragRef.current.active = false;
+  }, []);
+
   // ─── Preview ghost ─────────────────────────────────────────────────────────
 
   const ghostVisible = useMemo(() => {
@@ -618,7 +654,7 @@ export default function ConstructorPage() {
                 <div style={{ fontSize: 12, color: GRAY, marginBottom: 4 }}>Ширина (ячейки × 30см)</div>
                 <Select
                   value={wallCols}
-                  onChange={(v) => { setWallCols(v); setPlacedPanels([]); }}
+                  onChange={(v) => { setWallCols(v); setPlacedPanels([]); setGridOffset({ x: 0, y: 0 }); }}
                   style={{ width: '100%' }}
                   options={[
                     { value: 6, label: '1.8 м (6)' },
@@ -634,7 +670,7 @@ export default function ConstructorPage() {
                 <div style={{ fontSize: 12, color: GRAY, marginBottom: 4 }}>Высота (ячейки × 30см)</div>
                 <Select
                   value={wallRows}
-                  onChange={(v) => { setWallRows(v); setPlacedPanels([]); }}
+                  onChange={(v) => { setWallRows(v); setPlacedPanels([]); setGridOffset({ x: 0, y: 0 }); }}
                   style={{ width: '100%' }}
                   options={[
                     { value: 5, label: '1.5 м (5)' },
@@ -1031,6 +1067,11 @@ export default function ConstructorPage() {
               {/* Wall: interior mode — photo background independent of grid size */}
               {isInteriorMode && selectedPreset ? (
                 <div
+                  ref={interiorRef}
+                  data-interior-bg="true"
+                  onPointerDown={handleInteriorPointerDown}
+                  onPointerMove={handleInteriorPointerMove}
+                  onPointerUp={handleInteriorPointerUp}
                   style={{
                     position: 'relative',
                     width: '100%',
@@ -1040,13 +1081,12 @@ export default function ConstructorPage() {
                     backgroundPosition: 'center',
                     borderRadius: 10,
                     boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
                     overflow: 'hidden',
+                    cursor: 'grab',
+                    touchAction: 'none',
                   }}
                 >
-                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.05)', pointerEvents: 'none' }} />
+                  <div data-interior-bg="true" style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.05)', pointerEvents: 'none' }} />
                   <div
                     ref={wallRef}
                     onMouseMove={handleWallMouseMove}
@@ -1054,7 +1094,9 @@ export default function ConstructorPage() {
                     onMouseLeave={() => { setDraggedId(null); setHoveredCell(null); }}
                     onClick={handleWallClick}
                     style={{
-                      position: 'relative',
+                      position: 'absolute',
+                      left: `calc(50% - ${wallWidthPx / 2}px + ${gridOffset.x}px)`,
+                      top: `calc(50% - ${wallHeightPx / 2}px + ${gridOffset.y}px)`,
                       width: wallWidthPx,
                       height: wallHeightPx,
                       cursor: draggedId ? 'grabbing' : 'pointer',
