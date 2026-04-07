@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
 import { Button, Card, Select, Tag, message, Tooltip, Radio, Segmented } from 'antd';
+import { PageMeta } from '../../../shared/ui/PageMeta';
 import {
   ShoppingCartOutlined,
   UndoOutlined,
@@ -421,6 +422,7 @@ export default function ConstructorPage() {
 
   return (
     <div style={{ paddingTop: 72, background: LIGHT_BG, minHeight: '100vh', fontFamily: FONT }}>
+      <PageMeta title="Конструктор" />
       {/* Page Header */}
       <div style={{ background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.04)', padding: '28px 24px' }}>
         <div style={{ maxWidth: 1400, margin: '0 auto' }}>

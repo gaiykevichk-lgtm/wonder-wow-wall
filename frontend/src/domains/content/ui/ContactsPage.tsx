@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Form, Input, Button, Card, message, Checkbox } from 'antd';
+import { PageMeta } from '../../../shared/ui/PageMeta';
 import {
   PhoneOutlined,
   MailOutlined,
@@ -97,6 +98,7 @@ const ContactsPage: React.FC = () => {
 
   return (
     <div style={{ paddingTop: 72, minHeight: '100vh', background: '#fff' }}>
+      <PageMeta title="Контакты" description="Свяжитесь с Wonder Wow Wall. Адрес, телефон, форма обратной связи." />
       {/* Header */}
       <section style={{ background: '#F5F5F5', padding: '120px 24px' }}>
         <div style={{ ...MAX_WIDTH, textAlign: 'center' }}>

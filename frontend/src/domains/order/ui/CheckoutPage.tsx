@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { PageMeta } from '../../../shared/ui/PageMeta';
 import {
   Button,
   Card,
@@ -381,6 +382,7 @@ const CheckoutPage: React.FC = () => {
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div style={{ paddingTop: 72, minHeight: '100vh', background: '#F5F5F5', padding: '72px 24px 80px' }}>
+      <PageMeta title="Оформление заказа" />
       <div style={{ ...MAX_WIDTH }}>
         {/* Page title */}
         <motion.h1

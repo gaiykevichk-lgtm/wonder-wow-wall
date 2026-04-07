@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Card, Rate, Tag, Input, Select, Slider, Button, Skeleton } from 'antd';
+import { PageMeta } from '../../../shared/ui/PageMeta';
 import { SearchOutlined, FilterOutlined, AppstoreOutlined, UnorderedListOutlined, HeartOutlined, HeartFilled, CameraOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -150,6 +151,7 @@ export default function CatalogPage() {
 
   return (
     <div style={{ paddingTop: 72, minHeight: '100vh', background: '#FFFFFF' }}>
+      <PageMeta title="Каталог" description="Каталог модульных стеновых панелей Wonder Wow Wall. Более 100 000 вариантов дизайна." />
       {/* Page Header */}
       <div
         style={{

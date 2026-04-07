@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card } from 'antd';
+import { PageMeta } from '../../../shared/ui/PageMeta';
 import {
   ExperimentOutlined,
   TrophyOutlined,
@@ -529,6 +530,7 @@ const EcoSection: React.FC = () => (
 
 const AboutPage: React.FC = () => (
   <div style={{ fontFamily: FONT, paddingTop: 72 }}>
+    <PageMeta title="О компании" description="Wonder Wow Wall — инновационный сервис отделки стен модульными пластинами." />
     <HeroSection />
     <StorySection />
     <TechnologySection />

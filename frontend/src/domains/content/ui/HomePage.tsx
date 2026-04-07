@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Button, Card, Rate, Tag } from 'antd';
+import { PageMeta } from '../../../shared/ui/PageMeta';
 import {
   AppstoreOutlined,
   ThunderboltOutlined,
@@ -1276,6 +1277,7 @@ const HomePage: React.FC = () => {
 
   return (
     <div style={{ fontFamily: 'Inter, sans-serif' }}>
+      <PageMeta title="Главная" />
       <HeroSection onCatalog={handleCatalog} onConstructor={handleConstructor} />
       <HowItWorksSection />
       <AdvantagesSection />

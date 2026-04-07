@@ -1,5 +1,6 @@
 import React from 'react';
 import { Collapse, Button } from 'antd';
+import { PageMeta } from '../../../shared/ui/PageMeta';
 import { QuestionCircleOutlined, MailOutlined, PhoneOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -214,6 +215,7 @@ const FaqPage: React.FC = () => {
 
   return (
     <div style={{ fontFamily: FONT, paddingTop: 72 }}>
+      <PageMeta title="FAQ" description="Ответы на часто задаваемые вопросы о Wonder Wow Wall." />
       {/* Hero */}
       <section style={{ background: '#F5F5F5', padding: '120px 24px' }}>
         <div style={{ ...MAX_WIDTH, textAlign: 'center' }}>

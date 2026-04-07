@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Tag } from 'antd';
+import { PageMeta } from '../../../shared/ui/PageMeta';
 import { motion } from 'framer-motion';
 import { ImageBeforeAfter } from '../../../shared/ui/ImageBeforeAfter';
 
@@ -226,6 +227,7 @@ const PortfolioPage: React.FC = () => {
 
   return (
     <div style={{ fontFamily: FONT, paddingTop: 72 }}>
+      <PageMeta title="Портфолио" description="Примеры реализованных проектов Wonder Wow Wall." />
       {/* Hero */}
       <section style={{ background: '#F5F5F5', padding: '120px 24px' }}>
         <div style={{ ...MAX_WIDTH, textAlign: 'center' }}>

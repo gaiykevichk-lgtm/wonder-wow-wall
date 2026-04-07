@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, useMemo } from 'react';
 import { Typography, message, Progress, Card } from 'antd';
+import { PageMeta } from '../../../shared/ui/PageMeta';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVisualizerStore } from '../model/visualizerStore';
 import { useSubscriptionStore } from '../../subscription/model/subscriptionStore';
@@ -223,6 +224,7 @@ export default function PhotoEditorPage() {
 
   return (
     <div style={{ padding: '96px 24px 48px', maxWidth: 1440, margin: '0 auto' }}>
+      <PageMeta title="Фото-редактор" />
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
         <Title level={2} style={{ margin: 0 }}>

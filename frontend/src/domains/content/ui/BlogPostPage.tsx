@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button, Tag } from 'antd';
+import { PageMeta } from '../../../shared/ui/PageMeta';
 import { ArrowLeftOutlined, CalendarOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -89,6 +90,7 @@ const BlogPostPage: React.FC = () => {
 
   return (
     <div style={{ fontFamily: FONT, paddingTop: 72, minHeight: '100vh', background: '#fff' }}>
+      <PageMeta title={post.title} />
       {/* Hero image */}
       <div style={{ height: 400, overflow: 'hidden', position: 'relative' }}>
         <img

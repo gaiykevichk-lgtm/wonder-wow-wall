@@ -1,5 +1,6 @@
 import { Form, Input, Button, Card, Typography, Divider, message, Tooltip, Checkbox } from 'antd';
 import { UserOutlined, MailOutlined, LockOutlined, PhoneOutlined, GoogleOutlined } from '@ant-design/icons';
+import { PageMeta } from '../../../shared/ui/PageMeta';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useRegisterMutation } from '../api/authApi';
@@ -35,6 +36,7 @@ export default function RegisterPage() {
         padding: '96px 16px 48px',
       }}
     >
+      <PageMeta title="Регистрация" />
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}

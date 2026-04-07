@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { message, Skeleton, Rate, Input, Button } from 'antd';
+import { PageMeta } from '../../../shared/ui/PageMeta';
 import { ShoppingCartOutlined, HeartOutlined, LeftOutlined, StarFilled, UserOutlined, CameraOutlined, LayoutOutlined } from '@ant-design/icons';
 import { motion, useScroll, useMotionValueEvent, AnimatePresence } from 'framer-motion';
 import { products as mockProducts } from '../model/data';
@@ -172,6 +173,7 @@ export default function ProductPage() {
 
   return (
     <div style={{ paddingTop: 72, background: '#fff', minHeight: '100vh' }}>
+      <PageMeta title={product.name} description={product.description} ogImage={product.image} />
 
       {/* ── Sticky buy bar ──────────────────────────────── */}
       <AnimatePresence>

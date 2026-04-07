@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { PageMeta } from '../../../shared/ui/PageMeta';
 
 const DARK = '#2D2D2D';
 const GRAY_TEXT = '#6B7280';
@@ -101,6 +102,7 @@ Email: privacy@wonderwowwall.ru
 
 const PrivacyPolicyPage: React.FC = () => (
   <div style={{ paddingTop: 72, minHeight: '100vh', background: '#fff' }}>
+    <PageMeta title="Политика конфиденциальности" />
     <section style={{ background: '#F5F5F5', padding: '80px 24px' }}>
       <div style={{ ...MAX_WIDTH, textAlign: 'center' }}>
         <motion.h1

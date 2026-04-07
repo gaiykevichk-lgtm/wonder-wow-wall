@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Card, Button, Tag } from 'antd';
+import { PageMeta } from '../../../shared/ui/PageMeta';
 import { CheckOutlined, ArrowRightOutlined, CrownOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -137,6 +138,7 @@ const PricingPage: React.FC = () => {
 
   return (
     <div style={{ fontFamily: FONT, paddingTop: 72 }}>
+      <PageMeta title="Тарифы" description="Тарифные планы подписки Wonder Wow Wall." />
       {/* Hero */}
       <section style={{ background: '#F5F5F5', padding: '120px 24px' }}>
         <div style={{ ...MAX_WIDTH, textAlign: 'center' }}>

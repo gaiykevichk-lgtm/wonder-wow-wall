@@ -1,5 +1,6 @@
 import { Form, Input, Button, Card, Typography, Divider, message, Tooltip } from 'antd';
 import { MailOutlined, LockOutlined, GoogleOutlined } from '@ant-design/icons';
+import { PageMeta } from '../../../shared/ui/PageMeta';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useLoginMutation } from '../api/authApi';
@@ -36,6 +37,7 @@ export default function LoginPage() {
         padding: '96px 16px 48px',
       }}
     >
+      <PageMeta title="Вход" />
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
