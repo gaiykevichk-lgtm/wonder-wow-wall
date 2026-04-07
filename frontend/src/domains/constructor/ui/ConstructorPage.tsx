@@ -913,6 +913,20 @@ export default function ConstructorPage() {
                   Заполнить
                 </Button>
               </Tooltip>
+              <Tooltip title="Очистить все панели">
+                <Button
+                  icon={<UndoOutlined />}
+                  onClick={handleClear}
+                  style={{
+                    height: 38,
+                    borderRadius: 8,
+                    border: '1px solid #D1D5DB',
+                    color: GRAY,
+                  }}
+                >
+                  Очистить
+                </Button>
+              </Tooltip>
             </div>
           </Card>
 
@@ -1492,13 +1506,6 @@ export default function ConstructorPage() {
                 >
                   В корзину
                 </Button>
-                <Tooltip title="Очистить все панели">
-                  <Button
-                    icon={<UndoOutlined />}
-                    onClick={handleClear}
-                    style={{ height: 40, borderRadius: 10, border: '1px solid #D1D5DB', color: GRAY }}
-                  />
-                </Tooltip>
               </div>
             </div>
           </Card>
