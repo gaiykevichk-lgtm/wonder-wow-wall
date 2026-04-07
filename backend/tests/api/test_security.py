@@ -130,6 +130,21 @@ class TestRateLimiting:
         assert resp.status_code == 429
 
 
+class TestResetPasswordRateLimit:
+    @pytest.mark.asyncio
+    async def test_reset_password_rate_limit(self, client):
+        """After 5 reset-password attempts, 6th should be rate-limited (429)."""
+        for i in range(5):
+            await client.post("/api/auth/reset-password", json={
+                "email": f"rp-{i}@test.com", "token": "000000", "new_password": "newpass",
+            })
+
+        resp = await client.post("/api/auth/reset-password", json={
+            "email": "rp-extra@test.com", "token": "000000", "new_password": "newpass",
+        })
+        assert resp.status_code == 429
+
+
 class TestJWTSecretGuard:
     def test_default_secret_allowed_in_development(self):
         """In development mode, default secret is OK (no crash at import)."""
@@ -137,3 +152,18 @@ class TestJWTSecretGuard:
         assert settings.JWT_SECRET == "dev-secret-key-change-in-prod"
         assert settings.ENV == "development"
         # If we got here, the guard did not raise — correct for dev mode
+
+    def test_default_secret_rejected_in_production(self, monkeypatch):
+        """In production mode, default secret must raise RuntimeError."""
+        import importlib
+        import app.config as config_module
+
+        monkeypatch.setenv("ENV", "production")
+        monkeypatch.setenv("JWT_SECRET", "dev-secret-key-change-in-prod")
+
+        with pytest.raises(RuntimeError, match="JWT_SECRET must be changed"):
+            importlib.reload(config_module)
+
+        # Restore development config so other tests aren't affected
+        monkeypatch.setenv("ENV", "development")
+        importlib.reload(config_module)

@@ -347,9 +347,9 @@
 - [x] `middleware.py:1` — исправить docstring (убрать "rate limiting")
 - [x] Глобальный rate limit 60/min — добавлен `request: Request` во все эндпоинты
 
-### 9.6 Тех.долг (выявлен повторной проверкой 07.04.2026)
-- [ ] `test_security.py` — добавить тест rate limit для `/reset-password` (5/min декоратор есть, теста нет)
-- [ ] `test_security.py` — добавить тест JWT guard для production mode (`ENV=production` + дефолтный секрет → RuntimeError)
+### 9.6 Тех.долг (выявлен повторной проверкой 07.04.2026) — ИСПРАВЛЕНО
+- [x] `test_security.py` — добавлен тест rate limit для `/reset-password` (5/min)
+- [x] `test_security.py` — добавлен тест JWT guard для production mode (`ENV=production` + дефолтный секрет → RuntimeError)
 
 ---
 
@@ -392,9 +392,9 @@
 - [x] `frontend/nginx.conf` — security headers дублированы в каждом location блоке с `add_header`
 - [x] `backend/` — добавлен `.dockerignore`
 
-### 10.7 Тех.долг (выявлен повторной проверкой 07.04.2026)
-- [ ] `docker-compose.yml:29` — `CORS_ORIGINS=http://localhost` → параметризовать: `CORS_ORIGINS=${CORS_ORIGINS:-http://localhost}`
-- [ ] `PageMeta.tsx` — добавить `<meta name="twitter:image" content={img} />` для корректного превью в Twitter
+### 10.7 Тех.долг (выявлен повторной проверкой 07.04.2026) — ИСПРАВЛЕНО
+- [x] `docker-compose.yml:29` — `CORS_ORIGINS` параметризован через `${CORS_ORIGINS:-http://localhost}`
+- [x] `PageMeta.tsx` — добавлен `<meta name="twitter:image" content={img} />`
 
 ---
 

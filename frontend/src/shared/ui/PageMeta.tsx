@@ -27,6 +27,7 @@ export function PageMeta({ title, description, ogImage }: PageMetaProps) {
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={fullTitle} />
       <meta name="twitter:description" content={desc} />
+      <meta name="twitter:image" content={img} />
     </Helmet>
   );
 }
