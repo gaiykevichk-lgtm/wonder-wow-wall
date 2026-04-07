@@ -117,6 +117,9 @@ def upgrade() -> None:
         sa.Column("expires_at", sa.DateTime, nullable=False),
     )
 
+    # ── Sequences ─────────────────────────────────────────────────────
+    op.execute(sa.text("CREATE SEQUENCE IF NOT EXISTS order_number_seq START WITH 1 INCREMENT BY 1"))
+
     # ── Projects ─────────────────────────────────────────────────────
     op.create_table(
         "projects",
@@ -134,6 +137,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    op.execute(sa.text("DROP SEQUENCE IF EXISTS order_number_seq"))
     op.drop_table("projects")
     op.drop_table("subscriptions")
     op.drop_table("order_items")

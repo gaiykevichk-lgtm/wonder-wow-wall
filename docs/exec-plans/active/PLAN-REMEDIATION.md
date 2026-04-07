@@ -33,14 +33,17 @@
 - [x] Добавить `Depends()` в роутеры (все 6 роутеров переведены)
 - [x] Сохранить in-memory режим как fallback для тестов (`USE_MEMORY_REPOS=true`)
 
-### 1.5 Code review (07.04.2026)
+### 1.5 Code review и исправления (07.04.2026)
 - [x] **CRITICAL FIX**: Единая сессия per-request — заменены вложенные async-генераторы на `Depends(get_db_session)` с кешированием FastAPI
 - [x] **CRITICAL FIX**: `DesignRepository.update()` — добавлен в ABC, InMemory и SQL реализации; `AddReview` use case теперь персистит rating+reviews_count
 - [x] **CRITICAL FIX**: Убрано дублирование `reviews_count++` из `SqlReviewRepository.add()` — теперь управляется только через use case + design_repo.update()
 - [x] **FIX**: `design_reviews.user_id` FK теперь с `ON DELETE CASCADE`
 - [x] **FIX**: `seed_db.py` — `async_sessionmaker` вместо legacy `sessionmaker`
+- [x] **FIX**: `generate_order_number()` — заменён `COUNT(*)+1` на PostgreSQL SEQUENCE `order_number_seq` (race-condition safe)
+- [x] **FIX**: Адрес заказа хранится как JSON вместо pipe-delimited text (безопасный парсинг)
+- [x] **FIX**: Seed-данные вынесены в `app/seed_data.py` — единый источник для container.py и seed_db.py
+- [x] **FIX**: Добавлен `conftest.py` с `USE_MEMORY_REPOS=true` — тесты не зависят от `.env`
 - [ ] **TODO**: Интеграционные тесты для SQL-репозиториев (требует PostgreSQL)
-- [ ] **TODO**: Seed-данные дублируются между `container.py` и `seed_db.py` — вынести в общий источник
 
 ### 1.4 Проверка
 - [ ] `docker compose up -d` → backend + PostgreSQL + Redis стартуют без ошибок (требует Docker)

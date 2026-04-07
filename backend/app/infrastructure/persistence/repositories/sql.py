@@ -1,5 +1,6 @@
 """SQL repository implementations — SQLAlchemy async, mapped to domain entities."""
 
+import json
 from datetime import datetime
 from uuid import uuid4
 
@@ -67,14 +68,19 @@ def _order_to_domain(m: OrderModel) -> Order:
         )
         for it in (m.items or [])
     ]
-    # Parse address from stored text (city|street|building|apartment|postal)
-    parts = (m.address or "").split("|")
+    # Parse address from stored JSON string
+    addr_data = {}
+    if m.address:
+        try:
+            addr_data = json.loads(m.address)
+        except (ValueError, TypeError):
+            addr_data = {}
     address = Address(
-        city=parts[0] if len(parts) > 0 else "",
-        street=parts[1] if len(parts) > 1 else "",
-        building=parts[2] if len(parts) > 2 else "",
-        apartment=parts[3] if len(parts) > 3 else "",
-        postal_code=parts[4] if len(parts) > 4 else "",
+        city=addr_data.get("city", ""),
+        street=addr_data.get("street", ""),
+        building=addr_data.get("building", ""),
+        apartment=addr_data.get("apartment", ""),
+        postal_code=addr_data.get("postal_code", ""),
     )
     return Order(
         id=m.id, number=m.number, user_id=m.user_id,
@@ -83,8 +89,11 @@ def _order_to_domain(m: OrderModel) -> Order:
     )
 
 
-def _address_to_text(a: Address) -> str:
-    return f"{a.city}|{a.street}|{a.building}|{a.apartment}|{a.postal_code}"
+def _address_to_json(a: Address) -> str:
+    return json.dumps({
+        "city": a.city, "street": a.street, "building": a.building,
+        "apartment": a.apartment, "postal_code": a.postal_code,
+    }, ensure_ascii=False)
 
 
 def _subscription_to_domain(m: SubscriptionModel) -> Subscription:
@@ -237,7 +246,7 @@ class SqlOrderRepository(OrderRepository):
     async def create(self, order: Order) -> Order:
         model = OrderModel(
             id=order.id, number=order.number, user_id=order.user_id,
-            status=order.status.value, address=_address_to_text(order.address),
+            status=order.status.value, address=_address_to_json(order.address),
             total=order.total, created_at=order.created_at, updated_at=order.updated_at,
         )
         self._session.add(model)
@@ -277,16 +286,17 @@ class SqlOrderRepository(OrderRepository):
         model = await self._session.get(OrderModel, order.id)
         if model:
             model.status = order.status.value
-            model.address = _address_to_text(order.address)
+            model.address = _address_to_json(order.address)
             model.total = order.total
             model.updated_at = datetime.utcnow()
         await self._session.flush()
         return order
 
     async def generate_order_number(self) -> str:
-        result = await self._session.execute(select(func.count()).select_from(OrderModel))
-        count = (result.scalar() or 0) + 1
-        return f"WOW-{count:06d}"
+        from sqlalchemy import text
+        result = await self._session.execute(text("SELECT nextval('order_number_seq')"))
+        seq = result.scalar()
+        return f"WOW-{seq:06d}"
 
 
 class SqlSubscriptionRepository(SubscriptionRepository):
