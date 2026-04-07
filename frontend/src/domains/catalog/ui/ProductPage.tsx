@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { message, Skeleton, Rate, Input, Button } from 'antd';
-import { ShoppingCartOutlined, HeartOutlined, LeftOutlined, StarFilled, UserOutlined } from '@ant-design/icons';
+import { ShoppingCartOutlined, HeartOutlined, LeftOutlined, StarFilled, UserOutlined, CameraOutlined, LayoutOutlined } from '@ant-design/icons';
 import { motion, useScroll, useMotionValueEvent, AnimatePresence } from 'framer-motion';
 import { products as mockProducts } from '../model/data';
 import { useDesign, useDesigns, useDesignReviews, useAddReview } from '../api/catalogApi';
@@ -315,6 +315,31 @@ export default function ProductPage() {
         <motion.div variants={fadeUp} initial="hidden" animate="show" custom={0.4} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 16, color: '#34C759', fontSize: 14, fontWeight: 600 }}>
           <svg width="14" height="14" viewBox="0 0 20 20" fill="#34C759"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
           В наличии
+        </motion.div>
+
+        <motion.div
+          variants={fadeUp}
+          initial="hidden"
+          animate="show"
+          custom={0.45}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 20 }}
+        >
+          <button
+            onClick={() => navigate(`/visualizer?designId=${id}`)}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', color: '#2D2D2D', border: '1.5px solid #E5E7EB', height: 48, borderRadius: 8, fontWeight: 600, fontSize: 15, padding: '0 24px', cursor: 'pointer', transition: 'border-color 0.2s' }}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = '#2D2D2D')}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = '#E5E7EB')}
+          >
+            <CameraOutlined style={{ fontSize: 16 }} /> Примерить на фото
+          </button>
+          <button
+            onClick={() => navigate(`/constructor?designId=${id}`)}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', color: '#2D2D2D', border: '1.5px solid #E5E7EB', height: 48, borderRadius: 8, fontWeight: 600, fontSize: 15, padding: '0 24px', cursor: 'pointer', transition: 'border-color 0.2s' }}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = '#2D2D2D')}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = '#E5E7EB')}
+          >
+            <LayoutOutlined style={{ fontSize: 16 }} /> Примерить в конструкторе
+          </button>
         </motion.div>
       </section>
 

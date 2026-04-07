@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Card, Rate, Tag, Input, Select, Slider, Button, Skeleton } from 'antd';
-import { SearchOutlined, FilterOutlined, AppstoreOutlined, UnorderedListOutlined, HeartOutlined, HeartFilled } from '@ant-design/icons';
+import { SearchOutlined, FilterOutlined, AppstoreOutlined, UnorderedListOutlined, HeartOutlined, HeartFilled, CameraOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { products as mockProducts, categories as mockCategories } from '../model/data';
@@ -437,6 +437,7 @@ interface GridCardProps {
 }
 
 function GridCard({ product, index, hovered, isFavorite, onToggleFavorite, onHover, onAddToCart, onNavigate }: GridCardProps) {
+  const navigate = useNavigate();
   return (
     <motion.div
       custom={index}
@@ -502,6 +503,29 @@ function GridCard({ product, index, hovered, isFavorite, onToggleFavorite, onHov
                 position: 'absolute',
                 top: 8,
                 right: 8,
+                background: 'rgba(255,255,255,0.9)',
+                borderRadius: '50%',
+                width: 32,
+                height: 32,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 0,
+                border: 'none',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+              }}
+            />
+
+            {/* Visualizer button */}
+            <Button
+              type="text"
+              icon={<CameraOutlined style={{ fontSize: 16, color: '#6B7280' }} />}
+              onClick={(e) => { e.stopPropagation(); navigate(`/visualizer?designId=${product.id}`); }}
+              title="Примерить на фото"
+              style={{
+                position: 'absolute',
+                top: 8,
+                right: 44,
                 background: 'rgba(255,255,255,0.9)',
                 borderRadius: '50%',
                 width: 32,

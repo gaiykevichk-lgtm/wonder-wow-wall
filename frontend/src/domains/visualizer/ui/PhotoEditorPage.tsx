@@ -16,6 +16,7 @@ import { MaskToolbar } from './MaskToolbar';
 import { PanelPicker } from './PanelPicker';
 import { PlacementControls } from './PlacementControls';
 import { CostSummary } from './CostSummary';
+import { useSearchParams } from 'react-router-dom';
 import type { Point } from '../model/types';
 
 const { Title, Text } = Typography;
@@ -30,13 +31,16 @@ export default function PhotoEditorPage() {
   const [panOffset, setPanOffset] = useState<Point>({ x: 0, y: 0 });
   const [editingMask, setEditingMask] = useState(false);
 
-  // Init first design
+  const [searchParams] = useSearchParams();
+
+  // Init design from URL param or first product
   useEffect(() => {
     if (!store.selectedDesignId && products.length > 0) {
-      const first = products[0]!;
-      store.setSelectedDesign(first.id, first.name, first.image);
-      if (first.colors.length > 0) {
-        store.setSelectedColor(first.colors[0]!.hex, first.colors[0]!.name);
+      const designIdParam = searchParams.get('designId');
+      const target = (designIdParam && products.find((p) => p.id === designIdParam)) || products[0]!;
+      store.setSelectedDesign(target.id, target.name, target.image);
+      if (target.colors.length > 0) {
+        store.setSelectedColor(target.colors[0]!.hex, target.colors[0]!.name);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

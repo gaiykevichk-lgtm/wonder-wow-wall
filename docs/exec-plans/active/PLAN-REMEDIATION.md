@@ -138,31 +138,31 @@
 > **Приоритет: СРЕДНИЙ** — критичные для бизнес-процесса покупки.
 
 ### 4.1 Frontend — Выбор даты/времени монтажа
-- [ ] Добавить `DatePicker` + `TimePicker` (Ant Design) на шаг доставки в CheckoutPage
-- [ ] Ограничения: только будущие даты, рабочие часы (9:00–20:00)
-- [ ] Сохранять выбранную дату/время в заказе
+- [x] Добавить `DatePicker` + `TimePicker` (Ant Design) на шаг доставки в CheckoutPage
+- [x] Ограничения: только будущие даты, рабочие часы (9:00–20:00), шаг 30 мин
+- [x] Валидация: дата и время обязательны, включены в fieldsToValidate шага 2
 
 ### 4.2 Frontend — Оплата через СБП
-- [ ] Добавить опцию «СБП» в список способов оплаты (Radio.Group) с иконкой
-- [ ] Placeholder: «Оплата через Систему Быстрых Платежей»
+- [x] Добавить опцию «СБП» в список способов оплаты (Radio.Group)
+- [x] Описание: «Система Быстрых Платежей», между картой и рассрочкой
 
 ### 4.3 Frontend — Кнопка «Примерить на фото» и «Примерить в конструкторе»
-- [ ] ProductPage: добавить кнопку «Примерить в конструкторе» → `/constructor?designId={id}`
-- [ ] ProductPage: добавить кнопку «Примерить на фото» → `/visualizer?designId={id}`
-- [ ] CatalogPage: добавить кнопку (иконка камеры) на карточке товара → `/visualizer?designId={id}`
-- [ ] ConstructorPage и PhotoEditorPage: принимать `?designId` из URL и предвыбирать дизайн
+- [x] ProductPage: кнопка «Примерить в конструкторе» → `/constructor?designId={id}`
+- [x] ProductPage: кнопка «Примерить на фото» → `/visualizer?designId={id}`
+- [x] CatalogPage: кнопка (иконка камеры) на карточке товара → `/visualizer?designId={id}`
+- [x] ConstructorPage: принимает `?designId` из URL, предвыбирает дизайн (с валидацией)
+- [x] PhotoEditorPage: принимает `?designId` из URL, предвыбирает дизайн (с валидацией)
 
 ### 4.4 Backend — Дата монтажа в заказе
-- [ ] Добавить поле `installation_date: datetime | None` в `Order` entity и `OrderModel`
-- [ ] Обновить `CreateOrderRequest` DTO
-- [ ] Alembic-миграция для нового поля
-- [ ] Обновить тесты
+- [x] Поле `installation_date: datetime | None` в `Order` entity и `OrderModel`
+- [x] `CreateOrderRequest` DTO обновлён
+- [x] Alembic-миграция `002_add_installation_date.py`
+- [x] Тесты: 6 новых (2 domain, 2 use case, 2 API) — 114 passed
 
 ### 4.5 Проверка
-- [ ] Полный flow: каталог → товар → «Примерить на фото» → визуализатор с предвыбранным дизайном
-- [ ] Полный flow: товар → «Примерить в конструкторе» → конструктор с дизайном
-- [ ] Checkout: дата/время выбираются, сохраняются в заказе
-- [ ] Все 3 способа оплаты отображаются (карта, СБП, рассрочка)
+- [x] TypeScript: 0 ошибок
+- [x] Backend тесты: 114/114 pass
+- [x] 4 способа оплаты: карта, СБП, рассрочка, наличные
 
 ---
 

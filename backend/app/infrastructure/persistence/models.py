@@ -108,6 +108,7 @@ class OrderModel(Base):
     status: Mapped[str] = mapped_column(String(20), default="placed")
     address: Mapped[str] = mapped_column(Text, default="")
     total: Mapped[int] = mapped_column(Integer, default=0)
+    installation_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

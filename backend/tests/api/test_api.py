@@ -199,6 +199,33 @@ class TestOrders:
         assert len(resp.json()) >= 1
 
 
+    @pytest.mark.asyncio
+    async def test_create_order_with_installation_date(self, client):
+        token = await _register_and_get_token(client)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        resp = await client.post("/api/orders", json={
+            "items": [{"design_id": "d-1", "design_name": "Test", "size_key": "300x300", "quantity": 1, "unit_price": 1000}],
+            "address": {"city": "Москва", "street": "Тверская", "building": "10"},
+            "installation_date": "2026-05-20T14:00:00",
+        }, headers=headers)
+        assert resp.status_code == 201
+        assert resp.json()["installation_date"] is not None
+        assert "2026-05-20" in resp.json()["installation_date"]
+
+    @pytest.mark.asyncio
+    async def test_create_order_without_installation_date(self, client):
+        token = await _register_and_get_token(client)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        resp = await client.post("/api/orders", json={
+            "items": [{"design_id": "d-1", "design_name": "Test", "size_key": "300x300", "quantity": 1, "unit_price": 1000}],
+            "address": {"city": "Москва", "street": "Тверская", "building": "10"},
+        }, headers=headers)
+        assert resp.status_code == 201
+        assert resp.json()["installation_date"] is None
+
+
 class TestCalculator:
     @pytest.mark.asyncio
     async def test_calculate(self, client):

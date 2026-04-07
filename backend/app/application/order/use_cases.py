@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from app.domain.order.entities import Order, OrderItem
 from app.domain.order.repositories import OrderRepository
 from app.domain.order.value_objects import Address
@@ -10,12 +12,14 @@ class CreateOrder:
 
     async def execute(
         self, user_id: str, items: list[dict], address: dict,
+        installation_date: datetime | None = None,
     ) -> Order:
         number = await self.repo.generate_order_number()
         order = Order(
             number=number,
             user_id=user_id,
             address=Address(**address),
+            installation_date=installation_date,
         )
         for item_data in items:
             order.add_item(OrderItem(

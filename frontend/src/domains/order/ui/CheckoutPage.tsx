@@ -8,6 +8,8 @@ import {
   Radio,
   Steps,
   message,
+  DatePicker,
+  TimePicker,
 } from 'antd';
 import {
   UserOutlined,
@@ -15,8 +17,11 @@ import {
   CreditCardOutlined,
   CheckCircleOutlined,
   ShoppingCartOutlined,
+  CalendarOutlined,
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
+import dayjs from 'dayjs';
+import type { Dayjs } from 'dayjs';
 import { useCartStore } from '../model/cartStore';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
@@ -156,7 +161,7 @@ const CheckoutPage: React.FC = () => {
   const handleNext = async () => {
     const fieldsToValidate: string[][] = [
       ['firstName', 'lastName', 'phone', 'email'],
-      ['address'],
+      delivery !== 'pickup' ? ['address', 'installationDate', 'installationTime'] : ['installationDate', 'installationTime'],
       [],
     ];
     try {
@@ -267,6 +272,50 @@ const CheckoutPage: React.FC = () => {
           placeholder="Дополнительная информация для курьера или мастера..."
         />
       </Form.Item>
+      <div style={{ marginTop: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <CalendarOutlined style={{ color: ACCENT, fontSize: 16 }} />
+          <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 600, color: DARK }}>
+            Дата и время монтажа
+          </span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <Form.Item
+            name="installationDate"
+            label={label('Дата')}
+            rules={[{ required: true, message: 'Выберите дату монтажа' }]}
+          >
+            <DatePicker
+              format="DD.MM.YYYY"
+              placeholder="Выберите дату"
+              disabledDate={(current: Dayjs) => current && current.isBefore(dayjs().endOf('day'))}
+              style={{ ...inputStyle, width: '100%' }}
+            />
+          </Form.Item>
+          <Form.Item
+            name="installationTime"
+            label={label('Время')}
+            rules={[{ required: true, message: 'Выберите время' }]}
+          >
+            <TimePicker
+              format="HH:mm"
+              minuteStep={30}
+              placeholder="Выберите время"
+              disabledHours={() => {
+                const hours = [];
+                for (let i = 0; i < 9; i++) hours.push(i);
+                for (let i = 21; i < 24; i++) hours.push(i);
+                return hours;
+              }}
+              hideDisabledOptions
+              style={{ ...inputStyle, width: '100%' }}
+            />
+          </Form.Item>
+        </div>
+        <p style={{ fontFamily: FONT, fontSize: 12, color: GRAY_TEXT, margin: '-8px 0 0' }}>
+          Доступное время: с 9:00 до 20:00, только будущие даты
+        </p>
+      </div>
     </div>
   );
 
@@ -279,6 +328,7 @@ const CheckoutPage: React.FC = () => {
       >
         {[
           { value: 'card', label: 'Банковская карта', desc: 'Visa, Mastercard, МИР' },
+          { value: 'sbp', label: 'СБП', desc: 'Система Быстрых Платежей' },
           { value: 'installment', label: 'Рассрочка', desc: 'На 12 месяцев без переплат' },
           { value: 'cash', label: 'Наличные', desc: 'При получении или самовывозе' },
         ].map((opt) => (

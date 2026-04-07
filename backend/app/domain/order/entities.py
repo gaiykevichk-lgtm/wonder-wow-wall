@@ -31,6 +31,7 @@ class Order:
     status: OrderStatus = OrderStatus.PLACED
     items: list[OrderItem] = field(default_factory=list)
     address: Address = field(default_factory=lambda: Address("", "", ""))
+    installation_date: datetime | None = None
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
 

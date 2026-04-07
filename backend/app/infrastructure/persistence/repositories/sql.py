@@ -85,6 +85,7 @@ def _order_to_domain(m: OrderModel) -> Order:
     return Order(
         id=m.id, number=m.number, user_id=m.user_id,
         status=OrderStatus(m.status), items=items, address=address,
+        installation_date=m.installation_date,
         created_at=m.created_at, updated_at=m.updated_at,
     )
 
@@ -265,7 +266,8 @@ class SqlOrderRepository(OrderRepository):
         model = OrderModel(
             id=order.id, number=order.number, user_id=order.user_id,
             status=order.status.value, address=_address_to_json(order.address),
-            total=order.total, created_at=order.created_at, updated_at=order.updated_at,
+            total=order.total, installation_date=order.installation_date,
+            created_at=order.created_at, updated_at=order.updated_at,
         )
         self._session.add(model)
         for item in order.items:
@@ -306,6 +308,7 @@ class SqlOrderRepository(OrderRepository):
             model.status = order.status.value
             model.address = _address_to_json(order.address)
             model.total = order.total
+            model.installation_date = order.installation_date
             model.updated_at = datetime.utcnow()
         await self._session.flush()
         return order

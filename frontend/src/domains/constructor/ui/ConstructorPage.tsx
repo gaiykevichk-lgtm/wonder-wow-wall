@@ -13,6 +13,7 @@ import {
   CrownOutlined,
 } from '@ant-design/icons';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams } from 'react-router-dom';
 import { products } from '../../catalog/model/data';
 import { PANEL_SIZES, BASE_PANEL_PRICES, DESIGN_OVERLAY_PRICE } from '../../../shared/config/constants';
 import { useSubscriptionStore } from '../../subscription/model/subscriptionStore';
@@ -119,7 +120,11 @@ export default function ConstructorPage() {
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
 
   // Panel selection
-  const [selectedDesignId, setSelectedDesignId] = useState(products[0].id);
+  const [searchParams] = useSearchParams();
+  const initialDesignId = searchParams.get('designId') || products[0].id;
+  const [selectedDesignId, setSelectedDesignId] = useState(
+    products.some((p) => p.id === initialDesignId) ? initialDesignId : products[0].id
+  );
   const [selectedSizeKey, setSelectedSizeKey] = useState<PanelSizeKey>('30x30');
   const [selectedColorIdx, setSelectedColorIdx] = useState(0);
 

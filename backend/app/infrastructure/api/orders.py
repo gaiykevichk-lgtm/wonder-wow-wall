@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
@@ -31,6 +33,7 @@ class AddressRequest(BaseModel):
 class CreateOrderRequest(BaseModel):
     items: list[OrderItemRequest]
     address: AddressRequest
+    installation_date: datetime | None = None
 
 
 class OrderItemSchema(BaseModel):
@@ -49,6 +52,7 @@ class OrderSchema(BaseModel):
     status: str
     total: int
     address: str
+    installation_date: str | None = None
     items: list[OrderItemSchema]
     created_at: str
 
@@ -67,6 +71,7 @@ async def create_order(body: CreateOrderRequest, user_id: str = Depends(get_curr
         user_id=user_id,
         items=[item.model_dump() for item in body.items],
         address=body.address.model_dump(),
+        installation_date=body.installation_date,
     )
     return _order_to_response(order)
 
@@ -107,5 +112,6 @@ def _order_to_response(order) -> dict:
             }
             for i in order.items
         ],
+        "installation_date": order.installation_date.isoformat() if order.installation_date else None,
         "created_at": order.created_at.isoformat(),
     }
