@@ -470,8 +470,8 @@ export default function ConstructorPage() {
     <div style={{ paddingTop: 72, background: LIGHT_BG, minHeight: '100vh', fontFamily: FONT, overflowX: 'hidden' }}>
       <PageMeta title="Конструктор" />
       {/* Page Header */}
-      <div style={{ background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.04)', padding: '28px 24px' }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+      <div style={{ background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.04)', padding: '20px 12px' }}>
+        <div style={{ maxWidth: 1400, margin: '0 auto', boxSizing: 'border-box' }}>
           <h1 className="page-header-title" style={{ fontSize: 28, fontWeight: 600, color: DARK, margin: '0 0 6px', letterSpacing: '-0.02em' }}>
             Конструктор стен
           </h1>
@@ -490,7 +490,7 @@ export default function ConstructorPage() {
           padding: '20px 0 20px',
         }}
       >
-        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 24px' }}>
+        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 12px' }}>
           <div className="preset-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <span style={{ fontWeight: 600, fontSize: 15, color: DARK }}>Пресеты интерьеров</span>
@@ -883,7 +883,7 @@ export default function ConstructorPage() {
             </div>
 
             {/* Action buttons */}
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div className="constructor-action-btns" style={{ display: 'flex', gap: 8 }}>
               <Button
                 icon={<PlusOutlined />}
                 onClick={handleAddToWall}
@@ -1631,8 +1631,19 @@ export default function ConstructorPage() {
         @media (max-width: 900px) {
           .constructor-layout {
             grid-template-columns: 1fr !important;
-            padding: 16px !important;
-            gap: 16px !important;
+            padding: 12px !important;
+            gap: 14px !important;
+          }
+          /* All cards must not overflow */
+          .constructor-layout .ant-card {
+            max-width: 100% !important;
+            overflow: hidden !important;
+          }
+          .constructor-layout .ant-card-body {
+            padding: 14px !important;
+            max-width: 100% !important;
+            overflow: hidden !important;
+            box-sizing: border-box !important;
           }
         }
         @media (max-width: 768px) {
@@ -1642,7 +1653,7 @@ export default function ConstructorPage() {
           }
           .cost-stats-grid {
             grid-template-columns: repeat(2, 1fr) !important;
-            column-gap: 16px !important;
+            column-gap: 12px !important;
           }
           .cost-actions {
             width: 100% !important;
@@ -1652,10 +1663,11 @@ export default function ConstructorPage() {
             min-width: 0 !important;
           }
           .sub-banner {
-            padding: 16px 18px !important;
-            margin-left: 16px !important;
-            margin-right: 16px !important;
-            max-width: calc(100% - 32px) !important;
+            padding: 16px !important;
+            margin-left: 12px !important;
+            margin-right: 12px !important;
+            max-width: calc(100% - 24px) !important;
+            box-sizing: border-box !important;
             border-radius: 12px !important;
           }
           .sub-banner-text-title { font-size: 14px !important; }
@@ -1672,6 +1684,18 @@ export default function ConstructorPage() {
           }
           .page-header-title { font-size: 22px !important; }
           .page-header-desc { font-size: 13px !important; }
+          /* Action buttons: wrap if needed */
+          .constructor-action-btns {
+            flex-wrap: wrap !important;
+          }
+          /* Size switcher overflow fix */
+          .size-switcher {
+            overflow: hidden !important;
+          }
+          .size-switcher .ant-radio-button-wrapper {
+            padding: 0 8px !important;
+            font-size: 12px !important;
+          }
         }
         @media (max-width: 480px) {
           .cost-stats-grid {
@@ -1686,6 +1710,13 @@ export default function ConstructorPage() {
           .sub-banner {
             flex-direction: column !important;
             align-items: flex-start !important;
+          }
+          .constructor-action-btns {
+            gap: 6px !important;
+          }
+          .constructor-action-btns .ant-btn {
+            font-size: 12px !important;
+            padding: 0 10px !important;
           }
         }
       `}</style>
