@@ -384,6 +384,10 @@
 - [ ] CI pipeline: green на clean branch (требует GitHub)
 - [x] TypeScript 0 errors, 183 frontend + 130 backend тестов pass
 
+### 10.6 Тех.долг (выявлен code review)
+- [ ] `frontend/nginx.conf` — `add_header` в location `/assets/` и regex перезаписывает server-level security headers (nginx inheritance). Перенести security headers в каждый location или использовать `include`
+- [ ] `backend/` — добавить `.dockerignore` (исключить `__pycache__`, `.pytest_cache`, `tests/`, `.env`, `*.md`)
+
 ---
 
 ## Фаза 11: Мобильная адаптация
