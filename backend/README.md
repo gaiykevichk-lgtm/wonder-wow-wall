@@ -3,33 +3,37 @@
 REST API для B2C интернет-магазина модульных стеновых панелей.
 Архитектура: **Domain-Driven Design (DDD)** — Domain / Application / Infrastructure layers.
 
-> **Статус**: ✅ реализовано (Фаза 9). DDD-архитектура, in-memory репозитории, 29 API-маршрутов, 97 тестов.
+> **Статус**: MVP реализован. DDD-архитектура, in-memory репозитории, 25 API-эндпоинтов, 97 тестов, ORM-модели подготовлены.
 
-## Стек (планируемый)
+## Стек
 
-| Технология | Назначение |
-|-----------|-----------|
-| FastAPI | REST API фреймворк |
-| SQLAlchemy 2.0 | ORM (async) |
-| PostgreSQL 16 | Основная БД |
-| Redis | Кеширование, сессии |
-| Alembic | Миграции БД |
-| Pydantic v2 | Валидация и сериализация |
-| JWT (python-jose) | Аутентификация |
-| Docker | Контейнеризация |
-| pytest + httpx | Тестирование |
+| Технология | Версия | Назначение |
+|-----------|--------|-----------|
+| Python | 3.12 | Язык (async/await) |
+| FastAPI | 0.115 | REST API фреймворк |
+| Uvicorn | 0.34 | ASGI-сервер |
+| SQLAlchemy | 2.0 | ORM (async mode) |
+| asyncpg | 0.31 | PostgreSQL async-драйвер |
+| PostgreSQL | 16 | Основная БД (через Docker) |
+| Redis | 7 | Кеширование, сессии (опционально) |
+| Alembic | 1.16 | Миграции БД |
+| Pydantic | 2.11 | Валидация и сериализация |
+| pydantic-settings | 2.9 | Конфигурация из .env |
+| python-jose | 3.5 | JWT-аутентификация |
+| passlib (bcrypt) | 1.7 | Хеширование паролей |
+| pytest + httpx | 8.4 + 0.28 | Тестирование (async) |
+| Docker | — | Контейнеризация |
 
-## Запуск (после реализации)
+## Запуск
 
 ```bash
-# Локально
+# Локально (с in-memory репозиториями)
 pip install -r requirements.txt
 cp .env.example .env
-alembic upgrade head
-uvicorn app.main:app --reload --port 8080
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8080
 
-# Docker
-docker compose up -d
+# Docker (backend + PostgreSQL + Redis)
+docker compose up -d    # docker-compose.yml в корне проекта
 ```
 
 ## Архитектура (DDD)
@@ -46,21 +50,22 @@ docker compose up -d
 ```
 backend/
 ├── app/
-│   ├── main.py                  # FastAPI приложение, middleware, CORS
+│   ├── main.py                  # FastAPI приложение, CORS, роутеры
 │   ├── config.py                # Настройки (Pydantic BaseSettings)
+│   ├── container.py             # DI-контейнер, seed-данные (12 дизайнов, 6 категорий)
 │   │
 │   ├── domain/                  # Domain Layer (чистая бизнес-логика)
 │   │   ├── catalog/             # Bounded Context: Каталог
 │   │   │   ├── entities.py      # Design (Aggregate Root), Category, DesignReview
 │   │   │   ├── value_objects.py # PanelSize, Color, Price
-│   │   │   ├── repositories.py  # Абстрактные интерфейсы репозиториев (ABC)
-│   │   │   └── services.py     # Доменные сервисы каталога
+│   │   │   ├── repositories.py  # Абстрактные интерфейсы (ABC)
+│   │   │   └── services.py      # Доменные сервисы каталога
 │   │   │
 │   │   ├── order/               # Bounded Context: Заказы
 │   │   │   ├── entities.py      # Order (Aggregate Root), OrderItem
 │   │   │   ├── value_objects.py # Address, OrderStatus, Money
 │   │   │   ├── repositories.py
-│   │   │   └── services.py     # PricingService (доменный сервис)
+│   │   │   └── services.py      # PricingService
 │   │   │
 │   │   ├── subscription/        # Bounded Context: Подписки
 │   │   │   ├── entities.py      # Subscription (Aggregate Root), SubscriptionPlan
@@ -69,12 +74,12 @@ backend/
 │   │   │   └── services.py
 │   │   │
 │   │   └── user/                # Bounded Context: Пользователи
-│   │       ├── entities.py      # User (Aggregate Root)
+│   │       ├── entities.py      # User (Aggregate Root), UserAddress
 │   │       ├── value_objects.py # Email, Password
 │   │       ├── repositories.py
 │   │       └── services.py
 │   │
-│   ├── application/             # Application Layer (use cases, координация)
+│   ├── application/             # Application Layer (use cases)
 │   │   ├── catalog/
 │   │   │   └── use_cases.py     # ListDesigns, GetDesignDetails, AddReview
 │   │   ├── order/
@@ -82,52 +87,47 @@ backend/
 │   │   ├── subscription/
 │   │   │   └── use_cases.py     # Subscribe, CancelSubscription, CheckOverlayLimit
 │   │   └── user/
-│   │       └── use_cases.py     # Register, Login, UpdateProfile
+│   │       └── use_cases.py     # Register, Login, GetProfile, UpdateProfile
 │   │
 │   ├── infrastructure/          # Infrastructure Layer (реализации)
+│   │   ├── api/                 # FastAPI роутеры (HTTP-адаптеры)
+│   │   │   ├── auth.py          # POST /register, /login; GET/PATCH /me
+│   │   │   ├── catalog.py       # GET /designs, /categories, /reviews; POST /reviews
+│   │   │   ├── orders.py        # POST/GET /orders, POST /calculate
+│   │   │   ├── subscriptions.py # GET /plans, POST/GET/DELETE /subscriptions
+│   │   │   ├── projects.py      # CRUD /projects
+│   │   │   └── contacts.py      # POST /contacts, /calculator
+│   │   │
 │   │   ├── persistence/
 │   │   │   ├── database.py      # Async engine, sessionmaker, Base
-│   │   │   ├── models.py        # SQLAlchemy ORM-модели (маппинг на доменные сущности)
-│   │   │   └── repositories/    # Реализации репозиториев
-│   │   │       ├── catalog_repo.py
-│   │   │       ├── order_repo.py
-│   │   │       ├── subscription_repo.py
-│   │   │       └── user_repo.py
-│   │   │
-│   │   ├── api/                 # FastAPI роутеры (адаптеры)
-│   │   │   ├── catalog.py       # GET /api/designs, /categories, /reviews
-│   │   │   ├── orders.py        # POST/GET /api/orders
-│   │   │   ├── subscriptions.py # POST/GET/DELETE /api/subscriptions
-│   │   │   ├── auth.py          # POST /api/auth/register, /login
-│   │   │   ├── projects.py      # CRUD /api/projects
-│   │   │   └── contacts.py      # POST /api/contacts
+│   │   │   ├── models.py        # SQLAlchemy ORM-модели (10 таблиц)
+│   │   │   └── repositories/
+│   │   │       └── memory.py    # In-memory реализации всех репозиториев
 │   │   │
 │   │   └── security/
-│   │       └── jwt.py           # JWT tokens, password hashing
+│   │       └── jwt.py           # JWT tokens (HS256), bcrypt hashing
 │   │
 │   └── utils/
-│       └── dependencies.py      # FastAPI Depends (get_db, get_current_user)
+│       └── dependencies.py      # FastAPI Depends (get_current_user_id, get_optional_user_id)
 │
-├── alembic/                     # Миграции
-├── tests/                       # Тесты по bounded contexts
-│   ├── domain/                  # Unit-тесты доменного слоя
-│   │   ├── test_catalog.py
-│   │   ├── test_order.py
-│   │   └── test_subscription.py
+├── alembic/                     # Миграции (подготовлено, скрипты не созданы)
+├── tests/                       # 97 тестов по bounded contexts
+│   ├── domain/                  # Unit-тесты доменных сущностей
+│   │   ├── test_catalog.py      # 19 тестов
+│   │   ├── test_order.py        # 17 тестов
+│   │   ├── test_subscription.py # 15 тестов
+│   │   └── test_user.py         # 10 тестов
 │   ├── application/             # Тесты use cases
-│   │   ├── test_catalog_use_cases.py
-│   │   └── test_order_use_cases.py
+│   │   ├── test_catalog_use_cases.py  # 11 тестов
+│   │   └── test_order_use_cases.py    # 7 тестов
 │   └── api/                     # Интеграционные тесты API
-│       ├── test_catalog_api.py
-│       ├── test_orders_api.py
-│       └── test_auth_api.py
+│       └── test_api.py          # 18 тестов (health, auth, catalog, orders, subscriptions, projects, calculator, contacts)
 │
-├── Dockerfile
-├── docker-compose.yml
-├── requirements.txt
-├── .env.example
-├── alembic.ini
-├── CONVENTIONS.md
+├── Dockerfile                   # python:3.12-slim → uvicorn :8080
+├── requirements.txt             # Зависимости
+├── .env.example                 # Шаблон переменных окружения
+├── alembic.ini                  # Конфигурация Alembic
+├── CONVENTIONS.md               # Гайд по стилю кода (DDD)
 └── README.md                    ← вы здесь
 ```
 
@@ -138,115 +138,162 @@ backend/
 | **Catalog** | Design | Category, DesignReview | PanelSize, Color, Price |
 | **Order** | Order | OrderItem | Address, OrderStatus, Money |
 | **Subscription** | Subscription | SubscriptionPlan | SubscriptionTier, BillingPeriod |
-| **User** | User | — | Email, Password |
+| **User** | User | UserAddress | Email, Password |
 
 ### Потоки данных (слои)
 
 ```
 HTTP Request
     ↓
-[Infrastructure: API Router] — валидация, сериализация
+[Infrastructure: API Router] — валидация (Pydantic), сериализация
     ↓
-[Application: Use Case] — координация, транзакции
+[Application: Use Case] — координация, бизнес-операции
     ↓
-[Domain: Entity + Service] — бизнес-правила
+[Domain: Entity + Service] — бизнес-правила, инварианты
     ↓
-[Infrastructure: Repository] — персистентность
+[Infrastructure: Repository] — персистентность (in-memory / SQL)
     ↓
 HTTP Response
 ```
 
-## API Endpoints (план)
+## API Endpoints
 
-### Auth
-| Метод | Путь | Описание |
-|-------|------|---------|
-| POST | `/api/auth/register` | Регистрация |
-| POST | `/api/auth/login` | Авторизация → JWT |
-| POST | `/api/auth/forgot-password` | Восстановление пароля |
-| GET | `/api/auth/me` | Текущий пользователь |
+25 эндпоинтов (24 бизнес-маршрута + health check). Все под префиксом `/api`.
 
-### Catalog (designs)
-| Метод | Путь | Описание |
-|-------|------|---------|
-| GET | `/api/designs` | Список дизайнов (фильтры, пагинация) |
-| GET | `/api/designs/:id` | Детали дизайна |
-| GET | `/api/categories` | Список категорий |
-| GET | `/api/designs/:id/reviews` | Отзывы к дизайну |
-| POST | `/api/designs/:id/reviews` | Добавить отзыв (auth) |
+### Auth (`/api/auth`)
+| Метод | Путь | Описание | Auth |
+|-------|------|---------|------|
+| POST | `/api/auth/register` | Регистрация → JWT | — |
+| POST | `/api/auth/login` | Авторизация → JWT | — |
+| GET | `/api/auth/me` | Текущий пользователь | Bearer |
+| PATCH | `/api/auth/me` | Обновление профиля | Bearer |
 
-### Orders
-| Метод | Путь | Описание |
-|-------|------|---------|
-| POST | `/api/orders` | Создать заказ |
-| GET | `/api/orders` | Мои заказы (auth) |
-| GET | `/api/orders/:id` | Детали заказа (auth) |
+### Catalog (`/api`)
+| Метод | Путь | Описание | Auth |
+|-------|------|---------|------|
+| GET | `/api/designs` | Список дизайнов (фильтры, пагинация, сортировка) | — |
+| GET | `/api/designs/{id}` | Детали дизайна | — |
+| GET | `/api/categories` | Список категорий | — |
+| GET | `/api/designs/{id}/reviews` | Отзывы к дизайну (пагинация) | — |
+| POST | `/api/designs/{id}/reviews` | Добавить отзыв | Bearer |
 
-### Subscriptions
-| Метод | Путь | Описание |
-|-------|------|---------|
-| GET | `/api/subscriptions/plans` | Доступные планы |
-| POST | `/api/subscriptions` | Оформить подписку (auth) |
-| GET | `/api/subscriptions/status` | Статус подписки (auth) |
-| DELETE | `/api/subscriptions` | Отменить подписку (auth) |
+### Orders (`/api/orders`)
+| Метод | Путь | Описание | Auth |
+|-------|------|---------|------|
+| POST | `/api/orders` | Создать заказ | Bearer |
+| GET | `/api/orders` | Мои заказы | Bearer |
+| GET | `/api/orders/{id}` | Детали заказа | Bearer |
+| POST | `/api/orders/calculate` | Расчёт стоимости | — |
 
-### Projects (конструктор)
-| Метод | Путь | Описание |
-|-------|------|---------|
-| POST | `/api/projects` | Сохранить проект (auth) |
-| GET | `/api/projects` | Мои проекты (auth) |
-| GET | `/api/projects/:id` | Детали проекта (auth) |
-| DELETE | `/api/projects/:id` | Удалить проект (auth) |
+### Subscriptions (`/api/subscriptions`)
+| Метод | Путь | Описание | Auth |
+|-------|------|---------|------|
+| GET | `/api/subscriptions/plans` | Доступные планы | — |
+| POST | `/api/subscriptions` | Оформить подписку | Bearer |
+| GET | `/api/subscriptions/status` | Статус подписки | Bearer |
+| DELETE | `/api/subscriptions` | Отменить подписку | Bearer |
 
-### Pricing
-| Метод | Путь | Описание |
-|-------|------|---------|
-| POST | `/api/calculator` | Расчёт стоимости стены |
+### Projects (`/api/projects`)
+| Метод | Путь | Описание | Auth |
+|-------|------|---------|------|
+| POST | `/api/projects` | Сохранить проект | Bearer |
+| GET | `/api/projects` | Мои проекты | Bearer |
+| GET | `/api/projects/{id}` | Детали проекта | Bearer |
+| PUT | `/api/projects/{id}` | Обновить проект | Bearer |
+| DELETE | `/api/projects/{id}` | Удалить проект | Bearer |
 
-### Other
-| Метод | Путь | Описание |
-|-------|------|---------|
-| POST | `/api/contacts` | Форма обратной связи |
-| GET | `/api/portfolio` | Портфолио проектов |
+### Other (`/api`)
+| Метод | Путь | Описание | Auth |
+|-------|------|---------|------|
+| POST | `/api/contacts` | Форма обратной связи | — |
+| POST | `/api/calculator` | Расчёт стоимости стены | — |
+| GET | `/api/health` | Health check | — |
 
-## Модель данных (доменные сущности)
+## Модель данных
 
-### Catalog Domain
+### Доменные сущности
 
-**Design** (Aggregate Root)
-- `id`, `name`, `slug`, `category_id`, `style`, `image_url`, `description`
-- `price` = 1 200 ₽ (единая цена для всех дизайнов)
-- `colors[]`, `specs{}`, `rating`, `reviews_count`
+**Catalog**
+- `Design` — id, name, slug, category_id, style, image, description, price (1 200 ₽), colors[], rating, reviews_count, is_new, is_popular
+- `Category` — id, name, slug, image, count
+- `DesignReview` — id, design_id, user_id, user_name, rating (1–5), text, created_at
 
-**PanelSize** (Value Object)
-- 3 размера: 300×300, 300×600, 600×600 мм
-- Цены: 890 / 1 490 / 2 490 ₽
+**Order**
+- `Order` — id, number, user_id, status, items[], address, total (computed), created_at
+- `OrderItem` — id, design_id, design_name, design_image, size_key, color, quantity, unit_price, subtotal (computed)
+- Статусы: `placed → confirmed → in_progress → delivered → installed`
 
-### Order Domain
+**Subscription**
+- `Subscription` — id, user_id, plan_id, status, overlays_used_this_month, started_at, expires_at
+- `SubscriptionPlan` — Starter (4 900 ₽, 10/мес), Popular (9 900 ₽, 25/мес), Business (19 900 ₽, безлимит)
 
-**Order** (Aggregate Root)
-- `id`, `user_id`, `status`, `total`, `items[]`, `address`, `created_at`
-- Статусы: pending → confirmed → in_progress → installed → completed
+**User**
+- `User` — id, email, password_hash, name, phone, addresses[], created_at
+- `UserAddress` — id, label, city, street, building, apartment, postal_code, is_default
 
-### Subscription Domain
+### ORM-модели (SQLAlchemy)
 
-**Subscription** (Aggregate Root)
-- `id`, `user_id`, `plan_id`, `status`, `started_at`, `expires_at`
+10 таблиц описаны в `app/infrastructure/persistence/models.py`:
+`users`, `user_addresses`, `categories`, `designs`, `design_reviews`, `orders`, `order_items`, `subscriptions`, `projects`
 
-**SubscriptionPlan**
-- `id`, `name`, `price`, `period`, `overlays_per_month`, `features[]`
+> ORM-модели готовы, но на данном этапе используются **in-memory репозитории**. Для перехода на PostgreSQL нужно создать Alembic-миграции и реализовать SQL-репозитории.
 
-### User Domain
+### Seed-данные (container.py)
+- 12 дизайнов с полными свойствами (названия, цвета, рейтинги)
+- 6 категорий (Природа, Абстракция, Геометрия, Минимализм, Текстуры, Арт)
+- 3 плана подписки (предзаполнены)
 
-**User** (Aggregate Root)
-- `id`, `email`, `password_hash`, `name`, `phone`, `created_at`
+## Аутентификация
+
+- **Механизм**: JWT (JSON Web Token), алгоритм HS256
+- **Хеширование**: bcrypt (passlib)
+- **Время жизни**: 24 часа (JWT_EXPIRE_MINUTES=1440)
+- **Заголовок**: `Authorization: Bearer <token>`
+- **Защищённые маршруты**: `/api/auth/me`, `/api/orders/*`, `/api/subscriptions/*` (кроме plans), `/api/projects/*`, `POST /api/designs/{id}/reviews`
+- **Dependency**: `get_current_user_id` (обязательный), `get_optional_user_id` (опциональный)
+
+## Тестирование
+
+97 тестов в 7 файлах. Фреймворк: **pytest + pytest-asyncio + httpx**.
+
+```bash
+cd backend
+pytest                    # Запуск всех тестов
+pytest tests/domain/      # Только unit-тесты
+pytest tests/api/         # Только API-тесты
+pytest -v                 # Подробный вывод
+```
+
+| Слой | Файлов | Тестов | Покрытие |
+|------|--------|--------|---------|
+| Domain | 4 | 61 | Все сущности и value objects |
+| Application | 2 | 18 | Use cases каталога и заказов |
+| API | 1 | 18 | Все эндпоинты (health, auth, catalog, orders, subscriptions, projects, calculator, contacts) |
 
 ## Переменные окружения (.env)
 
 ```env
-DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/wow_wall
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/wow_wall
 REDIS_URL=redis://localhost:6379
-JWT_SECRET=your-secret-key
-JWT_EXPIRE_MINUTES=1440
-CORS_ORIGINS=http://localhost:3000
+JWT_SECRET=change-me-in-production    # ОБЯЗАТЕЛЬНО сменить!
+JWT_EXPIRE_MINUTES=1440               # 24 часа
+CORS_ORIGINS=http://localhost:3000    # Через запятую для нескольких
 ```
+
+## Docker
+
+**Dockerfile** (`backend/Dockerfile`):
+```dockerfile
+FROM python:3.12-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+EXPOSE 8080
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+```
+
+**Docker Compose** (`docker-compose.yml` в корне проекта):
+- **backend** — FastAPI на порту 8080
+- **db** — PostgreSQL 16-alpine на порту 5432 (healthcheck, volume pgdata)
+- **redis** — Redis 7-alpine на порту 6379
