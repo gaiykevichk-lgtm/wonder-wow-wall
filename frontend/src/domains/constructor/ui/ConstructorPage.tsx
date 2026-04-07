@@ -53,10 +53,6 @@ interface InteriorPreset {
 const CELL_SIZE_MM = 300; // 30 cm grid cell
 const CELL_PX = 60; // pixels per cell on screen
 const GAP_PX = 2;
-const MAX_COLS = 20;
-const MAX_ROWS = 12;
-const INTERIOR_W = MAX_COLS * (CELL_PX + GAP_PX) + GAP_PX; // fixed background width
-const INTERIOR_H = MAX_ROWS * (CELL_PX + GAP_PX) + GAP_PX; // fixed background height
 
 const ACCENT = '#4CAF50';
 const DARK = '#2D2D2D';
@@ -1032,13 +1028,13 @@ export default function ConstructorPage() {
             </div>
 
             <div style={{ overflowX: 'auto', overflowY: 'auto', paddingBottom: 4 }}>
-              {/* Wall: interior mode has fixed background, grid mode sizes to grid */}
+              {/* Wall: interior mode — photo background independent of grid size */}
               {isInteriorMode && selectedPreset ? (
                 <div
                   style={{
                     position: 'relative',
-                    width: INTERIOR_W,
-                    height: INTERIOR_H,
+                    width: '100%',
+                    aspectRatio: '16 / 9',
                     background: `url(${selectedPreset.image})`,
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
