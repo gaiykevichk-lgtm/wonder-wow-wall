@@ -265,6 +265,9 @@ export function WallCanvas({
         return;
       }
 
+      // Don't start painting/zone drawing while calibrating
+      if (editorMode === 'calibrating') return;
+
       if (maskTool) {
         isPaintingRef.current = true;
         const point = getImageCoords(e);
@@ -280,7 +283,7 @@ export function WallCanvas({
         return;
       }
     },
-    [maskTool, getImageCoords, placementMode],
+    [maskTool, getImageCoords, placementMode, editorMode],
   );
 
   const handleMouseMove = useCallback(

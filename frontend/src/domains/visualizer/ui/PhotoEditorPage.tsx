@@ -333,10 +333,23 @@ export default function PhotoEditorPage() {
     const container = canvasContainerRef.current;
     if (!container) return;
 
-    if (!document.fullscreenElement) {
-      // Check if fullscreen API is available (may be blocked in sandboxed iframes)
+    // Check if currently in CSS-fallback fullscreen (position:fixed was set by us)
+    const inCssFallback = container.style.position === 'fixed';
+
+    if (document.fullscreenElement) {
+      // Exit native fullscreen
+      document.exitFullscreen().then(() => setIsFullscreen(false));
+    } else if (inCssFallback) {
+      // Exit CSS-fallback fullscreen
+      container.style.position = '';
+      container.style.inset = '';
+      container.style.zIndex = '';
+      container.style.background = '';
+      setIsFullscreen(false);
+    } else {
+      // Enter fullscreen
       if (!document.fullscreenEnabled) {
-        // Fallback: maximize the container visually via CSS
+        // API not available — use CSS fallback
         container.style.position = 'fixed';
         container.style.inset = '0';
         container.style.zIndex = '9999';
@@ -345,22 +358,13 @@ export default function PhotoEditorPage() {
         return;
       }
       container.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {
-        // Fallback on rejection too
+        // requestFullscreen rejected — fall back to CSS
         container.style.position = 'fixed';
         container.style.inset = '0';
         container.style.zIndex = '9999';
         container.style.background = '#000';
         setIsFullscreen(true);
       });
-    } else if (document.fullscreenElement) {
-      document.exitFullscreen().then(() => setIsFullscreen(false));
-    } else {
-      // Exit CSS-fallback fullscreen
-      container.style.position = '';
-      container.style.inset = '';
-      container.style.zIndex = '';
-      container.style.background = '';
-      setIsFullscreen(false);
     }
   }, []);
 
