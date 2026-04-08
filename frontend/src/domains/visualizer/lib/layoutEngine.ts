@@ -12,6 +12,7 @@ import type {
   PanelSize,
   ScaleCalibration,
   AccentZone,
+  Obstacle,
   Point,
 } from '../model/types';
 import { PANEL_SIZE_OPTIONS } from '../model/types';
@@ -52,8 +53,33 @@ export function panelSizeInPixels(
 }
 
 /**
+ * Check if a rectangle overlaps with an obstacle's bounding box.
+ */
+export function overlapsObstacle(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  obstacles: Obstacle[],
+): boolean {
+  for (const obs of obstacles) {
+    const bb = obs.boundingBox;
+    if (
+      x < bb.x + bb.width &&
+      x + width > bb.x &&
+      y < bb.y + bb.height &&
+      y + height > bb.y
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Check if a panel can be placed at position (x, y) on the mask.
- * Panel must fit within mask bounds and have sufficient wall coverage.
+ * Panel must fit within mask bounds, have sufficient wall coverage,
+ * and not overlap with detected obstacles.
  */
 export function canPlacePanel(
   mask: WallMask,
@@ -62,6 +88,7 @@ export function canPlacePanel(
   widthPx: number,
   heightPx: number,
   existingPanels: PlacedPanel[],
+  obstacles?: Obstacle[],
 ): boolean {
   // Bounds check
   if (x < 0 || y < 0 || x + widthPx > mask.width || y + heightPx > mask.height) {
@@ -71,6 +98,11 @@ export function canPlacePanel(
   // Wall coverage check
   const coverage = wallCoverageInRect(mask, x, y, widthPx, heightPx);
   if (coverage < WALL_COVERAGE_THRESHOLD) {
+    return false;
+  }
+
+  // Obstacle collision check
+  if (obstacles && obstacles.length > 0 && overlapsObstacle(x, y, widthPx, heightPx, obstacles)) {
     return false;
   }
 
@@ -114,6 +146,7 @@ export interface AutoFillConfig {
   color: string;
   colorName: string;
   accentZone?: AccentZone | null;
+  obstacles?: Obstacle[];
 }
 
 /**
@@ -121,7 +154,7 @@ export interface AutoFillConfig {
  * Scans the mask in grid steps and places panels where coverage is sufficient.
  */
 export function autoFillWall(config: AutoFillConfig): PlacedPanel[] {
-  const { mask, sizeKey, calibration, accentZone } = config;
+  const { mask, sizeKey, calibration, accentZone, obstacles } = config;
   const { widthPx, heightPx } = panelSizeInPixels(sizeKey, calibration);
   const panels: PlacedPanel[] = [];
 
@@ -140,7 +173,7 @@ export function autoFillWall(config: AutoFillConfig): PlacedPanel[] {
 
   for (let y = startY; y + heightPx <= endY; y += heightPx) {
     for (let x = startX; x + widthPx <= endX; x += widthPx) {
-      if (canPlacePanel(mask, x, y, widthPx, heightPx, panels)) {
+      if (canPlacePanel(mask, x, y, widthPx, heightPx, panels, obstacles)) {
         panels.push({
           id: generatePanelId(),
           designId: config.designId,
@@ -175,11 +208,12 @@ export function placeSinglePanel(
   design: { id: string; name: string; image: string },
   color: string,
   colorName: string,
+  obstacles?: Obstacle[],
 ): PlacedPanel | null {
   const { widthPx, heightPx } = panelSizeInPixels(sizeKey, calibration);
   const snapped = snapToGrid(clickX, clickY, widthPx, heightPx);
 
-  if (!canPlacePanel(mask, snapped.x, snapped.y, widthPx, heightPx, existingPanels)) {
+  if (!canPlacePanel(mask, snapped.x, snapped.y, widthPx, heightPx, existingPanels, obstacles)) {
     return null;
   }
 

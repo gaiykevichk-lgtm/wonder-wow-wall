@@ -22,9 +22,11 @@ import { createEmptyMask } from '../lib/maskUtils';
 interface VisualizerState {
   // Scene
   scene: Scene | null;
+  segmentationProgress: number;
   setScene: (scene: Scene) => void;
   updateWallMask: (mask: WallMask) => void;
   setSegmentationStatus: (status: Scene['segmentationStatus'], error?: string) => void;
+  setSegmentationProgress: (percent: number) => void;
   setCalibration: (calibration: ScaleCalibration) => void;
 
   // Panel selection
@@ -94,6 +96,7 @@ const EMPTY_COST: CostBreakdown = {
 export const useVisualizerStore = create<VisualizerState>((set, get) => ({
   // Scene
   scene: null,
+  segmentationProgress: 0,
   setScene: (scene) => set({ scene }),
   updateWallMask: (mask) => {
     const scene = get().scene;
@@ -109,6 +112,7 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => ({
       });
     }
   },
+  setSegmentationProgress: (percent) => set({ segmentationProgress: percent }),
   setCalibration: (calibration) => {
     const scene = get().scene;
     if (scene) {
@@ -163,6 +167,7 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => ({
       color: selectedColor,
       colorName: selectedColorName,
       accentZone: layout.accentZone,
+      obstacles: scene.objectMask?.obstacles,
     });
 
     set({ layout: { ...layout, panels } });
@@ -217,7 +222,7 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => ({
   // Persistence
   saveToLocalStorage: () => {
     const state = get();
-    if (!state.scene) return;
+    if (!state.scene) return false;
     const data = {
       scene: {
         photo: { url: state.scene.photo.url, width: state.scene.photo.width, height: state.scene.photo.height },
@@ -281,6 +286,7 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => ({
     }
     set({
       scene: null,
+      segmentationProgress: 0,
       layout: { ...EMPTY_LAYOUT },
       cost: { ...EMPTY_COST },
       undoStack: [],

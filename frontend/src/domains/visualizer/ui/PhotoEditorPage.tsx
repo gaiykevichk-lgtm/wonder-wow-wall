@@ -9,6 +9,7 @@ import { placedPanelsToCartItems } from '../model/adapters';
 import { processUploadedImage } from '../lib/imageProcessing';
 import { applyStrokeToMask, createEmptyMask } from '../lib/maskUtils';
 import { placeSinglePanel } from '../lib/layoutEngine';
+import { segmentScene, isSegmentationSupported } from '../lib/segmentationService';
 import { BASE_PANEL_PRICES, DESIGN_OVERLAY_PRICE } from '../../../shared/config/constants';
 import { products } from '../../catalog/model/data';
 import { PhotoUploader } from './PhotoUploader';
@@ -66,6 +67,7 @@ export default function PhotoEditorPage() {
   const handleUpload = useCallback(
     async (file: File) => {
       setUploading(true);
+      store.setSegmentationProgress(0);
       store.setScene({
         photo: { url: '', width: 0, height: 0 },
         wallMask: null,
@@ -77,24 +79,64 @@ export default function PhotoEditorPage() {
       try {
         const { dataUrl, width, height } = await processUploadedImage(file);
 
-        // Create mock wall mask (full wall for now — ML integration later)
-        const wallMask = createEmptyMask(width, height, 255);
-
         store.setScene({
           photo: { url: dataUrl, width, height, file },
-          wallMask,
-          objectMask: { obstacles: [] },
+          wallMask: null,
+          objectMask: null,
           calibration: { method: 'manual', pixelsPerCm: width / 400 },
-          segmentationStatus: 'ready',
+          segmentationStatus: 'loading-model',
         });
+        setUploading(false);
 
-        message.success('Фото загружено! Разместите панели на стене.');
+        // Try ML segmentation if supported
+        if (isSegmentationSupported()) {
+          try {
+            const result = await segmentScene(dataUrl, width, height, (p) => {
+              store.setSegmentationStatus(p.status);
+              store.setSegmentationProgress(p.percent);
+            });
+
+            store.setScene({
+              photo: { url: dataUrl, width, height, file },
+              wallMask: result.wallMask,
+              objectMask: { obstacles: result.obstacles },
+              calibration: { method: 'manual', pixelsPerCm: width / 400 },
+              segmentationStatus: 'ready',
+            });
+
+            const obstacleMsg = result.obstacles.length > 0
+              ? ` Обнаружено объектов: ${result.obstacles.length}.`
+              : '';
+            message.success(`Стена распознана!${obstacleMsg} Разместите панели.`);
+          } catch {
+            // ML failed — fallback to empty mask (user draws manually)
+            const wallMask = createEmptyMask(width, height, 255);
+            store.setScene({
+              photo: { url: dataUrl, width, height, file },
+              wallMask,
+              objectMask: { obstacles: [] },
+              calibration: { method: 'manual', pixelsPerCm: width / 400 },
+              segmentationStatus: 'ready',
+            });
+            message.info('Не удалось распознать стену автоматически. Отметьте стену кистью.');
+          }
+        } else {
+          // WASM not supported — fallback to full mask
+          const wallMask = createEmptyMask(width, height, 255);
+          store.setScene({
+            photo: { url: dataUrl, width, height, file },
+            wallMask,
+            objectMask: { obstacles: [] },
+            calibration: { method: 'manual', pixelsPerCm: width / 400 },
+            segmentationStatus: 'ready',
+          });
+          message.info('Автоматическое распознавание не поддерживается в этом браузере. Отметьте стену кистью.');
+        }
       } catch (err) {
         const errorMsg =
           err instanceof Error ? err.message : 'Ошибка загрузки';
         message.error(errorMsg);
         store.setSegmentationStatus('error', errorMsg);
-      } finally {
         setUploading(false);
       }
     },
@@ -117,6 +159,7 @@ export default function PhotoEditorPage() {
         { id: selectedDesignId, name: selectedDesignName, image: selectedDesignImage },
         selectedColor,
         selectedColorName,
+        scene.objectMask?.obstacles,
       );
 
       if (panel) {
@@ -216,11 +259,23 @@ export default function PhotoEditorPage() {
     return { w: wCm * pxPerCm, h: hCm * pxPerCm };
   }, [store.scene?.calibration, store.selectedSizeKey]);
 
-  const { scene } = store;
+  const { scene, segmentationProgress } = store;
   const isReady = scene?.segmentationStatus === 'ready';
   const isProcessing =
     scene?.segmentationStatus === 'uploading' ||
+    scene?.segmentationStatus === 'loading-model' ||
+    scene?.segmentationStatus === 'segmenting' ||
     scene?.segmentationStatus === 'processing';
+
+  const segmentationStatusText = (() => {
+    switch (scene?.segmentationStatus) {
+      case 'uploading': return 'Загружаем фото...';
+      case 'loading-model': return 'Загружаем модель распознавания...';
+      case 'segmenting': return 'Распознаём стену...';
+      case 'processing': return 'Обрабатываем...';
+      default: return '';
+    }
+  })();
 
   return (
     <div style={{ padding: '96px 24px 48px', maxWidth: 1440, margin: '0 auto' }}>
@@ -255,10 +310,19 @@ export default function PhotoEditorPage() {
               padding: 64,
             }}
           >
-            <Progress type="circle" percent={uploading ? 50 : 80} />
-            <Text style={{ fontSize: 16 }}>
-              {uploading ? 'Загружаем фото...' : 'Распознаём стену...'}
+            <Progress
+              type="circle"
+              percent={scene?.segmentationStatus === 'uploading' ? 50 : segmentationProgress}
+              strokeColor="#4CAF50"
+            />
+            <Text style={{ fontSize: 15, fontWeight: 400, color: '#6B7280' }}>
+              {segmentationStatusText}
             </Text>
+            {scene?.segmentationStatus === 'loading-model' && (
+              <Text style={{ fontSize: 13, color: '#9CA3AF' }}>
+                Первая загрузка ~15 МБ. При повторных визитах — мгновенно.
+              </Text>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

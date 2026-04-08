@@ -61,6 +61,8 @@ export interface PhotoAsset {
 export type SegmentationStatus =
   | 'idle'
   | 'uploading'
+  | 'loading-model'
+  | 'segmenting'
   | 'processing'
   | 'ready'
   | 'error';

@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
+    "@huggingface/transformers": "^4.0.1",
     "@tanstack/react-query": "^5.91.3",
     "antd": "^6.3.3",
     "framer-motion": "^12.38.0",

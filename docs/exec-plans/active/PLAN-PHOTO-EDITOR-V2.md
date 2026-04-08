@@ -61,8 +61,8 @@
 
 ### 1.1 Frontend — Сервис сегментации
 
-- [ ] Установить `@huggingface/transformers` (`npm install @huggingface/transformers`)
-- [ ] Создать `src/domains/visualizer/lib/segmentationService.ts`:
+- [x] Установить `@huggingface/transformers` (`npm install @huggingface/transformers`)
+- [x] Создать `src/domains/visualizer/lib/segmentationService.ts`:
   - Функция `initSegmenter()` — lazy-загрузка модели `Xenova/segformer-b0-finetuned-ade-512-512`
   - Функция `segmentScene(imageUrl: string): Promise<SegmentationResult>` — запуск inference
   - Тип `SegmentationResult`: `{ wallMask: WallMask, obstacles: Obstacle[], classes: string[] }`
@@ -73,32 +73,32 @@
 
 ### 1.2 Frontend — Интеграция в store и UI
 
-- [ ] Обновить `visualizerStore.ts`:
+- [x] Обновить `visualizerStore.ts`:
   - В action `uploadPhoto()`: заменить mock-маску на вызов `segmentScene()`
   - Добавить `segmentationProgress: number` (0–100) для прогресс-бара
   - Статусы: `idle` → `uploading` → `loading-model` → `segmenting` → `ready` / `error`
-- [ ] Обновить `PhotoEditorPage.tsx`:
+- [x] Обновить `PhotoEditorPage.tsx`:
   - **Прогресс-бар** загрузки модели: Ant Design `Progress` компонент, цвет `#4CAF50` (акцент для статусов — по Design System)
   - Текстовые статусы — Inter 15px/400, цвет `#6B7280`:
     - «Загружаем модель распознавания...» (при первом использовании, ~15 MB)
     - «Распознаём стену...»
     - «Готово» — бейдж Inter 13px/500, фон `#4CAF50`, текст `#FFFFFF`, border-radius `6px`
   - При ошибке: fallback на ручную маску — сообщение «Отметьте стену кистью» (Inter 15px/400, цвет `#6B7280`)
-- [ ] Обновить `layoutEngine.ts`:
+- [x] Обновить `layoutEngine.ts`:
   - `autoFillWall()` и `placeSinglePanel()` — убедиться, что с реальной маской порог 0.7 работает корректно
   - При наличии `obstacles` — добавить проверку пересечения панели с obstacle bounding box
-- [ ] **⚠️ Нормализация размера маски**: `autoFillWall()` индексирует `mask.data[y * width + x]`, предполагая что `width/height` маски === размеру фото. ML-модель выдаёт маску 512×512 (SegFormer input size). Необходимо:
-  - В `segmentationService.ts`: ресайзить выходную маску до размера исходного фото (bilinear interpolation на offscreen canvas)
-  - Валидация: `assert(mask.width === photo.width && mask.height === photo.height)` перед передачей в store
-  - Если размеры не совпадают — автоматический ресайз с warning в console
+- [x] **⚠️ Нормализация размера маски**: `autoFillWall()` индексирует `mask.data[y * width + x]`, предполагая что `width/height` маски === размеру фото. ML-модель выдаёт маску 512×512 (SegFormer input size). Необходимо:
+  - В `segmentationService.ts`: ресайзить выходную маску до размера исходного фото (nearest-neighbor interpolation)
+  - Валидация: маска всегда возвращается с `width === photoWidth && height === photoHeight`
+  - Если размеры модели отличаются — автоматический ресайз через `resizeMask()`
 
 ### 1.3 Тесты
 
-- [ ] Unit-тесты `segmentationService.test.ts`:
+- [x] Unit-тесты `segmentationService.test.ts`:
   - Mock `pipeline()` → проверить преобразование результата в `WallMask` и `Obstacle[]`
   - Тест fallback при ошибке загрузки модели
   - Тест кэширования (повторный вызов не инициализирует модель)
-- [ ] Обновить `layoutEngine.test.ts`:
+- [x] Обновить `layoutEngine.test.ts`:
   - Тесты размещения с реальной маской (не полностью белой)
   - Тесты коллизии панель-obstacle
 
@@ -418,7 +418,7 @@
 
 | Фаза | Описание | Задач | Статус |
 |---|---|---|---|
-| 1 | ML-сегментация в браузере | 10 | ⬜ Не начата |
+| 1 | ML-сегментация в браузере | 10 | ✅ Завершена |
 | 2 | Миграция Canvas на react-konva + Design System | 20 | ⬜ Не начата |
 | 3 | Перспектива и калибровка | 12 | ⬜ Не начата |
 | 4 | Бэкенд — сохранение проектов | 17 | ⬜ Не начата |
