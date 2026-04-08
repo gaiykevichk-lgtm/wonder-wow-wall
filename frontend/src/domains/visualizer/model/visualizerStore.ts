@@ -44,6 +44,7 @@ interface VisualizerState {
   layout: PanelLayout;
   addPanel: (panel: PlacedPanel) => void;
   removePanel: (id: string) => void;
+  movePanel: (id: string, x: number, y: number) => void;
   clearPanels: () => void;
   setPlacementMode: (mode: PlacementMode) => void;
   setAccentZone: (zone: AccentZone | null) => void;
@@ -143,6 +144,15 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => ({
       layout: {
         ...state.layout,
         panels: state.layout.panels.filter((p) => p.id !== id),
+      },
+    })),
+  movePanel: (id, x, y) =>
+    set((state) => ({
+      layout: {
+        ...state.layout,
+        panels: state.layout.panels.map((p) =>
+          p.id === id ? { ...p, x, y } : p,
+        ),
       },
     })),
   clearPanels: () =>

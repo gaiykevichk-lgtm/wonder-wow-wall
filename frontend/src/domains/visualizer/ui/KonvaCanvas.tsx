@@ -23,6 +23,7 @@ interface KonvaCanvasProps {
   onPanChange?: (offset: Point) => void;
   onZoomChange?: (zoom: number) => void;
   onRemovePanel?: (id: string) => void;
+  onPanelMove?: (id: string, x: number, y: number) => void;
   onHoverChange?: (point: Point | null) => void;
   onAccentZoneDraw?: (zone: AccentZone) => void;
 }
@@ -61,6 +62,7 @@ export function KonvaCanvas({
   onPanChange,
   onZoomChange,
   onRemovePanel,
+  onPanelMove,
   onHoverChange,
   onAccentZoneDraw,
 }: KonvaCanvasProps) {
@@ -245,14 +247,16 @@ export function KonvaCanvas({
         return;
       }
 
-      // Click on empty space → place panel (if manual mode) or deselect
+      // Click on empty stage → deselect; place panel only in manual mode
       if (!maskTool && e.target === stage) {
         const point = getImageCoords(stage);
         setSelectedPanelId(null);
-        onCanvasClick?.(point.x, point.y);
+        if (placementMode === 'manual') {
+          onCanvasClick?.(point.x, point.y);
+        }
       }
     },
-    [maskTool, onMaskStroke, onCanvasClick, getImageCoords, onAccentZoneDraw],
+    [maskTool, placementMode, onMaskStroke, onCanvasClick, getImageCoords, onAccentZoneDraw],
   );
 
   const handleStageMouseLeave = useCallback(() => {
@@ -325,17 +329,12 @@ export function KonvaCanvas({
   const handlePanelDragEnd = useCallback(
     (panelId: string, e: KonvaEventObject<DragEvent>) => {
       const node = e.target;
-      const scale = fitScale * zoom;
-      // Snap to grid in image coordinates
-      const newX = node.x() / scale;
-      const newY = node.y() / scale;
-      // We don't update store positions in Phase 2 baseline — panels stay where dragged visually
-      // This will be enhanced with proper snap-to-grid when layout engine is integrated
-      void panelId;
-      void newX;
-      void newY;
+      // Node position is in image-coordinate space (Stage handles scale transform)
+      const newX = node.x();
+      const newY = node.y();
+      onPanelMove?.(panelId, newX, newY);
     },
-    [fitScale, zoom],
+    [onPanelMove],
   );
 
   // ─── Stage drag (pan) ───────────────────────────────────────────────
@@ -494,27 +493,7 @@ export function KonvaCanvas({
                   draggable={placementMode === 'manual' && !maskTool}
                   onDragEnd={(e) => handlePanelDragEnd(panel.id, e)}
                 />
-                {/* Delete button for selected panel */}
-                {isSelected && (
-                  <Circle
-                    x={panel.x + panel.renderWidth}
-                    y={panel.y}
-                    radius={10 / scale}
-                    fill="#EF4444"
-                    stroke="#FFFFFF"
-                    strokeWidth={2 / scale}
-                    onClick={(e) => {
-                      e.cancelBubble = true;
-                      onRemovePanel?.(panel.id);
-                      setSelectedPanelId(null);
-                    }}
-                    onTap={(e) => {
-                      e.cancelBubble = true;
-                      onRemovePanel?.(panel.id);
-                      setSelectedPanelId(null);
-                    }}
-                  />
-                )}
+                {/* Delete button rendered as HTML overlay below for better accessibility */}
               </Group>
             );
           })}

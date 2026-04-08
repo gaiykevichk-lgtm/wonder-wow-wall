@@ -399,6 +399,7 @@ export default function PhotoEditorPage() {
                 onZoomChange={setZoom}
                 onPanChange={setPanOffset}
                 onRemovePanel={handleRemovePanel}
+                onPanelMove={store.movePanel}
                 onHoverChange={setHoverCell}
                 onAccentZoneDraw={handleAccentZoneDraw}
               />
