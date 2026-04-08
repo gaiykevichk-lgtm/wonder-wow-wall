@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { ColumnWidthOutlined } from '@ant-design/icons';
 
 interface BeforeAfterSliderProps {
   beforeSrc: string;
@@ -99,41 +100,42 @@ export function BeforeAfterSlider({
         />
       )}
 
-      {/* Slider line */}
+      {/* Slider divider line */}
       <div
         style={{
           position: 'absolute',
           top: 0,
           bottom: 0,
           left: `${position}%`,
-          width: 3,
+          width: 4,
           background: '#FFFFFF',
-          boxShadow: '0 0 6px rgba(0,0,0,0.3)',
+          borderRadius: 2,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
           transform: 'translateX(-50%)',
           zIndex: 10,
         }}
       >
-        {/* Handle */}
+        {/* Handle circle */}
         <div
           style={{
             position: 'absolute',
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            width: 36,
-            height: 36,
+            width: 40,
+            height: 40,
             borderRadius: '50%',
             background: '#FFFFFF',
+            border: '2px solid #E5E7EB',
             boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: 14,
+            fontSize: 16,
             color: '#2D2D2D',
-            fontWeight: 600,
           }}
         >
-          ⟷
+          <ColumnWidthOutlined />
         </div>
       </div>
 
@@ -158,7 +160,7 @@ export function BeforeAfterSlider({
           position: 'absolute',
           top: 12,
           right: 12,
-          background: 'rgba(0,113,227,0.8)',
+          background: 'rgba(45,45,45,0.7)',
           color: '#FFF',
           padding: '2px 8px',
           borderRadius: 4,

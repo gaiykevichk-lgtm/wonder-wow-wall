@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Input, Radio, Tag, Typography } from 'antd';
+import { Input, Radio, Skeleton, Tag, Typography } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { products } from '../../catalog/model/data';
 import type { PanelSizeKey } from '../model/types';
@@ -25,6 +25,7 @@ export function PanelPicker({
 }: PanelPickerProps) {
   const [search, setSearch] = useState('');
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
 
   const filteredProducts = useMemo(
     () =>
@@ -84,14 +85,27 @@ export function PanelPicker({
             onMouseEnter={() => setHoveredId(product.id)}
             onMouseLeave={() => setHoveredId(null)}
           >
-            <div
-              style={{
-                width: '100%',
-                paddingBottom: '100%',
-                background: `url(${product.image}) center/cover`,
-                backgroundColor: '#F5F5F5',
-              }}
-            />
+            <div style={{ width: '100%', paddingBottom: '100%', position: 'relative', backgroundColor: '#F5F5F5' }}>
+              {!loadedImages.has(product.id) && (
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Skeleton.Image active style={{ width: '100%', height: '100%', borderRadius: 0 }} />
+                </div>
+              )}
+              <img
+                src={product.image}
+                alt={product.name}
+                onLoad={() => setLoadedImages((prev) => new Set(prev).add(product.id))}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  opacity: loadedImages.has(product.id) ? 1 : 0,
+                  transition: 'opacity 0.3s',
+                }}
+              />
+            </div>
             <Text
               style={{
                 display: 'block',

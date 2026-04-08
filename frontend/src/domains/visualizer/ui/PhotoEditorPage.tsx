@@ -1,5 +1,11 @@
-import { useCallback, useEffect, useState, useMemo } from 'react';
-import { Typography, message, Progress, Card } from 'antd';
+import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
+import { Typography, message, Progress, Card, Modal } from 'antd';
+import {
+  SwapOutlined,
+  FullscreenOutlined,
+  FullscreenExitOutlined,
+  PictureOutlined,
+} from '@ant-design/icons';
 import { PageMeta } from '../../../shared/ui/PageMeta';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVisualizerStore } from '../model/visualizerStore';
@@ -20,6 +26,8 @@ import { PanelPicker } from './PanelPicker';
 import { PlacementControls } from './PlacementControls';
 import { CostSummary } from './CostSummary';
 import { CalibrationOverlay } from './CalibrationOverlay';
+import { BeforeAfterSlider } from './BeforeAfterSlider';
+import { OnboardingTooltips } from './OnboardingTooltips';
 import { useSearchParams } from 'react-router-dom';
 import { computeWallBrightness } from '../lib/perspectiveEngine';
 import type { Point, AccentZone, PerspectiveCorners } from '../model/types';
@@ -36,6 +44,9 @@ export default function PhotoEditorPage() {
   const [panOffset, setPanOffset] = useState<Point>({ x: 0, y: 0 });
   const [editingMask, setEditingMask] = useState(false);
   const [hoverCell, setHoverCell] = useState<Point | null>(null);
+  const [beforeAfterOpen, setBeforeAfterOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
 
   const [searchParams] = useSearchParams();
 
@@ -294,6 +305,48 @@ export default function PhotoEditorPage() {
     );
   }, []);
 
+  // Before/After modal
+  const handleBeforeAfter = useCallback(() => {
+    if (!store.scene || store.layout.panels.length === 0) {
+      message.warning('Сначала разместите панели на стене');
+      return;
+    }
+    setBeforeAfterOpen(true);
+  }, [store]);
+
+  const afterCanvasEl = useMemo(() => {
+    if (!beforeAfterOpen) return null;
+    return (
+      document.querySelector<HTMLCanvasElement>(
+        '[data-testid="konva-canvas-container"] canvas',
+      ) ??
+      document.querySelector<HTMLCanvasElement>('[data-testid="wall-canvas"]')
+    );
+  }, [beforeAfterOpen]);
+
+  // Fullscreen toggle
+  const handleFullscreen = useCallback(() => {
+    const container = canvasContainerRef.current;
+    if (!container) return;
+
+    if (!document.fullscreenElement) {
+      container.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {
+        message.warning('Полноэкранный режим недоступен');
+      });
+    } else {
+      document.exitFullscreen().then(() => setIsFullscreen(false));
+    }
+  }, []);
+
+  // Listen for fullscreen change (e.g. Esc key)
+  useEffect(() => {
+    const handler = () => {
+      if (!document.fullscreenElement) setIsFullscreen(false);
+    };
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
+
   // Compute cell size in pixels for hover highlight
   const cellSizePx = useMemo(() => {
     if (!store.scene?.calibration) return null;
@@ -416,7 +469,7 @@ export default function PhotoEditorPage() {
           </Card>
 
           {/* Center: Canvas + Mask toolbar */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div ref={canvasContainerRef} style={{ display: 'flex', flexDirection: 'column', gap: 8, background: isFullscreen ? '#000' : undefined }}>
             {useKonva ? (
               <KonvaCanvas
                 scene={scene}
@@ -507,6 +560,7 @@ export default function PhotoEditorPage() {
             {/* Toolbar buttons */}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button
+                data-testid="mask-toolbar-trigger"
                 onClick={() => setEditingMask(!editingMask)}
                 style={{
                   padding: '6px 16px',
@@ -565,6 +619,43 @@ export default function PhotoEditorPage() {
                 </button>
               )}
               <button
+                onClick={handleBeforeAfter}
+                style={{
+                  padding: '6px 16px',
+                  borderRadius: 8,
+                  border: '1px solid rgba(0,0,0,0.04)',
+                  background: '#FFF',
+                  color: '#6B7280',
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <SwapOutlined /> До / После
+              </button>
+              <button
+                onClick={handleFullscreen}
+                style={{
+                  padding: '6px 16px',
+                  borderRadius: 8,
+                  border: '1px solid rgba(0,0,0,0.04)',
+                  background: '#FFF',
+                  color: '#6B7280',
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                {isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
+                {isFullscreen ? 'Выйти' : 'Полный экран'}
+              </button>
+              <button
                 onClick={() => {
                   store.reset();
                   setZoom(1);
@@ -601,6 +692,25 @@ export default function PhotoEditorPage() {
               />
             </Card>
 
+            {/* Empty state when no panels placed */}
+            {store.layout.panels.length === 0 && (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '32px 16px',
+                  gap: 8,
+                }}
+              >
+                <PictureOutlined style={{ fontSize: 48, color: '#E5E7EB' }} />
+                <span style={{ fontSize: 15, color: '#9CA3AF', textAlign: 'center' }}>
+                  Выберите дизайн и разместите панели
+                </span>
+              </div>
+            )}
+
             <CostSummary
               cost={store.cost}
               hasSubscription={hasSubscription()}
@@ -611,6 +721,34 @@ export default function PhotoEditorPage() {
           </div>
         </motion.div>
       )}
+
+      {/* Before/After comparison modal */}
+      <Modal
+        open={beforeAfterOpen}
+        onCancel={() => setBeforeAfterOpen(false)}
+        footer={null}
+        width={900}
+        centered
+        destroyOnClose
+        styles={{ content: { borderRadius: 16, padding: 0, overflow: 'hidden' } }}
+      >
+        {scene && (
+          <div style={{ padding: 24 }}>
+            <Typography.Title level={4} style={{ margin: '0 0 16px' }}>
+              До / После
+            </Typography.Title>
+            <BeforeAfterSlider
+              beforeSrc={scene.photo.url}
+              afterCanvas={afterCanvasEl}
+              width={850}
+              height={Math.round(850 * (scene.photo.height / scene.photo.width))}
+            />
+          </div>
+        )}
+      </Modal>
+
+      {/* Onboarding tour */}
+      <OnboardingTooltips isReady={isReady} />
 
     </div>
   );

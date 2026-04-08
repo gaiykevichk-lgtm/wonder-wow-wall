@@ -12,9 +12,10 @@ import {
   DragOutlined,
   InfoCircleOutlined,
   CrownOutlined,
+  CameraOutlined,
 } from '@ant-design/icons';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { products } from '../../catalog/model/data';
 import { PANEL_SIZES, BASE_PANEL_PRICES, DESIGN_OVERLAY_PRICE } from '../../../shared/config/constants';
 import { useSubscriptionStore } from '../../subscription/model/subscriptionStore';
@@ -121,6 +122,7 @@ export default function ConstructorPage() {
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
 
   // Panel selection
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialDesignId = searchParams.get('designId') || products[0].id;
   const [selectedDesignId, setSelectedDesignId] = useState(
@@ -1519,6 +1521,30 @@ export default function ConstructorPage() {
                 >
                   <ShoppingCartOutlined />
                   В корзину
+                </div>
+                <div
+                  onClick={() => navigate(`/visualizer?designId=${selectedDesignId}`)}
+                  style={{
+                    border: '1px solid rgba(0,0,0,0.08)',
+                    borderRadius: 12,
+                    fontWeight: 500,
+                    fontSize: 13,
+                    padding: '10px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    cursor: 'pointer',
+                    color: '#6B7280',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.15s',
+                    boxSizing: 'border-box',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#2D2D2D'; e.currentTarget.style.color = '#2D2D2D'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.08)'; e.currentTarget.style.color = '#6B7280'; }}
+                >
+                  <CameraOutlined />
+                  Примерить на фото
                 </div>
               </div>
             </div>
