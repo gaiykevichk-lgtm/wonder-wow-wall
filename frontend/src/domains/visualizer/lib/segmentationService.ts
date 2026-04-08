@@ -75,24 +75,30 @@ async function initSegmenter(onProgress?: SegmentationProgressCallback) {
   if (segmenterPromise) return segmenterPromise;
 
   segmenterPromise = (async () => {
-    const { pipeline } = await import('@huggingface/transformers');
+    try {
+      const { pipeline } = await import('@huggingface/transformers');
 
-    onProgress?.({ status: 'loading-model', percent: 10 });
+      onProgress?.({ status: 'loading-model', percent: 10 });
 
-    const segmenter = await pipeline(
-      'image-segmentation',
-      'Xenova/segformer-b0-finetuned-ade-512-512',
-      {
-        progress_callback: (info: { status?: string; progress?: number; name?: string; file?: string }) => {
-          if (info.progress != null) {
-            onProgress?.({ status: 'loading-model', percent: Math.round(info.progress) });
-          }
+      const segmenter = await pipeline(
+        'image-segmentation',
+        'Xenova/segformer-b0-finetuned-ade-512-512',
+        {
+          progress_callback: (info: { status?: string; progress?: number; name?: string; file?: string }) => {
+            if (info.progress != null) {
+              onProgress?.({ status: 'loading-model', percent: Math.round(info.progress) });
+            }
+          },
         },
-      },
-    );
+      );
 
-    onProgress?.({ status: 'loading-model', percent: 100 });
-    return segmenter;
+      onProgress?.({ status: 'loading-model', percent: 100 });
+      return segmenter;
+    } catch (err) {
+      // Clear cached promise so next attempt can retry
+      segmenterPromise = null;
+      throw err;
+    }
   })();
 
   return segmenterPromise;
@@ -220,23 +226,39 @@ export async function segmentScene(
     throw new Error('WASM not supported');
   }
 
-  // 1. Init model (cached after first load)
-  const segmenter = await initSegmenter(onProgress) as (
+  // 1. Init model (cached after first load) — with 60s timeout
+  const MODEL_TIMEOUT_MS = 60_000;
+  const INFERENCE_TIMEOUT_MS = 30_000;
+
+  const segmenter = await Promise.race([
+    initSegmenter(onProgress),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Загрузка модели заняла слишком долго')), MODEL_TIMEOUT_MS),
+    ),
+  ]) as (
     img: string,
     options?: Record<string, unknown>,
   ) => Promise<Array<{ label: string; score: number; mask: { data: Uint8Array; width: number; height: number } }>>;
 
   onProgress?.({ status: 'segmenting', percent: 0 });
 
-  // 2. Run inference
-  const results = await segmenter(imageUrl, { threshold: 0.0 });
+  // 2. Run inference — with 30s timeout
+  const results = await Promise.race([
+    segmenter(imageUrl, { threshold: 0.0 }),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Распознавание заняло слишком долго')), INFERENCE_TIMEOUT_MS),
+    ),
+  ]);
 
   onProgress?.({ status: 'segmenting', percent: 70 });
 
   // 3. Build per-pixel label map from segmentation results
   // SegFormer returns one result per detected class, each with a binary mask
-  const modelW = results[0]?.mask?.width ?? 512;
-  const modelH = results[0]?.mask?.height ?? 512;
+  if (results.length === 0 || !results[0]?.mask) {
+    throw new Error('Модель не обнаружила объектов на изображении');
+  }
+  const modelW = results[0].mask.width;
+  const modelH = results[0].mask.height;
   // Use 255 as "unassigned" sentinel — no ADE20K class has index 255
   const UNASSIGNED = 255;
   const labelMap = new Uint8Array(modelW * modelH);

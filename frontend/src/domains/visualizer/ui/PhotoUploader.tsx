@@ -153,11 +153,12 @@ export function PhotoUploader({ onUpload, loading }: PhotoUploaderProps) {
                 ?.querySelector('input');
               input?.click();
             }}
-            className="mobile-camera-btn"
             style={{
               borderRadius: 8,
               height: 48,
               paddingInline: 24,
+              borderColor: '#E5E7EB',
+              color: '#2D2D2D',
             }}
           >
             Камера

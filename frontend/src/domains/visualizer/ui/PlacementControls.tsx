@@ -72,8 +72,8 @@ export function PlacementControls({
           icon={<AppstoreOutlined />}
           onClick={onAutoFill}
           style={{
-            background: '#4CAF50',
-            borderColor: '#4CAF50',
+            background: '#2D2D2D',
+            borderColor: '#2D2D2D',
             borderRadius: 8,
             height: 36,
           }}

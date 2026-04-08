@@ -44,7 +44,10 @@ export function createImageFromFile(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
-    img.onload = () => resolve(img);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
     img.onerror = () => {
       URL.revokeObjectURL(url);
       reject(new Error('Не удалось загрузить изображение'));
@@ -130,12 +133,10 @@ export async function processUploadedImage(file: File): Promise<{
   const img = await createImageFromFile(file);
   const dimValidation = validateImageDimensions(img.naturalWidth, img.naturalHeight);
   if (!dimValidation.valid) {
-    URL.revokeObjectURL(img.src);
     throw new Error(dimValidation.error);
   }
 
   const { canvas, width, height } = resizeImage(img);
-  URL.revokeObjectURL(img.src);
 
   const blob = await canvasToBlob(canvas);
   const dataUrl = canvas.toDataURL('image/jpeg', 0.85);

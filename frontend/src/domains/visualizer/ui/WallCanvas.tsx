@@ -302,11 +302,13 @@ export function WallCanvas({
           setSelectedPanelId((prev) => (prev === clickedPanel.id ? null : clickedPanel.id));
         } else {
           setSelectedPanelId(null);
-          onCanvasClick?.(point.x, point.y);
+          if (placementMode === 'manual') {
+            onCanvasClick?.(point.x, point.y);
+          }
         }
       }
     },
-    [maskTool, onCanvasClick, onMaskStroke, getImageCoords, findPanelAt, onAccentZoneDraw],
+    [maskTool, onCanvasClick, onMaskStroke, getImageCoords, findPanelAt, onAccentZoneDraw, placementMode],
   );
 
   const handleMouseLeave = useCallback(() => {

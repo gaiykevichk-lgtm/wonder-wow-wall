@@ -1,6 +1,14 @@
 import { Button, Tag, Typography } from 'antd';
 import { ShoppingCartOutlined, CrownOutlined, DownloadOutlined, SaveOutlined } from '@ant-design/icons';
 import type { CostBreakdown } from '../model/types';
+import { BASE_PANEL_PRICES } from '../../../shared/config/constants';
+
+/** Map display size key (cm) → price key (mm) used in BASE_PANEL_PRICES */
+const SIZE_TO_PRICE_KEY: Record<string, string> = {
+  '30x30': '300x300',
+  '30x60': '300x600',
+  '60x60': '600x600',
+};
 
 const { Text, Title } = Typography;
 
@@ -45,19 +53,19 @@ export function CostSummary({
         {cost.panelsBySize['30x30'] > 0 && (
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <Text type="secondary">30×30 см × {cost.panelsBySize['30x30']}</Text>
-            <Text>{fmt(cost.panelsBySize['30x30'] * 890)} ₽</Text>
+            <Text>{fmt(cost.panelsBySize['30x30'] * BASE_PANEL_PRICES[SIZE_TO_PRICE_KEY['30x30']!]!)} ₽</Text>
           </div>
         )}
         {cost.panelsBySize['30x60'] > 0 && (
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <Text type="secondary">30×60 см × {cost.panelsBySize['30x60']}</Text>
-            <Text>{fmt(cost.panelsBySize['30x60'] * 1490)} ₽</Text>
+            <Text>{fmt(cost.panelsBySize['30x60'] * BASE_PANEL_PRICES[SIZE_TO_PRICE_KEY['30x60']!]!)} ₽</Text>
           </div>
         )}
         {cost.panelsBySize['60x60'] > 0 && (
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <Text type="secondary">60×60 см × {cost.panelsBySize['60x60']}</Text>
-            <Text>{fmt(cost.panelsBySize['60x60'] * 2490)} ₽</Text>
+            <Text>{fmt(cost.panelsBySize['60x60'] * BASE_PANEL_PRICES[SIZE_TO_PRICE_KEY['60x60']!]!)} ₽</Text>
           </div>
         )}
       </div>
