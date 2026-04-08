@@ -4,6 +4,7 @@
 
 import { create } from 'zustand';
 import type {
+  Point,
   Scene,
   PanelLayout,
   PlacedPanel,
@@ -14,6 +15,9 @@ import type {
   MaskTool,
   CostBreakdown,
   ScaleCalibration,
+  EditorMode,
+  CalibrationPoints,
+  PerspectiveCorners,
 } from './types';
 import { calculateCost } from '../lib/costCalculator';
 import { autoFillWall } from '../lib/layoutEngine';
@@ -50,6 +54,19 @@ interface VisualizerState {
   setAccentZone: (zone: AccentZone | null) => void;
   autoFill: () => void;
   updateAllDesigns: (designId: string, designName: string, designImage: string) => void;
+
+  // Editor mode (calibration / perspective)
+  editorMode: EditorMode;
+  setEditorMode: (mode: EditorMode) => void;
+  calibrationPoints: CalibrationPoints;
+  setCalibrationPoint: (which: 'start' | 'end', point: Point) => void;
+  setCalibrationReference: (cm: number) => void;
+  applyCalibration: () => void;
+  resetCalibration: () => void;
+  perspectiveCorners: PerspectiveCorners | null;
+  setPerspectiveCorners: (corners: PerspectiveCorners | null) => void;
+  wallBrightness: number;
+  setWallBrightness: (brightness: number) => void;
 
   // Mask editing
   maskTool: MaskTool;
@@ -196,6 +213,37 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => ({
       },
     })),
 
+  // Editor mode (calibration / perspective)
+  editorMode: 'default',
+  setEditorMode: (mode) => set({ editorMode: mode }),
+  calibrationPoints: { start: null, end: null, referenceCm: 200 },
+  setCalibrationPoint: (which, point) =>
+    set((s) => ({
+      calibrationPoints: { ...s.calibrationPoints, [which]: point },
+    })),
+  setCalibrationReference: (cm) =>
+    set((s) => ({
+      calibrationPoints: { ...s.calibrationPoints, referenceCm: cm },
+    })),
+  applyCalibration: () => {
+    const { calibrationPoints, scene } = get();
+    const { start, end, referenceCm } = calibrationPoints;
+    if (!start || !end || !scene || referenceCm <= 0) return;
+    const distPx = Math.hypot(end.x - start.x, end.y - start.y);
+    if (distPx < 5) return;
+    const pixelsPerCm = distPx / referenceCm;
+    set({
+      scene: { ...scene, calibration: { method: 'reference', pixelsPerCm } },
+      editorMode: 'default',
+    });
+  },
+  resetCalibration: () =>
+    set({ calibrationPoints: { start: null, end: null, referenceCm: 200 } }),
+  perspectiveCorners: null,
+  setPerspectiveCorners: (corners) => set({ perspectiveCorners: corners }),
+  wallBrightness: 128,
+  setWallBrightness: (brightness) => set({ wallBrightness: brightness }),
+
   // Mask editing
   maskTool: 'brush',
   brushSize: 20,
@@ -306,6 +354,10 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => ({
       selectedSizeKey: '30x30',
       selectedColor: '',
       selectedColorName: '',
+      editorMode: 'default',
+      calibrationPoints: { start: null, end: null, referenceCm: 200 },
+      perspectiveCorners: null,
+      wallBrightness: 128,
     });
   },
 }));

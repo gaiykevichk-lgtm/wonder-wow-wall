@@ -1,10 +1,12 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
-import { Stage, Layer, Image as KonvaImage, Rect, Circle, Group } from 'react-konva';
+import { Stage, Layer, Image as KonvaImage, Rect, Line, Circle, Group } from 'react-konva';
 import { CloseCircleFilled } from '@ant-design/icons';
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
-import type { Scene, PlacedPanel, MaskTool, Point, AccentZone, PlacementMode } from '../model/types';
+import type { Scene, PlacedPanel, MaskTool, Point, AccentZone, PlacementMode, EditorMode, CalibrationPoints, PerspectiveCorners as PerspectiveCornersType } from '../model/types';
 import { wallMaskToImageData } from '../lib/maskUtils';
+import { createPerspective, transformRect, quadToFlatPoints, computeBrightnessAdjustment } from '../lib/perspectiveEngine';
+import { PerspectiveCorners } from './PerspectiveCorners';
 
 interface KonvaCanvasProps {
   scene: Scene;
@@ -26,6 +28,12 @@ interface KonvaCanvasProps {
   onPanelMove?: (id: string, x: number, y: number) => void;
   onHoverChange?: (point: Point | null) => void;
   onAccentZoneDraw?: (zone: AccentZone) => void;
+  editorMode?: EditorMode;
+  calibrationPoints?: CalibrationPoints;
+  onCalibrationClick?: (point: Point) => void;
+  perspectiveCorners?: PerspectiveCornersType | null;
+  onPerspectiveCornersChange?: (corners: PerspectiveCornersType) => void;
+  wallBrightness?: number;
 }
 
 const MIN_ZOOM = 0.25;
@@ -64,6 +72,12 @@ export function KonvaCanvas({
   onPanelMove,
   onHoverChange,
   onAccentZoneDraw,
+  editorMode = 'default',
+  calibrationPoints,
+  onCalibrationClick,
+  perspectiveCorners,
+  onPerspectiveCornersChange,
+  wallBrightness = 128,
 }: KonvaCanvasProps) {
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -251,6 +265,13 @@ export function KonvaCanvas({
         return;
       }
 
+      // Calibration click
+      if (editorMode === 'calibrating') {
+        const point = getImageCoords(stage);
+        onCalibrationClick?.(point);
+        return;
+      }
+
       // Click on empty stage → deselect; place panel only in manual mode
       if (!maskTool && e.target === stage) {
         const point = getImageCoords(stage);
@@ -260,7 +281,7 @@ export function KonvaCanvas({
         }
       }
     },
-    [maskTool, placementMode, onMaskStroke, onCanvasClick, getImageCoords, onAccentZoneDraw],
+    [maskTool, placementMode, editorMode, onMaskStroke, onCanvasClick, getImageCoords, onAccentZoneDraw, onCalibrationClick],
   );
 
   const handleStageMouseLeave = useCallback(() => {
@@ -356,9 +377,11 @@ export function KonvaCanvas({
 
   const cursor = maskTool
     ? 'crosshair'
-    : placementMode === 'accent'
+    : editorMode === 'calibrating'
       ? 'crosshair'
-      : 'default';
+      : placementMode === 'accent'
+        ? 'crosshair'
+        : 'default';
 
   // ─── Accent zone rect ──────────────────────────────────────────────
 
@@ -373,8 +396,22 @@ export function KonvaCanvas({
     };
   }, [zoneDragEnd]);
 
+  // ─── Perspective transform ──────────────────────────────────────────
+  const perspectiveTransform = useMemo(() => {
+    if (!perspectiveCorners) return null;
+    return createPerspective(perspectiveCorners, {
+      w: scene.photo.width,
+      h: scene.photo.height,
+    });
+  }, [perspectiveCorners, scene.photo.width, scene.photo.height]);
+
+  const brightnessAdj = useMemo(
+    () => computeBrightnessAdjustment(wallBrightness),
+    [wallBrightness],
+  );
+
   const scale = fitScale * zoom;
-  const isPanMode = !maskTool && placementMode !== 'accent';
+  const isPanMode = !maskTool && placementMode !== 'accent' && editorMode === 'default';
 
   return (
     <div
@@ -465,10 +502,61 @@ export function KonvaCanvas({
         </Layer>
 
         {/* Layer 4: Panels */}
-        <Layer>
+        <Layer
+          filters={brightnessAdj !== 0 ? undefined : undefined}
+        >
           {panels.map((panel) => {
             const isSelected = panel.id === selectedPanelId;
             const isHovered = panel.id === hoveredPanelId;
+            const strokeColor = isSelected || isHovered ? '#4CAF50' : '#E5E7EB';
+            const strokeW = (isSelected ? 3 : isHovered ? 2 : 1) / scale;
+            const shadowCol = isSelected || isHovered ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.04)';
+            const shadowB = (isSelected || isHovered ? 12 : 3) / scale;
+            const shadowOY = (isSelected || isHovered ? 4 : 1) / scale;
+
+            const panelHandlers = {
+              onClick: () => handlePanelClick(panel.id),
+              onTap: () => handlePanelClick(panel.id),
+              onMouseEnter: () => {
+                setHoveredPanelId(panel.id);
+                const container = containerRef.current;
+                if (container) container.style.cursor = 'pointer';
+              },
+              onMouseLeave: () => {
+                setHoveredPanelId(null);
+                const container = containerRef.current;
+                if (container) container.style.cursor = cursor;
+              },
+            };
+
+            // With perspective: render as quadrilateral via <Line closed>
+            if (perspectiveTransform) {
+              const quad = transformRect(perspectiveTransform, {
+                x: panel.x,
+                y: panel.y,
+                width: panel.renderWidth,
+                height: panel.renderHeight,
+              });
+              const flatPts = quadToFlatPoints(quad);
+              return (
+                <Group key={panel.id}>
+                  <Line
+                    points={flatPts}
+                    closed
+                    fill={panel.color || '#CCCCCC'}
+                    opacity={0.85 + brightnessAdj}
+                    stroke={strokeColor}
+                    strokeWidth={strokeW}
+                    shadowColor={shadowCol}
+                    shadowBlur={shadowB}
+                    shadowOffsetY={shadowOY}
+                    {...panelHandlers}
+                  />
+                </Group>
+              );
+            }
+
+            // Without perspective: render as Rect (default)
             return (
               <Group key={panel.id}>
                 <Rect
@@ -477,28 +565,16 @@ export function KonvaCanvas({
                   width={panel.renderWidth}
                   height={panel.renderHeight}
                   fill={panel.color || '#CCCCCC'}
-                  opacity={0.85}
-                  stroke={isSelected || isHovered ? '#4CAF50' : '#E5E7EB'}
-                  strokeWidth={(isSelected ? 3 : isHovered ? 2 : 1) / scale}
-                  shadowColor={isSelected || isHovered ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.04)'}
-                  shadowBlur={(isSelected || isHovered ? 12 : 3) / scale}
-                  shadowOffsetY={(isSelected || isHovered ? 4 : 1) / scale}
-                  onClick={() => handlePanelClick(panel.id)}
-                  onTap={() => handlePanelClick(panel.id)}
-                  onMouseEnter={() => {
-                    setHoveredPanelId(panel.id);
-                    const container = containerRef.current;
-                    if (container) container.style.cursor = 'pointer';
-                  }}
-                  onMouseLeave={() => {
-                    setHoveredPanelId(null);
-                    const container = containerRef.current;
-                    if (container) container.style.cursor = cursor;
-                  }}
-                  draggable={placementMode === 'manual' && !maskTool}
+                  opacity={0.85 + brightnessAdj}
+                  stroke={strokeColor}
+                  strokeWidth={strokeW}
+                  shadowColor={shadowCol}
+                  shadowBlur={shadowB}
+                  shadowOffsetY={shadowOY}
+                  {...panelHandlers}
+                  draggable={placementMode === 'manual' && !maskTool && !perspectiveCorners}
                   onDragEnd={(e) => handlePanelDragEnd(panel.id, e)}
                 />
-                {/* Delete button rendered as HTML overlay below for better accessibility */}
               </Group>
             );
           })}
@@ -514,6 +590,54 @@ export function KonvaCanvas({
               stroke={maskTool === 'brush' ? '#4CAF50' : '#EF4444'}
               strokeWidth={2 / scale}
               opacity={0.5}
+            />
+          </Layer>
+        )}
+
+        {/* Layer 6: Calibration points */}
+        {editorMode === 'calibrating' && calibrationPoints && (
+          <Layer listening={false}>
+            {calibrationPoints.start && (
+              <Circle
+                x={calibrationPoints.start.x}
+                y={calibrationPoints.start.y}
+                radius={8 / scale}
+                fill="#4CAF50"
+                stroke="#FFFFFF"
+                strokeWidth={2 / scale}
+              />
+            )}
+            {calibrationPoints.end && (
+              <Circle
+                x={calibrationPoints.end.x}
+                y={calibrationPoints.end.y}
+                radius={8 / scale}
+                fill="#4CAF50"
+                stroke="#FFFFFF"
+                strokeWidth={2 / scale}
+              />
+            )}
+            {calibrationPoints.start && calibrationPoints.end && (
+              <Line
+                points={[
+                  calibrationPoints.start.x, calibrationPoints.start.y,
+                  calibrationPoints.end.x, calibrationPoints.end.y,
+                ]}
+                stroke="#4CAF50"
+                strokeWidth={2 / scale}
+                dash={[4 / scale, 4 / scale]}
+              />
+            )}
+          </Layer>
+        )}
+
+        {/* Layer 7: Perspective corners */}
+        {editorMode === 'perspective' && perspectiveCorners && onPerspectiveCornersChange && (
+          <Layer>
+            <PerspectiveCorners
+              corners={perspectiveCorners}
+              scale={scale}
+              onCornersChange={onPerspectiveCornersChange}
             />
           </Layer>
         )}

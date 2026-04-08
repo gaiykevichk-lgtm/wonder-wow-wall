@@ -219,12 +219,12 @@
 ## Фаза 3: Перспектива и калибровка
 
 > **Цель:** Панели ложатся в перспективу стены на фото, а не плоскими прямоугольниками.
-> **Технология:** `perspective-transform` (3 KB)
+> **Технология:** Inline homography math (8-parameter transform, no external dependency)
 > **Результат:** 4 точки по углам стены → панели деформируются под перспективу
 
 ### 3.1 Frontend — Калибровка масштаба
 
-- [ ] Создать `src/domains/visualizer/ui/CalibrationOverlay.tsx`:
+- [x] Создать `src/domains/visualizer/ui/CalibrationOverlay.tsx`:
   - Режим калибровки:
     - Выбор из пресетов объектов: дверь = 200 см, розетка = 8 см, окно = 120 см — Ant Design `Select`, border-radius `8px`
     - Или ввод своего значения: Ant Design `InputNumber`, суффикс «см»
@@ -233,22 +233,25 @@
     - Линия между точками: Konva `<Line>` — `stroke: '#4CAF50'`, `dash: [4, 4]`, `strokeWidth: 2`
     - Расчёт `pixelsPerCm = distanceInPixels / distanceInCm`
     - Обновление `calibration` в store
-  - Кнопка «Калибровать» в toolbar: `RulerOutlined` из `@ant-design/icons`, Secondary стиль
+  - Кнопка «Калибровать» в toolbar: `ColumnWidthOutlined` из `@ant-design/icons`, Secondary стиль
   - Подсказка: «Укажите два конца объекта известного размера» — Inter 13px/400, цвет `#6B7280`
-- [ ] Обновить `visualizerStore.ts`:
-  - Action `setCalibration(pixelsPerCm: number, method: 'manual')`
-  - Пересчёт размеров панелей при изменении калибровки
-- [ ] Обновить `layoutEngine.ts`:
-  - Использовать `calibration.pixelsPerCm` вместо fallback `width / 400`
+- [x] Обновить `visualizerStore.ts`:
+  - Actions: `setCalibrationPoint`, `setCalibrationReference`, `applyCalibration`, `resetCalibration`
+  - State: `editorMode`, `calibrationPoints`, `wallBrightness`
+  - Расчёт `pixelsPerCm = distPx / referenceCm` в `applyCalibration()`
+- [x] _(layoutEngine.ts уже использует calibration.pixelsPerCm)_
 
 ### 3.2 Frontend — Перспективная трансформация
 
-- [ ] Установить `perspective-transform` (`npm install perspective-transform`)
-- [ ] Создать `src/domains/visualizer/lib/perspectiveEngine.ts`:
-  - Функция `createPerspective(corners: [Point, Point, Point, Point], wallSize: {w, h}): PerspectiveTransform`
-  - Функция `transformPoint(transform, point): Point` — преобразование координат панели
-  - Функция `transformRect(transform, rect): [Point, Point, Point, Point]` — 4 угла трансформированного прямоугольника
-- [ ] Создать `src/domains/visualizer/ui/PerspectiveCorners.tsx`:
+- [x] _(Решено без npm-пакета — inline homography math в perspectiveEngine.ts)_
+- [x] Создать `src/domains/visualizer/lib/perspectiveEngine.ts`:
+  - `solveLinearSystem()` — Gaussian elimination with partial pivoting
+  - `computeHomography()` — 8×8 linear system → 9 coefficients
+  - `createPerspective(corners, wallSize)` — forward + inverse transforms
+  - `transformPoint()`, `inverseTransformPoint()`, `transformRect()`, `quadToFlatPoints()`
+  - `computeWallBrightness()` — ITU-R BT.601 perceived brightness sampling
+  - `computeBrightnessAdjustment()` — maps brightness to -0.25..0.14 range
+- [x] Создать `src/domains/visualizer/ui/PerspectiveCorners.tsx`:
   - 4 перетаскиваемых маркера (Konva `<Circle>`):
     - `fill: '#FFFFFF'`, `stroke: '#4CAF50'`, `strokeWidth: 2`, `radius: 10`
     - Hover: `radius: 12`, `stroke: '#43A047'`, cursor `move`
@@ -257,15 +260,15 @@
   - При drag → пересчёт perspective transform → re-render панелей
   - Кнопка «Перспектива» в toolbar: `BorderOuterOutlined`, Secondary стиль, border-radius `8px`
   - Active state кнопки: border `2px solid #4CAF50`
-- [ ] Обновить `KonvaCanvas.tsx`:
+- [x] Обновить `KonvaCanvas.tsx`:
   - Рендер панелей через `<Line points={transformedCorners} closed fill={color}>` вместо `<Rect>` (четырёхугольник с перспективой)
-  - D&D адаптировать: drag в экранных координатах → snap-to-grid в координатах стены
+  - Calibration click handler, perspective corners layer, brightness adjustment
 
 ### 3.3 Frontend — Улучшение визуализации
 
-- [ ] Подгонка яркости панелей под фото:
-  - Простой анализ: средняя яркость области стены (из маски) → `brightness()` CSS-фильтр на слое панелей
-  - Konva `<Layer>` поддерживает filters: `Konva.Filters.Brighten`
+- [x] Подгонка яркости панелей под фото:
+  - Простой анализ: средняя яркость области стены (из маски) → `computeWallBrightness()` + `computeBrightnessAdjustment()`
+  - Применяется как opacity adjustment на панелях (0.85 + brightnessAdj)
   - Диапазон: если стена тёмная (яркость < 100) → уменьшить яркость панелей; если светлая (> 200) → увеличить
 - [ ] Тень под панелями (Design System shadows):
   - Default: `shadowColor: 'rgba(0,0,0,0.04)'`, `shadowBlur: 3`, `shadowOffsetY: 1`
@@ -274,11 +277,13 @@
 
 ### 3.4 Тесты
 
-- [ ] Unit-тесты `perspectiveEngine.test.ts`:
+- [x] Unit-тесты `perspectiveEngine.test.ts` (15 тестов):
   - Идентичная трансформация (прямоугольник → прямоугольник)
   - Трапецоидная перспектива
   - Обратная трансформация (экран → стена)
-- [ ] Unit-тест `CalibrationOverlay`: выбор объекта + 2 клика → расчёт pixelsPerCm
+  - `quadToFlatPoints`, `computeWallBrightness`, `computeBrightnessAdjustment`
+- [x] Unit-тест `CalibrationOverlay.test.tsx` (8 тестов):
+  - Render, instruction states, distance display, apply/cancel buttons
 
 ---
 
@@ -420,7 +425,7 @@
 |---|---|---|---|
 | 1 | ML-сегментация в браузере | 10 | ✅ Завершена |
 | 2 | Миграция Canvas на react-konva + Design System | 20 | ✅ Завершена |
-| 3 | Перспектива и калибровка | 12 | ⬜ Не начата |
+| 3 | Перспектива и калибровка | 12 | ✅ Завершена (11/12, тени панелей → Фаза 5) |
 | 4 | Бэкенд — сохранение проектов | 17 | ⬜ Не начата |
 | 5 | UX-полировка | 12 | ⬜ Не начата |
 | **ИТОГО** | | **71** | **0%** |

@@ -157,6 +157,23 @@ export interface VisualizationProject {
 
 // ─── Mask editing ────────────────────────────────────────────────────────────
 
+// ─── Perspective ────────────────────────────────────────────────────────────
+
+/** Calibration mode for the editor: mask editing, calibrating scale, or adjusting perspective */
+export type EditorMode = 'default' | 'calibrating' | 'perspective';
+
+/** Two calibration points on the photo for scale reference */
+export interface CalibrationPoints {
+  start: Point | null;
+  end: Point | null;
+  referenceCm: number;
+}
+
+/** Four corner points defining wall perspective (TL, TR, BR, BL) */
+export type PerspectiveCorners = [Point, Point, Point, Point];
+
+// ─── Mask editing ────────────────────────────────────────────────────────────
+
 export type MaskTool = 'brush' | 'eraser';
 
 export interface MaskEditAction {

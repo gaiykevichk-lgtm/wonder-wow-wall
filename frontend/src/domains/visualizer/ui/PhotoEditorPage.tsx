@@ -19,8 +19,10 @@ import { MaskToolbar } from './MaskToolbar';
 import { PanelPicker } from './PanelPicker';
 import { PlacementControls } from './PlacementControls';
 import { CostSummary } from './CostSummary';
+import { CalibrationOverlay } from './CalibrationOverlay';
 import { useSearchParams } from 'react-router-dom';
-import type { Point, AccentZone } from '../model/types';
+import { computeWallBrightness } from '../lib/perspectiveEngine';
+import type { Point, AccentZone, PerspectiveCorners } from '../model/types';
 
 const { Title, Text } = Typography;
 
@@ -204,6 +206,65 @@ export default function PhotoEditorPage() {
     [store],
   );
 
+  // Calibration click — set start then end point
+  const handleCalibrationClick = useCallback(
+    (point: Point) => {
+      if (!store.calibrationPoints.start) {
+        store.setCalibrationPoint('start', point);
+      } else if (!store.calibrationPoints.end) {
+        store.setCalibrationPoint('end', point);
+      } else {
+        // Reset and start over
+        store.resetCalibration();
+        store.setCalibrationPoint('start', point);
+      }
+    },
+    [store],
+  );
+
+  // Init default perspective corners from photo dimensions
+  const handleTogglePerspective = useCallback(() => {
+    if (store.editorMode === 'perspective') {
+      store.setEditorMode('default');
+      return;
+    }
+    if (!store.scene) return;
+    // If no corners yet, init to slight inset of photo bounds
+    if (!store.perspectiveCorners) {
+      const w = store.scene.photo.width;
+      const h = store.scene.photo.height;
+      const inset = 0.05;
+      const corners: PerspectiveCorners = [
+        { x: w * inset, y: h * inset },
+        { x: w * (1 - inset), y: h * inset },
+        { x: w * (1 - inset), y: h * (1 - inset) },
+        { x: w * inset, y: h * (1 - inset) },
+      ];
+      store.setPerspectiveCorners(corners);
+    }
+    store.setEditorMode('perspective');
+  }, [store]);
+
+  // Compute wall brightness when scene is ready
+  useEffect(() => {
+    const s = store.scene;
+    if (!s?.wallMask || !s.photo.url || s.segmentationStatus !== 'ready') return;
+    const img = new window.Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, img.width, img.height);
+      const brightness = computeWallBrightness(imageData, s.wallMask!);
+      store.setWallBrightness(brightness);
+    };
+    img.src = s.photo.url;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store.scene?.wallMask, store.scene?.photo.url]);
+
   // Save project to localStorage
   const handleSave = useCallback(() => {
     const saved = store.saveToLocalStorage();
@@ -381,6 +442,12 @@ export default function PhotoEditorPage() {
                 onPanelMove={store.movePanel}
                 onHoverChange={setHoverCell}
                 onAccentZoneDraw={handleAccentZoneDraw}
+                editorMode={store.editorMode}
+                calibrationPoints={store.calibrationPoints}
+                onCalibrationClick={handleCalibrationClick}
+                perspectiveCorners={store.perspectiveCorners}
+                onPerspectiveCornersChange={store.setPerspectiveCorners}
+                wallBrightness={store.wallBrightness}
               />
             ) : (
               <WallCanvas
@@ -421,15 +488,31 @@ export default function PhotoEditorPage() {
               />
             )}
 
-            {/* Toggle mask editing */}
-            <div style={{ display: 'flex', gap: 8 }}>
+            {/* Calibration overlay */}
+            {store.editorMode === 'calibrating' && (
+              <CalibrationOverlay
+                points={store.calibrationPoints}
+                onReferenceChange={store.setCalibrationReference}
+                onApply={() => {
+                  store.applyCalibration();
+                  message.success('Масштаб откалиброван');
+                }}
+                onCancel={() => {
+                  store.resetCalibration();
+                  store.setEditorMode('default');
+                }}
+              />
+            )}
+
+            {/* Toolbar buttons */}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button
                 onClick={() => setEditingMask(!editingMask)}
                 style={{
                   padding: '6px 16px',
                   borderRadius: 8,
                   border: `1px solid ${editingMask ? '#4CAF50' : 'rgba(0,0,0,0.04)'}`,
-                  background: editingMask ? 'rgba(0,113,227,0.08)' : '#FFF',
+                  background: editingMask ? 'rgba(76,175,80,0.08)' : '#FFF',
                   color: editingMask ? '#4CAF50' : '#6B7280',
                   cursor: 'pointer',
                   fontSize: 13,
@@ -438,6 +521,49 @@ export default function PhotoEditorPage() {
               >
                 {editingMask ? 'Завершить коррекцию' : 'Корректировать маску'}
               </button>
+              <button
+                onClick={() => {
+                  if (store.editorMode === 'calibrating') {
+                    store.resetCalibration();
+                    store.setEditorMode('default');
+                  } else {
+                    store.setEditorMode('calibrating');
+                    setEditingMask(false);
+                  }
+                }}
+                style={{
+                  padding: '6px 16px',
+                  borderRadius: 8,
+                  border: `1px solid ${store.editorMode === 'calibrating' ? '#4CAF50' : 'rgba(0,0,0,0.04)'}`,
+                  background: store.editorMode === 'calibrating' ? 'rgba(76,175,80,0.08)' : '#FFF',
+                  color: store.editorMode === 'calibrating' ? '#4CAF50' : '#6B7280',
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  fontWeight: 500,
+                }}
+              >
+                Калибровать
+              </button>
+              {useKonva && (
+                <button
+                  onClick={() => {
+                    handleTogglePerspective();
+                    setEditingMask(false);
+                  }}
+                  style={{
+                    padding: '6px 16px',
+                    borderRadius: 8,
+                    border: `1px solid ${store.editorMode === 'perspective' ? '#4CAF50' : 'rgba(0,0,0,0.04)'}`,
+                    background: store.editorMode === 'perspective' ? 'rgba(76,175,80,0.08)' : '#FFF',
+                    color: store.editorMode === 'perspective' ? '#4CAF50' : '#6B7280',
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 500,
+                  }}
+                >
+                  Перспектива
+                </button>
+              )}
               <button
                 onClick={() => {
                   store.reset();
