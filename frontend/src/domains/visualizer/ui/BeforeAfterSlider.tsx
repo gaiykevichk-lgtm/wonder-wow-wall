@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { ColumnWidthOutlined } from '@ant-design/icons';
 
 interface BeforeAfterSliderProps {
@@ -18,6 +18,12 @@ export function BeforeAfterSlider({
   const containerRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
 
+  // Snapshot canvas once when component mounts (not on every drag move)
+  const afterDataUrl = useMemo(
+    () => afterCanvas?.toDataURL('image/jpeg', 0.85) ?? null,
+    [afterCanvas],
+  );
+
   const updatePosition = useCallback(
     (clientX: number) => {
       const container = containerRef.current;
@@ -30,6 +36,7 @@ export function BeforeAfterSlider({
     [],
   );
 
+  // Mouse handlers
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       draggingRef.current = true;
@@ -49,7 +56,28 @@ export function BeforeAfterSlider({
     draggingRef.current = false;
   }, []);
 
-  const afterDataUrl = afterCanvas?.toDataURL('image/jpeg', 0.85);
+  // Touch handlers (mobile support)
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      draggingRef.current = true;
+      if (e.touches[0]) updatePosition(e.touches[0].clientX);
+    },
+    [updatePosition],
+  );
+
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      if (draggingRef.current && e.touches[0]) {
+        e.preventDefault();
+        updatePosition(e.touches[0].clientX);
+      }
+    },
+    [updatePosition],
+  );
+
+  const handleTouchEnd = useCallback(() => {
+    draggingRef.current = false;
+  }, []);
 
   return (
     <div
@@ -59,6 +87,9 @@ export function BeforeAfterSlider({
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
       style={{
         position: 'relative',
         width,
@@ -67,6 +98,7 @@ export function BeforeAfterSlider({
         borderRadius: 16,
         cursor: 'ew-resize',
         userSelect: 'none',
+        touchAction: 'none',
       }}
     >
       {/* Before (full) */}

@@ -11,7 +11,6 @@ interface OnboardingTooltipsProps {
 
 export function OnboardingTooltips({ isReady }: OnboardingTooltipsProps) {
   const [open, setOpen] = useState(false);
-  const uploaderRef = useRef<HTMLElement | null>(null);
   const maskToolbarRef = useRef<HTMLElement | null>(null);
   const panelPickerRef = useRef<HTMLElement | null>(null);
   const placementRef = useRef<HTMLElement | null>(null);
@@ -27,7 +26,6 @@ export function OnboardingTooltips({ isReady }: OnboardingTooltipsProps) {
     }
 
     // Find target elements by data-testid
-    uploaderRef.current = document.querySelector('[data-testid="panel-picker"]');
     maskToolbarRef.current = document.querySelector('[data-testid="mask-toolbar-trigger"]');
     panelPickerRef.current = document.querySelector('[data-testid="panel-picker"]');
     placementRef.current = document.querySelector('[data-testid="placement-controls"]');
@@ -50,20 +48,20 @@ export function OnboardingTooltips({ isReady }: OnboardingTooltipsProps) {
     {
       title: 'Корректируйте маску стены',
       description: 'Подправьте маску стены кистью, если автоматическое распознавание неточно.',
-      target: () => maskToolbarRef.current!,
+      target: () => maskToolbarRef.current,
       nextButtonProps: { children: 'Далее' },
     },
     {
       title: 'Выберите дизайн и размер',
       description: 'Подберите дизайн панелей, размер и цвет для вашей стены.',
-      target: () => panelPickerRef.current!,
+      target: () => panelPickerRef.current,
       nextButtonProps: { children: 'Далее' },
       prevButtonProps: { children: 'Назад' },
     },
     {
       title: 'Разместите панели',
       description: 'Нажмите «Авто» для автозаполнения стены или размещайте панели вручную.',
-      target: () => placementRef.current!,
+      target: () => placementRef.current,
       nextButtonProps: { children: 'Готово' },
       prevButtonProps: { children: 'Назад' },
     },

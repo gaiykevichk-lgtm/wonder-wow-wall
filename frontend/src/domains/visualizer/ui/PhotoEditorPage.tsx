@@ -314,14 +314,18 @@ export default function PhotoEditorPage() {
     setBeforeAfterOpen(true);
   }, [store]);
 
-  const afterCanvasEl = useMemo(() => {
-    if (!beforeAfterOpen) return null;
-    return (
+  const [afterCanvasEl, setAfterCanvasEl] = useState<HTMLCanvasElement | null>(null);
+  useEffect(() => {
+    if (!beforeAfterOpen) {
+      setAfterCanvasEl(null);
+      return;
+    }
+    const el =
       document.querySelector<HTMLCanvasElement>(
         '[data-testid="konva-canvas-container"] canvas',
       ) ??
-      document.querySelector<HTMLCanvasElement>('[data-testid="wall-canvas"]')
-    );
+      document.querySelector<HTMLCanvasElement>('[data-testid="wall-canvas"]');
+    setAfterCanvasEl(el);
   }, [beforeAfterOpen]);
 
   // Fullscreen toggle
@@ -741,7 +745,7 @@ export default function PhotoEditorPage() {
               beforeSrc={scene.photo.url}
               afterCanvas={afterCanvasEl}
               width={850}
-              height={Math.round(850 * (scene.photo.height / scene.photo.width))}
+              height={scene.photo.width > 0 ? Math.round(850 * (scene.photo.height / scene.photo.width)) : 600}
             />
           </div>
         )}
