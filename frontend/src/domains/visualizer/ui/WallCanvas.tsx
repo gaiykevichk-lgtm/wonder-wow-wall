@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useState } from 'react';
+import { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import { CloseCircleFilled } from '@ant-design/icons';
 import type { Scene, PlacedPanel, MaskTool, Point, AccentZone, PlacementMode, EditorMode } from '../model/types';
 import { wallMaskToImageData } from '../lib/maskUtils';
@@ -117,6 +117,18 @@ export function WallCanvas({
     }
   }, [panels]);
 
+  // Pre-compute mask offscreen canvas (only recomputed when mask data or opacity changes)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const maskOffscreen = useMemo(() => {
+    if (!scene.wallMask) return null;
+    const imageData = wallMaskToImageData(scene.wallMask, [76, 175, 80], maskOpacity);
+    const c = document.createElement('canvas');
+    c.width = scene.wallMask.width;
+    c.height = scene.wallMask.height;
+    c.getContext('2d')!.putImageData(imageData, 0, 0);
+    return c;
+  }, [scene.wallMask, maskOpacity]);
+
   // Render
   const render = useCallback(() => {
     const canvas = canvasRef.current;
@@ -133,19 +145,9 @@ export function WallCanvas({
     // Draw photo
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-    // Draw wall mask
-    if (maskVisible && scene.wallMask) {
-      const maskImageData = wallMaskToImageData(
-        scene.wallMask,
-        [76, 175, 80],
-        maskOpacity,
-      );
-      const maskCanvas = document.createElement('canvas');
-      maskCanvas.width = scene.wallMask.width;
-      maskCanvas.height = scene.wallMask.height;
-      const maskCtx = maskCanvas.getContext('2d')!;
-      maskCtx.putImageData(maskImageData, 0, 0);
-      ctx.drawImage(maskCanvas, 0, 0, canvas.width, canvas.height);
+    // Draw wall mask (use cached offscreen canvas)
+    if (maskVisible && maskOffscreen) {
+      ctx.drawImage(maskOffscreen, 0, 0, canvas.width, canvas.height);
     }
 
     // Draw hover highlight in manual mode
@@ -204,7 +206,7 @@ export function WallCanvas({
 
     ctx.restore();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scene, panels, maskVisible, maskOpacity, imageLoaded, hoverCell, cellSizePx, placementMode, maskTool, selectedPanelId, zoneDragEnd, designImgTick]);
+  }, [scene, panels, maskVisible, maskOffscreen, imageLoaded, hoverCell, cellSizePx, placementMode, maskTool, selectedPanelId, zoneDragEnd, designImgTick]);
 
   useEffect(() => {
     render();
@@ -272,6 +274,19 @@ export function WallCanvas({
         isPaintingRef.current = true;
         const point = getImageCoords(e);
         strokePointsRef.current = [point];
+
+        // Live preview: draw initial dot immediately
+        const canvas = canvasRef.current;
+        const ctx = canvas?.getContext('2d');
+        if (ctx) {
+          ctx.save();
+          ctx.globalCompositeOperation = maskTool === 'brush' ? 'source-over' : 'destination-out';
+          ctx.fillStyle = maskTool === 'brush' ? 'rgba(76, 175, 80, 0.5)' : 'rgba(0,0,0,1)';
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, brushSize, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
         return;
       }
 
@@ -298,7 +313,31 @@ export function WallCanvas({
 
       if (isPaintingRef.current && maskTool) {
         const point = getImageCoords(e);
+        const prev = strokePointsRef.current[strokePointsRef.current.length - 1];
         strokePointsRef.current.push(point);
+
+        // Live preview: draw directly on canvas for instant feedback
+        const canvas = canvasRef.current;
+        const ctx = canvas?.getContext('2d');
+        if (ctx && prev) {
+          ctx.save();
+          ctx.globalCompositeOperation = maskTool === 'brush' ? 'source-over' : 'destination-out';
+          ctx.fillStyle = maskTool === 'brush' ? 'rgba(76, 175, 80, 0.5)' : 'rgba(0,0,0,1)';
+          // Interpolate between prev and current point
+          const dx = point.x - prev.x;
+          const dy = point.y - prev.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const steps = Math.max(1, Math.ceil(dist / (brushSize * 0.5)));
+          for (let s = 0; s <= steps; s++) {
+            const t = s / steps;
+            const cx = prev.x + dx * t;
+            const cy = prev.y + dy * t;
+            ctx.beginPath();
+            ctx.arc(cx, cy, brushSize, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
         return;
       }
 
@@ -431,7 +470,20 @@ export function WallCanvas({
         const touch = e.touches[0];
         if (maskTool) {
           isPaintingRef.current = true;
-          strokePointsRef.current = [getTouchImageCoords(touch)];
+          const point = getTouchImageCoords(touch);
+          strokePointsRef.current = [point];
+          // Live preview: draw initial dot
+          const canvas = canvasRef.current;
+          const ctx = canvas?.getContext('2d');
+          if (ctx) {
+            ctx.save();
+            ctx.globalCompositeOperation = maskTool === 'brush' ? 'source-over' : 'destination-out';
+            ctx.fillStyle = maskTool === 'brush' ? 'rgba(76, 175, 80, 0.5)' : 'rgba(0,0,0,1)';
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, brushSize, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
         } else {
           // Single touch → pan
           isPanningRef.current = true;
@@ -467,7 +519,28 @@ export function WallCanvas({
       if (e.touches.length === 1) {
         const touch = e.touches[0];
         if (isPaintingRef.current && maskTool) {
-          strokePointsRef.current.push(getTouchImageCoords(touch));
+          const point = getTouchImageCoords(touch);
+          const prev = strokePointsRef.current[strokePointsRef.current.length - 1];
+          strokePointsRef.current.push(point);
+          // Live preview
+          const canvas = canvasRef.current;
+          const ctx = canvas?.getContext('2d');
+          if (ctx && prev) {
+            ctx.save();
+            ctx.globalCompositeOperation = maskTool === 'brush' ? 'source-over' : 'destination-out';
+            ctx.fillStyle = maskTool === 'brush' ? 'rgba(76, 175, 80, 0.5)' : 'rgba(0,0,0,1)';
+            const dx = point.x - prev.x;
+            const dy = point.y - prev.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const steps = Math.max(1, Math.ceil(dist / (brushSize * 0.5)));
+            for (let s = 0; s <= steps; s++) {
+              const t = s / steps;
+              ctx.beginPath();
+              ctx.arc(prev.x + dx * t, prev.y + dy * t, brushSize, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            ctx.restore();
+          }
         } else if (isPanningRef.current) {
           const dx = touch.clientX - lastPanRef.current.x;
           const dy = touch.clientY - lastPanRef.current.y;
