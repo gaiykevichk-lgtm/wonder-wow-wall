@@ -31,12 +31,11 @@ interface KonvaCanvasProps {
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 4;
 
-/** Convert WallMask → offscreen canvas for Konva Image rendering. */
+/** Convert WallMask → offscreen canvas for Konva Image rendering (full opacity). */
 function maskToCanvas(
   mask: { data: Uint8Array; width: number; height: number },
-  opacity: number,
 ): HTMLCanvasElement {
-  const imageData = wallMaskToImageData(mask, [76, 175, 80], opacity);
+  const imageData = wallMaskToImageData(mask, [76, 175, 80], 1);
   const canvas = document.createElement('canvas');
   canvas.width = mask.width;
   canvas.height = mask.height;
@@ -72,6 +71,7 @@ export function KonvaCanvas({
   const [photoImage, setPhotoImage] = useState<HTMLImageElement | null>(null);
   const [selectedPanelId, setSelectedPanelId] = useState<string | null>(null);
   const [hoveredPanelId, setHoveredPanelId] = useState<string | null>(null);
+  const [cursorPos, setCursorPos] = useState<Point>({ x: 0, y: 0 });
 
   // Painting state
   const isPaintingRef = useRef(false);
@@ -109,8 +109,8 @@ export function KonvaCanvas({
   // ─── Mask canvas (offscreen) ────────────────────────────────────────
   const maskCanvas = useMemo(() => {
     if (!scene.wallMask) return null;
-    return maskToCanvas(scene.wallMask, maskOpacity);
-  }, [scene.wallMask, maskOpacity]);
+    return maskToCanvas(scene.wallMask);
+  }, [scene.wallMask]);
 
   // ─── Compute scale to fit photo in stage ────────────────────────────
   const fitScale = useMemo(() => {
@@ -187,23 +187,27 @@ export function KonvaCanvas({
       const stage = e.target.getStage();
       if (!stage) return;
 
+      const point = getImageCoords(stage);
+
+      // Update brush cursor position when mask tool is active
+      if (maskTool) {
+        setCursorPos(point);
+      }
+
       // Mask painting
       if (isPaintingRef.current && maskTool) {
-        const point = getImageCoords(stage);
         strokePointsRef.current.push(point);
         return;
       }
 
       // Accent zone preview
       if (isDrawingZoneRef.current) {
-        const point = getImageCoords(stage);
         setZoneDragEnd(point);
         return;
       }
 
       // Hover highlight in manual mode
       if (placementMode === 'manual' && !maskTool) {
-        const point = getImageCoords(stage);
         const snapped = snapToGrid(point);
         onHoverChange?.(snapped);
       }
@@ -424,6 +428,7 @@ export function KonvaCanvas({
               image={maskCanvas}
               width={scene.photo.width}
               height={scene.photo.height}
+              opacity={maskOpacity}
             />
           )}
         </Layer>
@@ -503,13 +508,12 @@ export function KonvaCanvas({
         {maskTool && (
           <Layer listening={false}>
             <Circle
-              x={0}
-              y={0}
+              x={cursorPos.x}
+              y={cursorPos.y}
               radius={brushSize}
               stroke={maskTool === 'brush' ? '#4CAF50' : '#EF4444'}
               strokeWidth={2 / scale}
               opacity={0.5}
-              visible={false}
             />
           </Layer>
         )}

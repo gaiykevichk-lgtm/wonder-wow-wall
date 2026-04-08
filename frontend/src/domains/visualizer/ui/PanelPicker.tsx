@@ -24,6 +24,7 @@ export function PanelPicker({
   onColorSelect,
 }: PanelPickerProps) {
   const [search, setSearch] = useState('');
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   const filteredProducts = useMemo(
     () =>
@@ -77,17 +78,11 @@ export function PanelPicker({
               overflow: 'hidden',
               transition: 'all 0.3s',
               position: 'relative',
+              transform: hoveredId === product.id && selectedDesignId !== product.id ? 'translateY(-4px)' : undefined,
+              boxShadow: hoveredId === product.id && selectedDesignId !== product.id ? '0 12px 40px rgba(0,0,0,0.1)' : undefined,
             }}
-            onMouseEnter={(e) => {
-              if (selectedDesignId !== product.id) {
-                e.currentTarget.style.transform = 'translateY(-4px)';
-                e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,0,0,0.1)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = '';
-              e.currentTarget.style.boxShadow = '';
-            }}
+            onMouseEnter={() => setHoveredId(product.id)}
+            onMouseLeave={() => setHoveredId(null)}
           >
             <div
               style={{

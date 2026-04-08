@@ -216,32 +216,11 @@ export default function PhotoEditorPage() {
 
   // Export canvas as JPEG
   const handleExport = useCallback(() => {
-    // Try Konva stage first
-    const konvaContainer = document.querySelector('[data-testid="konva-canvas-container"]');
-    if (konvaContainer) {
-      const konvaCanvas = konvaContainer.querySelector('canvas');
-      if (konvaCanvas) {
-        konvaCanvas.toBlob(
-          (blob) => {
-            if (!blob) return;
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `wow-wall-visualizer-${Date.now()}.jpg`;
-            a.click();
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-            message.success('Изображение сохранено');
-          },
-          'image/jpeg',
-          0.92,
-        );
-        return;
-      }
-    }
-
-    // Fallback to old WallCanvas
-    const canvas = document.querySelector<HTMLCanvasElement>('[data-testid="wall-canvas"]');
+    const canvas =
+      document.querySelector<HTMLCanvasElement>('[data-testid="konva-canvas-container"] canvas') ??
+      document.querySelector<HTMLCanvasElement>('[data-testid="wall-canvas"]');
     if (!canvas) return;
+
     canvas.toBlob(
       (blob) => {
         if (!blob) return;

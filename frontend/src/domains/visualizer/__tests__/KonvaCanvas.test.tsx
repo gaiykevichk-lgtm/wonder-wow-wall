@@ -54,10 +54,7 @@ vi.mock('react-konva', () => {
   const Group = (props: Record<string, unknown>) =>
     React.createElement('div', { 'data-testid': 'konva-group' }, props.children);
 
-  const Line = (props: Record<string, unknown>) =>
-    React.createElement('div', { 'data-testid': 'konva-line', 'data-points': props.points });
-
-  return { Stage, Layer, Rect, Image, Circle, Group, Line };
+  return { Stage, Layer, Rect, Image, Circle, Group };
 });
 
 // Polyfill ResizeObserver for jsdom
