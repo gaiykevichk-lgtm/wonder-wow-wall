@@ -8,6 +8,9 @@ import { wallMaskToImageData } from '../lib/maskUtils';
 import { createPerspective, transformRect, quadToFlatPoints, computeBrightnessAdjustment } from '../lib/perspectiveEngine';
 import { PerspectiveCorners } from './PerspectiveCorners';
 
+/** Cache of loaded design texture images keyed by URL. */
+const konvaDesignImageCache = new Map<string, HTMLImageElement>();
+
 interface KonvaCanvasProps {
   scene: Scene;
   panels: PlacedPanel[];
@@ -119,6 +122,27 @@ export function KonvaCanvas({
     img.onload = () => setPhotoImage(img);
     img.src = scene.photo.url;
   }, [scene.photo.url]);
+
+  // ─── Load design images for panels ──────────────────────────────────
+  const [panelImages, setPanelImages] = useState<Map<string, HTMLImageElement>>(new Map());
+  useEffect(() => {
+    const urls = new Set(panels.map((p) => p.designImage).filter(Boolean));
+    let updated = false;
+    for (const url of urls) {
+      if (konvaDesignImageCache.has(url)) continue;
+      const img = new window.Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        konvaDesignImageCache.set(url, img);
+        setPanelImages(new Map(konvaDesignImageCache));
+      };
+      img.src = url;
+      updated = true;
+    }
+    if (!updated && konvaDesignImageCache.size > 0) {
+      setPanelImages(new Map(konvaDesignImageCache));
+    }
+  }, [panels]);
 
   // ─── Mask canvas (offscreen) ────────────────────────────────────────
   const maskCanvas = useMemo(() => {
@@ -555,24 +579,58 @@ export function KonvaCanvas({
             }
 
             // Without perspective: render as Rect (default)
+            const designImg = panel.designImage ? panelImages.get(panel.designImage) : null;
             return (
               <Group key={panel.id}>
-                <Rect
-                  x={panel.x}
-                  y={panel.y}
-                  width={panel.renderWidth}
-                  height={panel.renderHeight}
-                  fill={panel.color || '#CCCCCC'}
-                  opacity={0.85 + brightnessAdj}
-                  stroke={strokeColor}
-                  strokeWidth={strokeW}
-                  shadowColor={shadowCol}
-                  shadowBlur={shadowB}
-                  shadowOffsetY={shadowOY}
-                  {...panelHandlers}
-                  draggable={placementMode === 'manual' && !maskTool && !perspectiveCorners}
-                  onDragEnd={(e) => handlePanelDragEnd(panel.id, e)}
-                />
+                {designImg ? (
+                  <>
+                    <KonvaImage
+                      image={designImg}
+                      x={panel.x}
+                      y={panel.y}
+                      width={panel.renderWidth}
+                      height={panel.renderHeight}
+                      opacity={0.85 + brightnessAdj}
+                      stroke={strokeColor}
+                      strokeWidth={strokeW}
+                      shadowColor={shadowCol}
+                      shadowBlur={shadowB}
+                      shadowOffsetY={shadowOY}
+                      {...panelHandlers}
+                      draggable={placementMode === 'manual' && !maskTool && !perspectiveCorners}
+                      onDragEnd={(e) => handlePanelDragEnd(panel.id, e)}
+                    />
+                    {/* Color tint overlay */}
+                    {panel.color && (
+                      <Rect
+                        x={panel.x}
+                        y={panel.y}
+                        width={panel.renderWidth}
+                        height={panel.renderHeight}
+                        fill={panel.color}
+                        opacity={0.25}
+                        listening={false}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <Rect
+                    x={panel.x}
+                    y={panel.y}
+                    width={panel.renderWidth}
+                    height={panel.renderHeight}
+                    fill={panel.color || '#CCCCCC'}
+                    opacity={0.85 + brightnessAdj}
+                    stroke={strokeColor}
+                    strokeWidth={strokeW}
+                    shadowColor={shadowCol}
+                    shadowBlur={shadowB}
+                    shadowOffsetY={shadowOY}
+                    {...panelHandlers}
+                    draggable={placementMode === 'manual' && !maskTool && !perspectiveCorners}
+                    onDragEnd={(e) => handlePanelDragEnd(panel.id, e)}
+                  />
+                )}
               </Group>
             );
           })}

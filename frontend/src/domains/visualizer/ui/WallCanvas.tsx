@@ -6,6 +6,24 @@ import { wallMaskToImageData } from '../lib/maskUtils';
 const touchDist = (a: React.Touch, b: React.Touch) =>
   Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
 
+/** Cache of loaded design texture images keyed by URL. */
+const designImageCache = new Map<string, HTMLImageElement>();
+
+function getDesignImage(url: string): HTMLImageElement | null {
+  return designImageCache.get(url) ?? null;
+}
+
+function loadDesignImage(url: string, onLoad: () => void): void {
+  if (designImageCache.has(url)) return;
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    designImageCache.set(url, img);
+    onLoad();
+  };
+  img.src = url;
+}
+
 interface WallCanvasProps {
   scene: Scene;
   panels: PlacedPanel[];
@@ -60,6 +78,22 @@ export function WallCanvas({
   const isDrawingZoneRef = useRef(false);
   const zoneStartRef = useRef<Point>({ x: 0, y: 0 });
   const [zoneDragEnd, setZoneDragEnd] = useState<Point | null>(null);
+  // Container size for aspect-ratio-correct rendering
+  const [containerSize, setContainerSize] = useState({ width: 800, height: 600 });
+  // Force re-render when design images load
+  const [designImgTick, setDesignImgTick] = useState(0);
+
+  // Track container size for aspect-ratio-correct canvas display
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const ro = new ResizeObserver((entries) => {
+      const { width, height } = entries[0]!.contentRect;
+      if (width > 0 && height > 0) setContainerSize({ width, height });
+    });
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, []);
 
   // Load photo image
   useEffect(() => {
@@ -70,6 +104,14 @@ export function WallCanvas({
     };
     img.src = scene.photo.url;
   }, [scene.photo.url]);
+
+  // Load design images for placed panels
+  useEffect(() => {
+    const urls = new Set(panels.map((p) => p.designImage).filter(Boolean));
+    for (const url of urls) {
+      loadDesignImage(url, () => setDesignImgTick((t) => t + 1));
+    }
+  }, [panels]);
 
   // Render
   const render = useCallback(() => {
@@ -130,9 +172,23 @@ export function WallCanvas({
 
     // Draw panels
     for (const panel of panels) {
-      ctx.fillStyle = panel.color || '#CCCCCC';
       ctx.globalAlpha = 0.85;
-      ctx.fillRect(panel.x, panel.y, panel.renderWidth, panel.renderHeight);
+
+      // Draw design texture if loaded, otherwise solid color
+      const designImg = panel.designImage ? getDesignImage(panel.designImage) : null;
+      if (designImg) {
+        ctx.drawImage(designImg, panel.x, panel.y, panel.renderWidth, panel.renderHeight);
+        // Apply color tint overlay
+        if (panel.color) {
+          ctx.globalAlpha = 0.25;
+          ctx.fillStyle = panel.color;
+          ctx.fillRect(panel.x, panel.y, panel.renderWidth, panel.renderHeight);
+          ctx.globalAlpha = 0.85;
+        }
+      } else {
+        ctx.fillStyle = panel.color || '#CCCCCC';
+        ctx.fillRect(panel.x, panel.y, panel.renderWidth, panel.renderHeight);
+      }
 
       // Panel border
       ctx.globalAlpha = 1;
@@ -140,23 +196,25 @@ export function WallCanvas({
       ctx.strokeStyle = isSelected ? '#4CAF50' : 'rgba(0,0,0,0.15)';
       ctx.lineWidth = isSelected ? 3 : 1;
       ctx.strokeRect(panel.x, panel.y, panel.renderWidth, panel.renderHeight);
-
-      // Design label
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.font = '10px Inter, sans-serif';
-      ctx.fillText(
-        panel.designName.slice(0, 15),
-        panel.x + 4,
-        panel.y + panel.renderHeight - 4,
-      );
     }
 
     ctx.restore();
-  }, [scene, panels, maskVisible, maskOpacity, imageLoaded, hoverCell, cellSizePx, placementMode, maskTool, selectedPanelId, zoneDragEnd]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scene, panels, maskVisible, maskOpacity, imageLoaded, hoverCell, cellSizePx, placementMode, maskTool, selectedPanelId, zoneDragEnd, designImgTick]);
 
   useEffect(() => {
     render();
   }, [render]);
+
+  // Compute display size maintaining aspect ratio (fit within container)
+  const displaySize = (() => {
+    const photoW = scene.photo.width || 1;
+    const photoH = scene.photo.height || 1;
+    const sx = containerSize.width / photoW;
+    const sy = containerSize.height / photoH;
+    const s = Math.min(sx, sy, 1);
+    return { width: photoW * s, height: photoH * s };
+  })();
 
   // Get coordinates relative to image
   const getImageCoords = useCallback(
@@ -451,12 +509,12 @@ export function WallCanvas({
         onTouchEnd={handleTouchEnd}
         style={{
           display: 'block',
-          width: '100%',
-          height: '100%',
-          objectFit: 'contain',
+          width: displaySize.width,
+          height: displaySize.height,
           transform: `scale(${zoom}) translate(${panOffset.x / zoom}px, ${panOffset.y / zoom}px)`,
           transformOrigin: 'center',
           touchAction: 'none',
+          margin: '0 auto',
         }}
       />
       {/* Delete button for selected panel */}
