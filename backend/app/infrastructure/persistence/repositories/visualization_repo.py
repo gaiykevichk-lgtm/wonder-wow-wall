@@ -96,7 +96,6 @@ class InMemoryVisualizationProjectRepository(VisualizationProjectRepository):
         return project
 
     async def update(self, project: VisualizationProject) -> VisualizationProject:
-        project.updated_at = datetime.utcnow()
         self._projects[project.id] = project
         return project
 
@@ -152,7 +151,7 @@ class SqlVisualizationProjectRepository(VisualizationProjectRepository):
     async def update(self, project: VisualizationProject) -> VisualizationProject:
         model = await self._session.get(VisualizationProjectModel, project.id)
         if not model:
-            return await self.save(project)
+            raise ValueError(f"VisualizationProject {project.id} not found")
         model.name = project.name
         model.photo_url = project.photo_url
         model.photo_width = project.photo_width
@@ -162,7 +161,7 @@ class SqlVisualizationProjectRepository(VisualizationProjectRepository):
         model.panels_json = _entity_to_panels_json(project.panels)
         model.perspective_corners = project.perspective_corners
         model.placement_mode = project.placement_mode
-        model.updated_at = datetime.utcnow()
+        model.updated_at = project.updated_at
         await self._session.flush()
         return _model_to_entity(model)
 

@@ -1,12 +1,14 @@
 /**
  * Convert Uint8Array to base64 string for JSON serialization.
+ * Uses chunked approach to avoid O(n²) string concatenation.
  */
 export function uint8ArrayToBase64(data: Uint8Array): string {
-  let binary = '';
-  for (let i = 0; i < data.length; i++) {
-    binary += String.fromCharCode(data[i]!);
+  const CHUNK = 8192;
+  const parts: string[] = [];
+  for (let i = 0; i < data.length; i += CHUNK) {
+    parts.push(String.fromCharCode(...data.subarray(i, i + CHUNK)));
   }
-  return btoa(binary);
+  return btoa(parts.join(''));
 }
 
 /**

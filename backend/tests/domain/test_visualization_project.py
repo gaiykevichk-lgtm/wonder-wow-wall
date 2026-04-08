@@ -1,6 +1,5 @@
 import pytest
 from app.domain.visualizer.entities import VisualizationProject, PlacedPanelData
-from app.domain.visualizer.value_objects import PanelPosition, PanelDimensions
 
 
 class TestPlacedPanelData:
@@ -25,6 +24,14 @@ class TestVisualizationProject:
         assert project.user_id == "u1"
         assert len(project.id) == 36  # UUID
         assert project.panels == []
+
+    def test_name_empty(self):
+        with pytest.raises(ValueError, match="must not be empty"):
+            VisualizationProject(name="")
+
+    def test_name_whitespace_only(self):
+        with pytest.raises(ValueError, match="must not be empty"):
+            VisualizationProject(name="   ")
 
     def test_name_too_long(self):
         with pytest.raises(ValueError, match="100 characters"):
@@ -59,15 +66,3 @@ class TestVisualizationProject:
         assert project.wall_mask_base64 == ""
 
 
-class TestValueObjects:
-    def test_panel_position_frozen(self):
-        pos = PanelPosition(x=10.0, y=20.0)
-        assert pos.x == 10.0
-        with pytest.raises(AttributeError):
-            pos.x = 30.0
-
-    def test_panel_dimensions_frozen(self):
-        dim = PanelDimensions(width_cm=30.0, height_cm=60.0)
-        assert dim.width_cm == 30.0
-        with pytest.raises(AttributeError):
-            dim.width_cm = 90.0

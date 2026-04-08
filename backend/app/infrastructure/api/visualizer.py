@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from app.application.visualizer.use_cases import (
@@ -37,7 +37,7 @@ class PointSchema(BaseModel):
 
 class VisualizationProjectCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
-    photo_url: str = ""
+    photo_url: str = Field("", max_length=20_000_000)  # ~15 MB base64 data URL
     photo_width: int = Field(0, ge=0)
     photo_height: int = Field(0, ge=0)
     wall_mask_base64: str = Field("", max_length=10_000_000)  # ~7.5 MB base64
@@ -49,7 +49,7 @@ class VisualizationProjectCreate(BaseModel):
 
 class VisualizationProjectUpdate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
-    photo_url: str = ""
+    photo_url: str = Field("", max_length=20_000_000)
     photo_width: int = Field(0, ge=0)
     photo_height: int = Field(0, ge=0)
     wall_mask_base64: str = Field("", max_length=10_000_000)
@@ -156,7 +156,6 @@ def _entity_to_list_item(p: VisualizationProject) -> dict:
 
 @router.post("", response_model=VisualizationProjectResponse, status_code=201)
 async def create_visualization_project(
-    request: Request,
     body: VisualizationProjectCreate,
     user_id: str = Depends(get_current_user_id),
     repo=Depends(get_visualization_repo),
@@ -169,7 +168,6 @@ async def create_visualization_project(
 
 @router.get("", response_model=list[VisualizationProjectListItem])
 async def list_visualization_projects(
-    request: Request,
     user_id: str = Depends(get_current_user_id),
     repo=Depends(get_visualization_repo),
 ):
@@ -180,7 +178,6 @@ async def list_visualization_projects(
 
 @router.get("/{project_id}", response_model=VisualizationProjectResponse)
 async def get_visualization_project(
-    request: Request,
     project_id: str,
     user_id: str = Depends(get_current_user_id),
     repo=Depends(get_visualization_repo),
@@ -194,7 +191,6 @@ async def get_visualization_project(
 
 @router.put("/{project_id}", response_model=VisualizationProjectResponse)
 async def update_visualization_project(
-    request: Request,
     project_id: str,
     body: VisualizationProjectUpdate,
     user_id: str = Depends(get_current_user_id),
@@ -210,7 +206,6 @@ async def update_visualization_project(
 
 @router.delete("/{project_id}")
 async def delete_visualization_project(
-    request: Request,
     project_id: str,
     user_id: str = Depends(get_current_user_id),
     repo=Depends(get_visualization_repo),

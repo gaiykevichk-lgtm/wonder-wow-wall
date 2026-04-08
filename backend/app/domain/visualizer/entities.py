@@ -23,7 +23,7 @@ class VisualizationProject:
 
     id: str = field(default_factory=lambda: str(uuid4()))
     user_id: str = ""
-    name: str = ""
+    name: str = "Без названия"
     photo_url: str = ""
     photo_width: int = 0
     photo_height: int = 0
@@ -36,6 +36,8 @@ class VisualizationProject:
     updated_at: datetime = field(default_factory=datetime.utcnow)
 
     def __post_init__(self):
+        if not self.name.strip():
+            raise ValueError("Project name must not be empty")
         if len(self.name) > 100:
             raise ValueError("Project name must be 100 characters or less")
         if len(self.panels) > 500:

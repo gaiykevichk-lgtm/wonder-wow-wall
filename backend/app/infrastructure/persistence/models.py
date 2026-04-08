@@ -29,6 +29,7 @@ class UserModel(Base):
     orders: Mapped[list["OrderModel"]] = relationship(back_populates="user")
     subscriptions: Mapped[list["SubscriptionModel"]] = relationship(back_populates="user")
     projects: Mapped[list["ProjectModel"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    visualization_projects: Mapped[list["VisualizationProjectModel"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class UserAddressModel(Base):
@@ -186,4 +187,4 @@ class VisualizationProjectModel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    user: Mapped["UserModel"] = relationship()
+    user: Mapped["UserModel"] = relationship(back_populates="visualization_projects")
