@@ -112,8 +112,8 @@
 
 ### 2.1 Frontend — Установка и базовая миграция
 
-- [ ] Установить `react-konva` и `konva` (`npm install react-konva konva`)
-- [ ] Создать `src/domains/visualizer/ui/KonvaCanvas.tsx` — замена `WallCanvas.tsx`:
+- [x] Установить `react-konva` и `konva` (`npm install react-konva konva`)
+- [x] Создать `src/domains/visualizer/ui/KonvaCanvas.tsx` — замена `WallCanvas.tsx`:
   - `<Stage>` с `width`, `height`, `scaleX/Y` (zoom), `draggable` (pan)
   - `<Layer>` для фото (Konva `<Image>`)
   - `<Layer>` для маски (Konva `<Image>` с opacity из store)
@@ -132,11 +132,11 @@
 
 ### 2.2 Frontend — Маска на Konva
 
-- [ ] Рендеринг маски:
+- [x] Рендеринг маски:
   - Преобразовать `WallMask` → offscreen `<canvas>` → Konva `<Image>`
   - Цвет маски overlay: `rgba(76, 175, 80, opacity)` — `#4CAF50` (акцент из Design System, допустим для статусов/активных зон)
   - Переключение видимости: `visible={maskVisible}` на `<Image>`
-- [ ] Рисование маски (кисть/ластик):
+- [x] Рисование маски (кисть/ластик):
   - Konva `<Line>` с `globalCompositeOperation` или отдельный offscreen canvas для painting
   - `onMouseDown/Move/Up` + `onTouchStart/Move/End` на Stage → рисование штриха
   - Курсор кисти: круг `stroke: '#4CAF50'` (кисть) / `stroke: '#EF4444'` (ластик), `opacity: 0.5`
@@ -145,25 +145,25 @@
 
 ### 2.3 Frontend — Toolbar и панели (Design System)
 
-- [ ] Обновить `MaskToolbar.tsx` — стилизация по Design System:
+- [x] Обновить `MaskToolbar.tsx` — стилизация по Design System:
   - Фон toolbar: `#2D2D2D` (тёмный, уже есть)
   - Кнопки инструментов: `Segmented` Ant Design, border-radius `8px`
   - Slider: Ant Design `Slider`, track color `#4CAF50`
   - Иконка Undo: `UndoOutlined`, disabled цвет `#9CA3AF`
   - Иконка глаза: `EyeOutlined` / `EyeInvisibleOutlined`, active цвет `#4CAF50`
-- [ ] Обновить `PlacementControls.tsx` — стилизация по Design System:
+- [x] Обновить `PlacementControls.tsx` — стилизация по Design System:
   - Segmented переключатель «Авто / Вручную / Зона»: border-radius `8px`
   - Кнопка «Заполнить стену»: Accent стиль — фон `#4CAF50`, текст белый, hover `#43A047`, border-radius `8px`, высота `36px`
   - Кнопка «Очистить всё»: Ghost стиль — текст `#EF4444`, hover underline
   - Tooltips: Inter 13px/400, цвет `#6B7280`
-- [ ] Обновить `PanelPicker.tsx` — стилизация по Design System:
+- [x] Обновить `PanelPicker.tsx` — стилизация по Design System:
   - Карточки дизайнов: border-radius `12px`, border `1px solid #E5E7EB`
   - Hover карточки: `translateY(-4px)`, тень `0 12px 40px rgba(0,0,0,0.1)`, transition `0.3s`
   - Выбранная карточка: border `2px solid #4CAF50`, бейдж «Выбран» — фон `#4CAF50`, текст белый, border-radius `6px`, Inter 12px/500
   - Поиск: Ant Design `Input` с `SearchOutlined`, border-radius `8px`, border `#E5E7EB`
   - Radio размеров: border-radius `8px`
   - Color swatches: border-radius `50%`, selected → border `2px solid #2D2D2D`
-- [ ] Обновить `CostSummary.tsx` — стилизация по Design System:
+- [x] Обновить `CostSummary.tsx` — стилизация по Design System:
   - Контейнер: border `1px solid #E5E7EB`, border-radius `16px`, padding `20px`
   - Заголовок «Стоимость»: Inter 24px/700, цвет `#2D2D2D`
   - Строки разбивки: Inter 14px/400, цвет `#6B7280`; значения — Inter 14px/500, цвет `#2D2D2D`
@@ -174,10 +174,10 @@
 
 ### 2.4 Frontend — Zoom, Pan, Touch
 
-- [ ] Zoom: `onWheel` на `<Stage>` → обновить `scaleX/Y` (диапазон 0.25–4x)
-- [ ] Pan: `<Stage draggable>` — встроенная функция Konva
-- [ ] Pinch-to-zoom: Konva поддерживает touch events, адаптировать текущую логику `touchDist()`
-- [ ] Экспорт: `stageRef.current.toDataURL({ mimeType: 'image/jpeg', quality: 0.9 })` → download
+- [x] Zoom: `onWheel` на `<Stage>` → обновить `scaleX/Y` (диапазон 0.25–4x)
+- [x] Pan: `<Stage draggable>` — встроенная функция Konva
+- [x] Pinch-to-zoom: Konva поддерживает touch events, адаптировать текущую логику `touchDist()`
+- [x] Экспорт: `stageRef.current.toDataURL({ mimeType: 'image/jpeg', quality: 0.9 })` → download
 
 ### 2.5 Frontend — Замена WallCanvas → KonvaCanvas
 
@@ -188,15 +188,15 @@
 >
 > **⚠️ Координатная система:** Canvas API использует `ctx.getImageData()` / pixel-level координаты. Konva использует `node.getAbsolutePosition()` / Stage-relative координаты. `onMouseMove` в WallCanvas вычисляет `(offsetX - panX) / zoom` — в Konva аналог: `stage.getPointerPosition()` + `node.getRelativePointerPosition()`. При миграции проверить каждый из 7 callbacks на корректность координат.
 
-- [ ] Обновить `PhotoEditorPage.tsx`:
+- [x] Обновить `PhotoEditorPage.tsx`:
   - Заменить `<WallCanvas>` на `<KonvaCanvas>`
   - Layout: 3-column grid — `240px` (PanelPicker) | `1fr` (KonvaCanvas) | `280px` (Controls + Cost)
   - Фон страницы: `#FFFFFF`, разделители между колонками: `1px solid #F0F0F0`
   - Header секции: Inter 32px/800, цвет `#2D2D2D`; subtitle: Inter 15px/400, цвет `#6B7280`
   - Анимация входа: Framer Motion `AnimatePresence` + `motion.div` fadeUp
-- [ ] **Параллельный режим Canvas (dev)**: добавить `useSearchParams` проверку `?canvas=konva` → рендерить `KonvaCanvas` или `WallCanvas`. Удалить переключатель после полной миграции.
+- [x] **Параллельный режим Canvas (dev)**: добавить `useSearchParams` проверку `?canvas=konva` → рендерить `KonvaCanvas` или `WallCanvas`. Удалить переключатель после полной миграции.
 - [ ] Удалить `WallCanvas.tsx` после полной миграции и подтверждения всех 7 callbacks
-- [ ] Проверить, что все props и callbacks совместимы — чеклист:
+- [x] Проверить, что все props и callbacks совместимы — чеклист:
   - `onPanelClick` (select)
   - `onPanelDrag` (координаты)
   - `onMaskPaint` (кисть/ластик)
@@ -207,12 +207,12 @@
 
 ### 2.5 Тесты
 
-- [ ] Компонентный тест `KonvaCanvas.test.tsx`:
+- [x] Компонентный тест `KonvaCanvas.test.tsx`:
   - Рендер фото + маска
   - Клик на панель → select
   - D&D панели → обновление координат
   - Zoom scroll
-- [ ] Обновить существующие тесты, ссылающиеся на `WallCanvas`
+- [x] Обновить существующие тесты, ссылающиеся на `WallCanvas`
 
 ---
 
@@ -419,7 +419,7 @@
 | Фаза | Описание | Задач | Статус |
 |---|---|---|---|
 | 1 | ML-сегментация в браузере | 10 | ✅ Завершена |
-| 2 | Миграция Canvas на react-konva + Design System | 20 | ⬜ Не начата |
+| 2 | Миграция Canvas на react-konva + Design System | 20 | ✅ Завершена |
 | 3 | Перспектива и калибровка | 12 | ⬜ Не начата |
 | 4 | Бэкенд — сохранение проектов | 17 | ⬜ Не начата |
 | 5 | UX-полировка | 12 | ⬜ Не начата |

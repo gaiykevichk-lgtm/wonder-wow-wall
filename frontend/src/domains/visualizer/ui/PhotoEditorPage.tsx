@@ -14,6 +14,7 @@ import { BASE_PANEL_PRICES, DESIGN_OVERLAY_PRICE } from '../../../shared/config/
 import { products } from '../../catalog/model/data';
 import { PhotoUploader } from './PhotoUploader';
 import { WallCanvas } from './WallCanvas';
+import { KonvaCanvas } from './KonvaCanvas';
 import { MaskToolbar } from './MaskToolbar';
 import { PanelPicker } from './PanelPicker';
 import { PlacementControls } from './PlacementControls';
@@ -215,6 +216,30 @@ export default function PhotoEditorPage() {
 
   // Export canvas as JPEG
   const handleExport = useCallback(() => {
+    // Try Konva stage first
+    const konvaContainer = document.querySelector('[data-testid="konva-canvas-container"]');
+    if (konvaContainer) {
+      const konvaCanvas = konvaContainer.querySelector('canvas');
+      if (konvaCanvas) {
+        konvaCanvas.toBlob(
+          (blob) => {
+            if (!blob) return;
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `wow-wall-visualizer-${Date.now()}.jpg`;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            message.success('Изображение сохранено');
+          },
+          'image/jpeg',
+          0.92,
+        );
+        return;
+      }
+    }
+
+    // Fallback to old WallCanvas
     const canvas = document.querySelector<HTMLCanvasElement>('[data-testid="wall-canvas"]');
     if (!canvas) return;
     canvas.toBlob(
@@ -244,6 +269,8 @@ export default function PhotoEditorPage() {
     if (!wCm || !hCm) return null;
     return { w: wCm * pxPerCm, h: hCm * pxPerCm };
   }, [store.scene?.calibration, store.selectedSizeKey]);
+
+  const useKonva = searchParams.get('canvas') === 'konva';
 
   const { scene, segmentationProgress } = store;
   const isReady = scene?.segmentationStatus === 'ready';
@@ -354,26 +381,49 @@ export default function PhotoEditorPage() {
 
           {/* Center: Canvas + Mask toolbar */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <WallCanvas
-              scene={scene}
-              panels={store.layout.panels}
-              maskVisible={store.maskVisible}
-              maskOpacity={store.maskOpacity}
-              maskTool={editingMask ? store.maskTool : null}
-              brushSize={store.brushSize}
-              zoom={zoom}
-              panOffset={panOffset}
-              placementMode={store.layout.placementMode}
-              hoverCell={hoverCell}
-              cellSizePx={cellSizePx}
-              onCanvasClick={handleCanvasClick}
-              onMaskStroke={handleMaskStroke}
-              onZoomChange={setZoom}
-              onPanChange={setPanOffset}
-              onRemovePanel={handleRemovePanel}
-              onHoverChange={setHoverCell}
-              onAccentZoneDraw={handleAccentZoneDraw}
-            />
+            {useKonva ? (
+              <KonvaCanvas
+                scene={scene}
+                panels={store.layout.panels}
+                maskVisible={store.maskVisible}
+                maskOpacity={store.maskOpacity}
+                maskTool={editingMask ? store.maskTool : null}
+                brushSize={store.brushSize}
+                zoom={zoom}
+                panOffset={panOffset}
+                placementMode={store.layout.placementMode}
+                hoverCell={hoverCell}
+                cellSizePx={cellSizePx}
+                onCanvasClick={handleCanvasClick}
+                onMaskStroke={handleMaskStroke}
+                onZoomChange={setZoom}
+                onPanChange={setPanOffset}
+                onRemovePanel={handleRemovePanel}
+                onHoverChange={setHoverCell}
+                onAccentZoneDraw={handleAccentZoneDraw}
+              />
+            ) : (
+              <WallCanvas
+                scene={scene}
+                panels={store.layout.panels}
+                maskVisible={store.maskVisible}
+                maskOpacity={store.maskOpacity}
+                maskTool={editingMask ? store.maskTool : null}
+                brushSize={store.brushSize}
+                zoom={zoom}
+                panOffset={panOffset}
+                placementMode={store.layout.placementMode}
+                hoverCell={hoverCell}
+                cellSizePx={cellSizePx}
+                onCanvasClick={handleCanvasClick}
+                onMaskStroke={handleMaskStroke}
+                onZoomChange={setZoom}
+                onPanChange={setPanOffset}
+                onRemovePanel={handleRemovePanel}
+                onHoverChange={setHoverCell}
+                onAccentZoneDraw={handleAccentZoneDraw}
+              />
+            )}
 
             {/* Mask toolbar */}
             {editingMask && (

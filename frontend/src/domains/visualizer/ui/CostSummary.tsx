@@ -33,10 +33,10 @@ export function CostSummary({
         padding: '16px',
         background: '#FAFAFA',
         borderRadius: 16,
-        border: '1px solid rgba(0,0,0,0.04)',
+        border: '1px solid #E5E7EB',
       }}
     >
-      <Title level={5} style={{ margin: 0 }}>
+      <Title level={5} style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#2D2D2D' }}>
         Стоимость
       </Title>
 
@@ -112,10 +112,10 @@ export function CostSummary({
           alignItems: 'center',
         }}
       >
-        <Text strong style={{ fontSize: 16 }}>
+        <Text strong style={{ fontSize: 16, color: '#2D2D2D' }}>
           Итого
         </Text>
-        <Title level={4} style={{ margin: 0, color: '#2D2D2D' }}>
+        <Title level={4} style={{ margin: 0, color: '#2D2D2D', fontSize: 24, fontWeight: 800 }}>
           {fmt(cost.totalCost)} ₽
         </Title>
       </div>
@@ -144,7 +144,7 @@ export function CostSummary({
           icon={<SaveOutlined />}
           onClick={onSave}
           disabled={cost.totalPanels === 0}
-          style={{ borderRadius: 8 }}
+          style={{ borderRadius: 8, height: 36, borderColor: '#E5E7EB', color: '#2D2D2D' }}
         >
           Сохранить
         </Button>
@@ -153,7 +153,7 @@ export function CostSummary({
           icon={<DownloadOutlined />}
           onClick={onExport}
           disabled={cost.totalPanels === 0}
-          style={{ borderRadius: 8 }}
+          style={{ borderRadius: 8, height: 36, borderColor: '#E5E7EB', color: '#2D2D2D' }}
         >
           Скачать
         </Button>

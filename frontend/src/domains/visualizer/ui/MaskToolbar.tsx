@@ -109,7 +109,7 @@ export function MaskToolbar({
           type="text"
           icon={
             maskVisible ? (
-              <EyeOutlined style={{ color: '#FFFFFF' }} />
+              <EyeOutlined style={{ color: '#4CAF50' }} />
             ) : (
               <EyeInvisibleOutlined style={{ color: '#6B7280' }} />
             )
@@ -122,7 +122,7 @@ export function MaskToolbar({
       <Tooltip title="Отменить (Ctrl+Z)">
         <Button
           type="text"
-          icon={<UndoOutlined style={{ color: canUndo ? '#FFFFFF' : '#6B7280' }} />}
+          icon={<UndoOutlined style={{ color: canUndo ? '#FFFFFF' : '#9CA3AF' }} />}
           disabled={!canUndo}
           onClick={onUndo}
         />

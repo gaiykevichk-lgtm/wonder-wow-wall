@@ -75,17 +75,21 @@ export function PlacementControls({
             background: '#4CAF50',
             borderColor: '#4CAF50',
             borderRadius: 8,
+            height: 36,
           }}
         >
           Заполнить стену
         </Button>
         <Tooltip title="Удалить все панели">
           <Button
-            danger
+            type="text"
             icon={<DeleteOutlined />}
             onClick={onClearAll}
             disabled={panelCount === 0}
-            style={{ borderRadius: 8 }}
+            style={{
+              borderRadius: 8,
+              color: panelCount > 0 ? '#EF4444' : undefined,
+            }}
           />
         </Tooltip>
       </div>

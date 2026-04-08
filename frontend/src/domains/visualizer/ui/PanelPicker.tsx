@@ -72,11 +72,21 @@ export function PanelPicker({
             onClick={() => onDesignSelect(product.id, product.name, product.image)}
             style={{
               cursor: 'pointer',
-              borderRadius: 8,
-              border: `2px solid ${selectedDesignId === product.id ? '#4CAF50' : 'rgba(0,0,0,0.04)'}`,
+              borderRadius: 12,
+              border: `2px solid ${selectedDesignId === product.id ? '#4CAF50' : '#E5E7EB'}`,
               overflow: 'hidden',
-              transition: 'border-color 0.2s',
+              transition: 'all 0.3s',
               position: 'relative',
+            }}
+            onMouseEnter={(e) => {
+              if (selectedDesignId !== product.id) {
+                e.currentTarget.style.transform = 'translateY(-4px)';
+                e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,0,0,0.1)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = '';
+              e.currentTarget.style.boxShadow = '';
             }}
           >
             <div
@@ -160,7 +170,7 @@ export function PanelPicker({
                   height: 28,
                   borderRadius: '50%',
                   background: c.hex,
-                  border: `2px solid ${selectedColor === c.hex ? '#4CAF50' : 'rgba(0,0,0,0.04)'}`,
+                  border: `2px solid ${selectedColor === c.hex ? '#2D2D2D' : 'rgba(0,0,0,0.04)'}`,
                   cursor: 'pointer',
                   transition: 'border-color 0.2s',
                 }}
