@@ -20,6 +20,7 @@ import type {
   CalibrationPoints,
   PerspectiveCorners,
 } from './types';
+import { message } from 'antd';
 import { calculateCost } from '../lib/costCalculator';
 import { autoFillWall } from '../lib/layoutEngine';
 import { createEmptyMask } from '../lib/maskUtils';
@@ -185,22 +186,39 @@ export const useVisualizerStore = create<VisualizerState>()(
   autoFill: () => {
     const state = get();
     const { scene, selectedSizeKey, selectedDesignId, selectedDesignName, selectedDesignImage, selectedColor, selectedColorName, layout } = state;
-    if (!scene?.wallMask || !selectedDesignId) return;
 
-    const panels = autoFillWall({
-      mask: scene.wallMask,
-      sizeKey: selectedSizeKey,
-      calibration: scene.calibration,
-      designId: selectedDesignId,
-      designName: selectedDesignName,
-      designImage: selectedDesignImage,
-      color: selectedColor,
-      colorName: selectedColorName,
-      accentZone: layout.accentZone,
-      obstacles: scene.objectMask?.obstacles,
-    });
+    if (!scene?.wallMask) {
+      message.warning('Сначала загрузите фото и дождитесь распознавания стены');
+      return;
+    }
+    if (!selectedDesignId) {
+      message.warning('Сначала выберите дизайн панели');
+      return;
+    }
 
-    set({ layout: { ...layout, panels } });
+    try {
+      const panels = autoFillWall({
+        mask: scene.wallMask,
+        sizeKey: selectedSizeKey,
+        calibration: scene.calibration,
+        designId: selectedDesignId,
+        designName: selectedDesignName,
+        designImage: selectedDesignImage,
+        color: selectedColor,
+        colorName: selectedColorName,
+        accentZone: layout.accentZone,
+        obstacles: scene.objectMask?.obstacles,
+      });
+
+      if (panels.length === 0) {
+        message.info('Не удалось разместить панели — недостаточно места на стене');
+      }
+
+      set({ layout: { ...layout, panels } });
+    } catch (err) {
+      console.error('autoFill error:', err);
+      message.error('Ошибка при автозаполнении');
+    }
   },
 
   updateAllDesigns: (designId, designName, designImage) =>

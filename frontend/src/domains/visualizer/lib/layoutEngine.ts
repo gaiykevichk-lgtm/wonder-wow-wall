@@ -158,6 +158,15 @@ export function autoFillWall(config: AutoFillConfig): PlacedPanel[] {
   const { widthPx, heightPx } = panelSizeInPixels(sizeKey, calibration);
   const panels: PlacedPanel[] = [];
 
+  console.log('[autoFill]', {
+    maskSize: `${mask.width}x${mask.height}`,
+    panelSize: `${widthPx}x${heightPx}`,
+    calibration,
+    sizeKey,
+    accentZone,
+    obstacleCount: obstacles?.length ?? 0,
+  });
+
   // Determine bounds (full mask or accent zone)
   let startX = 0;
   let startY = 0;

@@ -52,7 +52,9 @@ export default function PhotoEditorPage() {
 
   // Zustand persist auto-rehydrates from localStorage on mount — no manual load needed
 
-  // Init design from URL param or first product
+  // Init design from URL param or first product.
+  // Depends on store.selectedDesignId to re-run after Zustand persist rehydration
+  // (rehydration is async and may overwrite the value set during first run).
   useEffect(() => {
     if (!store.selectedDesignId && products.length > 0) {
       const designIdParam = searchParams.get('designId');
@@ -63,7 +65,7 @@ export default function PhotoEditorPage() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [store.selectedDesignId]);
 
   // Recalculate cost on panel changes
   useEffect(() => {
