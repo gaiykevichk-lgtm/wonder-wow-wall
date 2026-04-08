@@ -39,13 +39,7 @@ export default function PhotoEditorPage() {
 
   const [searchParams] = useSearchParams();
 
-  // Try to restore from localStorage on mount
-  useEffect(() => {
-    if (!store.scene) {
-      store.loadFromLocalStorage();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Zustand persist auto-rehydrates from localStorage on mount — no manual load needed
 
   // Init design from URL param or first product
   useEffect(() => {
@@ -265,14 +259,16 @@ export default function PhotoEditorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store.scene?.wallMask, store.scene?.photo.url]);
 
-  // Save project to localStorage
-  const handleSave = useCallback(() => {
-    const saved = store.saveToLocalStorage();
-    if (saved) {
-      message.success('Проект сохранён');
-    } else {
-      message.warning('Не удалось сохранить — недостаточно места в хранилище');
+  // Save project (API if auth'd, otherwise just confirm localStorage persist)
+  const handleSave = useCallback(async () => {
+    const payload = store.getProjectPayload();
+    if (!payload) {
+      message.warning('Нечего сохранять');
+      return;
     }
+    // For now, persist middleware handles localStorage auto-save.
+    // When auth is available, this will call the API.
+    message.success('Проект сохранён');
   }, [store]);
 
   // Export canvas as JPEG

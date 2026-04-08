@@ -4,7 +4,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
-from app.infrastructure.api import auth, catalog, orders, subscriptions, projects, contacts
+from app.infrastructure.api import auth, catalog, orders, subscriptions, projects, contacts, visualizer
 from app.infrastructure.security.middleware import SecurityHeadersMiddleware
 from app.infrastructure.security.rate_limit import limiter
 
@@ -37,6 +37,7 @@ app.include_router(orders.router, prefix="/api/orders", tags=["orders"])
 app.include_router(subscriptions.router, prefix="/api/subscriptions", tags=["subscriptions"])
 app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
 app.include_router(contacts.router, prefix="/api", tags=["contacts"])
+app.include_router(visualizer.router, prefix="/api/visualizer/projects", tags=["visualizer"])
 
 
 @app.get("/api/health")

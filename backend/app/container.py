@@ -20,6 +20,9 @@ from app.infrastructure.persistence.repositories.memory import (
 from app.infrastructure.persistence.repositories.project_repo import (
     InMemoryProjectRepository,
 )
+from app.infrastructure.persistence.repositories.visualization_repo import (
+    InMemoryVisualizationProjectRepository,
+)
 
 
 # ─── In-Memory Singletons (used when USE_MEMORY_REPOS=true or for tests) ──
@@ -31,6 +34,7 @@ _mem_order_repo = InMemoryOrderRepository()
 _mem_subscription_repo = InMemorySubscriptionRepository()
 _mem_user_repo = InMemoryUserRepository()
 _mem_project_repo = InMemoryProjectRepository()
+_mem_visualization_repo = InMemoryVisualizationProjectRepository()
 
 
 # ─── Backward-compatible aliases (used by existing tests) ────────────
@@ -42,6 +46,7 @@ order_repo = _mem_order_repo
 subscription_repo = _mem_subscription_repo
 user_repo = _mem_user_repo
 project_repo = _mem_project_repo
+visualization_repo = _mem_visualization_repo
 
 
 # ─── FastAPI Dependencies ────────────────────────────────────────────
@@ -62,6 +67,7 @@ def _get_sql_repo_classes() -> dict:
             SqlUserRepository,
         )
         from app.infrastructure.persistence.repositories.project_repo import SqlProjectRepository
+        from app.infrastructure.persistence.repositories.visualization_repo import SqlVisualizationProjectRepository
         _sql_repo_classes = {
             "design": SqlDesignRepository,
             "category": SqlCategoryRepository,
@@ -70,6 +76,7 @@ def _get_sql_repo_classes() -> dict:
             "subscription": SqlSubscriptionRepository,
             "user": SqlUserRepository,
             "project": SqlProjectRepository,
+            "visualization": SqlVisualizationProjectRepository,
         }
     return _sql_repo_classes
 
@@ -130,3 +137,9 @@ def get_project_repo(session=Depends(get_db_session)):
     if settings.USE_MEMORY_REPOS:
         return _mem_project_repo
     return _get_sql_repo_classes()["project"](session)
+
+
+def get_visualization_repo(session=Depends(get_db_session)):
+    if settings.USE_MEMORY_REPOS:
+        return _mem_visualization_repo
+    return _get_sql_repo_classes()["visualization"](session)

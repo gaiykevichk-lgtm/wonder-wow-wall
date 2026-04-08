@@ -3,6 +3,7 @@
  */
 
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type {
   Point,
   Scene,
@@ -22,6 +23,7 @@ import type {
 import { calculateCost } from '../lib/costCalculator';
 import { autoFillWall } from '../lib/layoutEngine';
 import { createEmptyMask } from '../lib/maskUtils';
+import { uint8ArrayToBase64, base64ToUint8Array } from '../lib/maskSerialization';
 
 interface VisualizerState {
   // Scene
@@ -87,9 +89,8 @@ interface VisualizerState {
   cost: CostBreakdown;
   recalculateCost: (hasSubscription: boolean) => void;
 
-  // Persistence
-  saveToLocalStorage: () => boolean;
-  loadFromLocalStorage: () => boolean;
+  // Persistence (API — explicit user action)
+  getProjectPayload: () => Record<string, unknown> | null;
 
   // Reset
   reset: () => void;
@@ -111,7 +112,9 @@ const EMPTY_COST: CostBreakdown = {
   totalCost: 0,
 };
 
-export const useVisualizerStore = create<VisualizerState>((set, get) => ({
+export const useVisualizerStore = create<VisualizerState>()(
+  persist(
+  (set, get) => ({
   // Scene
   scene: null,
   segmentationProgress: 0,
@@ -278,62 +281,36 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => ({
     set({ cost: calculateCost(panels, hasSubscription) });
   },
 
-  // Persistence
-  saveToLocalStorage: () => {
+  // Persistence (API payload builder — explicit user action)
+  getProjectPayload: () => {
     const state = get();
-    if (!state.scene) return false;
-    const data = {
-      scene: {
-        photo: { url: state.scene.photo.url, width: state.scene.photo.width, height: state.scene.photo.height },
-        calibration: state.scene.calibration,
-        segmentationStatus: state.scene.segmentationStatus,
-      },
-      layout: {
-        panels: state.layout.panels,
-        placementMode: state.layout.placementMode,
-        accentZone: state.layout.accentZone,
-      },
-      selectedDesignId: state.selectedDesignId,
-      selectedDesignName: state.selectedDesignName,
-      selectedDesignImage: state.selectedDesignImage,
-      selectedSizeKey: state.selectedSizeKey,
-      selectedColor: state.selectedColor,
-      selectedColorName: state.selectedColorName,
+    if (!state.scene) return null;
+    return {
+      name: 'Мой проект',
+      photo_url: state.scene.photo.url,
+      photo_width: state.scene.photo.width,
+      photo_height: state.scene.photo.height,
+      wall_mask_base64: state.scene.wallMask
+        ? uint8ArrayToBase64(state.scene.wallMask.data)
+        : '',
+      calibration_pixels_per_cm: state.scene.calibration?.pixelsPerCm ?? 5,
+      panels: state.layout.panels.map((p) => ({
+        design_id: p.designId,
+        design_name: p.designName,
+        design_image: p.designImage,
+        size_key: p.sizeKey,
+        color: p.color,
+        color_name: p.colorName,
+        x: p.x,
+        y: p.y,
+        render_width: p.renderWidth,
+        render_height: p.renderHeight,
+      })),
+      perspective_corners: state.perspectiveCorners
+        ? state.perspectiveCorners.map((c) => ({ x: c.x, y: c.y }))
+        : null,
+      placement_mode: state.layout.placementMode,
     };
-    try {
-      localStorage.setItem('wow-wall-visualizer', JSON.stringify(data));
-    } catch {
-      return false;
-    }
-    return true;
-  },
-  loadFromLocalStorage: () => {
-    try {
-      const raw = localStorage.getItem('wow-wall-visualizer');
-      if (!raw) return false;
-      const data = JSON.parse(raw);
-      if (!data.scene?.photo?.url) return false;
-      const { width, height } = data.scene.photo;
-      set({
-        scene: {
-          photo: data.scene.photo,
-          wallMask: width && height ? createEmptyMask(width, height, 255) : null,
-          objectMask: { obstacles: [] },
-          calibration: data.scene.calibration ?? null,
-          segmentationStatus: data.scene.segmentationStatus ?? 'ready',
-        },
-        layout: data.layout ?? { ...EMPTY_LAYOUT },
-        selectedDesignId: data.selectedDesignId ?? '',
-        selectedDesignName: data.selectedDesignName ?? '',
-        selectedDesignImage: data.selectedDesignImage ?? '',
-        selectedSizeKey: data.selectedSizeKey ?? '30x30',
-        selectedColor: data.selectedColor ?? '',
-        selectedColorName: data.selectedColorName ?? '',
-      });
-      return true;
-    } catch {
-      return false;
-    }
   },
 
   // Reset
@@ -361,4 +338,51 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => ({
       wallBrightness: 128,
     });
   },
-}));
+}),
+  {
+    name: 'wow-wall-visualizer',
+    storage: createJSONStorage(() => localStorage),
+    partialize: (state) => ({
+      scene: state.scene
+        ? {
+            photo: state.scene.photo,
+            wallMask: state.scene.wallMask
+              ? {
+                  _base64: uint8ArrayToBase64(state.scene.wallMask.data),
+                  width: state.scene.wallMask.width,
+                  height: state.scene.wallMask.height,
+                }
+              : null,
+            objectMask: state.scene.objectMask,
+            calibration: state.scene.calibration,
+            segmentationStatus: state.scene.segmentationStatus,
+          }
+        : null,
+      layout: {
+        panels: state.layout.panels,
+        placementMode: state.layout.placementMode,
+        accentZone: state.layout.accentZone,
+      },
+      selectedDesignId: state.selectedDesignId,
+      selectedDesignName: state.selectedDesignName,
+      selectedDesignImage: state.selectedDesignImage,
+      selectedSizeKey: state.selectedSizeKey,
+      selectedColor: state.selectedColor,
+      selectedColorName: state.selectedColorName,
+      perspectiveCorners: state.perspectiveCorners,
+    }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onRehydrateStorage: () => (state: any) => {
+      if (!state?.scene?.wallMask) return;
+      // Restore Uint8Array from base64
+      const wm = state.scene.wallMask;
+      if (wm._base64) {
+        state.scene.wallMask = {
+          data: base64ToUint8Array(wm._base64),
+          width: wm.width,
+          height: wm.height,
+        };
+      }
+    },
+  },
+));

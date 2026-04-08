@@ -165,3 +165,25 @@ class ProjectModel(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user: Mapped["UserModel"] = relationship(back_populates="projects")
+
+
+# ─── Visualization Projects ─────────────────────────────────────────
+
+class VisualizationProjectModel(Base):
+    __tablename__ = "visualization_projects"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=gen_uuid)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    photo_url: Mapped[str] = mapped_column(Text, default="")
+    photo_width: Mapped[int] = mapped_column(Integer, default=0)
+    photo_height: Mapped[int] = mapped_column(Integer, default=0)
+    wall_mask_base64: Mapped[str] = mapped_column(Text, default="")
+    calibration_pixels_per_cm: Mapped[float] = mapped_column(Float, default=5.0)
+    panels_json: Mapped[dict] = mapped_column(JSON, default=list)
+    perspective_corners: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=None)
+    placement_mode: Mapped[str] = mapped_column(String(20), default="manual")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user: Mapped["UserModel"] = relationship()
