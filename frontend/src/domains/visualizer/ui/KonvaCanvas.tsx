@@ -502,9 +502,7 @@ export function KonvaCanvas({
         </Layer>
 
         {/* Layer 4: Panels */}
-        <Layer
-          filters={brightnessAdj !== 0 ? undefined : undefined}
-        >
+        <Layer>
           {panels.map((panel) => {
             const isSelected = panel.id === selectedPanelId;
             const isHovered = panel.id === hoveredPanelId;

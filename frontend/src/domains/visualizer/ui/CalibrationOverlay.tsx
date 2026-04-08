@@ -7,8 +7,7 @@ const { Text } = Typography;
 const REFERENCE_PRESETS = [
   { label: 'Дверь (200 см)', value: 200 },
   { label: 'Окно (120 см)', value: 120 },
-  { label: 'Розетка (8 см)', value: 8 },
-  { label: 'Выключатель (8 см)', value: 8 },
+  { label: 'Розетка / выключатель (8 см)', value: 8 },
   { label: 'Своё значение', value: -1 },
 ];
 
@@ -60,7 +59,7 @@ export function CalibrationOverlay({
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <Select
           size="small"
-          defaultValue={200}
+          value={REFERENCE_PRESETS.some((p) => p.value === points.referenceCm) ? points.referenceCm : -1}
           onChange={(val) => {
             if (val > 0) onReferenceChange(val);
           }}

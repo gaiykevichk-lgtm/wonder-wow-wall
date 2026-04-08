@@ -494,8 +494,12 @@ export default function PhotoEditorPage() {
                 points={store.calibrationPoints}
                 onReferenceChange={store.setCalibrationReference}
                 onApply={() => {
-                  store.applyCalibration();
-                  message.success('Масштаб откалиброван');
+                  const ok = store.applyCalibration();
+                  if (ok) {
+                    message.success('Масштаб откалиброван');
+                  } else {
+                    message.warning('Точки слишком близко — отметьте объект заново');
+                  }
                 }}
                 onCancel={() => {
                   store.resetCalibration();

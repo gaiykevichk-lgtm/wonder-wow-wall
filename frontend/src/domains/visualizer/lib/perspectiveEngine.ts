@@ -198,8 +198,10 @@ export function computeWallBrightness(
 
   // Sample every 4th pixel for performance
   const step = 4;
-  for (let y = 0; y < mask.height; y += step) {
-    for (let x = 0; x < mask.width; x += step) {
+  const maxY = Math.min(mask.height, imageData.height);
+  const maxX = Math.min(mask.width, imageData.width);
+  for (let y = 0; y < maxY; y += step) {
+    for (let x = 0; x < maxX; x += step) {
       if (mask.data[y * mask.width + x] === 255) {
         const idx = (y * imageData.width + x) * 4;
         // Perceived brightness (ITU-R BT.601)

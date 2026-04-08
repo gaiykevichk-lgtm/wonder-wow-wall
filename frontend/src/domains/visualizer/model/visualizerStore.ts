@@ -61,7 +61,7 @@ interface VisualizerState {
   calibrationPoints: CalibrationPoints;
   setCalibrationPoint: (which: 'start' | 'end', point: Point) => void;
   setCalibrationReference: (cm: number) => void;
-  applyCalibration: () => void;
+  applyCalibration: () => boolean;
   resetCalibration: () => void;
   perspectiveCorners: PerspectiveCorners | null;
   setPerspectiveCorners: (corners: PerspectiveCorners | null) => void;
@@ -228,14 +228,15 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => ({
   applyCalibration: () => {
     const { calibrationPoints, scene } = get();
     const { start, end, referenceCm } = calibrationPoints;
-    if (!start || !end || !scene || referenceCm <= 0) return;
+    if (!start || !end || !scene || referenceCm <= 0) return false;
     const distPx = Math.hypot(end.x - start.x, end.y - start.y);
-    if (distPx < 5) return;
+    if (distPx < 5) return false;
     const pixelsPerCm = distPx / referenceCm;
     set({
       scene: { ...scene, calibration: { method: 'reference', pixelsPerCm } },
       editorMode: 'default',
     });
+    return true;
   },
   resetCalibration: () =>
     set({ calibrationPoints: { start: null, end: null, referenceCm: 200 } }),

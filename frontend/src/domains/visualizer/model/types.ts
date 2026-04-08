@@ -155,9 +155,7 @@ export interface VisualizationProject {
   updatedAt: string;
 }
 
-// ─── Mask editing ────────────────────────────────────────────────────────────
-
-// ─── Perspective ────────────────────────────────────────────────────────────
+// ─── Perspective & Calibration ──────────────────────────────────────────────
 
 /** Calibration mode for the editor: mask editing, calibrating scale, or adjusting perspective */
 export type EditorMode = 'default' | 'calibrating' | 'perspective';
