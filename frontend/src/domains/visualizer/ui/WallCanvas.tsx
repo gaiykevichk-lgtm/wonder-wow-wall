@@ -1,6 +1,6 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { CloseCircleFilled } from '@ant-design/icons';
-import type { Scene, PlacedPanel, MaskTool, Point, AccentZone, PlacementMode } from '../model/types';
+import type { Scene, PlacedPanel, MaskTool, Point, AccentZone, PlacementMode, EditorMode } from '../model/types';
 import { wallMaskToImageData } from '../lib/maskUtils';
 
 const touchDist = (a: React.Touch, b: React.Touch) =>
@@ -43,6 +43,8 @@ interface WallCanvasProps {
   onRemovePanel?: (id: string) => void;
   onHoverChange?: (point: Point | null) => void;
   onAccentZoneDraw?: (zone: AccentZone) => void;
+  editorMode?: EditorMode;
+  onCalibrationClick?: (point: Point) => void;
 }
 
 export function WallCanvas({
@@ -64,6 +66,8 @@ export function WallCanvas({
   onRemovePanel,
   onHoverChange,
   onAccentZoneDraw,
+  editorMode = 'default',
+  onCalibrationClick,
 }: WallCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -352,6 +356,13 @@ export function WallCanvas({
         return;
       }
 
+      // Calibration click
+      if (editorMode === 'calibrating') {
+        const point = getImageCoords(e);
+        onCalibrationClick?.(point);
+        return;
+      }
+
       // Regular click — check if clicking on panel for selection, or place new panel
       if (!maskTool) {
         const point = getImageCoords(e);
@@ -366,7 +377,7 @@ export function WallCanvas({
         }
       }
     },
-    [maskTool, onCanvasClick, onMaskStroke, getImageCoords, findPanelAt, onAccentZoneDraw, placementMode],
+    [maskTool, onCanvasClick, onMaskStroke, getImageCoords, findPanelAt, onAccentZoneDraw, placementMode, editorMode, onCalibrationClick],
   );
 
   const handleMouseLeave = useCallback(() => {
@@ -563,23 +574,6 @@ export function WallCanvas({
           </button>
         );
       })()}
-      {/* Brush cursor preview when mask tool is active */}
-      {maskTool && (
-        <div
-          style={{
-            position: 'absolute',
-            pointerEvents: 'none',
-            width: brushSize * 2,
-            height: brushSize * 2,
-            borderRadius: '50%',
-            border: `2px solid ${maskTool === 'brush' ? '#4CAF50' : '#EF4444'}`,
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            opacity: 0.5,
-          }}
-        />
-      )}
     </div>
   );
 }

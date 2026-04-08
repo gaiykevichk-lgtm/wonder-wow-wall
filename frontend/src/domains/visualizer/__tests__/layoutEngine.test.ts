@@ -97,9 +97,11 @@ describe('layoutEngine', () => {
   });
 
   describe('snapToGrid', () => {
-    it('snaps to nearest grid point', () => {
+    it('snaps to the grid cell containing the point (floor)', () => {
       expect(snapToGrid(105, 205, 100, 100)).toEqual({ x: 100, y: 200 });
-      expect(snapToGrid(155, 255, 100, 100)).toEqual({ x: 200, y: 300 });
+      expect(snapToGrid(155, 255, 100, 100)).toEqual({ x: 100, y: 200 });
+      expect(snapToGrid(199, 299, 100, 100)).toEqual({ x: 100, y: 200 });
+      expect(snapToGrid(200, 300, 100, 100)).toEqual({ x: 200, y: 300 });
     });
 
     it('snaps 0,0 correctly', () => {

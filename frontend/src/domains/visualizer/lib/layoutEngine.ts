@@ -131,8 +131,8 @@ export function snapToGrid(
   gridStepY: number,
 ): Point {
   return {
-    x: Math.round(x / gridStepX) * gridStepX,
-    y: Math.round(y / gridStepY) * gridStepY,
+    x: Math.floor(x / gridStepX) * gridStepX,
+    y: Math.floor(y / gridStepY) * gridStepY,
   };
 }
 

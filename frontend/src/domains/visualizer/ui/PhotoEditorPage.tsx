@@ -328,28 +328,66 @@ export default function PhotoEditorPage() {
     setAfterCanvasEl(el);
   }, [beforeAfterOpen]);
 
-  // Fullscreen toggle
+  // Fullscreen toggle — with fallback for sandboxed iframes
   const handleFullscreen = useCallback(() => {
     const container = canvasContainerRef.current;
     if (!container) return;
 
     if (!document.fullscreenElement) {
+      // Check if fullscreen API is available (may be blocked in sandboxed iframes)
+      if (!document.fullscreenEnabled) {
+        // Fallback: maximize the container visually via CSS
+        container.style.position = 'fixed';
+        container.style.inset = '0';
+        container.style.zIndex = '9999';
+        container.style.background = '#000';
+        setIsFullscreen(true);
+        return;
+      }
       container.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {
-        message.warning('Полноэкранный режим недоступен');
+        // Fallback on rejection too
+        container.style.position = 'fixed';
+        container.style.inset = '0';
+        container.style.zIndex = '9999';
+        container.style.background = '#000';
+        setIsFullscreen(true);
       });
-    } else {
+    } else if (document.fullscreenElement) {
       document.exitFullscreen().then(() => setIsFullscreen(false));
+    } else {
+      // Exit CSS-fallback fullscreen
+      container.style.position = '';
+      container.style.inset = '';
+      container.style.zIndex = '';
+      container.style.background = '';
+      setIsFullscreen(false);
     }
   }, []);
 
-  // Listen for fullscreen change (e.g. Esc key)
+  // Listen for fullscreen change (e.g. Esc key) and Escape for CSS fallback
   useEffect(() => {
     const handler = () => {
       if (!document.fullscreenElement) setIsFullscreen(false);
     };
+    const escHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen && !document.fullscreenElement) {
+        const container = canvasContainerRef.current;
+        if (container) {
+          container.style.position = '';
+          container.style.inset = '';
+          container.style.zIndex = '';
+          container.style.background = '';
+        }
+        setIsFullscreen(false);
+      }
+    };
     document.addEventListener('fullscreenchange', handler);
-    return () => document.removeEventListener('fullscreenchange', handler);
-  }, []);
+    document.addEventListener('keydown', escHandler);
+    return () => {
+      document.removeEventListener('fullscreenchange', handler);
+      document.removeEventListener('keydown', escHandler);
+    };
+  }, [isFullscreen]);
 
   // Compute cell size in pixels for hover highlight
   const cellSizePx = useMemo(() => {
@@ -522,6 +560,8 @@ export default function PhotoEditorPage() {
                 onRemovePanel={handleRemovePanel}
                 onHoverChange={setHoverCell}
                 onAccentZoneDraw={handleAccentZoneDraw}
+                editorMode={store.editorMode}
+                onCalibrationClick={handleCalibrationClick}
               />
             )}
 

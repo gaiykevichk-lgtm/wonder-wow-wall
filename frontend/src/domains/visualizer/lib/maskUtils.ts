@@ -74,8 +74,36 @@ export function drawCircleOnMask(
   return { data: newData, width: mask.width, height: mask.height };
 }
 
+/** Paint a circle directly onto an existing mutable data array (no copy). */
+function paintCircle(
+  data: Uint8Array,
+  width: number,
+  height: number,
+  cx: number,
+  cy: number,
+  radius: number,
+  value: number,
+): void {
+  const r2 = radius * radius;
+  const minY = Math.max(0, Math.round(cy) - radius);
+  const maxY = Math.min(height - 1, Math.round(cy) + radius);
+  const minX = Math.max(0, Math.round(cx) - radius);
+  const maxX = Math.min(width - 1, Math.round(cx) + radius);
+
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      const dx = x - cx;
+      const dy = y - cy;
+      if (dx * dx + dy * dy <= r2) {
+        data[y * width + x] = value;
+      }
+    }
+  }
+}
+
 /**
  * Apply a stroke (series of points) on the mask — interpolated line drawing.
+ * Copies the mask data ONCE, then mutates in place for all points.
  */
 export function applyStrokeToMask(
   mask: WallMask,
@@ -85,13 +113,15 @@ export function applyStrokeToMask(
 ): WallMask {
   if (points.length === 0) return mask;
 
-  let result = mask;
+  const newData = new Uint8Array(mask.data);
+  const value = tool === 'brush' ? 255 : 0;
+  const { width, height } = mask;
 
   for (let i = 0; i < points.length; i++) {
     const current = points[i]!;
 
     if (i === 0) {
-      result = drawCircleOnMask(result, current, brushSize, tool);
+      paintCircle(newData, width, height, current.x, current.y, brushSize, value);
       continue;
     }
 
@@ -103,15 +133,11 @@ export function applyStrokeToMask(
 
     for (let s = 1; s <= steps; s++) {
       const t = s / steps;
-      const point: Point = {
-        x: prev.x + dx * t,
-        y: prev.y + dy * t,
-      };
-      result = drawCircleOnMask(result, point, brushSize, tool);
+      paintCircle(newData, width, height, prev.x + dx * t, prev.y + dy * t, brushSize, value);
     }
   }
 
-  return result;
+  return { data: newData, width, height };
 }
 
 /**

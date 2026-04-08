@@ -101,21 +101,7 @@ export function BeforeAfterSlider({
         touchAction: 'none',
       }}
     >
-      {/* Before (full) */}
-      <img
-        src={beforeSrc}
-        alt="До"
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-        }}
-      />
-
-      {/* After (clipped) */}
+      {/* After (full, bottom layer — visible on the right) */}
       {afterDataUrl && (
         <img
           src={afterDataUrl}
@@ -127,10 +113,24 @@ export function BeforeAfterSlider({
             width: '100%',
             height: '100%',
             objectFit: 'cover',
-            clipPath: `inset(0 ${100 - position}% 0 0)`,
           }}
         />
       )}
+
+      {/* Before (clipped, top layer — visible on the left) */}
+      <img
+        src={beforeSrc}
+        alt="До"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          clipPath: `inset(0 ${100 - position}% 0 0)`,
+        }}
+      />
 
       {/* Slider divider line */}
       <div
