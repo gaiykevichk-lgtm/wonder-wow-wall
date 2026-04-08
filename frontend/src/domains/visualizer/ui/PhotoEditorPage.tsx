@@ -78,14 +78,20 @@ export default function PhotoEditorPage() {
 
       try {
         const { dataUrl, width, height } = await processUploadedImage(file);
+        const photo = { url: dataUrl, width, height, file };
+        const calibration = { method: 'manual' as const, pixelsPerCm: width / 400 };
 
-        store.setScene({
-          photo: { url: dataUrl, width, height, file },
-          wallMask: null,
-          objectMask: null,
-          calibration: { method: 'manual', pixelsPerCm: width / 400 },
-          segmentationStatus: 'loading-model',
-        });
+        const setReadyScene = (wallMask: import('../model/types').WallMask, obstacles: import('../model/types').Obstacle[] = []) => {
+          store.setScene({
+            photo,
+            wallMask,
+            objectMask: { obstacles },
+            calibration,
+            segmentationStatus: 'ready',
+          });
+        };
+
+        store.setScene({ photo, wallMask: null, objectMask: null, calibration, segmentationStatus: 'loading-model' });
         setUploading(false);
 
         // Try ML segmentation if supported
@@ -96,40 +102,20 @@ export default function PhotoEditorPage() {
               store.setSegmentationProgress(p.percent);
             });
 
-            store.setScene({
-              photo: { url: dataUrl, width, height, file },
-              wallMask: result.wallMask,
-              objectMask: { obstacles: result.obstacles },
-              calibration: { method: 'manual', pixelsPerCm: width / 400 },
-              segmentationStatus: 'ready',
-            });
+            setReadyScene(result.wallMask, result.obstacles);
 
             const obstacleMsg = result.obstacles.length > 0
               ? ` Обнаружено объектов: ${result.obstacles.length}.`
               : '';
             message.success(`Стена распознана!${obstacleMsg} Разместите панели.`);
           } catch {
-            // ML failed — fallback to empty mask (user draws manually)
-            const wallMask = createEmptyMask(width, height, 255);
-            store.setScene({
-              photo: { url: dataUrl, width, height, file },
-              wallMask,
-              objectMask: { obstacles: [] },
-              calibration: { method: 'manual', pixelsPerCm: width / 400 },
-              segmentationStatus: 'ready',
-            });
+            // ML failed — fallback to full mask (user corrects with brush)
+            setReadyScene(createEmptyMask(width, height, 255));
             message.info('Не удалось распознать стену автоматически. Отметьте стену кистью.');
           }
         } else {
           // WASM not supported — fallback to full mask
-          const wallMask = createEmptyMask(width, height, 255);
-          store.setScene({
-            photo: { url: dataUrl, width, height, file },
-            wallMask,
-            objectMask: { obstacles: [] },
-            calibration: { method: 'manual', pixelsPerCm: width / 400 },
-            segmentationStatus: 'ready',
-          });
+          setReadyScene(createEmptyMask(width, height, 255));
           message.info('Автоматическое распознавание не поддерживается в этом браузере. Отметьте стену кистью.');
         }
       } catch (err) {

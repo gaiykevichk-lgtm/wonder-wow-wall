@@ -83,10 +83,9 @@ async function initSegmenter(onProgress?: SegmentationProgressCallback) {
       'image-segmentation',
       'Xenova/segformer-b0-finetuned-ade-512-512',
       {
-        progress_callback: (p: Record<string, unknown>) => {
-          const progress = p.progress as number | undefined;
-          if (progress != null) {
-            onProgress?.({ status: 'loading-model', percent: Math.round(progress) });
+        progress_callback: (info: { status?: string; progress?: number; name?: string; file?: string }) => {
+          if (info.progress != null) {
+            onProgress?.({ status: 'loading-model', percent: Math.round(info.progress) });
           }
         },
       },
@@ -284,7 +283,10 @@ export async function segmentScene(
     const bbox = extractBoundingBox(labelMap, modelW, modelH, classId);
     if (!bbox) continue;
 
-    // Count pixels for this class to estimate confidence
+    // Estimate confidence based on area coverage.
+    // Note: this is NOT the model's classification confidence — SegFormer semantic
+    // segmentation assigns one class per pixel without per-class probability.
+    // We use area fraction as a proxy: larger detected areas = higher confidence.
     let pixelCount = 0;
     for (let i = 0; i < labelMap.length; i++) {
       if (labelMap[i] === classId) pixelCount++;
@@ -315,7 +317,7 @@ export async function segmentScene(
         { x: scaledBbox.x, y: scaledBbox.y + scaledBbox.height },
       ],
       boundingBox: scaledBbox,
-      confidence: Math.min(coverage * 10, 1), // rough confidence estimate
+      confidence: Math.min(coverage * 10, 1), // area-based proxy, not model confidence
     });
 
     detectedClasses.push(info.label);
