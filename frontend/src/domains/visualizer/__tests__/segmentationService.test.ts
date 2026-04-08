@@ -141,6 +141,63 @@ describe('segmentationService', () => {
       expect(mockPipelineFn).toHaveBeenCalledTimes(1);
     });
 
+    it('returns all-zero wall mask when model finds no wall', async () => {
+      const mockSegmenter = vi.fn().mockResolvedValue([
+        {
+          label: 'label_7',
+          score: 0.9,
+          mask: { data: new Uint8Array([1, 1, 1, 1]), width: 2, height: 2 },
+        },
+      ]);
+
+      mockPipelineFn.mockResolvedValue(mockSegmenter);
+
+      const result = await segmentScene('data:image/png;base64,test', 4, 4);
+
+      // No wall class → all mask values should be 0
+      expect(result.wallMask.data.every((v) => v === 0)).toBe(true);
+      expect(result.wallMask.width).toBe(4);
+      expect(result.wallMask.height).toBe(4);
+    });
+
+    it('handles text labels from model (e.g. "wall" instead of "label_0")', async () => {
+      const mockSegmenter = vi.fn().mockResolvedValue([
+        {
+          label: 'wall',
+          score: 0.9,
+          mask: { data: new Uint8Array([1, 1, 1, 1]), width: 2, height: 2 },
+        },
+      ]);
+
+      mockPipelineFn.mockResolvedValue(mockSegmenter);
+
+      const result = await segmentScene('data:image/png;base64,test', 2, 2);
+
+      // "wall" should be parsed as class 0 → all wall
+      expect(result.wallMask.data[0]).toBe(255);
+      expect(result.wallMask.data.every((v) => v === 255)).toBe(true);
+    });
+
+    it('skips mask resize when model output matches photo dimensions', async () => {
+      const mockSegmenter = vi.fn().mockResolvedValue([
+        {
+          label: 'label_0',
+          score: 0.9,
+          mask: { data: new Uint8Array([1, 0, 0, 1]), width: 2, height: 2 },
+        },
+      ]);
+
+      mockPipelineFn.mockResolvedValue(mockSegmenter);
+
+      const result = await segmentScene('data:image/png;base64,test', 2, 2);
+
+      // Same size → no resize needed, values should map directly
+      expect(result.wallMask.width).toBe(2);
+      expect(result.wallMask.height).toBe(2);
+      expect(result.wallMask.data[0]).toBe(255); // class 0 = wall
+      expect(result.wallMask.data[1]).toBe(0);   // no wall
+    });
+
     it('throws when WASM is not supported', () => {
       const origWA = globalThis.WebAssembly;
       // @ts-expect-error testing unsupported env

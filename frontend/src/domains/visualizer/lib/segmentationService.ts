@@ -26,6 +26,27 @@ export type SegmentationProgressCallback = (progress: {
 /** ADE20K class index → label (only the ones we care about) */
 const ADE20K_WALL_CLASS = 0; // "wall"
 
+/** ADE20K text label → class index (fallback for models that return text labels) */
+const ADE20K_LABEL_TO_INDEX: Record<string, number> = {
+  wall: 0,
+  floor: 3,
+  ceiling: 5,
+  cabinet: 6,
+  table: 7,
+  window: 8,
+  bed: 10,
+  door: 14,
+  person: 15,
+  sofa: 17,
+  lamp: 18,
+  chair: 19,
+  painting: 22,
+  'chest of drawers': 32,
+  counter: 33,
+  mirror: 34,
+  shelf: 36,
+};
+
 const ADE20K_OBSTACLE_MAP: Record<number, { type: ObstacleType; label: string }> = {
   14: { type: 'door', label: 'Дверь' },
   8:  { type: 'window', label: 'Окно' },
@@ -145,6 +166,33 @@ function extractBoundingBox(
 // ─── Public API ─────────────────────────────────────────────────────────────
 
 /**
+ * Parse ADE20K label string → class index.
+ * Handles multiple formats: "label_0", "0", "wall", "Wall".
+ * Returns null if the label cannot be mapped.
+ */
+function parseADE20KLabel(label: string): number | null {
+  // Format: "label_0" → 0
+  if (label.startsWith('label_')) {
+    const idx = parseInt(label.slice(6), 10);
+    return isNaN(idx) ? null : idx;
+  }
+
+  // Format: "0" → 0 (pure numeric string)
+  const numeric = parseInt(label, 10);
+  if (!isNaN(numeric) && String(numeric) === label) {
+    return numeric;
+  }
+
+  // Format: "wall", "Wall", "door" → lookup by text name
+  const normalized = label.toLowerCase().trim();
+  if (normalized in ADE20K_LABEL_TO_INDEX) {
+    return ADE20K_LABEL_TO_INDEX[normalized]!;
+  }
+
+  return null;
+}
+
+/**
  * Check if the current browser supports the ML pipeline (WASM required).
  */
 export function isSegmentationSupported(): boolean {
@@ -190,12 +238,17 @@ export async function segmentScene(
   // SegFormer returns one result per detected class, each with a binary mask
   const modelW = results[0]?.mask?.width ?? 512;
   const modelH = results[0]?.mask?.height ?? 512;
+  // Use 255 as "unassigned" sentinel — no ADE20K class has index 255
+  const UNASSIGNED = 255;
   const labelMap = new Uint8Array(modelW * modelH);
+  labelMap.fill(UNASSIGNED);
 
-  // Parse class indices from labels and assign to label map
+  // Parse class indices from labels and assign to label map.
+  // Models may return labels in different formats:
+  //   "label_0", "0", "wall", "Wall", etc.
   for (const result of results) {
-    const classIndex = parseInt(result.label.replace('label_', ''), 10);
-    if (isNaN(classIndex)) continue;
+    const classIndex = parseADE20KLabel(result.label);
+    if (classIndex === null) continue;
 
     const maskData = result.mask.data;
     for (let i = 0; i < maskData.length; i++) {
