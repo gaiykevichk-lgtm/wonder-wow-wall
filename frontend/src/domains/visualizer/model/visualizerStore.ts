@@ -579,15 +579,38 @@ export const useVisualizerStore = create<VisualizerState>()(
     // the UI from pathological hangs (offline mode, a stuck opencv.js load,
     // a never-settling promise). Without it, the "Определяем углы стены…"
     // spinner could stay on screen indefinitely — which was the bug users
-    // reported. 15 s is long enough for a cold backend cold-start on
-    // mid-tier hardware + one MiDaS inference but short enough that manual
-    // corners become available quickly on a bad connection.
-    const OVERALL_TIMEOUT_MS = 15_000;
+    // reported. 25 s is long enough for a cold backend cold-start + one
+    // MiDaS inference *plus* the OpenCV.js Emscripten cold-start (~11 MB
+    // via dev-server) when Stage 1 returns garbage and Stage 2 has to run.
+    // With `prefetchOpenCV()` firing on upload this budget is rarely hit.
+    const OVERALL_TIMEOUT_MS = 25_000;
 
     // Serialise the mask once — reused in both stages and in the optional
     // backend-inline call. Serialising inside `runStages` would duplicate it
     // and require a ~200 ms alloc for every retry.
     const wallMaskBase64 = uint8ArrayToBase64(wallMask.data);
+
+    // Detects the "backend returned the photo rectangle" degenerate case that
+    // StubDepthEstimator produces in dev (MiDaS not deployed). Accepting these
+    // corners wastes perspective-mode code paths on an effectively flat scene
+    // and prevents the OpenCV LSD fallback from ever running. Inlined inside
+    // Stage 1 (not only in the finally block) so that when it fires we fall
+    // through to Stage 2 instead of short-circuiting.
+    const isIdentityLikeCorners = (corners: PerspectiveCorners): boolean => {
+      const { width: pw, height: ph } = photoSize;
+      const tolX = pw * 0.03;
+      const tolY = ph * 0.03;
+      return (
+        Math.abs(corners[0].x) < tolX &&
+        Math.abs(corners[0].y) < tolY &&
+        Math.abs(corners[1].x - pw) < tolX &&
+        Math.abs(corners[1].y) < tolY &&
+        Math.abs(corners[2].x - pw) < tolX &&
+        Math.abs(corners[2].y - ph) < tolY &&
+        Math.abs(corners[3].x) < tolX &&
+        Math.abs(corners[3].y - ph) < tolY
+      );
+    };
 
     const runStages = async (): Promise<void> => {
       // ─── Stage 1: backend depth + RANSAC ───
@@ -607,9 +630,22 @@ export const useVisualizerStore = create<VisualizerState>()(
                 wallMaskBase64,
               });
           if (!stillCurrent()) return;
-          resolvedResult = result;
-          resolvedCorners = result.corners;
-          return; // backend won — skip OpenCV.
+          if (isIdentityLikeCorners(result.corners)) {
+            // Stub/degenerate backend response — fall through to Stage 2 so
+            // OpenCV LSD gets its chance on the real pixels. Without this
+            // check the garbage result would be 'committed' in the finally
+            // block's defensive check, and Stage 2 (the only path that
+            // actually detects perspective in dev) would have been skipped.
+            if (import.meta.env.DEV) {
+              console.warn(
+                '[runAutoPerspective] backend returned identity-like corners; falling through to OpenCV LSD',
+              );
+            }
+          } else {
+            resolvedResult = result;
+            resolvedCorners = result.corners;
+            return; // backend won — skip OpenCV.
+          }
         } catch (err) {
           if (import.meta.env.DEV) {
             console.warn('[runAutoPerspective] backend depth failed:', err);
@@ -666,37 +702,20 @@ export const useVisualizerStore = create<VisualizerState>()(
       // a concurrent photo swap (which resets status via setScene) is not
       // clobbered.
       const current = stillCurrent();
-      // Reject degenerate results where the detector returned corners that
-      // essentially match the photo rectangle (identity homography). This
-      // is the StubDepthEstimator's failure mode in dev — it returns a
-      // plane that fits the whole photo, which the plane fitter then
-      // projects back to photo edges. Applying an identity transform
-      // visually looks flat but falsely triggers perspective-mode code
-      // paths (tile warping, calibration seeding). Treating the result
-      // as "no corners" lets the UI fall back to OpenCV LSD (Stage 2) or
-      // stay in flat mode until the user draws corners manually.
-      if (resolvedCorners) {
-        const { width: pw, height: ph } = photoSize;
-        const tolX = pw * 0.03;
-        const tolY = ph * 0.03;
-        const nearPhotoRect =
-          Math.abs(resolvedCorners[0].x) < tolX &&
-          Math.abs(resolvedCorners[0].y) < tolY &&
-          Math.abs(resolvedCorners[1].x - pw) < tolX &&
-          Math.abs(resolvedCorners[1].y) < tolY &&
-          Math.abs(resolvedCorners[2].x - pw) < tolX &&
-          Math.abs(resolvedCorners[2].y - ph) < tolY &&
-          Math.abs(resolvedCorners[3].x) < tolX &&
-          Math.abs(resolvedCorners[3].y - ph) < tolY;
-        if (nearPhotoRect) {
-          if (import.meta.env.DEV) {
-            console.warn(
-              '[runAutoPerspective] backend returned identity-like corners (photo rect); treating as no-result',
-            );
-          }
-          resolvedCorners = null;
-          resolvedResult = null;
+      // Defense-in-depth: Stage 1 already falls through to Stage 2 on
+      // identity-like corners, but a faulty Stage-2 VP detector *could*
+      // theoretically also produce them. Drop them here so the identity
+      // transform never reaches the renderer (would look flat but would
+      // trigger perspective-mode code paths — tile warping, calibration
+      // seeding — on garbage).
+      if (resolvedCorners && isIdentityLikeCorners(resolvedCorners)) {
+        if (import.meta.env.DEV) {
+          console.warn(
+            '[runAutoPerspective] detector returned identity-like corners (photo rect); treating as no-result',
+          );
         }
+        resolvedCorners = null;
+        resolvedResult = null;
       }
       if (current && current.segmentationStatus === 'detecting-perspective') {
         if (resolvedCorners !== null) {

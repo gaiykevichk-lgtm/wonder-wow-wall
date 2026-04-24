@@ -23,7 +23,7 @@ import { processUploadedImage } from '../lib/imageProcessing';
 import { applyStrokeToMask, createEmptyMask } from '../lib/maskUtils';
 import { placeSinglePanel } from '../lib/layoutEngine';
 import { segmentScene, isSegmentationSupported } from '../lib/segmentationService';
-import { createOpencvLsdProvider } from '../lib/opencvLsdAdapter';
+import { createOpencvLsdProvider, prefetchOpenCV } from '../lib/opencvLsdAdapter';
 import { createOnnxReferenceDetector } from '../lib/referenceDetector';
 import { defaultCvWorkerHost } from '../lib/cvWorkerHost';
 import { BASE_PANEL_PRICES, DESIGN_OVERLAY_PRICE } from '../../../shared/config/constants';
@@ -151,6 +151,13 @@ export default function PhotoEditorPage() {
               ? ` Обнаружено объектов: ${result.obstacles.length}.`
               : '';
             message.success(`Стена распознана!${obstacleMsg} Разместите панели.`);
+
+            // Start warming up OpenCV *before* dispatching runAutoPerspective
+            // so the ~11 MB Emscripten runtime downloads in parallel with the
+            // backend Stage 1 call. Without this, backend-fail → OpenCV-cold
+            // can exceed the 25 s overall detection budget when the dev-server
+            // serves the raw UMD at ~1 MB/s.
+            prefetchOpenCV();
 
             // Phase 3: kick off vanishing-point auto-detection in the
             // background. The primary path runs OpenCV.js LSD + vanishing

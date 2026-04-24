@@ -6,11 +6,11 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   cacheDir: process.env.VITE_CACHE_DIR || '/tmp/vite-cache',
-  // opencv.js is an ~11 MB Emscripten UMD. Pre-bundling it at dev-server
-  // startup is wasteful (and has OOM'd the 512 MB sandbox before); it is
-  // only loaded on the auto-perspective code path via a dynamic `import()`.
-  // Excluding it from `optimizeDeps` keeps the cold start fast and lets the
-  // UMD evaluate only when actually needed.
+  // opencv.js is shipped as a static asset in `public/opencv.js` and loaded
+  // via a `<script>` tag from `opencvLsdAdapter.ts` (not via ESM import).
+  // Keeping the ~11 MB Emscripten UMD out of Vite's module graph entirely
+  // avoids both the OOM-on-prebundle and the raw-served-UMD-timeout we
+  // previously had to work around.
   optimizeDeps: {
     exclude: ['@techstark/opencv-js'],
   },
