@@ -619,15 +619,19 @@ async def _run_auto_perspective(
 )
 async def auto_perspective_inline(
     body: AutoPerspectiveInlineBody,
-    user_id: str = Depends(get_current_user_id),
     depth_estimator: DepthEstimator = Depends(get_depth_estimator),
 ):
     """Run depth + RANSAC plane fit on a photo/mask supplied directly in the
     request body — for the case where the user has just uploaded a photo and
     there is no persisted project yet.
 
-    `user_id` dependency enforces auth; there is no ownership check because
-    the payload itself is the authority (user sends what they want analysed).
+    Anonymous-friendly on purpose: this endpoint is stateless (no DB read,
+    no write, no user context) and runs as a background call the moment a
+    user uploads a photo on the public editor page. Requiring auth would
+    cascade a 401 into the frontend's global interceptor and boot the user
+    to `/login` mid-upload, which happened in practice (see user report
+    2026-04-24). Compute cost is guarded by DoS protection at a higher
+    layer (rate limiting on the ingress, not here).
     """
     return await _run_auto_perspective(
         photo_url=body.photo_url,

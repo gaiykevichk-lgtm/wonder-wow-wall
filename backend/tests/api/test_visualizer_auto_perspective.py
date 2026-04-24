@@ -280,18 +280,26 @@ class TestAutoPerspectiveInline:
         assert data["bbox_pixels"]["width"] > 0
 
     @pytest.mark.asyncio
-    async def test_inline_requires_auth(self, client):
+    async def test_inline_allows_anonymous(self, client):
+        """Inline endpoint is anonymous-friendly: it runs as a background
+        call right after photo upload on the public editor page, so
+        returning 401/403 would cascade through the frontend's global
+        interceptor and redirect the user to /login mid-upload. The
+        endpoint is stateless — no DB access, no user context — so
+        dropping auth is safe. DoS is a rate-limit concern, not an auth
+        one."""
         body = {
             "photo_url": _DATA_URL,
             "photo_width": 64,
             "photo_height": 64,
             "wall_mask_base64": _make_mask(64, 64, True),
         }
-        # No Authorization header.
         resp = await client.post(
             "/api/visualizer/projects/auto-perspective", json=body
         )
-        assert resp.status_code in (401, 403)
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert len(data["corners"]) == 4
 
     @pytest.mark.asyncio
     async def test_inline_invalid_mask_size_returns_422(self, client):
