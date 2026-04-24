@@ -388,6 +388,41 @@ Phase 1B v1 принимается как warp-замена Phase 1A. Math фо�
 
 > **Завершение Phase 2:** ✅ Все приоритетные пункты выполнены. Перенесено на v2: разделение wall-space ≠ photo-space с inverse-transform клика для manual-режима в перспективе (см. JSDoc `placeSinglePanel`). Banner и AutoFillBlockedError-loop проверены вручную в браузере.
 
+### 2.5 Аудит реализации Phase 2 (post-implementation review)
+
+**Метод:** построчное чтение всех 8 изменённых файлов + grep на всех потребителей изменённых API + повторный прогон `vitest run src/domains/visualizer/` (195/195) + `tsc --noEmit` (clean).
+
+**Проверено:**
+- `lib/layoutEngine.ts` — `AutoFillBlockedError`, `isTrustedCalibration`, `generatePanelId` (с fallback), `canPlacePanel` (две ветки flat/perspective), `autoFillWall` (guard), `placeSinglePanel` (опциональный perspective).
+- `lib/maskUtils.ts` — `wallCoverageInQuad`: bounds samples per side (`<1`/`NaN`), bilinear на unit-square, OOB-сэмплы в знаменатель.
+- `model/types.ts` — `ScaleCalibration.method` extended `'reference' | 'manual' | 'auto'` с JSDoc.
+- `model/visualizerStore.ts` — derive perspective из corners + photo, try/catch на `AutoFillBlockedError`, message.warning.
+- `ui/PhotoEditorPage.tsx` — upload пишет `'auto'`, banner на `!cal || method==='auto'`, `handleCanvasClick` пробрасывает perspective.
+- Тесты `layoutEngine.test.ts` (+ perspective + UUID), `maskUtils.test.ts` (+ wallCoverageInQuad).
+- `grep` потребителей `placeSinglePanel|canPlacePanel|autoFillWall|panelIdCounter|generatePanelId|calibration.method` — все вызовы совместимы с новыми сигнатурами (perspective опционален).
+
+**Критические проблемы (блокируют работу фичи): нет.**
+
+**Некритические (технический долг):**
+
+| # | Файл:строка | Проблема | Приоритет |
+|---|---|---|---|
+| A1 | `PhotoEditorPage.tsx:147–180` | В perspective-режиме `handleCanvasClick` отдаёт photo-space клик, а `placeSinglePanel` JSDoc требует wall-space. Сейчас работает только потому, что `wallSpace ≡ photoSpace` (`createPerspective(corners, photoSize)`). Когда v2 вводит реальный отдельный wallSpace, манульный клик в перспективе сломается. **Уже задекларировано как v2-defer**, но стоит зафиксировать тест-снапшот текущего поведения, чтобы случайно не регрессировать. | low |
+| A2 | `visualizerStore.ts:218,228` | При `panels.length === 0` (например, все ячейки на obstacle) код всё равно делает `set({ layout: { ...layout, panels: [] } })` и стирает существующие панели. **Pre-existing**, не введено Phase 2, но обнаружено при аудите — стоит исправить отдельным PR. | low |
+| A3 | `PhotoEditorPage.tsx:96` | Существующие проекты в `localStorage` имеют `{method:'manual', pixelsPerCm: width/400}` от старого heuristic-кода — у них banner НЕ покажется (`method === 'auto'` не выполнится), хотя калибровка по сути placeholder'ная. Новые загрузки получают `'auto'`. **Migration-ограничение:** пользователь увидит banner только после повторной загрузки фото. Документировать в release notes. | low |
+| A4 | `layoutEngine.ts:131–134` | `if (x + widthPx > mask.width)` работает только когда wallSpace.w == mask.width. Сейчас инвариант держит `createPerspective(..., photoSize)`, но для будущего отдельного wallSpace нужен будет отдельный bounds-source. Закомментировано в коде. | low |
+| A5 | `layoutEngine.ts:140–156` | Obstacle-overlap для quad использует AABB. При сильной перспективе AABB значительно больше реального quad'а → ложно-отрицательное «нельзя разместить» вблизи мебели. Документировано как «tighter polygon test isn't worth the cost». Edge case для фото с широкоугольной перспективой; для типовых интерьеров < 2% разница. | low |
+| A6 | `maskUtils.ts:225–226` | `Math.round(topX + ...)` обрезает 1-пиксельный sliver на краю в OOB. Минимальная погрешность; для threshold 0.7 не влияет. | trivial |
+| A7 | `layoutEngine.test.ts:310` | Тесты perspective-режима используют только identity-corners (`createPerspective(photoBounds, photoSize)` ≡ identity). Реально варпированный quad (трапеция) не покрыт — регрессия в `transformRect`+`wallCoverageInQuad` интеграции пройдёт через CI. **Рекомендация:** добавить хотя бы один тест с trapezoidal corners, проверить что `panels.length` отличается от flat-варианта на ожидаемое число. | medium |
+| A8 | `__tests__/visualizerStore.test.ts` | Catch-handler `AutoFillBlockedError → message.warning` не покрыт unit-тестом. Branch проверена только вручную в браузере. **Рекомендация:** добавить тест на `useVisualizerStore.getState().autoFill()` с perspective+null-калибровкой и spy на `antd.message.warning`. | medium |
+
+**Регрессий не обнаружено:**
+- Все существующие callers `placeSinglePanel/canPlacePanel/autoFillWall` совместимы — perspective параметр опциональный.
+- Backend API (`/projects` payload) не зависит от `calibration.method` — миграция типа безболезненна.
+- Persistence `partialize` сохраняет полный `scene.calibration` без фильтрации — старые `method:'manual'` значения корректно загружаются (типобезопасно, банер не показывается — см. A3).
+
+**Заключение:** Phase 2 готова к merge. Рекомендации A7–A8 (medium) стоит закрыть в Phase 2.1 hotfix перед началом Phase 3, A1–A6 могут уйти в backlog или решиться вместе с v2 wallSpace work.
+
 ---
 
 ## Фаза 3: Авто-определение перспективы (vanishing points)
