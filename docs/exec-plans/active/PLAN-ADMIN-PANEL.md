@@ -249,37 +249,81 @@
 
 ---
 
-## Фаза 3: Дашборд статистики
+## Фаза 3: Дашборд статистики ⚠️ РЕАЛИЗОВАНО С ЗАМЕЧАНИЯМИ (2026-04-24)
 
 > **Цель:** Главный экран `/admin` с ключевыми метриками. **Только агрегаты — без drill-down.**
 
 ### Backend
-- [ ] Domain: новый bounded context `analytics` (read-only). VO `DateRange`, `Metric`, `MetricSeries`. Без entities — domain-сервис над репозиториями других доменов.
-- [ ] Domain: интерфейс `AnalyticsRepository` (ABC) — методы `revenue_by_day(range)`, `orders_by_status(range)`, `new_users_by_day(range)`, `top_designs(limit)`, `conversion_funnel(range)`.
-- [ ] Application: use case `GetDashboardSnapshot.execute(range: DateRange) -> DashboardDTO`.
-- [ ] Infrastructure: `SqlAnalyticsRepository` — оптимизированные SQL-запросы с GROUP BY, без N+1. Использует readonly-сессию.
-- [ ] Infrastructure: эндпоинт `GET /api/admin/analytics/dashboard?from=&to=` под guard.
-- [ ] Кеширование: in-memory TTL 60 сек на снимок (декоратор `@cached(60)`); инвалидация — по таймеру, не по событиям (для MVP достаточно).
+- [x] Domain: новый bounded context `analytics` (read-only). VO `DateRange`, `Metric`, `MetricSeries`. Без entities — domain-сервис над репозиториями других доменов. Добавлены также `SeriesPoint`, `StatusBucket`, `TopDesign`, исключение `InvalidDateRangeError`.
+- [x] Domain: интерфейс `AnalyticsRepository` (ABC) — методы `revenue_by_day(range)`, `orders_by_status(range)`, `new_users_by_day(range)`, `top_designs(limit)`. ⚠️ **Отклонение:** вместо `conversion_funnel(range)` реализован `totals(range)` → `dict[str, int]` (revenue / orders / new_users / avg_order_value). Funnel отложен — для MVP-дашборда нужны именно скалярные тоталы на карточки.
+- [x] Application: use case `GetDashboardSnapshot.execute(range: DateRange) -> DashboardDTO`. `DashboardDTO` также несёт `range_start`/`range_end` как ISO-строки (⚠️ протекание HTTP-формата в application-DTO — tech-debt).
+- [x] Infrastructure: `SqlAnalyticsRepository` — `func.date(...) GROUP BY`, одна query на проекцию, без N+1. ⚠️ **Отклонение:** обычная `AsyncSession` из DI, readonly-сессия не реализована. Для MVP приемлемо (TTL-кеш 60с гасит нагрузку), но пометить tech-debt.
+- [x] Infrastructure: эндпоинт `GET /api/admin/analytics/dashboard?days=7|30|90` под `get_current_admin_id`. ⚠️ Контракт изменён — вместо `?from=&to=` принимает enum `days` (обоснованно: ограничение fan-out кеша + валидация на уровне Pydantic).
+- [x] Кеширование: `app/utils/cache.py` (`@cached(ttl_seconds=60.0, skip_self=True)`). TTL 60с, ключ `(days,)` (repo стрипается через `skip_self`). `clear_cache()` экспонируется для тестов.
 
 ### Frontend
-- [ ] `domains/admin/model/dashboardStore.ts` — Zustand: `range`, `snapshot`, `loading`, `setRange`.
-- [ ] `domains/admin/api/analyticsApi.ts` — функция `fetchDashboard(range)` с TanStack Query.
-- [ ] `domains/admin/ui/AdminDashboardPage.tsx` — 4 карточки метрик + 2 графика (revenue по дням, заказы по статусам). Используем `recharts` (новая зависимость; альтернатива — `@ant-design/charts`).
-- [ ] Селектор периода: 7 / 30 / 90 дней (Ant Design `Segmented`).
-- [ ] Скелетоны загрузки (Ant Design `Skeleton`).
-- [ ] Анимация появления — Framer Motion (`fadeUpVariants` из конвенций).
+- [x] `domains/admin/model/dashboardStore.ts` — Zustand только с `range`/`setRange`. ⚠️ **Отклонение от плана:** `snapshot`/`loading` НЕ в сторе — их владеет TanStack Query. Это корректнее, нет двойного источника правды. Плюс экспортирован `DASHBOARD_RANGE_OPTIONS`.
+- [x] `domains/admin/api/analyticsApi.ts` — хук `useDashboardSnapshot(days)` с TanStack Query (`staleTime: 30s`, `retry: false`). Вместо голой функции `fetchDashboard` — hook-wrapper, соответствует фронт-конвенциям (react-query keys: `analyticsKeys.dashboard`).
+- [x] `domains/admin/ui/AdminDashboardPage.tsx` — 4 метрики + LineChart (выручка) + PieChart (статусы) + List (топ дизайнов). Зависимость `recharts@^3.8.1` добавлена в `frontend/package.json`.
+- [x] Селектор периода: AntD `Segmented` 7/30/90.
+- [x] Скелетоны: `Skeleton`, `Skeleton.Input`, `Skeleton.Avatar`.
+- [x] Анимация: `fadeUpVariants` + `staggerChildren` (Framer Motion) — унифицирован с HomePage / AccountLayout.
+- [x] Дополнительно: полифилл `window.matchMedia` в `frontend/src/test/setup.ts` — jsdom его не реализует, ломал AntD Segmented/Layout в тестах.
 
 ### Тесты
-- [ ] `tests/domain/analytics/test_date_range.py` — валидация диапазона.
-- [ ] `tests/application/analytics/test_get_dashboard_snapshot.py` — happy path + пустые данные.
-- [ ] `tests/api/admin/test_dashboard.py` — 200 admin, 403 customer, валидация query params.
-- [ ] `frontend/src/domains/admin/__tests__/dashboardStore.test.ts` — смена range триггерит refetch.
-- [ ] Performance: дашборд за 30 дней при 10k заказов отдаётся за <500мс (замер в тесте `tests/api/admin/test_dashboard_perf.py`).
+- [x] `tests/domain/analytics/test_date_range.py` — инварианты DateRange + `last_n_days` (9 кейсов).
+- [x] `tests/application/analytics/test_get_dashboard_snapshot.py` — happy path, пустые данные, фильтрация по статусу, по диапазону, enum-порядок статусов, топ-дизайны по quantity, бакетирование по дням (8 кейсов).
+- [x] `tests/api/admin/test_dashboard.py` — 401 без токена, 403 для customer, 422 для days=500/0/"abc", 200 admin с полным payload, default days=30 (6 кейсов). autouse-фикстура `_reset_cache` сбрасывает TTL-кеш между кейсами.
+- [x] `frontend/src/domains/admin/__tests__/dashboardStore.test.ts` — 4 кейса: дефолт, setRange, subscribers, опции.
+- [ ] ❌ **НЕ СДЕЛАНО:** `tests/api/admin/test_dashboard_perf.py` — перф-тест 30 дней / 10k заказов / <500мс. Оставить как tech-debt.
 
 ### Definition of Done
-- На пустой БД дашборд показывает нули, не падает.
-- Смена периода обновляет данные.
-- В DevTools Network — 1 запрос на снимок (агрегаты на бэке, не на фронте).
+- [x] На пустой БД дашборд показывает нули, не падает (подтверждено `test_empty_data_returns_zero_metrics_and_full_zero_series`).
+- [x] Смена периода обновляет данные (`range` входит в `queryKey`, React Query рефетчит автоматически).
+- [x] В DevTools Network — 1 запрос на снимок (агрегаты на бэке).
+
+### Аудит 2026-04-24 — замечания
+
+**Критические:** нет.
+
+**Некритические (tech-debt):**
+1. **`conversion_funnel` не реализован** — заменён на `totals`. Либо добавить funnel в Фазе 3.x, либо обновить контракт в REQUIREMENTS.
+2. **Перф-тест отсутствует** — `test_dashboard_perf.py` не создан. Перенести в бэклог tech-debt.
+3. **`DashboardDTO.range_start/range_end: str`** (`use_cases.py:23-24`) — HTTP-формат в application-слое. Заменить на `date` + форматирование в API-схеме.
+4. **`_mem_analytics_repo` читает приватные `_orders`/`_users`** (`container.py:46-47`) — инкапсуляция нарушена. Добавить публичные `orders()`/`users()` на in-memory репо.
+5. **`_order_total` дублирует `Order.total`** (`analytics_repo.py:55`) — использовать property.
+6. **Readonly-сессия не реализована** — `SqlAnalyticsRepository` берёт обычную `AsyncSession`. Приемлемо для MVP.
+7. **`test_admin_gets_full_payload` сидирует общий `_mem_order_repo`** (`test_dashboard.py:139-152`) без отката. Assertion `revenue == 3000` хрупок: любой будущий тест, создающий CONFIRMED/DELIVERED заказ до него, сломает кейс. Добавить `_mem_order_repo._orders.clear()` в setup кейса.
+8. **`top_designs` SQL: `func.max(design_name)`** (`analytics_repo.py:226`) — выбор имени при переименовании дизайна недетерминирован. Минорно.
+9. **`datetime.utcnow()`** в `DateRange.last_n_days` (`value_objects.py:73`) — deprecation warning на Python 3.12+. Общая проблема проекта, не Phase 3.
+10. **Нет UI-теста** на `AdminDashboardPage.tsx` (plan не требовал, но 420 строк с условной отрисовкой — покрытие тонкое). Tech-debt.
+11. **Cache key `(days,)` агрегирует все SQL-сессии** в один бакет — сегодня безвредно (данные глобальные, TTL короткий), но поведение имплицитное. Добавить комментарий в `cache.py`.
+
+### Файлы, добавленные/изменённые в Фазе 3
+
+**Новые (backend):**
+- `backend/app/domain/analytics/{__init__.py, value_objects.py, repositories.py}`
+- `backend/app/application/analytics/{__init__.py, use_cases.py}`
+- `backend/app/infrastructure/persistence/repositories/analytics_repo.py`
+- `backend/app/infrastructure/api/admin/dashboard.py`
+- `backend/app/utils/cache.py`
+- `backend/tests/domain/analytics/{__init__.py, test_date_range.py}`
+- `backend/tests/application/analytics/{__init__.py, test_get_dashboard_snapshot.py}`
+- `backend/tests/api/admin/{__init__.py, test_dashboard.py}`
+
+**Модифицированные (backend):**
+- `backend/app/container.py` — +`_mem_analytics_repo`, +`get_analytics_repo`, +SQL class регистрация.
+- `backend/app/infrastructure/api/admin/__init__.py` — +include dashboard router.
+
+**Новые (frontend):**
+- `frontend/src/domains/admin/api/analyticsApi.ts`
+- `frontend/src/domains/admin/model/dashboardStore.ts`
+- `frontend/src/domains/admin/__tests__/dashboardStore.test.ts`
+
+**Модифицированные (frontend):**
+- `frontend/src/domains/admin/ui/AdminDashboardPage.tsx` — полная переписка с плейсхолдера на реальный дашборд.
+- `frontend/package.json` + `package-lock.json` — +`recharts@^3.8.1`.
+- `frontend/src/test/setup.ts` — +polyfill `window.matchMedia` для jsdom.
 
 ---
 
