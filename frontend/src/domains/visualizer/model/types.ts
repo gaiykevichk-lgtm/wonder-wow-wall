@@ -141,6 +141,19 @@ export interface Scene {
    * `perspective-auto-banner`).
    */
   perspectiveAutoDetected?: boolean;
+  /**
+   * Phase-4 reference candidates surfaced by `referenceDetector`. UI displays
+   * them in `CalibrationOverlay` so the user can apply one-click calibration.
+   * Empty array (or undefined) means detection ran and found nothing OR the
+   * stub adapter is in place. Not persisted: this is a runtime-only ML output.
+   */
+  referenceCandidates?: import('../lib/scaleEstimator').ReferenceCandidate[];
+  /**
+   * `true` when the current `calibration` was produced by applying one of
+   * `referenceCandidates`. Cleared by manual `applyCalibration` /
+   * `setCalibration`. Drives the "Масштаб: ✓ автоматически" status chip.
+   */
+  calibrationAutoDetected?: boolean;
 }
 
 export interface PanelLayout {

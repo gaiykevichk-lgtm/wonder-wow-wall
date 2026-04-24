@@ -27,6 +27,11 @@ import { createEmptyMask } from '../lib/maskUtils';
 import { createPerspective } from '../lib/perspectiveEngine';
 import { uint8ArrayToBase64, base64ToUint8Array } from '../lib/maskSerialization';
 import { detectFromLines, type LineProvider } from '../lib/vanishingPointDetector';
+import {
+  estimateScaleFromReference,
+  type ReferenceCandidate,
+} from '../lib/scaleEstimator';
+import type { ReferenceDetector } from '../lib/referenceDetector';
 
 interface VisualizerState {
   // Scene
@@ -79,6 +84,24 @@ interface VisualizerState {
    * the user can still set corners manually.
    */
   runAutoPerspective: (provider: LineProvider) => Promise<void>;
+  /**
+   * Run reference-object detection (Phase 4). Stores the result in
+   * `scene.referenceCandidates`. Failures (model unavailable, network) are
+   * silent — manual two-point calibration is always available. Race-protected
+   * against photo swap (snapshots `photo.url` at start, bails on mismatch).
+   */
+  runAutoReferenceDetection: (detector: ReferenceDetector) => Promise<void>;
+  /**
+   * Apply one of the detected reference candidates as the active calibration.
+   * Writes `scene.calibration = { method: 'auto', pixelsPerCm }` and sets
+   * `scene.calibrationAutoDetected = true`. Returns `false` if the candidate
+   * cannot be converted (zero bbox / unknown type).
+   *
+   * If `perspectiveCorners` are set, the bbox is back-projected into the wall
+   * plane before measurement — without that, an outlet near a foreshortened
+   * edge would yield a wildly off-scale result.
+   */
+  applyReferenceCandidate: (candidate: ReferenceCandidate) => boolean;
   wallBrightness: number;
   setWallBrightness: (brightness: number) => void;
 
@@ -149,7 +172,9 @@ export const useVisualizerStore = create<VisualizerState>()(
   setCalibration: (calibration) => {
     const scene = get().scene;
     if (scene) {
-      set({ scene: { ...scene, calibration } });
+      // Direct calibration writes are always treated as manual — clear the
+      // auto-detected flag so the UI status chip reflects user intent.
+      set({ scene: { ...scene, calibration, calibrationAutoDetected: false } });
     }
   },
 
@@ -285,7 +310,12 @@ export const useVisualizerStore = create<VisualizerState>()(
     if (distPx < 5) return false;
     const pixelsPerCm = distPx / referenceCm;
     set({
-      scene: { ...scene, calibration: { method: 'reference', pixelsPerCm } },
+      scene: {
+        ...scene,
+        calibration: { method: 'reference', pixelsPerCm },
+        // Manual two-point calibration overrides any prior auto-detection.
+        calibrationAutoDetected: false,
+      },
       editorMode: 'default',
     });
     return true;
@@ -355,6 +385,53 @@ export const useVisualizerStore = create<VisualizerState>()(
         set({ scene: { ...current, segmentationStatus: 'ready' } });
       }
     }
+  },
+  runAutoReferenceDetection: async (detector) => {
+    const scene = get().scene;
+    if (!scene) return;
+    // Same race-protection pattern as runAutoPerspective: snapshot the photo
+    // identity, bail post-await if the user swapped photos. Detection is
+    // photo-specific, mis-applying it to a newer scene would be confusing.
+    const startedFor = scene.photo.url;
+    try {
+      const candidates = await detector({
+        imageUrl: scene.photo.url,
+        photoSize: { width: scene.photo.width, height: scene.photo.height },
+      });
+      const current = get().scene;
+      if (!current || current.photo.url !== startedFor) return;
+      set({
+        scene: { ...current, referenceCandidates: candidates },
+      });
+    } catch (err) {
+      // Adapter unavailable / ONNX runtime missing / inference error.
+      // Fail silently — manual calibration is always available.
+      if (import.meta.env.DEV) {
+        console.warn('[runAutoReferenceDetection] detector failed:', err);
+      }
+    }
+  },
+  applyReferenceCandidate: (candidate) => {
+    const scene = get().scene;
+    if (!scene) return false;
+    const perspective = get().perspectiveCorners
+      ? createPerspective(get().perspectiveCorners!, {
+          w: scene.photo.width,
+          h: scene.photo.height,
+        })
+      : undefined;
+    const estimated = estimateScaleFromReference(candidate, perspective);
+    if (!estimated) return false;
+    set({
+      scene: {
+        ...scene,
+        calibration: estimated.calibration,
+        calibrationAutoDetected: true,
+      },
+      // Close the calibration overlay if it's open — user picked their option.
+      editorMode: 'default',
+    });
+    return true;
   },
   wallBrightness: 128,
   setWallBrightness: (brightness) => set({ wallBrightness: brightness }),
@@ -468,6 +545,11 @@ export const useVisualizerStore = create<VisualizerState>()(
             calibration: state.scene.calibration,
             segmentationStatus: state.scene.segmentationStatus,
             perspectiveAutoDetected: state.scene.perspectiveAutoDetected,
+            // calibrationAutoDetected: persisted because it reflects which
+            // mode produced the active calibration (user-chosen state).
+            // referenceCandidates is intentionally NOT persisted — it's a
+            // runtime ML output, regenerated on next photo open (D2 in plan).
+            calibrationAutoDetected: state.scene.calibrationAutoDetected,
           }
         : null,
       layout: {

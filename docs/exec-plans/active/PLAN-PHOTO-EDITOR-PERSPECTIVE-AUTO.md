@@ -552,67 +552,98 @@ Phase 1B v1 принимается как warp-замена Phase 1A. Math фо�
 
 ---
 
-## Фаза 4: Авто-определение масштаба (детекция эталонов)
+## Фаза 4: Авто-определение масштаба (детекция эталонов) ✅ ЯДРО ЗАВЕРШЕНО
 
 > **Цель:** Автоматически найти на фото объект известного размера (розетка, дверь, плинтус) и предложить one-click калибровку.
-> **Технология:** YOLOv8n (ONNX ~6 MB), inference через `onnxruntime-web` в Web Worker (через `cvWorkerHost` из Фазы 3.0). Альтернатива: дообучение на интерьерах.
-> **Зависимости:** Фаза 2 (нужна осмысленная связка калибровки и layout). Фаза 3 (для `cvWorkerHost`). Идеально — после обеих.
+> **Технология:** YOLOv8n (ONNX ~6 MB), inference через `onnxruntime-web` в Web Worker (через `cvWorkerHost` из Фазы 3.0).
+> **Зависимости:** Фаза 2, Фаза 3 (использует `cvWorkerHost`).
 > **Bounded Context:** только frontend / `visualizer`. Backend: без изменений.
-> **Результат:** Пользователь видит подсветку розетки и кнопку «Использовать как эталон (8 см)» — клик и калибровка готова.
+> **Результат сегодня:** Алгоритмическое ядро + UI готовы; адаптер ORT — stub. По шаблону Phase 3, реальный ONNX-binding отложен в **Phase 4.1c** (вес ~9 МБ, требует worker bootstrap).
 
-### 4.0 Подготовка
+### 4.0 Подготовка ⏸ (отложено в 4.1c)
 
-- [ ] Скачать предобученную модель YOLOv8n COCO (классы: `tv, refrigerator, oven, sink, toilet, microwave, ...`). Решить, дообучать ли на специфичных классах (`outlet, switch, baseboard`) — см. открытый вопрос #2.
-- [ ] **Датасет**: создать `frontend/src/domains/visualizer/__tests__/fixtures/references/` — 30 фото с розетками/выключателями + bbox-разметкой в `expected.json`.
+- [ ] Скачать предобученную модель YOLOv8n COCO. Решить про дообучение `outlet/switch/baseboard`.
+- [ ] **Датасет**: 30 фото с разметкой в `__tests__/fixtures/references/`.
 
-### 4.1 Frontend — сервис детекции эталонов
+### 4.1a Frontend — алгоритмическое ядро ✅
 
-- [ ] Установить `onnxruntime-web` (~3 MB).
-- [ ] Скачать готовую модель YOLOv8n COCO (или дообучить на классы `outlet, door, window, baseboard, light_switch` — отдельная задача датасайентисту).
-- [ ] Создать `src/domains/visualizer/lib/referenceDetector.ts`:
-  - `detectReferences(imageUrl: string): Promise<ReferenceCandidate[]>`
-  - `ReferenceCandidate = { type: 'outlet'|'door'|'window'|'switch', bbox: BoundingBox, knownSizeCm: number, confidence: number }`
-  - Inference через ORT Web в Web Worker.
-- [ ] Создать `src/domains/visualizer/lib/scaleEstimator.ts`:
-  - `estimateScaleFromReference(candidate: ReferenceCandidate, perspective?: PerspectiveTransform): ScaleCalibration`
-  - **Если есть перспектива** — bbox эталона сначала проецируется в plane стены через `inverseTransformRect`, и `pixelsPerCm` считается уже в plane координатах. Иначе при наклоне bbox `width` искажён, и масштаб будет неправильным. См. [E4].
-  - Использует длинную сторону bbox + `knownSizeCm` → `pixelsPerCm`.
-- [ ] **Lazy-load YOLO**: не грузить 6 МБ ONNX при upload — инициализировать после первого взаимодействия с canvas (или скрытой prefetch через `requestIdleCallback`). См. [T5].
+- ✅ `src/domains/visualizer/lib/scaleEstimator.ts`:
+  - `REFERENCE_CATALOG` — outlet (8см, axis=width, trust=0.95), switch (8/0.9), door (205/height/0.7), window (140/width/0.4), baseboard (10/height/0.55).
+  - `estimateScaleFromReference(candidate, perspective?)` → `EstimatedScale | null`.
+  - **С перспективой** — bbox проецируется в wall plane через `inverseTransformPoint` всех 4 углов, измеряется средняя длина двух параллельных сторон (дампит шум разворота bbox в проекции). [E4 покрыт].
+  - Без перспективы — прямой bbox.width / knownSizeCm.
+  - `pickBestCandidate(candidates)` — score = trust(catalog) × confidence(detector), tie-break по confidence → площади bbox.
+- ✅ Тесты `__tests__/scaleEstimator.test.ts` (12 тестов): bbox-axis для всех типов, identity-perspective consistency, foreshortened wall (far edge даёт больший pixelsPerCm в wall plane), null-кейсы (zero bbox, неизвестный тип, NaN после проекции), pickBestCandidate (catalog приоритет, confidence tie-break, area tie-break).
 
-### 4.2 Frontend — UI выбора эталона
+### 4.1b Frontend — pluggable detector adapter (stub) ✅
 
-- [ ] Новый компонент `src/domains/visualizer/ui/ReferenceCandidatesOverlay.tsx`:
-  - На canvas рисует прямоугольники-кандидаты (`stroke #4CAF50`, dashed).
-  - Tooltip над каждым: «Розетка ~8 см. Использовать как эталон?» + кнопка `Применить`.
-  - Клик `Применить` → action `setCalibration(...)` + закрытие overlay.
-- [ ] Расширить `CalibrationOverlay.tsx`:
-  - В верх добавить блок «Найдено автоматически:» со списком кандидатов (если есть).
-  - Существующий ручной flow остаётся как fallback («Не подходит — выберите вручную»).
+- ✅ `src/domains/visualizer/lib/referenceDetector.ts`:
+  - Тип `ReferenceDetector = (input) => Promise<ReferenceCandidate[]>` — единая точка инъекции.
+  - `OnnxNotInstalledError` (`code: 'onnx-not-installed'`) — типобезопасный sentinel.
+  - `createOnnxReferenceDetector(opts)` — stub, всегда бросает `OnnxNotInstalledError`. Reuses `CvWorkerHost` из Phase 3.
+  - Опции `scoreThreshold`, `maxCandidates` объявлены с `TODO(Phase 4.1c)`.
+- ✅ Тесты `__tests__/referenceDetector.test.ts` (3 теста): throws + stable error code + options surface smoke.
 
-### 4.3 Frontend — интеграция в store
+### 4.1c (отложено) — реальный ORT-адаптер
 
-- [ ] В `visualizerStore.ts`:
-  - Поле `scene.referenceCandidates: ReferenceCandidate[]`.
-  - Запуск `detectReferences()` параллельно с `detectWallCorners()` после сегментации.
-  - Флаг `scene.calibrationAutoDetected: boolean`.
+| Что нужно | Зачем |
+|---|---|
+| `npm i onnxruntime-web` (~3 МБ) | runtime для inference в Web Worker |
+| Файл `public/models/yolov8n.onnx` (~6 МБ) | предобученная модель COCO |
+| Web Worker, обёрнутый под `CvWorkerHost.enqueue(...)` | GPU/CPU inference без блокировки UI |
+| Тело `createOnnxReferenceDetector` | нормализация изображения, прогон inference, NMS, маппинг классов COCO → `ReferenceType` |
+| Lazy-load по `requestIdleCallback` ([T5]) | не платить 9 МБ при первом upload |
+| Acceptance-тест на датасете | precision ≥ 0.85, recall ≥ 0.7 |
 
-### 4.4 Дизайн
+### 4.2 Frontend — UI выбора эталона ✅ (минимальная версия)
 
-- [ ] В шапке canvas — статус-чип «Масштаб: ✓ автоматически (по розетке)» / «Масштаб: ⚠ вручную» / «Масштаб: ✗ не задан».
-- [ ] Цвета чипов: success `#E8F5E9 / #2E7D32`, warning `#FFF8E1 / #6B5500`, error `#FFEBEE / #C62828`.
+- ✅ Расширен `CalibrationOverlay.tsx`:
+  - При непустом `candidates` сверху отрисовывается зелёный блок (`#1B3A1F / #2E7D32`) с лучшим кандидатом по `pickBestCandidate`.
+  - Кнопка `data-testid="apply-auto-candidate"` с подписью `Применить (N см)`.
+  - Существующий ручной flow остаётся ниже — fallback автоматически.
+- ⏸ `ReferenceCandidatesOverlay.tsx` (Konva-боксы поверх canvas с dashed-рамками) — не реализован в первой итерации, перенесено в **Phase 4.2a**. Сегодня кандидаты выбираются из CalibrationOverlay; рамок поверх фото нет.
+
+### 4.3 Frontend — интеграция в store ✅
+
+- ✅ `Scene.referenceCandidates?: ReferenceCandidate[]` (runtime, не персистится).
+- ✅ `Scene.calibrationAutoDetected?: boolean` (персистится — это часть выбора пользователя).
+- ✅ Action `runAutoReferenceDetection(detector)`: race-protection через snapshot `photo.url`, `import.meta.env.DEV`-гарды для логов, silent-fallback на ошибку.
+- ✅ Action `applyReferenceCandidate(candidate)`: `estimateScaleFromReference` с учётом текущего `perspectiveCorners`, пишет `calibration: {method:'auto'}` + `calibrationAutoDetected=true`, закрывает overlay.
+- ✅ `setCalibration` и `applyCalibration` сбрасывают `calibrationAutoDetected` (ручное действие → флаг гасится).
+- ✅ Запуск из `PhotoEditorPage` — `void store.runAutoReferenceDetection(...)` параллельно с `runAutoPerspective` после сегментации.
+- ✅ Тесты в `visualizerStore.test.ts` (8 новых): no-scene noop, успешная запись кандидатов, silent на ошибку, race с photo-swap; applyReferenceCandidate happy path, false на zero-bbox, manual `setCalibration` сбрасывает флаг, no-scene → false.
+
+### 4.4 Дизайн ✅ (в виде баннера; чип отложен)
+
+- ✅ Зелёный баннер `data-testid="calibration-auto-banner"` (`#E8F5E9 / #2E7D32`) — «Масштаб определён автоматически по эталонному объекту. Откалибровать вручную».
+- ✅ Жёлтый warning-баннер `calibration-banner` теперь молчит, когда `calibrationAutoDetected === true` (auto-from-reference считается надёжным).
+- ⏸ Полноценный статус-чип (success/warning/error три состояния) — оставляется на Phase 4.2a вместе с overlay-боксами; сегодня тех же три состояния выражены парой баннеров.
 
 ### 4.5 Backend
 
-- [ ] Без изменений. Финальная `ScaleCalibration` будет персиститься после Фазы 5.
+- ✅ Без изменений (как и было запланировано). Финальный `ScaleCalibration` персистится в Phase 5.
 
-### 4.6 Тесты
+### 4.6 Тесты ✅
 
-- [ ] Unit `referenceDetector.test.ts` (моки ORT): входной тензор → корректный bbox + class.
-- [ ] Unit `scaleEstimator.test.ts`:
-  - Без перспективы: bbox 100px + outlet (8 см) → `pixelsPerCm = 12.5`.
-  - С перспективой: bbox в углу стены → проекция через inverse transform → корректный `pixelsPerCm` (E4).
-- [ ] Component `ReferenceCandidatesOverlay.test.tsx`: клик на кандидате → store action вызван с правильным `ScaleCalibration`.
-- [ ] **Датасет-acceptance** (вне CI): 30 фото из `__tests__/fixtures/references/` → precision ≥ 0.85, recall ≥ 0.7.
+- ✅ `referenceDetector.test.ts` — stub поверхность (3 теста). Будет дополнен в 4.1c при реальном ORT.
+- ✅ `scaleEstimator.test.ts` (12 тестов): bbox 80px outlet → 10 px/cm; door 410/205 = 2; identity-perspective consistency; foreshortened wall; null-cases; pickBestCandidate.
+- ✅ `CalibrationOverlay.test.tsx` (5 новых): нет блока без кандидатов / при empty / без `onApplyCandidate`; рендерится с подписью «Розетка / 8 см»; клик прокидывает best-кандидата.
+- ✅ `visualizerStore.test.ts` (8 новых, см. 4.3).
+- ⏸ Датасет-acceptance — Phase 4.1c.
+
+### 4.7 Что отложено (Phase 4.1c / 4.2a)
+
+| # | Пункт | Куда |
+|---|---|---|
+| Реальный ONNX-адаптер | YOLOv8n + ORT Web в Worker | 4.1c |
+| Модель `yolov8n.onnx` (6 МБ) + `public/models/` | bundle | 4.1c |
+| Lazy-load через `requestIdleCallback` ([T5]) | perf | 4.1c |
+| Датасет 30 фото + acceptance precision/recall | release-gate | 4.1c |
+| `ReferenceCandidatesOverlay.tsx` (Konva-боксы поверх canvas) | UX | 4.2a |
+| Полноценный статус-чип масштаба (✓/⚠/✗) | UX | 4.2a |
+| AbortController для отмены детекции при reset | parity с runAutoPerspective | 4.1c (одним пакетом с тем же фиксом) |
+
+**Итог Phase 4 (текущая часть):** алгоритмическое ядро + plug-in adapter + store + UI fallback. Frontend visualizer-тесты **255/255 ✅** (+25 vs Phase 3), non-visualizer **91/91 ✅**, tsc clean. Запуск ORT-адаптера в 4.1c не требует трогать call sites — только подменить тело `createOnnxReferenceDetector`.
 
 ---
 

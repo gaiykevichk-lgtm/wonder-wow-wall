@@ -1,6 +1,12 @@
 import { Select, InputNumber, Button, Typography } from 'antd';
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { CheckOutlined, CloseOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import type { CalibrationPoints } from '../model/types';
+import {
+  pickBestCandidate,
+  REFERENCE_CATALOG,
+  type ReferenceCandidate,
+  type ReferenceType,
+} from '../lib/scaleEstimator';
 
 const { Text } = Typography;
 
@@ -11,11 +17,27 @@ const REFERENCE_PRESETS = [
   { label: 'Своё значение', value: -1 },
 ];
 
+const REFERENCE_LABELS: Record<ReferenceType, string> = {
+  outlet: 'розетка',
+  switch: 'выключатель',
+  door: 'дверь',
+  window: 'окно',
+  baseboard: 'плинтус',
+};
+
 interface CalibrationOverlayProps {
   points: CalibrationPoints;
   onReferenceChange: (cm: number) => void;
   onApply: () => void;
   onCancel: () => void;
+  /**
+   * Reference candidates surfaced by Phase-4 detection. When non-empty, an
+   * "auto" section renders above the manual flow letting the user accept a
+   * one-click calibration.
+   */
+  candidates?: readonly ReferenceCandidate[];
+  /** Called when the user clicks "Применить" on an auto-candidate. */
+  onApplyCandidate?: (candidate: ReferenceCandidate) => void;
 }
 
 export function CalibrationOverlay({
@@ -23,6 +45,8 @@ export function CalibrationOverlay({
   onReferenceChange,
   onApply,
   onCancel,
+  candidates,
+  onApplyCandidate,
 }: CalibrationOverlayProps) {
   const hasStart = points.start !== null;
   const hasEnd = points.end !== null;
@@ -31,6 +55,10 @@ export function CalibrationOverlay({
   const distPx = hasStart && hasEnd
     ? Math.hypot(points.end!.x - points.start!.x, points.end!.y - points.start!.y)
     : 0;
+
+  const bestCandidate = candidates && candidates.length > 0
+    ? pickBestCandidate(candidates)
+    : null;
 
   return (
     <div
@@ -47,6 +75,45 @@ export function CalibrationOverlay({
       <Text style={{ fontSize: 13, fontWeight: 500, color: '#FFFFFF' }}>
         Калибровка масштаба
       </Text>
+
+      {bestCandidate && onApplyCandidate && (
+        <div
+          data-testid="auto-candidate-block"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+            padding: '8px 10px',
+            background: '#1B3A1F',
+            border: '1px solid #2E7D32',
+            borderRadius: 8,
+          }}
+        >
+          <Text style={{ fontSize: 12, color: '#A5D6A7', fontWeight: 500 }}>
+            Найдено автоматически
+          </Text>
+          <Text style={{ fontSize: 13, color: '#FFFFFF' }}>
+            {capitalize(REFERENCE_LABELS[bestCandidate.type])} ≈{' '}
+            {REFERENCE_CATALOG[bestCandidate.type].knownSizeCm} см. Использовать
+            как эталон?
+          </Text>
+          <Button
+            size="small"
+            type="primary"
+            icon={<ThunderboltOutlined />}
+            onClick={() => onApplyCandidate(bestCandidate)}
+            data-testid="apply-auto-candidate"
+            style={{
+              alignSelf: 'flex-start',
+              background: '#2E7D32',
+              borderColor: '#2E7D32',
+              borderRadius: 8,
+            }}
+          >
+            Применить ({REFERENCE_CATALOG[bestCandidate.type].knownSizeCm} см)
+          </Button>
+        </div>
+      )}
 
       <Text style={{ fontSize: 13, color: '#6B7280' }}>
         {!hasStart
@@ -107,4 +174,8 @@ export function CalibrationOverlay({
       </div>
     </div>
   );
+}
+
+function capitalize(s: string): string {
+  return s.length === 0 ? s : s[0]!.toUpperCase() + s.slice(1);
 }

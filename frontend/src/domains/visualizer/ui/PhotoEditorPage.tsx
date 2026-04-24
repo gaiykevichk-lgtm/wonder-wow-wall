@@ -17,6 +17,7 @@ import { applyStrokeToMask, createEmptyMask } from '../lib/maskUtils';
 import { placeSinglePanel } from '../lib/layoutEngine';
 import { segmentScene, isSegmentationSupported } from '../lib/segmentationService';
 import { createOpencvLsdProvider } from '../lib/opencvLsdAdapter';
+import { createOnnxReferenceDetector } from '../lib/referenceDetector';
 import { defaultCvWorkerHost } from '../lib/cvWorkerHost';
 import { BASE_PANEL_PRICES, DESIGN_OVERLAY_PRICE } from '../../../shared/config/constants';
 import { products } from '../../catalog/model/data';
@@ -57,6 +58,11 @@ export default function PhotoEditorPage() {
   // provider on every render would just churn closures with no benefit.
   const opencvLsdProvider = useMemo(
     () => createOpencvLsdProvider({ workerHost: defaultCvWorkerHost }),
+    [],
+  );
+  // Stable ReferenceDetector for Phase-4 auto-scale. Same rationale as above.
+  const referenceDetector = useMemo(
+    () => createOnnxReferenceDetector({ workerHost: defaultCvWorkerHost }),
     [],
   );
 
@@ -140,6 +146,13 @@ export default function PhotoEditorPage() {
             // wiring real OpenCV LSD only requires implementing the
             // adapter; no other call sites change.
             void store.runAutoPerspective(opencvLsdProvider);
+
+            // Phase 4: kick off reference-object detection in parallel with
+            // perspective. ONNX adapter is currently a stub that throws —
+            // runAutoReferenceDetection swallows it. When real YOLO lands,
+            // candidates will appear in the calibration overlay; nothing here
+            // changes.
+            void store.runAutoReferenceDetection(referenceDetector);
           } catch {
             // ML failed — fallback to full mask (user corrects with brush)
             setReadyScene(createEmptyMask(width, height, 255));
@@ -158,7 +171,7 @@ export default function PhotoEditorPage() {
         setUploading(false);
       }
     },
-    [store, opencvLsdProvider],
+    [store, opencvLsdProvider, referenceDetector],
   );
 
   // Handle canvas click → place panel (manual mode)
@@ -612,10 +625,53 @@ export default function PhotoEditorPage() {
                 </button>
               </div>
             )}
+            {/* Auto-calibration notice — Phase-4 reference detection produced
+                the active scale. Different from the warning below: this means
+                we *do* trust the scale (outlet/door measurement), just want
+                the user to know it was inferred. */}
+            {scene.calibrationAutoDetected && scene.calibration && (
+              <div
+                data-testid="calibration-auto-banner"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  padding: '10px 14px',
+                  borderRadius: 12,
+                  background: '#E8F5E9',
+                  color: '#2E7D32',
+                  font: '400 14px/1.4 Inter, sans-serif',
+                }}
+              >
+                <span>
+                  Масштаб определён автоматически по эталонному объекту.
+                  Проверьте размеры панелей или откалибруйте вручную.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => store.setEditorMode('calibrating')}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#2E7D32',
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                    font: '500 14px/1.4 Inter, sans-serif',
+                    padding: 0,
+                  }}
+                >
+                  Откалибровать вручную
+                </button>
+              </div>
+            )}
             {/* Calibration warning banner — shown when scale is unknown or only
                 an upload-time heuristic, so the user understands panel sizes
-                are approximate and can fix it in one click. */}
-            {(!scene.calibration || scene.calibration.method === 'auto') && (
+                are approximate and can fix it in one click. The reference-
+                derived auto calibration (calibrationAutoDetected === true) is
+                considered trustworthy and silenced here. */}
+            {!scene.calibrationAutoDetected &&
+              (!scene.calibration || scene.calibration.method === 'auto') && (
               <div
                 data-testid="calibration-banner"
                 style={{
@@ -738,6 +794,17 @@ export default function PhotoEditorPage() {
                 onCancel={() => {
                   store.resetCalibration();
                   store.setEditorMode('default');
+                }}
+                candidates={store.scene?.referenceCandidates}
+                onApplyCandidate={(candidate) => {
+                  const ok = store.applyReferenceCandidate(candidate);
+                  if (ok) {
+                    message.success('Масштаб определён по эталону');
+                  } else {
+                    message.warning(
+                      'Не удалось рассчитать масштаб по этому эталону — попробуйте вручную',
+                    );
+                  }
                 }}
               />
             )}

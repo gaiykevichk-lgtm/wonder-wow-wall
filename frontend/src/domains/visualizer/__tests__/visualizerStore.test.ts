@@ -440,6 +440,140 @@ describe('visualizerStore', () => {
     });
   });
 
+  describe('runAutoReferenceDetection', () => {
+    function setupReadyScene() {
+      const scene: Scene = {
+        photo: { url: 'photo-A.jpg', width: 800, height: 600 },
+        wallMask: createEmptyMask(800, 600, 255),
+        objectMask: { obstacles: [] },
+        calibration: { method: 'manual', pixelsPerCm: 5 },
+        segmentationStatus: 'ready',
+      };
+      useVisualizerStore.getState().setScene(scene);
+    }
+
+    const successDetector = async () => [
+      {
+        type: 'outlet' as const,
+        bbox: { x: 100, y: 200, width: 80, height: 80 },
+        confidence: 0.92,
+      },
+    ];
+
+    it('does nothing when there is no scene', async () => {
+      await useVisualizerStore.getState().runAutoReferenceDetection(successDetector);
+      expect(useVisualizerStore.getState().scene).toBeNull();
+    });
+
+    it('writes referenceCandidates on detector success', async () => {
+      setupReadyScene();
+      await useVisualizerStore.getState().runAutoReferenceDetection(successDetector);
+      const state = useVisualizerStore.getState();
+      expect(state.scene!.referenceCandidates).toHaveLength(1);
+      expect(state.scene!.referenceCandidates![0]!.type).toBe('outlet');
+      // calibration must NOT change just because candidates were detected —
+      // the user has to apply one explicitly via applyReferenceCandidate.
+      expect(state.scene!.calibration?.method).toBe('manual');
+      expect(state.scene!.calibrationAutoDetected).toBeFalsy();
+    });
+
+    it('silently swallows detector errors (model unavailable)', async () => {
+      setupReadyScene();
+      const failing = async () => {
+        throw new Error('onnx-not-installed');
+      };
+      await useVisualizerStore.getState().runAutoReferenceDetection(failing);
+      const state = useVisualizerStore.getState();
+      expect(state.scene!.referenceCandidates).toBeUndefined();
+      // Original calibration / mask intact.
+      expect(state.scene!.calibration?.method).toBe('manual');
+    });
+
+    it('does not pollute a newer scene if a stale detection settles after photo swap', async () => {
+      setupReadyScene();
+      let resolveDetect!: (cands: Awaited<ReturnType<typeof successDetector>>) => void;
+      const slow = () =>
+        new Promise<Awaited<ReturnType<typeof successDetector>>>((res) => {
+          resolveDetect = res;
+        });
+      const promise = useVisualizerStore.getState().runAutoReferenceDetection(slow);
+      // Simulate user uploading a different photo before detection resolves.
+      useVisualizerStore.getState().setScene({
+        photo: { url: 'photo-B.jpg', width: 1024, height: 768 },
+        wallMask: createEmptyMask(1024, 768, 255),
+        objectMask: { obstacles: [] },
+        calibration: { method: 'manual', pixelsPerCm: 5 },
+        segmentationStatus: 'ready',
+      });
+      resolveDetect(await successDetector());
+      await promise;
+      // New scene must be untouched.
+      expect(useVisualizerStore.getState().scene!.photo.url).toBe('photo-B.jpg');
+      expect(useVisualizerStore.getState().scene!.referenceCandidates).toBeUndefined();
+    });
+  });
+
+  describe('applyReferenceCandidate', () => {
+    function setupReadyScene() {
+      const scene: Scene = {
+        photo: { url: 'photo.jpg', width: 800, height: 600 },
+        wallMask: createEmptyMask(800, 600, 255),
+        objectMask: { obstacles: [] },
+        calibration: { method: 'manual', pixelsPerCm: 5 },
+        segmentationStatus: 'ready',
+      };
+      useVisualizerStore.getState().setScene(scene);
+    }
+
+    it('returns false when there is no scene', () => {
+      const ok = useVisualizerStore.getState().applyReferenceCandidate({
+        type: 'outlet',
+        bbox: { x: 0, y: 0, width: 80, height: 80 },
+        confidence: 0.9,
+      });
+      expect(ok).toBe(false);
+    });
+
+    it('writes auto calibration and sets the flag on success', () => {
+      setupReadyScene();
+      const ok = useVisualizerStore.getState().applyReferenceCandidate({
+        type: 'outlet',
+        bbox: { x: 100, y: 100, width: 80, height: 80 },
+        confidence: 0.9,
+      });
+      expect(ok).toBe(true);
+      const scene = useVisualizerStore.getState().scene!;
+      // outlet 80px wide / 8 cm = 10 px/cm
+      expect(scene.calibration!.method).toBe('auto');
+      expect(scene.calibration!.pixelsPerCm).toBeCloseTo(10, 5);
+      expect(scene.calibrationAutoDetected).toBe(true);
+    });
+
+    it('returns false for an unusable candidate (zero bbox)', () => {
+      setupReadyScene();
+      const ok = useVisualizerStore.getState().applyReferenceCandidate({
+        type: 'outlet',
+        bbox: { x: 0, y: 0, width: 0, height: 0 },
+        confidence: 0.9,
+      });
+      expect(ok).toBe(false);
+      // Original calibration must remain.
+      expect(useVisualizerStore.getState().scene!.calibration?.method).toBe('manual');
+    });
+
+    it('manual setCalibration after auto-apply clears the flag', () => {
+      setupReadyScene();
+      useVisualizerStore.getState().applyReferenceCandidate({
+        type: 'outlet',
+        bbox: { x: 100, y: 100, width: 80, height: 80 },
+        confidence: 0.9,
+      });
+      expect(useVisualizerStore.getState().scene!.calibrationAutoDetected).toBe(true);
+      useVisualizerStore.getState().setCalibration({ method: 'manual', pixelsPerCm: 7 });
+      expect(useVisualizerStore.getState().scene!.calibrationAutoDetected).toBe(false);
+    });
+  });
+
   describe('reset', () => {
     it('resets all state', () => {
       useVisualizerStore.getState().setScene(makeScene());
