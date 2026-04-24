@@ -22,6 +22,10 @@ email-validator==2.2.0
 pytest==8.4.1
 pytest-asyncio==1.0.0
 httpx==0.28.1
+# aiosqlite — used by tests/infrastructure/test_alembic.py to apply migrations
+# against an in-memory SQLite DB without a postgres server. Production still
+# uses asyncpg + postgres (see DATABASE_URL).
+aiosqlite==0.20.0
 
 # Redis (optional, for caching)
 redis==6.2.0

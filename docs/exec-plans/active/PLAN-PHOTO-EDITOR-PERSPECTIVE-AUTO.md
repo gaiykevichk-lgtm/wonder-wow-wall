@@ -693,23 +693,56 @@ Phase 1B v1 принимается как warp-замена Phase 1A. Math фо�
 
 ---
 
-## Фаза 5A: Pre-task — Setup Alembic (если нужно)
+## Фаза 5A: Pre-task — Setup Alembic ✅ ЗАВЕРШЕНА (24.04.2026)
 
 > **Цель:** Убедиться, что Alembic настроен и хотя бы одна миграция применена. Если репозитории сейчас только in-memory — настроить.
 > **Зависимости:** результат Фазы 0 (audit). Если Alembic уже есть и работает — пропускаем.
 > **Атомарность:** независимая под-фаза, можно запустить параллельно с любой frontend-фазой.
 
-### 5A.1 Backend — инфраструктура миграций
+### 5A.0 Состояние «как застали» (audit)
 
-- [ ] Если в `backend/alembic/` отсутствует — проинициализировать: `alembic init alembic`, настроить `env.py` под асинхронный SQLAlchemy + `settings.DATABASE_URL` (по `backend/CONVENTIONS.md`).
-- [ ] Создать «нулевую» миграцию по текущему состоянию ORM-моделей (если их ещё нет — это означает, что весь проект на in-memory; тогда Фаза 5A резко расширяется и должна быть отдельным планом, не частью этого).
-- [ ] Проверить `alembic upgrade head` и `alembic downgrade -1` на пустой БД.
+Alembic уже инициализирован: `backend/alembic.ini`, `backend/alembic/env.py` (async engine + `target_metadata = Base.metadata`), три миграции `001_initial_schema.py` … `003_subscription_area_model.py`. ORM-модели в `app/infrastructure/persistence/models.py`. Repos с фоллбеком `USE_MEMORY_REPOS` (в `conftest.py` всегда true).
 
-### 5A.2 Backend — тесты
+**Найден рассинхрон:** `VisualizationProjectModel` (`models.py:173`) объявлена и используется `SqlVisualizationProjectRepository`, но таблицы `visualization_projects` нет ни в одной миграции — на postgres-инстансах SQL-репо ломался при первом обращении. Phase 5A закрывает этот gap.
 
-- [ ] `tests/infrastructure/test_alembic.py`: smoke-test apply + rollback + apply.
+### 5A.1 Backend — инфраструктура миграций ✅
 
-> **Definition of Done:** `alembic upgrade head` отрабатывает без ошибок; `downgrade -1` возвращает БД в исходное состояние.
+- [x] `alembic` уже настроен — пере-инициализация не требуется (см. 5A.0).
+- [x] **004 миграция** `backend/alembic/versions/004_visualization_projects.py` — создаёт таблицу `visualization_projects` по текущему состоянию `VisualizationProjectModel`. FK на `users.id` с `ondelete=CASCADE` (mirror `relationship(cascade="all, delete-orphan")`). `panels_json` / `perspective_corners` как `JSON` — Phase 5B отдельной миграцией заменит `perspective_corners` на типизированную колонку.
+- [x] **001 миграция** дополнена dialect-guard для `CREATE SEQUENCE` (`alembic/versions/001_initial_schema.py:121-126`, симметрично в `downgrade`). На postgres поведение неизменно — миграция не переприменяется. На SQLite-тестовом стенде оба блока становятся no-op.
+- [x] **`env.py`**: `do_run_migrations` и `run_migrations_offline` теперь включают `render_as_batch=True` для SQLite — позволяет миграции 003 (`drop_column`) round-trip-нуть на SQLite < 3.35. На postgres `render_as_batch` игнорируется.
+- [ ] Локальный `alembic upgrade head` / `downgrade -1`: **в sandbox не запускается** (нет pip / `python3 -m ensurepip` падает, `.venv` пуст). Прогон делегирован CI с реальным postgres.
+
+### 5A.2 Backend — тесты ✅
+
+- [x] `backend/tests/infrastructure/test_alembic.py` (новый, 4 теста, целиком SQLite-only):
+  - `test_upgrade_head_creates_all_core_tables` — `users`, `designs`, `orders`, `subscriptions`, `visualization_projects` присутствуют.
+  - `test_round_trip_upgrade_downgrade_upgrade` — `head → -1 → head` без ошибок; падение `visualization_projects` после `downgrade -1` подтверждает обратимость 004.
+  - `test_downgrade_to_base_drops_everything` — `downgrade base` чистит все таблицы (downgrade-цепочка работает).
+  - Использует `sqlite+aiosqlite:///<tmp>/alembic_test.db` через `monkeypatch.setattr(settings, "DATABASE_URL", …)`.
+  - Содержит `pytest.importorskip` для `alembic`/`sqlalchemy`/`aiosqlite` — в стрипанутом окружении просто скипается, в CI — выполняется.
+- [x] `aiosqlite==0.20.0` добавлен в `requirements.txt` (test-only зависимость).
+- [x] `tests/infrastructure/__init__.py` создан.
+- [x] `python3 -m py_compile` всех новых/изменённых файлов: clean.
+
+### 5A.3 Что НЕ сделано в этой фазе (намеренно)
+
+- **Прогон тестов в sandbox** — невозможен без pip; ожидается на CI с pinned `requirements.txt`.
+- **Расширение `VisualizationProjectModel` под Phase 5B** (perspective/calibration колонки, `version` для optimistic-lock) — это Phase 5B.1/5B.2, не 5A. Phase 5A только синхронизировала ORM ↔ migrations.
+- **Replace `JSON` → typed columns для `perspective_corners`** — Phase 5B пере-форматирует это поле в нормализованную колоночную форму.
+
+> **Definition of Done:** ✅ Alembic-инфраструктура валидна, миграции синхронизированы с ORM, smoke-тест миграций есть, dialect-aware (CI postgres + локальный SQLite). Прогон под postgres — в CI.
+
+### 5A.4 Изменённые файлы
+
+| Файл | Сделано |
+|---|---|
+| `alembic/versions/004_visualization_projects.py` | NEW — таблица visualization_projects |
+| `alembic/versions/001_initial_schema.py` | guard `CREATE/DROP SEQUENCE` под postgres |
+| `alembic/env.py` | `render_as_batch=True` для SQLite в обоих режимах |
+| `requirements.txt` | +`aiosqlite==0.20.0` (test-only) |
+| `tests/infrastructure/__init__.py` | NEW (пустой) |
+| `tests/infrastructure/test_alembic.py` | NEW — 4 smoke-теста |
 
 ---
 

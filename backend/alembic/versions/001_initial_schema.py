@@ -118,7 +118,11 @@ def upgrade() -> None:
     )
 
     # ── Sequences ─────────────────────────────────────────────────────
-    op.execute(sa.text("CREATE SEQUENCE IF NOT EXISTS order_number_seq START WITH 1 INCREMENT BY 1"))
+    # Postgres-only: SQLite has no SEQUENCE concept (test rigs that target
+    # `sqlite+aiosqlite:///:memory:` would otherwise fail here). On postgres
+    # this branch is unchanged from the original migration.
+    if op.get_bind().dialect.name == "postgresql":
+        op.execute(sa.text("CREATE SEQUENCE IF NOT EXISTS order_number_seq START WITH 1 INCREMENT BY 1"))
 
     # ── Projects ─────────────────────────────────────────────────────
     op.create_table(
@@ -137,7 +141,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute(sa.text("DROP SEQUENCE IF EXISTS order_number_seq"))
+    if op.get_bind().dialect.name == "postgresql":
+        op.execute(sa.text("DROP SEQUENCE IF EXISTS order_number_seq"))
     op.drop_table("projects")
     op.drop_table("subscriptions")
     op.drop_table("order_items")

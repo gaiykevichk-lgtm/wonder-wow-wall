@@ -1,0 +1,108 @@
+"""Phase 5A smoke-tests for Alembic migrations.
+
+Strategy
+────────
+Run the migration chain against a throw-away **SQLite** database via
+`aiosqlite` so the test rig works without a postgres server. Production
+still runs on postgres + asyncpg (see `app.config.settings.DATABASE_URL`).
+
+The pg-only DDL in migration 001 (`CREATE SEQUENCE`) is guarded by a
+dialect check so this round-trip succeeds on SQLite. Everything else is
+portable.
+
+The three explicit dependencies (`alembic`, `sqlalchemy`, `aiosqlite`) are
+declared in `requirements.txt`; if they aren't installed in the current
+interpreter (e.g. lightweight sandbox), the whole module is skipped rather
+than failing — CI installs the pinned set and runs these tests for real.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+# Skip-if-missing instead of import-error: lets the test file load in stripped
+# environments without breaking collection.
+alembic_cmd = pytest.importorskip("alembic.command")
+alembic_cfg_mod = pytest.importorskip("alembic.config")
+pytest.importorskip("sqlalchemy")
+pytest.importorskip("aiosqlite")
+
+import sqlite3  # noqa: E402  (after importorskip on sqlalchemy)
+
+from app.config import settings  # noqa: E402
+
+BACKEND_ROOT = Path(__file__).resolve().parents[2]
+
+
+@pytest.fixture
+def alembic_cfg(tmp_path, monkeypatch):
+    """Build an Alembic Config pointing at a temp SQLite DB.
+
+    `env.py` re-reads `settings.DATABASE_URL` and overrides the cfg's URL
+    on every invocation, so we mutate the live `settings` singleton — that
+    is the only knob `env.py` consults.
+    """
+    db_path = tmp_path / "alembic_test.db"
+    sqlite_url = f"sqlite+aiosqlite:///{db_path}"
+    monkeypatch.setattr(settings, "DATABASE_URL", sqlite_url)
+
+    cfg = alembic_cfg_mod.Config(str(BACKEND_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(BACKEND_ROOT / "alembic"))
+    cfg.set_main_option("sqlalchemy.url", sqlite_url)
+    return cfg, db_path
+
+
+def _table_exists(db_path: Path, name: str) -> bool:
+    con = sqlite3.connect(db_path)
+    try:
+        cur = con.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (name,)
+        )
+        return cur.fetchone() is not None
+    finally:
+        con.close()
+
+
+def test_upgrade_head_creates_all_core_tables(alembic_cfg):
+    cfg, db_path = alembic_cfg
+    alembic_cmd.upgrade(cfg, "head")
+    # Spot-check tables from each migration in the chain.
+    for table in (
+        "users",                   # 001
+        "designs",                 # 001
+        "orders",                  # 001 (+ 002 adds installation_date col)
+        "subscriptions",           # 001 (+ 003 swaps overlays→area_used)
+        "visualization_projects",  # 004 — Phase 5A new
+    ):
+        assert _table_exists(db_path, table), f"{table} should exist after upgrade head"
+
+
+def test_round_trip_upgrade_downgrade_upgrade(alembic_cfg):
+    """`upgrade head → downgrade -1 → upgrade head` must succeed without errors.
+
+    Verifies that *every* migration in the chain has a working `downgrade()`
+    and is idempotent under re-apply — the standard alembic smoke contract.
+    """
+    cfg, db_path = alembic_cfg
+    alembic_cmd.upgrade(cfg, "head")
+    assert _table_exists(db_path, "visualization_projects")
+
+    alembic_cmd.downgrade(cfg, "-1")
+    # After rolling back the head migration (004), visualization_projects
+    # must be gone — proves the downgrade actually ran on this DB.
+    assert not _table_exists(db_path, "visualization_projects")
+    # Older tables are still there.
+    assert _table_exists(db_path, "users")
+
+    alembic_cmd.upgrade(cfg, "head")
+    assert _table_exists(db_path, "visualization_projects")
+
+
+def test_downgrade_to_base_drops_everything(alembic_cfg):
+    cfg, db_path = alembic_cfg
+    alembic_cmd.upgrade(cfg, "head")
+    alembic_cmd.downgrade(cfg, "base")
+    for table in ("users", "designs", "visualization_projects"):
+        assert not _table_exists(db_path, table), f"{table} should be dropped at base"

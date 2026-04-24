@@ -30,13 +30,23 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        render_as_batch=(url or "").startswith("sqlite"),
     )
     with context.begin_transaction():
         context.run_migrations()
 
 
 def do_run_migrations(connection):
-    context.configure(connection=connection, target_metadata=target_metadata)
+    # `render_as_batch` makes alembic emit safe table-rebuild ALTER statements
+    # on SQLite (the only test backend in `tests/infrastructure/test_alembic.py`).
+    # On postgres it's a no-op. Phase 5A: needed so 003's `drop_column` and any
+    # future column-mutation migration round-trips on SQLite < 3.35.
+    is_sqlite = connection.dialect.name == "sqlite"
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        render_as_batch=is_sqlite,
+    )
     with context.begin_transaction():
         context.run_migrations()
 
