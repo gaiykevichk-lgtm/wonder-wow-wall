@@ -292,7 +292,7 @@
 - [ ] Domain: исключения `MediaTooLargeError`, `MediaInvalidMimeError`, `MediaInvalidDimensionsError`.
 - [ ] Domain: интерфейс `FileStorage` (ABC) — `save(stream, path) -> str`, `delete(path)`, `url_for(path) -> str`.
 - [ ] Application: use case `UploadMedia.execute(actor_id, file: UploadedFile, purpose: MediaPurpose) -> MediaAssetResponse`.
-- [ ] Infrastructure: `LocalFileStorage` — пишет в `/var/uploads/<purpose>/<uuid>.<ext>`, путь публичен через nginx.
+- [ ] Infrastructure: `LocalFileStorage` (единственная реализация на MVP, см. OQ1) — пишет в `/var/uploads/<purpose>/<uuid>.<ext>`, путь публичен через nginx. Roadmap миграции на S3-совместимое хранилище — отдельный issue + design-doc `docs/design-docs/FILE-STORAGE-ROADMAP.md`.
 - [ ] Infrastructure: миграция `create_media_assets` (id PK, purpose, path UNIQUE, ...).
 - [ ] Infrastructure: эндпоинт `POST /api/admin/media` (`multipart/form-data` + query `purpose`).
 - [ ] Infrastructure: nginx — location `/uploads/` → alias на volume; отдельный volume в `docker-compose.yml`.
@@ -386,11 +386,11 @@
 > **Цель:** Управление подписками, базовой ценой overlay, баннерами главной, промокодами (опционально).
 
 ### Backend
-- [ ] Domain: проверить (по итогам Фазы 0) — если `SubscriptionPlan` — entity, добавить CRUD; если хардкод — сначала вынести в БД (миграция + seed).
+- [ ] Domain: `SubscriptionPlan` приводится к виду entity с CRUD (решение OQ2). Если по итогам Фазы 0 — хардкод, миграция `create_subscription_plans` + seed существующих планов идёт первой задачей фазы. Если уже entity — переходим сразу к use cases.
 - [ ] Domain: новый агрегат `ShopSettings` (singleton-row): `design_overlay_price`, `installation_price`, `min_order_amount`, etc.
 - [ ] Domain: новый агрегат `Banner`: `id`, `image_path`, `title`, `cta_text`, `cta_link`, `position`, `is_active`, `priority`.
-- [ ] Application: use cases `UpdateShopSettings`, CRUD баннеров, CRUD планов подписок.
-- [ ] Infrastructure: миграции `create_shop_settings`, `create_banners`, `create_subscription_plans` (если ещё не).
+- [ ] Application: use cases `UpdateShopSettings`, CRUD баннеров, **CRUD планов подписок (обязательно, см. OQ2)** — `CreateSubscriptionPlanAdmin`, `UpdateSubscriptionPlanAdmin`, `DeleteSubscriptionPlanAdmin`, `ListSubscriptionPlansAdmin`. Удаление плана с активными подписками → `SubscriptionPlanInUseError` (409).
+- [ ] Infrastructure: миграции `create_shop_settings`, `create_banners`, `create_subscription_plans` (последняя — обязательна, если в Фазе 0 выяснилось, что планы хардкод; включает seed существующих планов).
 - [ ] Infrastructure: эндпоинты `/api/admin/shop/settings`, `/api/admin/shop/banners`, `/api/admin/subscription-plans`.
 - [ ] Публичный `GET /api/shop/settings` (без auth) — фронт берёт цены оттуда.
 - [ ] Публичный `GET /api/shop/banners?position=` — для главной.
@@ -399,7 +399,7 @@
 - [ ] `domains/admin/ui/AdminShopPage.tsx` — табы «Настройки» / «Баннеры» / «Тарифы».
 - [ ] Форма настроек (Ant Design Form) с InputNumber для цен.
 - [ ] Список баннеров с drag-to-reorder (приоритет), upload изображений.
-- [ ] CRUD тарифов — модалка с features-массивом.
+- [ ] CRUD тарифов — модалка с полями: name, price, billing_period (enum), features-массив (динамический список), is_active. Запрет удаления плана с активными подписками — toast «есть N активных подписок».
 - [ ] **Frontend публично**: `shared/config/constants.ts` → постепенный refactor. Цены приходят из `/api/shop/settings` (TanStack Query, кеш 5 мин). Fallback на константы при offline.
 
 ### Тесты
@@ -653,10 +653,10 @@
 
 ## Open Questions
 
-- [ ] **OQ1** Хранилище файлов: локальный volume на MVP или сразу S3-совместимый (MinIO)? Решение влияет на Фазу 6 (день +/- 1).
-- [ ] **OQ2** Тарифы подписок сейчас — entity или хардкод? Зависит от Фазы 0; влияет на Фазу 8.
+- [x] **OQ1** ✅ **РЕШЕНО (24.04.2026):** Локальный volume на MVP. Причины: (а) нет трафика, преждевременно тащить MinIO; (б) `FileStorage` уже спроектирован как ABC — swap на S3 позже стоит ~0.5 дня; (в) меньше контейнеров в `docker-compose.yml`, проще деплой; (г) nginx уже в стеке. **Действие:** в Фазе 6 реализуется только `LocalFileStorage`; задокументировать переход на S3 как отдельный issue в `docs/design-docs/FILE-STORAGE-ROADMAP.md`.
+- [x] **OQ2** ✅ **РЕШЕНО (24.04.2026):** Тарифы подписок — **полноценный entity с CRUD в админке**. Если в Фазе 0 окажутся хардкодом — добавить в Фазу 8 миграцию + seed существующих тарифов. **Действие:** Фаза 8 теперь содержит CRUD тарифов как обязательную часть (а не «если ещё не»).
 - [ ] **OQ3** Промокоды — в скоупе админки или отдельный план? По умолчанию — НЕ в этом плане.
-- [ ] **OQ4** RBAC сложнее «admin / customer» (например, «контент-менеджер» без доступа к финансам)? По умолчанию — нет, только 2 роли. Если нужно — отдельный план.
+- [x] **OQ4** ✅ **РЕШЕНО (24.04.2026):** Только 2 роли: `admin` / `customer`. Без «контент-менеджера», «оператора заказов» и т.п. **Действие:** Фаза 1 не меняется (`UserRole` enum остаётся бинарным); Фаза 9 audit-лог фиксирует все действия — этого достаточно для разделения ответственности на старте.
 - [ ] **OQ5** Двухфакторная аутентификация для админов? Не в скоупе MVP; отдельный план.
 - [ ] **OQ6** Экспорт данных (CSV / Excel) для заказов и юзеров? Не в скоупе; отдельный план.
 - [ ] **OQ7** Web-сокеты для real-time уведомлений (новый заказ → бейдж в админке)? Не в скоупе; пока polling раз в 30с.
@@ -669,9 +669,9 @@
 
 ## Что делать дальше
 
-1. Закрыть **OQ1, OQ2** (10 минут со стейкхолдером).
-2. Запустить **Фазу 0** (аудит, 0.5 дня).
-3. По итогам аудита — уточнить трудозатраты Фазы 8 и инфры (Фаза 6).
+1. ~~Закрыть OQ1, OQ2, OQ4~~ — ✅ закрыты 24.04.2026 (см. секцию Open Questions).
+2. Запустить **Фазу 0** (аудит, 0.5 дня) — ключевое: подтвердить наличие Alembic, проверить, тарифы entity или хардкод (от этого зависит длина Фазы 8).
+3. По итогам аудита — уточнить трудозатраты Фазы 8 (миграция тарифов) и Фазы 6 (готовность nginx-конфига).
 4. Зафиксировать релизный порядок: 1 → 2 → (3 ‖ 4A) → 4B → 5 → 6 → (7A → 7B ‖ 8) → 10 → 9.
    - **Фаза 10 после 7A/7B** (нужны товары как source/target) и **до или после 9** (audit для рекомендаций — хорошо, но не блокирует).
    - Если ввести event-bus в 7A (см. OQ9) — каскадная чистка работает «из коробки», бэкфил не нужен.
