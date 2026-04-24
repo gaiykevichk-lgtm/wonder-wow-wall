@@ -236,29 +236,44 @@ describe('visualizerStore', () => {
       expect(message.warning).not.toHaveBeenCalled();
     });
 
-    it('warns when perspective + auto calibration (AutoFillBlockedError)', () => {
+    it('setPerspectiveCorners seeds trusted calibration when only upload-heuristic exists', () => {
       setupReadyScene('auto');
       useVisualizerStore.getState().setPerspectiveCorners(corners);
-      const panelsBefore = useVisualizerStore.getState().layout.panels;
+      const cal = useVisualizerStore.getState().scene!.calibration;
+      // Corners imply a wall quad — the store derives a bbox-width/300 scale
+      // and marks it with `wallWidthCm` so `isTrustedCalibration` accepts it
+      // for perspective auto-fill. Upload heuristic is replaced.
+      expect(cal).toMatchObject({ method: 'auto', wallWidthCm: 300 });
+      expect(cal!.pixelsPerCm).toBeGreaterThan(0);
 
+      // autoFill now succeeds (no AutoFillBlockedError warning).
       useVisualizerStore.getState().autoFill();
-
-      expect(message.warning).toHaveBeenCalledWith(
+      expect(message.warning).not.toHaveBeenCalledWith(
         expect.stringContaining('Откалибруйте масштаб'),
       );
-      // Existing panels should NOT be wiped on the blocked path.
-      expect(useVisualizerStore.getState().layout.panels).toBe(panelsBefore);
+      expect(useVisualizerStore.getState().layout.panels.length).toBeGreaterThan(0);
     });
 
-    it('warns when perspective + null calibration (AutoFillBlockedError)', () => {
+    it('setPerspectiveCorners seeds trusted calibration when calibration was null', () => {
       setupReadyScene(null);
       useVisualizerStore.getState().setPerspectiveCorners(corners);
+      const cal = useVisualizerStore.getState().scene!.calibration;
+      expect(cal).toMatchObject({ method: 'auto', wallWidthCm: 300 });
 
       useVisualizerStore.getState().autoFill();
-
-      expect(message.warning).toHaveBeenCalledWith(
+      expect(message.warning).not.toHaveBeenCalledWith(
         expect.stringContaining('Откалибруйте масштаб'),
       );
+      expect(useVisualizerStore.getState().layout.panels.length).toBeGreaterThan(0);
+    });
+
+    it('setPerspectiveCorners preserves a real reference/manual calibration', () => {
+      setupReadyScene('manual');
+      const before = useVisualizerStore.getState().scene!.calibration;
+      useVisualizerStore.getState().setPerspectiveCorners(corners);
+      const after = useVisualizerStore.getState().scene!.calibration;
+      // User-confirmed calibration must never be clobbered by the corner seed.
+      expect(after).toEqual(before);
     });
 
     it('does not wipe existing panels when no new spots fit (empty result)', () => {

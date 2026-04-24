@@ -494,9 +494,50 @@ export const useVisualizerStore = create<VisualizerState>()(
     // Any external corner change (drag, manual override, reset) means the
     // current corners are no longer "auto-detected" from the user's POV.
     const scene = get().scene;
+    if (!scene) {
+      set({ perspectiveCorners: corners });
+      return;
+    }
+    // Seed a bbox-derived calibration from the user's quad when the only
+    // active calibration is the upload-heuristic (method:'auto' with no
+    // wallWidthCm). Presence of a user-drawn quad is an implicit statement
+    // that the wall is ~3 m wide (an assumption still, but a far better one
+    // than photoWidth/400). This keeps perspective auto-fill from blocking
+    // with `AutoFillBlockedError` after a manual calibration, while
+    // preserving real 'reference'/'manual' calibrations the user may have
+    // already set.
+    const shouldSeed =
+      !!corners &&
+      (!scene.calibration ||
+        (scene.calibration.method === 'auto' &&
+          scene.calibration.wallWidthCm === undefined));
+    let seededCalibration: ScaleCalibration | null = null;
+    if (shouldSeed && corners) {
+      let minX = Infinity,
+        maxX = -Infinity;
+      for (const p of corners) {
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+      }
+      const bboxWidth = maxX - minX;
+      if (bboxWidth > 0) {
+        seededCalibration = {
+          method: 'auto',
+          pixelsPerCm: bboxWidth / 300,
+          wallWidthCm: 300,
+        };
+      }
+    }
     set({
       perspectiveCorners: corners,
-      scene: scene ? { ...scene, perspectiveAutoDetected: false } : scene,
+      scene: {
+        ...scene,
+        perspectiveAutoDetected: false,
+        calibration: seededCalibration ?? scene.calibration,
+        calibrationAutoDetected: seededCalibration
+          ? true
+          : scene.calibrationAutoDetected,
+      },
     });
   },
   runAutoPerspective: async (provider, options) => {
@@ -625,6 +666,38 @@ export const useVisualizerStore = create<VisualizerState>()(
       // a concurrent photo swap (which resets status via setScene) is not
       // clobbered.
       const current = stillCurrent();
+      // Reject degenerate results where the detector returned corners that
+      // essentially match the photo rectangle (identity homography). This
+      // is the StubDepthEstimator's failure mode in dev — it returns a
+      // plane that fits the whole photo, which the plane fitter then
+      // projects back to photo edges. Applying an identity transform
+      // visually looks flat but falsely triggers perspective-mode code
+      // paths (tile warping, calibration seeding). Treating the result
+      // as "no corners" lets the UI fall back to OpenCV LSD (Stage 2) or
+      // stay in flat mode until the user draws corners manually.
+      if (resolvedCorners) {
+        const { width: pw, height: ph } = photoSize;
+        const tolX = pw * 0.03;
+        const tolY = ph * 0.03;
+        const nearPhotoRect =
+          Math.abs(resolvedCorners[0].x) < tolX &&
+          Math.abs(resolvedCorners[0].y) < tolY &&
+          Math.abs(resolvedCorners[1].x - pw) < tolX &&
+          Math.abs(resolvedCorners[1].y) < tolY &&
+          Math.abs(resolvedCorners[2].x - pw) < tolX &&
+          Math.abs(resolvedCorners[2].y - ph) < tolY &&
+          Math.abs(resolvedCorners[3].x) < tolX &&
+          Math.abs(resolvedCorners[3].y - ph) < tolY;
+        if (nearPhotoRect) {
+          if (import.meta.env.DEV) {
+            console.warn(
+              '[runAutoPerspective] backend returned identity-like corners (photo rect); treating as no-result',
+            );
+          }
+          resolvedCorners = null;
+          resolvedResult = null;
+        }
+      }
       if (current && current.segmentationStatus === 'detecting-perspective') {
         if (resolvedCorners !== null) {
           // Seed a bbox-derived calibration whenever detection returns a
@@ -639,7 +712,21 @@ export const useVisualizerStore = create<VisualizerState>()(
           // "medium-trust bbox derivation", which unblocks perspective
           // auto-fill. User-entered 'reference' / 'manual' calibrations
           // are preserved (we never clobber real ones).
-          const bbox = resolvedResult?.bboxPixels;
+          // Bbox for calibration seed: prefer the backend's bboxPixels when
+          // available (Stage 1 depth path), otherwise derive it from the
+          // detected corners (Stage 2 OpenCV LSD path). Both sources describe
+          // the same thing — extent of the wall in photo pixels — and we
+          // want the seed to fire regardless of which stage produced corners.
+          let bbox = resolvedResult?.bboxPixels ?? null;
+          if (!bbox && resolvedCorners) {
+            let minX = Infinity, maxX = -Infinity;
+            for (const p of resolvedCorners) {
+              if (p.x < minX) minX = p.x;
+              if (p.x > maxX) maxX = p.x;
+            }
+            const width = maxX - minX;
+            if (width > 0) bbox = { width, height: 0 };
+          }
           const hasBbox = !!bbox && bbox.width > 0;
           const shouldSeed =
             hasBbox &&
