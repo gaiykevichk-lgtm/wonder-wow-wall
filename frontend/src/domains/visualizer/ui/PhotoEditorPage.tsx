@@ -52,6 +52,14 @@ export default function PhotoEditorPage() {
 
   const [searchParams] = useSearchParams();
 
+  // Stable LineProvider for vanishing-point detection. Built once per mount —
+  // the underlying worker host is a module singleton, so re-creating the
+  // provider on every render would just churn closures with no benefit.
+  const opencvLsdProvider = useMemo(
+    () => createOpencvLsdProvider({ workerHost: defaultCvWorkerHost }),
+    [],
+  );
+
   // Zustand persist auto-rehydrates from localStorage on mount — no manual load needed
 
   // Init design from URL param or first product.
@@ -131,9 +139,7 @@ export default function PhotoEditorPage() {
             // flips status back to 'ready'. The plumbing is in place so
             // wiring real OpenCV LSD only requires implementing the
             // adapter; no other call sites change.
-            void store.runAutoPerspective(
-              createOpencvLsdProvider({ workerHost: defaultCvWorkerHost }),
-            );
+            void store.runAutoPerspective(opencvLsdProvider);
           } catch {
             // ML failed — fallback to full mask (user corrects with brush)
             setReadyScene(createEmptyMask(width, height, 255));
@@ -152,7 +158,7 @@ export default function PhotoEditorPage() {
         setUploading(false);
       }
     },
-    [store],
+    [store, opencvLsdProvider],
   );
 
   // Handle canvas click → place panel (manual mode)

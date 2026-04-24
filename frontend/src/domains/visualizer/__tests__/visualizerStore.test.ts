@@ -391,6 +391,53 @@ describe('visualizerStore', () => {
       ]);
       expect(useVisualizerStore.getState().scene!.perspectiveAutoDetected).toBe(false);
     });
+
+    it('transitions through detecting-perspective status while running', async () => {
+      setupReadyScene();
+      const observed: string[] = [];
+      // Provider whose promise we resolve manually so we can sample status
+      // mid-flight.
+      let resolveLines!: (lines: { p1: { x: number; y: number }; p2: { x: number; y: number } }[]) => void;
+      const slowProvider = () =>
+        new Promise<ReturnType<typeof successfulProvider> extends Promise<infer L> ? L : never>(
+          (res) => {
+            resolveLines = res as never;
+          },
+        );
+      const promise = useVisualizerStore.getState().runAutoPerspective(slowProvider);
+      observed.push(useVisualizerStore.getState().scene!.segmentationStatus);
+      resolveLines(await successfulProvider());
+      await promise;
+      observed.push(useVisualizerStore.getState().scene!.segmentationStatus);
+      expect(observed).toEqual(['detecting-perspective', 'ready']);
+    });
+
+    it('does not pollute a newer scene if a stale detection settles after photo swap', async () => {
+      setupReadyScene();
+      let resolveLines!: (lines: Awaited<ReturnType<typeof successfulProvider>>) => void;
+      const slowProvider = () =>
+        new Promise<Awaited<ReturnType<typeof successfulProvider>>>((res) => {
+          resolveLines = res;
+        });
+      const promise = useVisualizerStore.getState().runAutoPerspective(slowProvider);
+      // Simulate user uploading a different photo before detection resolves.
+      useVisualizerStore.getState().setScene({
+        photo: { url: 'OTHER.jpg', width: 800, height: 600 },
+        wallMask: createEmptyMask(800, 600, 255),
+        objectMask: { obstacles: [] },
+        calibration: { method: 'manual', pixelsPerCm: 5 },
+        segmentationStatus: 'ready',
+      });
+      // Now resolve the stale provider with valid lines that *would* succeed.
+      resolveLines(await successfulProvider());
+      await promise;
+      const state = useVisualizerStore.getState();
+      // New scene must be untouched: no auto-detected flag, no corners written
+      // for the wrong photo.
+      expect(state.scene!.photo.url).toBe('OTHER.jpg');
+      expect(state.scene!.perspectiveAutoDetected).toBeFalsy();
+      expect(state.perspectiveCorners).toBeNull();
+    });
   });
 
   describe('reset', () => {

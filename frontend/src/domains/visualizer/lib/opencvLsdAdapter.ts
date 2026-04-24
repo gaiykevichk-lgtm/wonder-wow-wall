@@ -36,6 +36,9 @@ export interface OpencvLsdOptions {
   /**
    * Maximum number of lines to return. LSD on a 4 MP image can emit thousands;
    * the VP detector is happy with the longest few hundred.
+   *
+   * TODO(Phase 3.1c): currently unused — declared so call sites can already
+   * pass it without a future breaking change when the real adapter lands.
    */
   maxLines?: number;
 }

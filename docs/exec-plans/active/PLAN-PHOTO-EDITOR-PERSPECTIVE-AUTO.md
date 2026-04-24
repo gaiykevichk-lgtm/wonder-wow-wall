@@ -491,6 +491,65 @@ Phase 1B v1 принимается как warp-замена Phase 1A. Math фо�
 
 **Итог Phase 3 (текущая часть):** algorithmic core + worker-host infrastructure + store/UI integration. Все 316 тестов фронта зелёные, tsc clean. Достаточно установить OpenCV.js и заменить тело адаптера — call-sites трогать не нужно.
 
+### 3.7 Аудит реализации Phase 3
+
+**Проверены файлы (line-by-line):** `cvWorkerHost.ts`, `cvWorkerHost.test.ts`, `vanishingPointDetector.ts`, `vanishingPointDetector.test.ts`, `opencvLsdAdapter.ts`, `opencvLsdAdapter.test.ts`, `model/types.ts`, `model/visualizerStore.ts`, `__tests__/visualizerStore.test.ts`, `ui/PhotoEditorPage.tsx`. Прогон: vitest 316/316 ✅, tsc clean ✅.
+
+**Критические проблемы:** 0.
+
+**Некритические находки (технический долг, не блокируют фичу в её текущем виде с stub-адаптером):**
+
+| # | Файл:строка | Проблема | План исправления |
+|---|---|---|---|
+| B1 | `visualizerStore.ts:305-344` | `runAutoPerspective` не защищён от photo-swap race: при загрузке нового фото во время работы детектора результат старого может быть применён к новой сцене. Сегодня stub бросает синхронно — race не воспроизводится. **Станет CRITICAL при wiring боевого OpenCV (Phase 3.1c).** | В 3.1c: snapshot `photo.url` на старте, на settle сравнивать с `get().scene.photo.url`; mismatch → бросать результат. |
+| B2 | `visualizerStore.ts:305-344` | `runAutoPerspective` не возвращает abort-handle, хотя `cvWorkerHost` спроектирован вокруг `AbortController`. Никто не может отменить запущенную детекцию (например, из reset). | В 3.1c: возвращать `{ abort }` или хранить активный AbortController в store. |
+| B3 | `vanishingPointDetector.ts:439-456` | `maskBoundingBox` — O(W·H), вызывается дважды на детект (`extractCorners` + `scoreConfidence`). Для 4032×3024 = 24 M пикселей. | Кэшировать bbox в `detectFromLines` и пробрасывать. Делать в 3.1c при первом профайлинге. |
+| B4 | `vanishingPointDetector.ts:250` | Комментарий «vertical pick is the strong bin furthest from horizontal» расходится с фактической логикой (сортировка по `\|a − 9\|` = ближайший к вертикали). Поведение корректно, комментарий — нет. | Переписать комментарий. Тривиально. |
+| B5 | `vanishingPointDetector.ts:260-274` | `linesInBin` использует ±2-bin окно. Если два strong-bin'а оказались близко (например `dirH=0`, `dirV=4`), линия в bin 2 попадёт в **оба** кластера. Для валидной H/V-сцены (расстояние 9) не воспроизводится. | Можно ограничить «принадлежность» одной ближайшей дирекции. Edge-case, не приоритет. |
+| B6 | `__tests__/vanishingPointDetector.test.ts` | Не покрыто [T4] — нормализация координат при mask 512×512 vs photo 4032×3024 (контракт детектора: caller отвечает за upscale). Нужен тест, фиксирующий контракт. | Добавить тест в 3.1c вместе с реальным OpenCV-адаптером (где как раз и происходит upscale). |
+| B7 | `__tests__/vanishingPointDetector.test.ts` | Нет теста на `extractCorners → null` по sanity-check (`tl.y < bl.y && ...`). Все позитивные пути закрыты, но негативный — нет. | Добавить тест с inline degenerate-инлайерами. |
+| B8 | `__tests__/visualizerStore.test.ts` | Нет теста, фиксирующего промежуточное состояние `segmentationStatus === 'detecting-perspective'` (только начальный → конечный). | Добавить тест с провайдером, разрешающимся через `setTimeout(0)`. |
+| B9 | `opencvLsdAdapter.ts:33-41` | `OpencvLsdOptions.maxLines` объявлено, но никем не используется (stub бросает). | Использовать в 3.1c при wiring реального LSD. |
+| B10 | `PhotoEditorPage.tsx:280-282` | Эффект расчёта `wallBrightness` срабатывает дважды на upload: при первом переходе в `'ready'` и снова при возврате из `'detecting-perspective'`. Минорный двойной recompute. **Не введено Phase 3** — лишь обнажено новой статус-сменой. | Добавить guard `if (computed) return;` или мемоизацию по `photo.url`. Низкий приоритет. |
+| B11 | `PhotoEditorPage.tsx:134-136` | `createOpencvLsdProvider({...})` создаётся на каждый upload. Аллокация дешёвая, но провайдер stateless — можно вынести в module-level const. | Тривиальный рефакторинг, можно вместе с 3.1c. |
+| B12 | `cvWorkerHost.ts:30,38-39` | `any` в `enqueue<I,O>` сигнатуре и `queue: QueueEntry<any, any>[]`. | Неизбежно из-за гетерогенности задач. Оставить eslint-disable. |
+| B13 | `vanishingPointDetector.ts:298-302` | RANSAC seed фиксирован константой → каждый запуск даёт одну и ту же последовательность. По дизайну (детерминизм тестов), но в проде на разных фото поведение тоже детерминированно (что хорошо). | Документировать как фичу, не баг. ✓ — уже комментарий стоит. |
+
+**Регрессии:** не выявлены. Изменения изолированы:
+- `Scene.perspectiveAutoDetected?: boolean` — добавлено как optional, обратная совместимость с persisted state ✓.
+- `SegmentationStatus` расширен `'detecting-perspective'` — все switch'и на статус (только в `PhotoEditorPage:451-459`) имеют `default: ''` → новый статус не ломает.
+- `setPerspectiveCorners` теперь сбрасывает флаг — проверены все call-sites (2 в `PhotoEditorPage`, 4 в тестах). Поведение корректно: и Konva-drag, и manual-init из `handleEnterPerspectiveMode` гасят флаг (для второго это no-op, т.к. флаг там и так false).
+- `isReady` теперь включает `'detecting-perspective'` — редактор остаётся интерактивным во время фоновой детекции, что соответствует требованию плана «без блокировок UI».
+- В fallback-ветках сегментации (mask паинтится вручную) `runAutoPerspective` не вызывается — корректно: white-fill mask не даёт VP-детектору осмысленных constraint'ов.
+
+**Что отнесено к Phase 3.1c (поверх предыдущего списка):**
+- B2 — abort-handle (требует контракта с боевым OpenCV worker'ом).
+- B3, B6 — performance + нормализация координат (имеет смысл только с реальным LSD).
+- B4, B5 — низкоприоритетный технический долг.
+
+### 3.7.1 Fix-pass по аудиту (24.04.2026)
+
+Закрыто прямо сейчас, без ожидания 3.1c (где это возможно без боевого OpenCV):
+
+| # | Что исправлено | Где |
+|---|---|---|
+| **B1** ✅ | `runAutoPerspective` снапшотит `scene.photo.url` на старте; перед каждым `set({...})` после `await` сверяет с текущим `get().scene?.photo.url` через хелпер `stillCurrent()`. Если фото сменилось — детектор молча выходит без записи в стор. Race с photo-swap закрыт ещё до wiring боевого OpenCV. | `visualizerStore.ts:305-358` |
+| **B7** ✅ | Новый тест `does not pollute a newer scene if a stale detection settles after photo swap` — поднимает «медленный» провайдер, между стартом детекции и его resolve вызывает `setScene` для другого фото, проверяет что новая сцена осталась без `perspectiveAutoDetected` и `perspectiveCorners === null`. | `__tests__/visualizerStore.test.ts` (блок `runAutoPerspective`) |
+| **B8** ✅ | Новый тест `transitions through detecting-perspective status while running` — между моментом старта `runAutoPerspective` и его await'ом сэмплирует `scene.segmentationStatus`, ассертит последовательность `['detecting-perspective','ready']`. | `__tests__/visualizerStore.test.ts` |
+| **B9** ✅ | `OpencvLsdOptions.maxLines` помечено `TODO(Phase 3.1c)` с пояснением, почему сегодня unused. | `opencvLsdAdapter.ts:33-44` |
+| **B10/B11** (B10 в этой нумерации) ✅ | `createOpencvLsdProvider({...})` поднят в `useMemo([])` на верхний уровень компонента — провайдер стабилен на всё время монтирования, новый upload его переиспользует. | `PhotoEditorPage.tsx:53-60`, `:139` |
+| **B12** (логирование) ✅ | `console.warn` в catch-ветке `runAutoPerspective` теперь обёрнут в `if (import.meta.env.DEV)` — в проде stub-адаптер не засоряет консоль. | `visualizerStore.ts:347-349` |
+| **B13** ✅ | JSDoc на `Scene.perspectiveAutoDetected` уточнён: «toast» → «inline banner», добавлена ссылка на `data-testid="perspective-auto-banner"`. | `model/types.ts:139-145` |
+
+**Регрессия после fix-pass:** vitest **318/318 ✅** (+2 новых vs аудит), `tsc --noEmit` clean ✅.
+
+**Остаётся к Phase 3.1c:**
+- **B2** — `AbortController` для отмены детекции из `reset()` (требует, чтобы боевой адаптер уважал signal — у stub отменять нечего).
+- **B3** — кэш `maskBoundingBox` (профилировать с реальным OpenCV).
+- **B4** — переписать комментарий в `vanishingPointDetector.ts:250` (косметика, можно и сейчас, но безопаснее в одном пакете с реальным LSD, чтобы код и комментарий проверялись на боевых линиях).
+- **B5** — edge-case ±2-bin перекрытия кластеров.
+- **B6** — тест T4 нормализации координат (имеет смысл только когда боевой адаптер действительно делает upscale 512→4032).
+
 ---
 
 ## Фаза 4: Авто-определение масштаба (детекция эталонов)

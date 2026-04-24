@@ -136,8 +136,9 @@ export interface Scene {
   /**
    * `true` when Phase-3 vanishing-point detection produced the current
    * perspective corners. Cleared the moment the user drags a corner
-   * (manual override). Drives the green "Перспектива определена
-   * автоматически" toast in `PhotoEditorPage`.
+   * (manual override). Drives the green inline "Перспектива определена
+   * автоматически" banner in `PhotoEditorPage` (data-testid
+   * `perspective-auto-banner`).
    */
   perspectiveAutoDetected?: boolean;
 }

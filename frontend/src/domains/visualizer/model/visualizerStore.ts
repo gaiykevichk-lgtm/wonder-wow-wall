@@ -305,7 +305,17 @@ export const useVisualizerStore = create<VisualizerState>()(
   runAutoPerspective: async (provider) => {
     const scene = get().scene;
     if (!scene?.wallMask) return;
+    // Snapshot identity of the scene we kicked off detection for. After every
+    // `await` we re-read the store and bail if the user has swapped photos,
+    // reset, or otherwise moved on — otherwise a slow detection on photo A
+    // would clobber state belonging to photo B (B1 in audit). URL is a
+    // sufficient discriminant because `setScene` always mints a new PhotoAsset.
+    const startedFor = scene.photo.url;
     const photoSize = { width: scene.photo.width, height: scene.photo.height };
+    const stillCurrent = (): Scene | null => {
+      const s = get().scene;
+      return s && s.photo.url === startedFor ? s : null;
+    };
     set({
       scene: { ...scene, segmentationStatus: 'detecting-perspective' },
     });
@@ -315,9 +325,9 @@ export const useVisualizerStore = create<VisualizerState>()(
         mask: scene.wallMask,
         photoSize,
       });
-      const result = detectFromLines({ lines, mask: scene.wallMask, photoSize });
-      const current = get().scene;
+      const current = stillCurrent();
       if (!current) return;
+      const result = detectFromLines({ lines, mask: scene.wallMask, photoSize });
       if (result.ok) {
         set({
           perspectiveCorners: result.corners,
@@ -335,8 +345,12 @@ export const useVisualizerStore = create<VisualizerState>()(
     } catch (err) {
       // Adapter unavailable / OpenCV not installed / WASM blocked.
       // Don't surface to the user — manual perspective is always available.
-      console.warn('[runAutoPerspective] provider failed:', err);
-      const current = get().scene;
+      // Only log in dev: in prod the stub adapter throws on every call by
+      // design, and we don't want the noise in browser consoles.
+      if (import.meta.env.DEV) {
+        console.warn('[runAutoPerspective] provider failed:', err);
+      }
+      const current = stillCurrent();
       if (current) {
         set({ scene: { ...current, segmentationStatus: 'ready' } });
       }
