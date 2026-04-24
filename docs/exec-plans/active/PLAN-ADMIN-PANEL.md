@@ -213,6 +213,43 @@
 
 > Фаза 2 завершена — UI shell админки готов. Все последующие фазы (3–10) наполняют отдельные секции. Фаза 3 разблокирована.
 
+### Аудит по итогам реализации (2026-04-24)
+
+Проверено построчно: 13 файлов Фазы 2 (10 в `frontend/src/domains/admin/`, 2 теста, router.tsx). `vitest run src/domains/admin` — 9/9 зелёных. `tsc --noEmit -p tsconfig.app.json` — ошибок в admin-файлах нет (другие домены: pre-existing, не регрессия Фазы 2).
+
+**Критические проблемы:** не найдено. Все 8 разделов корректно зарегистрированы в роутере под `<RequireAdmin>`, layout рендерит sidebar+header, logout работает, мобильный drawer открывается по media query.
+
+**Некритический тех-долг Фазы 2:**
+- [ ] `frontend/src/domains/admin/model/navigation.ts:5-8` — docstring ссылается на несуществующий файл `ui/adminNavigationIcons.tsx`; иконки фактически инлайн в `AdminLayout.tsx:33-42`. Либо вынести иконки в отдельный файл как обещает docstring, либо поправить комментарий.
+- [ ] Phase-лейблы на страницах-заглушках расходятся с текущей нумерацией плана (план уже ушёл в 4A/4B/7A/7B/10):
+  - `AdminCatalogPage.tsx:6` — "Фаза 6", по плану Фаза 7A.
+  - `AdminUploadPage.tsx:6` — "Фаза 6", по плану Фаза 7B.
+  - `AdminShopPage.tsx:6` — "Фаза 7", по плану Фаза 8.
+  - `AdminRecommendationsPage.tsx:6` — "Фаза 8", по плану Фаза 10.
+  - `AdminOrdersPage.tsx:6` — "Фаза 4" (нормально, покрывает 4A+4B).
+  - `AdminDashboardPage.tsx` (Фаза 3) и `AdminAuditPage.tsx` (Фаза 9) корректны.
+- [ ] `useAdminNavigation.ts:28-31` — docstring и название теста говорят «longest-prefix-wins», а реализация — «first-match-wins в порядке `ADMIN_SECTIONS`». Для текущего набора секций (ни одна не является префиксом другой) результат совпадает, но это не longest-prefix. Если в будущем добавится пара вида `users`/`users-admin` — появится скрытый баг. Либо отсортировать кандидатов по длине `path` убыванием, либо скорректировать формулировку.
+- [ ] `useAdminNavigation.ts:31` — матч по `pathname.startsWith('/admin/' + s.path)` не проверяет границу сегмента: `/admin/ordersfoo` подсветит «orders». В продакшн-роутах такой путь не возникает, но защититься от регрессии стоит (`pathname === base || pathname.startsWith(base + '/')`).
+- [ ] План (строка 206) утверждает «tsc --noEmit без ошибок» — глобально tsc падает на pre-existing ошибках в account/catalog/order/auth. Admin-файлы чисты; формулировку стоит уточнить как «без новых ошибок в admin-домене».
+- [ ] Manual-чек «пройти по всем 8 разделам» ([строка 207](#)) остался невыполненным — автотесты покрывают рендер и навигацию, но визуальную проверку активного пункта меню на реальном URL стоит всё-таки сделать.
+
+**Отсутствие регрессий подтверждено:**
+- Auth-домен: `authStore` контракт (`user`, `isAuth`, `logout`, `role`) не менялся, Phase 1 тесты (`authStore.role.test.ts`, `RequireAdmin.test.tsx`) зелёные.
+- Router: `/admin` по-прежнему вне `<ShopLayout>` и под `<RequireAdmin>` (router.tsx:115-131). Customer и анонимный — редирект по логике Phase 1.
+- Phase 1 placeholder `AdminPlaceholderPage` удалён без остаточных импортов (`grep AdminPlaceholder` — 0 совпадений).
+- Роутинговая структура nested-route с `<Outlet>` — `AdminLayout` корректно рендерит дочернюю страницу в `<Content>` (AdminLayout.tsx:179-181). Тест `section-body` на `/admin`, `/admin/users` это подтверждает.
+
+**Что проверено в каждом файле:**
+- `domains/admin/model/navigation.ts` — `AdminSectionKey` union из 8 ключей, `ADMIN_SECTIONS` readonly + `as const`, `adminPath()` обрабатывает индекс-секцию (`path: ''` → `/admin`). Чистый модуль без JSX — соответствует заявленной границе model/.
+- `domains/admin/model/useAdminNavigation.ts` — чистый селектор над `useLocation`, возвращает `activeKey/activeSection/sections`. Реэкспорт `adminPath` как удобство для импортёров хука (AdminLayout именно так и использует). См. тех-долг выше по точности «longest-prefix».
+- `domains/admin/ui/AdminLayout.tsx` — `<Sider>` (desktop) + `<Drawer>` (mobile ≤768px через CSS media query в `<style>`-блоке, как требуют `CONVENTIONS.md:109-118`). `<Menu>` с `selectedKeys={[activeKey]}`, `onClick` → `navigate(adminPath(target))`. Header: аватар+имя+email из `useAuthStore`, кнопка «Выйти» → `logout()` + `navigate('/')`. Color-constants `DARK/GREEN/GRAY_TEXT/FONT` объявлены в файле — по конвенции `CONVENTIONS.md:101-107`. ARIA-labels на mobile-menu и logout кнопках.
+- `domains/admin/ui/AdminSectionPlaceholder.tsx` — единая «карточка-заглушка» для всех 8 разделов. Принимает `{title, phase, description}`. Стили inline (конвенция), цветовые константы дублируются локально (тоже конвенция — «в каждом файле страницы»).
+- 8 страниц-заглушек (`AdminDashboardPage`/`AdminOrdersPage`/`AdminUsersPage`/`AdminCatalogPage`/`AdminShopPage`/`AdminUploadPage`/`AdminRecommendationsPage`/`AdminAuditPage`) — все используют `AdminSectionPlaceholder`, default export (требуется для `React.lazy` в router.tsx). См. расхождение phase-лейблов в тех-долге.
+- `domains/admin/ui/RequireAdmin.tsx` — не менялся в Фазе 2 (наследие Фазы 1), но пере-проверен: корректно используется в router.tsx:117-120 как wrapper вокруг `<AdminLayout>`, nested-роуты наследуют защиту.
+- `shared/router.tsx` — 9 lazy-импортов админки (layout + 8 страниц), `/admin` route-tree с `index` + 7 named sub-routes, все внутри `<RequireAdmin><AdminLayout/>`. Вне `<ShopLayout>` — корректно, у админки свой shell.
+- `__tests__/AdminLayout.test.tsx` — 5 тестов: рендер 8 секций, index-роут показывает dashboard-body, nested `/admin/users` показывает users-body, header содержит имя+email админа, logout очищает store + редирект на `/`. `beforeEach` сетит ADMIN-пользователя в store напрямую через `setState` — корректный паттерн для Zustand-тестов.
+- `__tests__/useAdminNavigation.test.tsx` — 4 теста: дефолт на `/admin`, резолв по первому сегменту, nested-роут (`/admin/users/abc-123` → `users`), порядок секций. Не тестирует overlap-кейс (нет такой пары в ADMIN_SECTIONS), см. тех-долг.
+
 ---
 
 ## Фаза 3: Дашборд статистики
