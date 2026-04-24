@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
-import { Typography, message, Progress, Card, Modal } from 'antd';
+import { Typography, message, Progress, Card, Modal, Spin } from 'antd';
 import {
   SwapOutlined,
   FullscreenOutlined,
@@ -16,6 +16,8 @@ import { processUploadedImage } from '../lib/imageProcessing';
 import { applyStrokeToMask, createEmptyMask } from '../lib/maskUtils';
 import { placeSinglePanel } from '../lib/layoutEngine';
 import { segmentScene, isSegmentationSupported } from '../lib/segmentationService';
+import { createOpencvLsdProvider } from '../lib/opencvLsdAdapter';
+import { defaultCvWorkerHost } from '../lib/cvWorkerHost';
 import { BASE_PANEL_PRICES, DESIGN_OVERLAY_PRICE } from '../../../shared/config/constants';
 import { products } from '../../catalog/model/data';
 import { PhotoUploader } from './PhotoUploader';
@@ -122,6 +124,16 @@ export default function PhotoEditorPage() {
               ? ` Обнаружено объектов: ${result.obstacles.length}.`
               : '';
             message.success(`Стена распознана!${obstacleMsg} Разместите панели.`);
+
+            // Phase 3: kick off vanishing-point auto-detection in the
+            // background. Currently the OpenCV adapter is a stub that
+            // throws — runAutoPerspective swallows the error and just
+            // flips status back to 'ready'. The plumbing is in place so
+            // wiring real OpenCV LSD only requires implementing the
+            // adapter; no other call sites change.
+            void store.runAutoPerspective(
+              createOpencvLsdProvider({ workerHost: defaultCvWorkerHost }),
+            );
           } catch {
             // ML failed — fallback to full mask (user corrects with brush)
             setReadyScene(createEmptyMask(width, height, 255));
@@ -422,7 +434,14 @@ export default function PhotoEditorPage() {
   const useKonva = searchParams.get('canvas') === 'konva';
 
   const { scene, segmentationProgress } = store;
-  const isReady = scene?.segmentationStatus === 'ready';
+  // Editor stays interactive during VP auto-detection — the spinner in the
+  // header tells the user something is still running, but they can keep
+  // placing panels.
+  const isReady =
+    scene?.segmentationStatus === 'ready' ||
+    scene?.segmentationStatus === 'detecting-perspective';
+  const isDetectingPerspective =
+    scene?.segmentationStatus === 'detecting-perspective';
   const isProcessing =
     scene?.segmentationStatus === 'uploading' ||
     scene?.segmentationStatus === 'loading-model' ||
@@ -450,6 +469,25 @@ export default function PhotoEditorPage() {
         <Text type="secondary">
           Загрузите фото стены и разместите панели Wonder Wow Wall
         </Text>
+        {isDetectingPerspective && (
+          <div
+            data-testid="perspective-detect-spinner"
+            style={{
+              marginTop: 8,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '4px 10px',
+              borderRadius: 8,
+              background: '#F1F8E9',
+              color: '#2E7D32',
+              font: '400 13px/1.4 Inter, sans-serif',
+            }}
+          >
+            <Spin size="small" />
+            Определяем углы стены…
+          </div>
+        )}
       </div>
 
       {/* Upload state */}
@@ -530,6 +568,44 @@ export default function PhotoEditorPage() {
 
           {/* Center: Canvas + Mask toolbar */}
           <div ref={canvasContainerRef} style={{ display: 'flex', flexDirection: 'column', gap: 8, background: isFullscreen ? '#000' : undefined }}>
+            {/* Auto-perspective notice — shown when Phase-3 VP detection
+                produced corners. Cleared automatically the moment the user
+                drags a corner (setPerspectiveCorners flips the flag). */}
+            {scene.perspectiveAutoDetected && (
+              <div
+                data-testid="perspective-auto-banner"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  padding: '10px 14px',
+                  borderRadius: 12,
+                  background: '#E8F5E9',
+                  color: '#2E7D32',
+                  font: '400 14px/1.4 Inter, sans-serif',
+                }}
+              >
+                <span>
+                  Перспектива определена автоматически. Поправьте углы, если нужно.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => store.setEditorMode('perspective')}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#2E7D32',
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                    font: '500 14px/1.4 Inter, sans-serif',
+                    padding: 0,
+                  }}
+                >
+                  Открыть редактор перспективы
+                </button>
+              </div>
+            )}
             {/* Calibration warning banner — shown when scale is unknown or only
                 an upload-time heuristic, so the user understands panel sizes
                 are approximate and can fix it in one click. */}

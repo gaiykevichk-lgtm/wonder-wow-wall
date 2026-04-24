@@ -26,6 +26,7 @@ import { autoFillWall, AutoFillBlockedError } from '../lib/layoutEngine';
 import { createEmptyMask } from '../lib/maskUtils';
 import { createPerspective } from '../lib/perspectiveEngine';
 import { uint8ArrayToBase64, base64ToUint8Array } from '../lib/maskSerialization';
+import { detectFromLines, type LineProvider } from '../lib/vanishingPointDetector';
 
 interface VisualizerState {
   // Scene
@@ -69,6 +70,15 @@ interface VisualizerState {
   resetCalibration: () => void;
   perspectiveCorners: PerspectiveCorners | null;
   setPerspectiveCorners: (corners: PerspectiveCorners | null) => void;
+  /**
+   * Run vanishing-point auto-detection. Sets segmentationStatus to
+   * `'detecting-perspective'` while running, transitions back to `'ready'`
+   * unconditionally on completion. On success, populates
+   * `perspectiveCorners` and `scene.perspectiveAutoDetected`. Failures
+   * (low confidence, multi-plane, OpenCV adapter unavailable) are silent —
+   * the user can still set corners manually.
+   */
+  runAutoPerspective: (provider: LineProvider) => Promise<void>;
   wallBrightness: number;
   setWallBrightness: (brightness: number) => void;
 
@@ -283,7 +293,55 @@ export const useVisualizerStore = create<VisualizerState>()(
   resetCalibration: () =>
     set({ calibrationPoints: { start: null, end: null, referenceCm: 200 } }),
   perspectiveCorners: null,
-  setPerspectiveCorners: (corners) => set({ perspectiveCorners: corners }),
+  setPerspectiveCorners: (corners) => {
+    // Any external corner change (drag, manual override, reset) means the
+    // current corners are no longer "auto-detected" from the user's POV.
+    const scene = get().scene;
+    set({
+      perspectiveCorners: corners,
+      scene: scene ? { ...scene, perspectiveAutoDetected: false } : scene,
+    });
+  },
+  runAutoPerspective: async (provider) => {
+    const scene = get().scene;
+    if (!scene?.wallMask) return;
+    const photoSize = { width: scene.photo.width, height: scene.photo.height };
+    set({
+      scene: { ...scene, segmentationStatus: 'detecting-perspective' },
+    });
+    try {
+      const lines = await provider({
+        imageUrl: scene.photo.url,
+        mask: scene.wallMask,
+        photoSize,
+      });
+      const result = detectFromLines({ lines, mask: scene.wallMask, photoSize });
+      const current = get().scene;
+      if (!current) return;
+      if (result.ok) {
+        set({
+          perspectiveCorners: result.corners,
+          scene: {
+            ...current,
+            segmentationStatus: 'ready',
+            perspectiveAutoDetected: true,
+          },
+        });
+      } else {
+        set({
+          scene: { ...current, segmentationStatus: 'ready' },
+        });
+      }
+    } catch (err) {
+      // Adapter unavailable / OpenCV not installed / WASM blocked.
+      // Don't surface to the user — manual perspective is always available.
+      console.warn('[runAutoPerspective] provider failed:', err);
+      const current = get().scene;
+      if (current) {
+        set({ scene: { ...current, segmentationStatus: 'ready' } });
+      }
+    }
+  },
   wallBrightness: 128,
   setWallBrightness: (brightness) => set({ wallBrightness: brightness }),
 
@@ -395,6 +453,7 @@ export const useVisualizerStore = create<VisualizerState>()(
             objectMask: state.scene.objectMask,
             calibration: state.scene.calibration,
             segmentationStatus: state.scene.segmentationStatus,
+            perspectiveAutoDetected: state.scene.perspectiveAutoDetected,
           }
         : null,
       layout: {

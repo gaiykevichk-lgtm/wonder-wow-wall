@@ -305,6 +305,94 @@ describe('visualizerStore', () => {
     });
   });
 
+  describe('runAutoPerspective', () => {
+    function setupReadyScene() {
+      const scene: Scene = {
+        photo: { url: 'test.jpg', width: 500, height: 500 },
+        wallMask: createEmptyMask(500, 500, 255),
+        objectMask: { obstacles: [] },
+        calibration: { method: 'manual', pixelsPerCm: 5 },
+        segmentationStatus: 'ready',
+      };
+      useVisualizerStore.getState().setScene(scene);
+    }
+
+    /** Provider that returns 4 horizontal + 4 vertical lines on a full-mask
+     *  image — same fixture used in vanishingPointDetector tests. */
+    const successfulProvider = async () => {
+      const lines = [];
+      for (let i = 1; i <= 4; i++) {
+        const y = (500 / 5) * i;
+        lines.push({ p1: { x: 0, y }, p2: { x: 500, y } });
+      }
+      for (let i = 1; i <= 4; i++) {
+        const x = (500 / 5) * i;
+        lines.push({ p1: { x, y: 0 }, p2: { x, y: 500 } });
+      }
+      return lines;
+    };
+
+    it('does nothing when there is no scene', async () => {
+      await useVisualizerStore.getState().runAutoPerspective(successfulProvider);
+      expect(useVisualizerStore.getState().perspectiveCorners).toBeNull();
+    });
+
+    it('populates corners and flag on detector success', async () => {
+      setupReadyScene();
+      await useVisualizerStore.getState().runAutoPerspective(successfulProvider);
+      const state = useVisualizerStore.getState();
+      expect(state.perspectiveCorners).not.toBeNull();
+      expect(state.scene!.perspectiveAutoDetected).toBe(true);
+      expect(state.scene!.segmentationStatus).toBe('ready');
+    });
+
+    it('leaves corners null when provider throws (adapter unavailable)', async () => {
+      setupReadyScene();
+      const failingProvider = async () => {
+        throw new Error('opencv-not-installed');
+      };
+      await useVisualizerStore.getState().runAutoPerspective(failingProvider);
+      const state = useVisualizerStore.getState();
+      expect(state.perspectiveCorners).toBeNull();
+      expect(state.scene!.perspectiveAutoDetected).toBeFalsy();
+      // Status must be back to 'ready' — never leave the user stuck on
+      // the 'detecting-perspective' spinner.
+      expect(state.scene!.segmentationStatus).toBe('ready');
+    });
+
+    it('leaves corners null when detector returns low-confidence', async () => {
+      setupReadyScene();
+      // Single direction (only horizontals) → low-confidence reason.
+      const horizontalsOnly = async () => {
+        const lines = [];
+        for (let i = 1; i <= 6; i++) {
+          const y = (500 / 7) * i;
+          lines.push({ p1: { x: 0, y }, p2: { x: 500, y } });
+        }
+        return lines;
+      };
+      await useVisualizerStore.getState().runAutoPerspective(horizontalsOnly);
+      const state = useVisualizerStore.getState();
+      expect(state.perspectiveCorners).toBeNull();
+      expect(state.scene!.segmentationStatus).toBe('ready');
+    });
+
+    it('clears perspectiveAutoDetected flag when corners are manually changed', async () => {
+      setupReadyScene();
+      await useVisualizerStore.getState().runAutoPerspective(successfulProvider);
+      expect(useVisualizerStore.getState().scene!.perspectiveAutoDetected).toBe(true);
+
+      // Simulate user dragging a corner.
+      useVisualizerStore.getState().setPerspectiveCorners([
+        { x: 10, y: 10 },
+        { x: 490, y: 10 },
+        { x: 490, y: 490 },
+        { x: 10, y: 490 },
+      ]);
+      expect(useVisualizerStore.getState().scene!.perspectiveAutoDetected).toBe(false);
+    });
+  });
+
   describe('reset', () => {
     it('resets all state', () => {
       useVisualizerStore.getState().setScene(makeScene());

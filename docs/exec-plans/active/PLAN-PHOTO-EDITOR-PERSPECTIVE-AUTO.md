@@ -427,66 +427,69 @@ Phase 1B v1 принимается как warp-замена Phase 1A. Math фо�
 
 ---
 
-## Фаза 3: Авто-определение перспективы (vanishing points)
+## Фаза 3: Авто-определение перспективы (vanishing points) ✅ ЯДРО ЗАВЕРШЕНО (24.04.2026, OpenCV-адаптер отложен)
 
 > **Цель:** При загрузке фото автоматически предложить 4 угла стены. Пользователь подтверждает или корректирует.
-> **Технология:** OpenCV.js (LSD line detection + RANSAC vanishing points).
+> **Технология:** OpenCV.js (LSD line detection) + чистый JS (кластеризация направлений + RANSAC vanishing points + извлечение углов).
 > **Зависимости:** Фаза 1B (нужно куда показывать результат — warp). Фаза 2 опционально (auto-fill в перспективе становится осмысленным).
 > **Bounded Context:** только frontend / `visualizer`. Backend: без изменений.
 > **Результат:** В 70% интерьерных фото юзер не трогает углы вообще.
 
 ### 3.0 Подготовка
 
-- [ ] **Web Worker host**: создать `src/domains/visualizer/lib/cvWorkerHost.ts` — общий шаблон Worker с очередью задач (для VP-detector в Фазе 3 и YOLO-detector в Фазе 4). Реализовать ОДИН раз здесь, переиспользовать в Фазе 4.
-- [ ] **Датасет**: создать `frontend/src/domains/visualizer/__tests__/fixtures/perspective/` — 20 фото интерьеров с эталонными углами в `expected.json`. Источник: открытые наборы (Hypersim/SUN360) или собственная съёмка. Назначить ответственного.
+- [x] **Web Worker host**: `src/domains/visualizer/lib/cvWorkerHost.ts` — generic FIFO-очередь с `AbortController`, поддерживает inline-функции и Web Worker. Singleton `defaultCvWorkerHost` будет переиспользован в Фазе 4 (YOLO).
+- [ ] **Датасет**: `__tests__/fixtures/perspective/` — отложено (требует подбора 20 эталонных фото; не блокирует production-логику).
 
 ### 3.1 Frontend — сервис vanishing-point detection
 
-- [ ] Установить `@techstark/opencv-js` (~8 MB, lazy-load).
-- [ ] Создать `src/domains/visualizer/lib/vanishingPointDetector.ts`:
-  - `initOpenCV(): Promise<void>` — lazy инициализация в Web Worker (не блокировать main thread).
-  - `detectWallCorners(imageUrl: string, wallMask: WallMask): Promise<PerspectiveCorners | null>`:
-    - **Нормализация координат**: маска SegFormer 512×512, фото может быть 4032×3024. Все координаты VP пересчитываются в систему фото перед возвратом. См. [T4].
-    - **Фильтрация линий по wallMask**: LSD выдаёт все линии фото; брать только те, у которых ≥80% длины внутри маски стены — иначе RANSAC поймает линии мебели/окон. См. [T3].
-    - LSD-детекция линий на фото.
-    - Кластеризация по направлению → вертикальные / горизонтальные.
-    - RANSAC → 2 vanishing points (горизонтальный + вертикальный).
-    - Пересечение крайних линий внутри bounding box `wallMask` → 4 угла.
-    - Возврат `null` если confidence < 0.6 (стена слишком пустая).
-    - **Защита от нескольких стен в кадре** ([E1]): если найдены ≥3 кластеров направлений — возвращать `null` с диагностикой `'multi-plane'`, не угадывать.
-- [ ] Web Worker `lib/vanishingPointWorker.ts` — оборачивает OpenCV.js, чтобы не блокировать UI.
-  - **Координация с YOLO-воркером** (Фаза 4): запускать последовательно, не параллельно, на устройствах с RAM < 4 GB. См. [D3].
-  - Feature detection WebAssembly + memory limit; при отказе — graceful skip, статус «авто недоступно».
+- [x] Алгоритмическое ядро `src/domains/visualizer/lib/vanishingPointDetector.ts`:
+  - `detectFromLines({ lines, mask, photoSize })` — pure-JS pipeline без зависимости от OpenCV.
+  - `detectWallCorners(imageUrl, mask, photoSize, provider)` — high-level wrapper, принимает pluggable `LineProvider`.
+  - **Pipeline:** filter ≥80% on-mask → angle-histogram clustering (NMS на 18×10° бинов) → RANSAC vanishing points → extreme-inlier line pairs → 4 corners → confidence (inlier coverage × cluster strength × corners-inside × bbox-fit).
+  - **Возврат:** `{ ok: true, corners, confidence }` либо `{ ok: false, reason: 'low-confidence' | 'multi-plane' | 'too-few-lines' }`.
+  - **Защита от мульти-плана** ([E1]): ≥3 strong direction bins → `'multi-plane'`.
+  - **Confidence floor:** 0.6 → ниже отдаём `'low-confidence'`.
+  - **Координаты:** контракт — caller передаёт уже-нормализованные `lines` в системе фото; адаптер OpenCV (см. ниже) отвечает за upscale из 512×512 маски.
+- [x] **Адаптер OpenCV** `src/domains/visualizer/lib/opencvLsdAdapter.ts` — **STUB**. Возвращает `LineProvider`, который кидает `OpencvNotInstalledError`. Реальная установка `@techstark/opencv-js` (~8 MB) и Web Worker отложены: алгоритм + контракт + интеграция в store/UI готовы, замена адаптера на боевой не требует изменений в call-sites.
+- [ ] **Боевой OpenCV-биндинг** (отложено): установка `@techstark/opencv-js`, lazy-load в `cvWorkerHost`, LSD на даунскейле 1024px, transferable `ImageBitmap`. Будет отдельной мини-фазой 3.1c.
 
 ### 3.2 Frontend — интеграция в store и pipeline
 
-- [ ] В `visualizerStore.ts`:
-  - В action `uploadPhoto()` после `segmentScene()` запустить `detectWallCorners()` параллельно.
-  - Статус: `'detecting-perspective'` (между `'segmenting'` и `'ready'`).
-  - Если результат `≠ null` → `scene.perspective = createPerspective(corners, fitWallSize(mask))`.
-  - Флаг `scene.perspectiveAutoDetected: boolean` — для UI «было определено автоматически».
-- [ ] В `PhotoEditorPage.tsx`:
-  - После загрузки — если auto-detected — подсказка-toast `Inter 14px/400`, фон `#E8F5E9`, текст `#2E7D32`: «Перспектива определена автоматически. Поправьте углы, если нужно». Кнопка «Открыть редактор перспективы» переключает `editorMode = 'perspective'`.
+- [x] В `visualizerStore.ts`:
+  - Action `runAutoPerspective(provider: LineProvider)` — выставляет `segmentationStatus = 'detecting-perspective'`, гоняет детектор, на success пишет `perspectiveCorners` + `scene.perspectiveAutoDetected = true`, **всегда** возвращает статус в `'ready'` (даже на adapter-error).
+  - `setPerspectiveCorners` теперь сбрасывает `scene.perspectiveAutoDetected = false` — любая ручная правка гасит зелёный баннер.
+  - Тип `SegmentationStatus` расширен значением `'detecting-perspective'`; `Scene.perspectiveAutoDetected?: boolean` сохраняется в persist.
+- [x] В `PhotoEditorPage.tsx`:
+  - После успешного `segmentScene()` — `void store.runAutoPerspective(createOpencvLsdProvider(...))`. Сейчас всегда падает в no-op (stub-throw), но pipeline целиком на месте.
+  - Зелёный баннер `data-testid="perspective-auto-banner"` `#E8F5E9` / `#2E7D32` `Inter 14px/400` с кнопкой «Открыть редактор перспективы» (переключает `editorMode = 'perspective'`) — показывается, пока `scene.perspectiveAutoDetected === true`.
 
 ### 3.3 Дизайн
 
-- [ ] В режиме `'perspective'` — auto-detected углы рисуются `#4CAF50` (подтверждённо), при ручном перетаскивании — `#FF9800` (изменено пользователем).
-- [ ] Spinner в шапке во время `'detecting-perspective'`: Ant Design `Spin`, текст «Определяем углы стены…».
+- [ ] **Отложено** до wiring боевого OpenCV: цвета углов `#4CAF50`/`#FF9800` в `KonvaCanvas` для auto vs manual override.
+- [x] Inline-spinner в шапке во время `'detecting-perspective'`: `<Spin size="small">` + текст «Определяем углы стены…», `data-testid="perspective-detect-spinner"`. Редактор остаётся интерактивным.
 
 ### 3.4 Backend
 
-- [ ] Без изменений.
+- [x] Без изменений.
 
 ### 3.5 Тесты
 
-- [ ] Unit `vanishingPointDetector.test.ts` (моки OpenCV):
-  - Mock LSD с 4 идеальными линиями → проверить корректные 4 угла.
-  - Низкая confidence → `null`.
-  - Multi-plane (≥3 кластера) → `null` с диагностикой `'multi-plane'`.
-  - Mask 512×512 vs photo 4032×3024 — координаты выходных углов в системе фото (нормализация T4).
-- [ ] Component `cvWorkerHost.test.ts`: очередь — две задачи в очереди → выполнение последовательное; abort прерывает текущую.
-- [ ] Сценарий в `visualizerStore.test.ts`: upload → segment → detect-perspective → ready, перспектива записана.
-- [ ] **Датасет-acceptance** (запускается вне CI, локально перед релизом): 20 фото из `__tests__/fixtures/perspective/` → метрика `≥ 14/20` углов в пределах 5% от эталона.
+- [x] `cvWorkerHost.test.ts` — 6 тестов: single-task, FIFO-сериализация, abort queued, abort running (signal), error isolation, pendingCount.
+- [x] `vanishingPointDetector.test.ts` — 9 тестов: too-few-lines, off-mask filter, single-direction → low-confidence, ≥3 кластеров → multi-plane, flat (parallel) corners + ordering, convergent perspective, provider integration (callback signature + propagation).
+- [x] `opencvLsdAdapter.test.ts` — 2 теста: throws `OpencvNotInstalledError`, stable error code.
+- [x] `visualizerStore.test.ts` — 5 новых сценариев: no-scene noop, success populates flag, adapter error → silent ready, low-confidence → silent ready, manual corner edit clears flag.
+- [ ] **Датасет-acceptance** — отложено вместе с боевым OpenCV.
+
+### 3.6 Что отложено (Phase 3.1c)
+
+| Пункт | Причина откладывания | Где разморозить |
+|---|---|---|
+| `@techstark/opencv-js` install + lazy-load в `cvWorkerHost` | 8 MB зависимость + Web Worker — отдельная фаза с perf-бюджетом | `opencvLsdAdapter.ts` — заменить throw на реальный LSD |
+| Web Worker файл `vanishingPointWorker.ts` | Требует Vite worker-config + WASM-bundling | Внутри новой версии адаптера |
+| Цветовая дифференциация углов в `KonvaCanvas` | Нет смысла без боевых auto-detected углов | После 3.1c — патч в `KonvaCanvas.tsx` ветке `'perspective'` |
+| Датасет 20 фото с эталонными углами | Acceptance-тест включается перед релизом 3.1c | `__tests__/fixtures/perspective/` |
+
+**Итог Phase 3 (текущая часть):** algorithmic core + worker-host infrastructure + store/UI integration. Все 316 тестов фронта зелёные, tsc clean. Достаточно установить OpenCV.js и заменить тело адаптера — call-sites трогать не нужно.
 
 ---
 
