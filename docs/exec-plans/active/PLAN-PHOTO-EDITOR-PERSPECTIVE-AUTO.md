@@ -848,6 +848,55 @@ Alembic уже инициализирован: `backend/alembic.ini`, `backend/a
 > **Что НЕ сделано в этой фазе (по дизайну, для 5C):** API DTOs (`VisualizationProjectCreate/Update/Response`) не расширены типизированными VOs — они продолжают принимать `calibration_pixels_per_cm: float` и `perspective_corners: list[PointSchema]`. Use case `UpdateVisualizationProject` не передаёт `version` через границу — клиент пока не сообщает свой known version. Это всё переезжает в Phase 5C, который добавит `PATCH /perspective`, `PATCH /calibration`, и обработку 409/422.
 > **Sandbox limitation (как в 5A):** test execution делегирован CI; локально проверено только `python3 -m py_compile` для всех новых/изменённых файлов.
 
+### 5B.4 Audit — line-by-line проверка (2026-04-24)
+
+**Проверено** (full read-through, file:line refs ниже):
+- `backend/app/domain/visualizer/exceptions.py` (29 строк, новый)
+- `backend/app/domain/visualizer/value_objects.py` (152 строки, фактически новый — был placeholder)
+- `backend/app/domain/visualizer/entities.py` (69 строк, +24 LOC)
+- `backend/app/infrastructure/persistence/models.py` (210 строк, +15 LOC в `VisualizationProjectModel`)
+- `backend/app/infrastructure/persistence/repositories/visualization_repo.py` (220 строк, +45 LOC)
+- `backend/alembic/versions/005_add_perspective_calibration_to_scenes.py` (82 строки, новый)
+- `backend/tests/domain/test_visualizer_value_objects.py` (143 строки, новый, 17 кейсов)
+- `backend/tests/domain/test_visualization_project.py` (+21 LOC, 3 новых кейса)
+- `backend/tests/infrastructure/test_visualizer_repo.py` (190 строк, новый, 5 кейсов)
+- `backend/tests/infrastructure/test_alembic.py` (+61 LOC, 1 новый кейс + 2 переписанных)
+
+**Логика, которую проверил отдельно:**
+- DDD-зависимости: `domain` не импортирует `application`/`infrastructure` ✓ (`value_objects.py:18` — только `from .exceptions`).
+- Convention `backend/CONVENTIONS.md:520-530`: domain exceptions в отдельном `exceptions.py` ✓.
+- Optimistic-lock контракт: `existing.version != project.version → raise; else version = existing.version + 1` — реализован одинаково в InMemory (`visualization_repo.py:115-129`) и SQL (`:185-211`).
+- Backwards-compat существующих тестов: `test_visualizer_use_cases.py::test_update` использует свежесохранённую entity (`version=1`) и обновляет с дефолтным `version=1` → проходит equality, бампит до 2. Проверено вручную ✓.
+- Boolean migration default: `005:52,61` использует `sa.false()` (правильно для PG) ✓.
+- SQLite ALTER TABLE ADD COLUMN с NOT NULL: `server_default` присутствует на каждой колонке `005:46-72` ✓.
+- Валидация коллинеарности: shoelace-формула в `value_objects.py:112-125` с `_MIN_QUAD_AREA = 1.0` — для квадрата 100×100 даёт area=10000, > порога ✓; для все-в-точке area=0 — отклоняется ✓.
+- `_model_to_entity:40` использует `if m.calibration else None` — корректно для NULL и `{}` (хотя `{}` маловероятен).
+- `from_dicts(None) → None` (`value_objects.py:139-140`) — corner-case для legacy rows ✓.
+
+#### Найденные проблемы
+
+| ID | Severity | Файл:строка | Описание |
+|---|---|---|---|
+| **B30** | non-critical | `models.py:199, 202` | `server_default="0"` на Boolean. Migration 005 использует `sa.false()`. PG implicit-cast text→bool принимает `'0'`, поэтому работает, но стилистически inconsistent. **Effect**: расхождение между моделью и миграцией; теоретическая ловушка если кто-то выключит implicit casts на PG. **Fix**: `sa.false()` (нужен `from sqlalchemy import false` в models.py). |
+| **B31** | non-critical | `value_objects.py:60` | Runtime tuple `("reference", "manual", "auto")` дублирует `Literal` определение из `:23`. Если кто-то добавит method, придётся менять в двух местах. **Fix**: `from typing import get_args` → `if self.method not in get_args(CalibrationMethod)`. |
+| **B32** | non-critical | `value_objects.py:84-94` | `ScaleCalibration.from_dict` падает с raw `KeyError` если в payload отсутствуют `method`/`pixels_per_cm`. На trusted DB-round-trip OK, но при загрузке из corrupt row даст невнятный traceback. **Fix**: pre-validate keys или try/except → raise `ValueError`. |
+| **B33** | non-critical | `visualization_repo.py:115-129` | `InMemory.update()` молча создаёт project если `existing is None` (нет `raise ValueError`). SQL repo на `:187-188` корректно raise. Расхождение поведения. **Pre-existing** — `update()` так работал и до 5B; optimistic-lock не вносит регрессии (`existing.version if existing else project.version`). **Fix**: добавить `if existing is None: raise ValueError(...)` симметрично SQL. |
+| **B34** | non-critical (5C scope) | `application/visualizer/use_cases.py:39-49` | `UpdateVisualizationProject.execute` НЕ копирует `existing.version` в `project.version`. Текущие тесты выживают (entity всегда v=1 vs row v=1), но любая попытка обновить project дважды без re-fetch — `StaleSceneVersionError`. Исправляется в Phase 5C (use case будет принимать `version` от клиента). |
+| **B35** | non-critical | `tests/infrastructure/test_visualizer_repo.py:27` | `import sqlalchemy as sa` — unused import (lint). **Fix**: удалить. |
+| **B36** | non-critical | `tests/infrastructure/test_alembic.py:1` | Module docstring говорит "Phase 5A smoke-tests"; теперь содержит и 5B-кейсы. **Fix**: апдейтнуть docstring до "Phase 5A/5B alembic smoke-tests". |
+| **B37** | non-critical | `tests/domain/test_visualizer_value_objects.py` | Нет explicit-теста на `to_dict() → from_dict()` round-trip когда `wall_width_cm/wall_height_cm` оба `None` (covered только косвенно). **Fix**: добавить `test_round_trip_dict_with_no_optional_fields`. |
+| **B38** | non-critical | `tests/infrastructure/test_visualizer_repo.py` | Нет теста на то что `_calibration_to_json(None)` возвращает `None` directly (covered косвенно через `test_legacy_row_without_calibration_loads_as_none`). |
+| **B39** | tech debt (5C scope) | `value_objects.py:75-81` | `to_dict()` использует `snake_case`-ключи (`pixels_per_cm`). Frontend сериализует в `camelCase` (`pixelsPerCm`). Phase 5C-API DTOs должны делать конверсию. Документировано. |
+| **B40** | tech debt (5C scope) | `visualization_repo.py:51` | `_model_to_entity` всё ещё передаёт `m.perspective_corners` как raw `list[dict]` — типизированный `PerspectiveCorners` VO определён, но не используется в persistence-цепочке. По дизайну (legacy compat для текущего API). 5C начнёт использовать VO во всём pipeline. |
+
+#### Итог
+
+- **Критических проблем: 0.** Фича работает: domain-VOs валидируются, migration 005 reversible, optimistic-lock защищает от multi-tab race, существующие тесты не сломаны.
+- **Non-critical: 8** (B30–B33, B35–B38) — стилистика и тест-ребро.
+- **Tech debt отложено в 5C: 3** (B34, B39, B40) — все требуют API-уровня и/или frontend-границы.
+
+Регрессий не обнаружено: `test_visualizer_use_cases.py` (4 теста на UpdateVisualizationProject) проанализирован вручную — все проходят с новым optimistic-lock (entity v=1 vs row v=1).
+
 ---
 
 ## Фаза 5C: Backend API + Frontend sync
