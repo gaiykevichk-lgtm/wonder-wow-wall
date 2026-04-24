@@ -384,6 +384,15 @@ export const useVisualizerStore = create<VisualizerState>()(
       message.warning('Сначала выберите дизайн панели');
       return;
     }
+    // Detection-in-flight hint. We don't block: the user still gets tiles
+    // immediately in flat mode, and `runAutoPerspective` will re-fill them
+    // with the correct perspective + bbox-derived scale once detection
+    // resolves (see the commit block of `runAutoPerspective`).
+    if (scene.segmentationStatus === 'detecting-perspective') {
+      message.info(
+        'Определяем геометрию стены — плитки перестроятся автоматически, когда детекция завершится.',
+      );
+    }
 
     // Derive perspective transform from corners + photo bounds (wall-space
     // is sized to the photo for now; v2 will introduce a separate wallSpace).
@@ -618,20 +627,23 @@ export const useVisualizerStore = create<VisualizerState>()(
       const current = stillCurrent();
       if (current && current.segmentationStatus === 'detecting-perspective') {
         if (resolvedCorners !== null) {
-          // Seed a *placeholder* calibration from the detected wall width
-          // when the user has none yet — `method: 'auto'` is the lowest
-          // trust tier and `layoutEngine.isTrustedCalibration` refuses it,
-          // so auto-fill stays blocked until the user runs the two-point
-          // calibration tool. The benefit is that UI surfaces (e.g. the
-          // "calibration required" banner, the scale indicator) have a
-          // numeric value to show instead of "—", and a single-click
-          // calibrate action can start from a plausible seed.
+          // Seed a bbox-derived calibration whenever detection returns a
+          // wall extent. This OVERRIDES the upload-time `{method:'auto',
+          // pixelsPerCm: photoWidth/400}` placeholder because the bbox
+          // estimate is grounded in the *actual detected wall* (divide by
+          // an assumed 3 m wall width) rather than the whole photo.
           //
-          // Rationale for 300 cm default: typical living-room walls span
-          // 2.5–4 m; 3 m is a safe midpoint. The value is never used for
-          // panel placement (see contract in ScaleCalibration.method).
+          // The seed carries `wallWidthCm = 300` as a marker —
+          // `layoutEngine.isTrustedCalibration` treats that metadata as
+          // the discriminator between "low-trust upload heuristic" and
+          // "medium-trust bbox derivation", which unblocks perspective
+          // auto-fill. User-entered 'reference' / 'manual' calibrations
+          // are preserved (we never clobber real ones).
           const bbox = resolvedResult?.bboxPixels;
-          const shouldSeed = !current.calibration && !!bbox && bbox.width > 0;
+          const hasBbox = !!bbox && bbox.width > 0;
+          const shouldSeed =
+            hasBbox &&
+            (!current.calibration || current.calibration.method === 'auto');
           const seedCalibration = shouldSeed
             ? {
                 method: 'auto' as const,
@@ -651,6 +663,28 @@ export const useVisualizerStore = create<VisualizerState>()(
                 : current.calibrationAutoDetected,
             },
           });
+
+          // If the user already clicked "Заполнить стену" before detection
+          // finished, their tiles were laid in flat mode (no warp, no
+          // bbox-derived scale). Re-run auto-fill so the panels adopt the
+          // freshly-detected wall geometry.
+          //
+          // Conservative trigger: only when every existing panel shares
+          // the same designId + color — the signature of a prior auto-fill
+          // call. Mixed-design layouts indicate manual placement and are
+          // left untouched to preserve the user's work.
+          if (shouldSeed) {
+            const latest = get();
+            const panels = latest.layout.panels;
+            if (panels.length > 0) {
+              const sigs = new Set(
+                panels.map((p) => `${p.designId}::${p.color ?? ''}`),
+              );
+              if (sigs.size === 1) {
+                latest.autoFill();
+              }
+            }
+          }
         } else {
           set({ scene: { ...current, segmentationStatus: 'ready' } });
         }

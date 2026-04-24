@@ -29,9 +29,9 @@ const WALL_COVERAGE_THRESHOLD = 0.7;
 /**
  * Thrown when `autoFillWall` cannot proceed without a real calibration —
  * specifically when the user is in perspective mode and the only available
- * `pixelsPerCm` came from the upload-time heuristic (`method === 'auto'`)
- * or from no calibration at all. The store catches this and prompts the
- * user to calibrate before retrying.
+ * `pixelsPerCm` came from the upload-time heuristic (`method === 'auto'`
+ * without `wallWidthCm`) or from no calibration at all. The store catches
+ * this and prompts the user to calibrate before retrying.
  */
 export class AutoFillBlockedError extends Error {
   readonly code: 'no-calibration';
@@ -42,10 +42,26 @@ export class AutoFillBlockedError extends Error {
   }
 }
 
+/**
+ * A calibration is "trusted" for perspective auto-fill when:
+ *  - method is 'reference' or 'manual' (user-confirmed), OR
+ *  - method is 'auto' AND `wallWidthCm` is present — the latter marks
+ *    bbox-derived seeds produced by `runAutoPerspective` after successful
+ *    depth-based wall detection. Those seeds use the detected wall's pixel
+ *    extent ÷ an assumed 3 m width, which is a significantly tighter prior
+ *    than the upload-time heuristic (`photoWidth / 400`) that omits the
+ *    field.
+ *
+ * This keeps the upload-time placeholder blocked (still produces a banner
+ * and refuses perspective fill) while unlocking the flow once real wall
+ * geometry is available.
+ */
 function isTrustedCalibration(
   calibration: ScaleCalibration | null,
 ): calibration is ScaleCalibration {
-  return !!calibration && calibration.method !== 'auto';
+  if (!calibration) return false;
+  if (calibration.method !== 'auto') return true;
+  return typeof calibration.wallWidthCm === 'number' && calibration.wallWidthCm > 0;
 }
 
 export function generatePanelId(): string {

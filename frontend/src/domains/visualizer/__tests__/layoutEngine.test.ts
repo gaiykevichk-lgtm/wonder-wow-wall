@@ -387,6 +387,27 @@ describe('layoutEngine', () => {
       ).toThrow(AutoFillBlockedError);
     });
 
+    it('autoFillWall accepts bbox-derived auto calibration (wallWidthCm marker) under perspective', () => {
+      // The seed produced by runAutoPerspective is `method:'auto'` but
+      // carries `wallWidthCm` — that metadata distinguishes it from the
+      // upload-time heuristic and unblocks perspective auto-fill.
+      const mask = createEmptyMask(300, 300, 255);
+      const persp = createPerspective(identityCorners(300, 300), { w: 300, h: 300 });
+      expect(() =>
+        autoFillWall({
+          mask,
+          sizeKey: '30x30',
+          calibration: { method: 'auto', pixelsPerCm: 1, wallWidthCm: 300 },
+          designId: 'd1',
+          designName: 'Test',
+          designImage: 'test.jpg',
+          color: '#FFF',
+          colorName: 'White',
+          perspective: persp,
+        }),
+      ).not.toThrow();
+    });
+
     it('autoFillWall accepts manual or reference calibration under perspective', () => {
       const mask = createEmptyMask(300, 300, 255);
       const persp = createPerspective(identityCorners(300, 300), { w: 300, h: 300 });
