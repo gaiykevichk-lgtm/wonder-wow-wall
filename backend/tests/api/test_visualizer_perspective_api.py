@@ -165,6 +165,7 @@ class TestPatchPerspective:
             headers=_auth(token),
         )
         pid = create.json()["id"]
+        server_version = create.json()["version"]
 
         resp = await client.patch(
             f"/api/visualizer/projects/{pid}/perspective",
@@ -174,6 +175,10 @@ class TestPatchPerspective:
         assert resp.status_code == 409
         body = resp.json()
         assert body["code"] == "stale_version"
+        # X11 closure — the 409 body must carry `server_version` so the
+        # frontend can use it as the next read-marker when it refetches
+        # (B45 contract). Previously only `code` was asserted.
+        assert body["server_version"] == server_version
 
     @pytest.mark.asyncio
     async def test_clear_corners_with_null(self, client):
@@ -261,6 +266,7 @@ class TestPatchCalibration:
             headers=_auth(token),
         )
         pid = create.json()["id"]
+        server_version = create.json()["version"]
         resp = await client.patch(
             f"/api/visualizer/projects/{pid}/calibration",
             json={
@@ -270,4 +276,8 @@ class TestPatchCalibration:
             headers=_auth(token),
         )
         assert resp.status_code == 409
-        assert resp.json()["code"] == "stale_version"
+        body = resp.json()
+        assert body["code"] == "stale_version"
+        # X11 closure — symmetric with the perspective 409 assertion.
+        # Ensures B45's server_version contract is covered on calibration too.
+        assert body["server_version"] == server_version

@@ -210,6 +210,66 @@ export const __syncInternals = {
   },
 };
 
+/**
+ * Debounced PATCH of `scene.calibration` to the backend. Called by every
+ * code path that writes `scene.calibration` while a `projectId` is set —
+ * `setCalibrationAndSync`, `applyCalibration`, `applyReferenceCandidate`.
+ *
+ * X1 closure (2026-04-24): before this helper existed, `applyCalibration`
+ * and `applyReferenceCandidate` wrote to `scene.calibration` via a direct
+ * `set({...})` without triggering any sync. For users with a saved project
+ * (`projectId != null`), manual two-point calibration and reference-candidate
+ * selection were lost on reload — violating the Phase 5C DoD "calibration
+ * restored after reload". Centralising the debounce+PATCH here guarantees
+ * every local calibration write reaches the server.
+ */
+function scheduleCalibrationSync(projectId: string): void {
+  if (_calibrationSyncTimer) clearTimeout(_calibrationSyncTimer);
+  _calibrationSyncCtrl?.abort();
+
+  _calibrationSyncTimer = setTimeout(async () => {
+    _calibrationSyncTimer = null;
+    const ctrl = new AbortController();
+    _calibrationSyncCtrl = ctrl;
+    // Read state *inside* the debounced closure so we sync the latest
+    // calibration the user typed, not the one captured at schedule time
+    // (mirrors the B49 rationale on `setCalibrationAndSync`).
+    const state = useVisualizerStore.getState();
+    const latestCalibration = state.scene?.calibration;
+    const serverVersion = state.serverVersion;
+    if (!latestCalibration) {
+      _calibrationSyncCtrl = null;
+      return;
+    }
+    try {
+      const updated = await apiUpdateCalibration(
+        projectId,
+        latestCalibration,
+        serverVersion,
+        { signal: ctrl.signal },
+      );
+      if (_calibrationSyncCtrl === ctrl) {
+        useVisualizerStore.setState({ serverVersion: updated.version });
+        _calibrationSyncCtrl = null;
+      }
+    } catch (err) {
+      if (_calibrationSyncCtrl === ctrl) {
+        _calibrationSyncCtrl = null;
+      }
+      if (err instanceof StaleVersionError) {
+        message.warning(
+          'Проект изменён в другом окне. Обновите страницу, чтобы увидеть свежие данные.',
+        );
+        return;
+      }
+      if ((err as DOMException)?.name === 'AbortError') return;
+      if (import.meta.env.DEV) {
+        console.warn('[scheduleCalibrationSync] PATCH failed:', err);
+      }
+    }
+  }, SYNC_DEBOUNCE_MS);
+}
+
 const EMPTY_LAYOUT: PanelLayout = {
   panels: [],
   placementMode: 'manual',
@@ -351,7 +411,9 @@ export const useVisualizerStore = create<VisualizerState>()(
         );
         return;
       }
-      console.error('autoFill error:', err);
+      if (import.meta.env.DEV) {
+        console.error('autoFill error:', err);
+      }
       message.error('Ошибка при автозаполнении');
     }
   },
@@ -382,7 +444,7 @@ export const useVisualizerStore = create<VisualizerState>()(
       calibrationPoints: { ...s.calibrationPoints, referenceCm: cm },
     })),
   applyCalibration: () => {
-    const { calibrationPoints, scene } = get();
+    const { calibrationPoints, scene, projectId } = get();
     const { start, end, referenceCm } = calibrationPoints;
     if (!start || !end || !scene || referenceCm <= 0) return false;
     const distPx = Math.hypot(end.x - start.x, end.y - start.y);
@@ -397,6 +459,9 @@ export const useVisualizerStore = create<VisualizerState>()(
       },
       editorMode: 'default',
     });
+    // X1 closure — persist the manual calibration. Without this PATCH,
+    // users lost their two-point calibration on reload.
+    if (projectId) scheduleCalibrationSync(projectId);
     return true;
   },
   resetCalibration: () =>
@@ -517,6 +582,9 @@ export const useVisualizerStore = create<VisualizerState>()(
       },
       ...(closeOverlay ? { editorMode: 'default' as const } : {}),
     });
+    // X1 closure — persist the chosen auto-candidate. Without this PATCH,
+    // the selected reference calibration was lost on reload.
+    if (state.projectId) scheduleCalibrationSync(state.projectId);
     return true;
   },
   wallBrightness: 128,
@@ -659,52 +727,10 @@ export const useVisualizerStore = create<VisualizerState>()(
     get().setCalibration(calibration);
     const { projectId } = get();
     if (!projectId) return;
-
-    if (_calibrationSyncTimer) clearTimeout(_calibrationSyncTimer);
-    _calibrationSyncCtrl?.abort();
-
-    _calibrationSyncTimer = setTimeout(async () => {
-      _calibrationSyncTimer = null;
-      const ctrl = new AbortController();
-      _calibrationSyncCtrl = ctrl;
-      // B49 closure — symmetric with `setPerspectiveCornersAndSync`. Read the
-      // *latest* calibration off the store rather than the closure-captured
-      // arg from the original call: when the user types pixels-per-cm rapidly
-      // we coalesce into the trailing edge of the debounce, and the trailing
-      // edge must reflect the final value the user typed, not the first.
-      const latestCalibration = get().scene?.calibration;
-      const { serverVersion } = get();
-      if (!latestCalibration) {
-        _calibrationSyncCtrl = null;
-        return;
-      }
-      try {
-        const updated = await apiUpdateCalibration(
-          projectId,
-          latestCalibration,
-          serverVersion,
-          { signal: ctrl.signal },
-        );
-        if (_calibrationSyncCtrl === ctrl) {
-          set({ serverVersion: updated.version });
-          _calibrationSyncCtrl = null;
-        }
-      } catch (err) {
-        if (_calibrationSyncCtrl === ctrl) {
-          _calibrationSyncCtrl = null;
-        }
-        if (err instanceof StaleVersionError) {
-          message.warning(
-            'Проект изменён в другом окне. Обновите страницу, чтобы увидеть свежие данные.',
-          );
-          return;
-        }
-        if ((err as DOMException)?.name === 'AbortError') return;
-        if (import.meta.env.DEV) {
-          console.warn('[setCalibrationAndSync] PATCH failed:', err);
-        }
-      }
-    }, SYNC_DEBOUNCE_MS);
+    // Debounce + PATCH logic lives in `scheduleCalibrationSync` (X1 closure)
+    // so every calibration write path — slider edits, manual two-point,
+    // reference-candidate selection — follows the same contract.
+    scheduleCalibrationSync(projectId);
   },
 
   cancelPendingSync: () => {
@@ -831,8 +857,17 @@ export const useVisualizerStore = create<VisualizerState>()(
       selectedColorName: state.selectedColorName,
       perspectiveCorners: state.perspectiveCorners,
     }),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onRehydrateStorage: () => (state: any) => {
+    // The persisted shape diverges from runtime `VisualizerState` only at
+    // `scene.wallMask`, where `Uint8Array` is serialised as `{_base64, w, h}`.
+    // Typing the callback with a narrow interface replaces the former `any`
+    // (X14 closure) without dragging the full persisted shape into scope.
+    onRehydrateStorage: () => (
+      state: (VisualizerState & {
+        scene: (Scene & {
+          wallMask: (WallMask & { _base64?: string }) | null;
+        }) | null;
+      }) | undefined,
+    ) => {
       if (!state?.scene?.wallMask) return;
       // Restore Uint8Array from base64
       const wm = state.scene.wallMask;

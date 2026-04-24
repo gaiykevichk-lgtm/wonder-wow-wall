@@ -1185,8 +1185,48 @@ Alembic уже инициализирован: `backend/alembic.ini`, `backend/a
 | 4 + fix-pass | ✅ ЯДРО ЗАВЕРШЕНО | 4.1c / 4.2a остаются отложенными |
 | 5A + fix-pass | ✅ ЗАВЕРШЕНА | — |
 | 5B + 5B.4.1 | ✅ ЗАВЕРШЕНА | — |
-| **5C + 5C.7** | ⚠️ **85% — см. X1** | Требуется fix-pass **5C.8** для закрытия X1 перед объявлением «релиз-готова». Остальное по-прежнему зелёное. |
+| **5C + 5C.7 + 5C.8** | ✅ **ЗАВЕРШЕНА** (24.04.2026) | X1 закрыт — см. §5C.8. Остальное по-прежнему зелёное. |
 | 6 (частично) | Ядро ✅, HTTP/тесты ⏸ | Без изменений — C1/C2/C6/C7/C8 остаются плановым scope |
+
+---
+
+### 5C.8 Fix-pass по cross-phase аудиту (24.04.2026)
+
+**Сфера:** закрытие критической находки X1 и большинства некритических X-пунктов из раздела «Cross-phase аудит (24.04.2026)».
+
+**Критическое (X1) — ✅ закрыто**
+
+- [x] **X1** — ручная калибровка и выбор авто-кандидата теперь синкаются на бэкенд.
+  - Извлечён модульный хелпер `scheduleCalibrationSync(projectId)` (`frontend/src/domains/visualizer/model/visualizerStore.ts`). Содержит полный debounce + PATCH + AbortController паттерн, ранее дублировавшийся внутри `setCalibrationAndSync`.
+  - `applyCalibration` (ручная двухточечная): после локального `set({scene.calibration: …, calibrationAutoDetected: false, editorMode: 'default'})` вызывает `scheduleCalibrationSync(projectId)` если `projectId != null`.
+  - `applyReferenceCandidate` (выбор авто-эталона): симметрично — `scene.calibration: estimated.calibration, calibrationAutoDetected: true` + `scheduleCalibrationSync`.
+  - `setCalibrationAndSync` упрощён: тот же `setCalibration + scheduleCalibrationSync` — один путь для всех трёх сценариев.
+  - Проверка DoD: для пользователя с `projectId != null` изменения калибровки (ручная и авто) доезжают до бэкенда за ~1 сек debounce и восстанавливаются после reload.
+
+**Некритическое — ✅ закрыто**
+
+- [x] **X3** — `buildCacheKey` в `panelWarpRenderer.ts` теперь включает `gridSize`. Коллизия кэша между warp'ами с одинаковым quad, но разной mesh-плотностью устранена.
+- [x] **X4** — silent `try/catch {}` в mesh-loop `renderPanelToQuad` заменён на `catch (err) { if (import.meta.env.DEV) console.warn(...) }`. Дегенеративные треугольники по-прежнему скипаются, но неизвестные исключения теперь видны в DEV.
+- [x] **X5** — `console.error` в `autoFill`'s catch-ветке обёрнут в `import.meta.env.DEV`-гейт. Пользовательский тост `message.error` остаётся.
+- [x] **X8** — двойная сортировка в `pickHorizontalVerticalBins` (`vanishingPointDetector.ts`) заменена на два линейных min-прохода. O(n log n) × 2 → O(n) × 2 (n ≥ 2 по pre-condition).
+- [x] **X9** — добавлены тесты `applyCalibration — X1 sync wiring` и `applyReferenceCandidate — X1 sync wiring` в `__tests__/visualizerStore.test.ts`. Покрывают: (a) триггер PATCH при `projectId`, (b) local-only при его отсутствии, (c) корректный `version` в теле запроса.
+- [x] **X10** — добавлен тест `per-kind AbortController independence (X10)`: perspective-edit в середине in-flight calibration PATCH не абортит калибровку (и наоборот).
+- [x] **X11** — `server_version` теперь проверяется в теле 409-ответа в тестах `test_stale_version_returns_409` (оба — perspective и calibration) в `backend/tests/api/test_visualizer_perspective_api.py`. B45-контракт полностью покрыт.
+- [x] **X13** — `CalibrationSchema` → `CalibrationDTO`, `PointSchema` → `PointDTO` в `backend/app/infrastructure/api/visualizer.py`. Эти DTO используются одновременно в Create/Update/Response, поэтому `*DTO` подходит лучше, чем `*Update`/`*Response`. Все 12 внутренних использований обновлены.
+- [x] **X14** — `onRehydrateStorage` теперь типизирован явным пересечением `VisualizerState & {scene: (Scene & {wallMask: WallMask & {_base64?: string}}) | null}` вместо `any`. `eslint-disable` снят.
+- [x] **X15** — `rethrowVisualizerError(err): never` → `mapVisualizerError(err): unknown`. Вызовы в `updatePerspective` / `updateCalibration` → `throw mapVisualizerError(err)`. Хвостовой `throw err` удалён; семантика сохранена (не-ApiError значения проходят через неизменёнными).
+
+**Отложено / accepted as-is**
+
+- [ ] **X2** — селекторная миграция `PhotoEditorPage` (`const store = useVisualizerStore()` → 114 `useVisualizerStore((s) => s.X)` вызовов). Полный рефакторинг слишком объёмен для fix-pass'а и не даёт user-visible выигрыша (Konva-stage доминирует в render-cost). Добавлен `TODO(X2)` с обоснованием; миграция — post-5C tech-debt.
+- [ ] **X6 / X7** — deferred в `1B v2` по существующему плану, не входит в scope 5C.
+- [ ] **X12** — stateful `_rng` в `PlaneFittingService` осознанно задокументирован в §6.6; не трогаем.
+
+**Сводка покрытия:** X1, X3, X4, X5, X8, X9, X10, X11, X13, X14, X15 — закрыты в коде + тестах. X2 — tech-debt с комментарием. X6/X7/X12 — вне scope 5C по плану.
+
+**Тесты:** `npx vitest run` — 368/368 проходят. `npx tsc --noEmit` — чисто. Backend тесты (`test_visualizer_perspective_api.py`) синтаксически валидны; запустить полностью нельзя в этом sandbox'е (fastapi не в `.venv`), но по py_compile проходят.
+
+**DoD Phase 5C:** теперь полностью достигнут — ручная калибровка и авто-эталон восстанавливаются после reload.
 
 ---
 

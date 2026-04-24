@@ -49,15 +49,22 @@ class PlacedPanelSchema(BaseModel):
     render_height: float = 150.0
 
 
-class PointSchema(BaseModel):
+class PointDTO(BaseModel):
     x: float
     y: float
 
 
-class CalibrationSchema(BaseModel):
+class CalibrationDTO(BaseModel):
     """API DTO for `ScaleCalibration` VO. Snake_case wire format — Phase 5C
     intentionally keeps backend DTOs snake_case (matching legacy fields like
-    `calibration_pixels_per_cm`); the frontend layer converts to camelCase."""
+    `calibration_pixels_per_cm`); the frontend layer converts to camelCase.
+
+    X13 closure — renamed from `CalibrationSchema` (and `PointSchema`) to the
+    `*DTO` suffix. These classes are shared between the Create, Update and
+    Response shapes, so a `*Update`/`*Response` suffix would be misleading;
+    `*DTO` is the neutral label the codebase uses elsewhere for cross-direction
+    payload types.
+    """
 
     method: Literal["reference", "manual", "auto"]
     pixels_per_cm: float = Field(gt=0)
@@ -73,7 +80,7 @@ class CalibrationSchema(BaseModel):
         )
 
     @classmethod
-    def from_vo(cls, vo: ScaleCalibration) -> "CalibrationSchema":
+    def from_vo(cls, vo: ScaleCalibration) -> "CalibrationDTO":
         return cls(
             method=vo.method,
             pixels_per_cm=vo.pixels_per_cm,
@@ -90,10 +97,10 @@ class VisualizationProjectCreate(BaseModel):
     wall_mask_base64: str = Field("", max_length=10_000_000)  # ~7.5 MB base64
     calibration_pixels_per_cm: float = 5.0
     panels: list[PlacedPanelSchema] = Field(default_factory=list, max_length=500)
-    perspective_corners: list[PointSchema] | None = None
+    perspective_corners: list[PointDTO] | None = None
     placement_mode: str = "manual"
     # ─── Phase 5C additions ───
-    calibration: CalibrationSchema | None = None
+    calibration: CalibrationDTO | None = None
     perspective_auto_detected: bool = False
     calibration_auto_detected: bool = False
 
@@ -106,10 +113,10 @@ class VisualizationProjectUpdate(BaseModel):
     wall_mask_base64: str = Field("", max_length=10_000_000)
     calibration_pixels_per_cm: float = 5.0
     panels: list[PlacedPanelSchema] = Field(default_factory=list, max_length=500)
-    perspective_corners: list[PointSchema] | None = None
+    perspective_corners: list[PointDTO] | None = None
     placement_mode: str = "manual"
     # ─── Phase 5C additions ───
-    calibration: CalibrationSchema | None = None
+    calibration: CalibrationDTO | None = None
     perspective_auto_detected: bool = False
     calibration_auto_detected: bool = False
     # Optimistic-lock — clients that omit it get last-write-wins (legacy).
@@ -125,12 +132,12 @@ class VisualizationProjectResponse(BaseModel):
     wall_mask_base64: str
     calibration_pixels_per_cm: float
     panels: list[PlacedPanelSchema]
-    perspective_corners: list[PointSchema] | None
+    perspective_corners: list[PointDTO] | None
     placement_mode: str
     created_at: str
     updated_at: str
     # ─── Phase 5C additions ───
-    calibration: CalibrationSchema | None = None
+    calibration: CalibrationDTO | None = None
     perspective_auto_detected: bool = False
     calibration_auto_detected: bool = False
     version: int = 1
@@ -150,7 +157,7 @@ class VisualizationProjectListItem(BaseModel):
 class PerspectiveCornersUpdateBody(BaseModel):
     """Body for `PATCH /perspective`. `corners=None` clears the perspective."""
 
-    corners: list[PointSchema] | None = Field(
+    corners: list[PointDTO] | None = Field(
         default=None,
         description="Four points TL→TR→BR→BL, or null to clear the perspective.",
     )
@@ -160,7 +167,7 @@ class PerspectiveCornersUpdateBody(BaseModel):
 class CalibrationUpdateBody(BaseModel):
     """Body for `PATCH /calibration`."""
 
-    calibration: CalibrationSchema
+    calibration: CalibrationDTO
     version: int = Field(ge=1, description="Server-side version the client last loaded.")
 
 
@@ -202,7 +209,7 @@ def _entity_to_response(p: VisualizationProject) -> dict:
     corners = None
     if p.perspective_corners:
         corners = [{"x": c["x"], "y": c["y"]} for c in p.perspective_corners]
-    calibration_dict = CalibrationSchema.from_vo(p.calibration).model_dump() if p.calibration else None
+    calibration_dict = CalibrationDTO.from_vo(p.calibration).model_dump() if p.calibration else None
     return {
         "id": p.id,
         "name": p.name,

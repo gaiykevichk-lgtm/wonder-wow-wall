@@ -104,18 +104,29 @@ export class DegenerateCornersError extends Error {
   }
 }
 
-function rethrowVisualizerError(err: unknown): never {
+/**
+ * Map a raw API error (ApiError or anything else) to a domain-level
+ * visualizer error, or pass through unchanged. Callers `throw` the result.
+ *
+ * X15 closure — previous revision was `rethrowVisualizerError(err): never`
+ * with a tail `throw err`. The `never` return required TS control-flow to
+ * propagate termination at every call site, and the tail `throw` duplicated
+ * the caller's intent. Returning the mapped value keeps the call site
+ * explicit (`throw mapVisualizerError(err)`) and preserves the original
+ * thrown-value identity for non-ApiError cases.
+ */
+function mapVisualizerError(err: unknown): unknown {
   if (err instanceof ApiError) {
     const code = err.body?.code as string | undefined;
     if (err.status === 409 && code === 'stale_version') {
       const serverVersion = (err.body?.server_version as number | undefined) ?? undefined;
-      throw new StaleVersionError(err.detail, serverVersion);
+      return new StaleVersionError(err.detail, serverVersion);
     }
     if (err.status === 422 && code === 'degenerate_corners') {
-      throw new DegenerateCornersError(err.detail);
+      return new DegenerateCornersError(err.detail);
     }
   }
-  throw err;
+  return err;
 }
 
 // ─── Wire ↔ DTO mappers ───────────────────────────────────────────────
@@ -225,7 +236,7 @@ export async function updatePerspective(
     );
     return projectFromWire(wire);
   } catch (err) {
-    rethrowVisualizerError(err);
+    throw mapVisualizerError(err);
   }
 }
 
@@ -251,6 +262,6 @@ export async function updateCalibration(
     );
     return projectFromWire(wire);
   } catch (err) {
-    rethrowVisualizerError(err);
+    throw mapVisualizerError(err);
   }
 }

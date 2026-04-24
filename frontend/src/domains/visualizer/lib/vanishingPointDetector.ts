@@ -240,20 +240,36 @@ function clusterByAngle(lines: Line[]): ClusterResult {
  * the "vertical" direction. Returns `[horizontalBinIdx, verticalBinIdx]`.
  */
 function pickHorizontalVerticalBins(strongBins: number[]): [number, number] {
-  const sorted = strongBins.slice().sort((a, b) => {
-    // Distance from horizontal (bin 0 or NUM_ANGLE_BINS).
-    const distHA = Math.min(a, NUM_ANGLE_BINS - a);
-    const distHB = Math.min(b, NUM_ANGLE_BINS - b);
-    return distHA - distHB;
-  });
-  const h = sorted[0]!;
-  // The vertical pick is the strong bin furthest from horizontal that isn't `h`.
-  const v =
-    sorted.slice(1).sort((a, b) => {
-      const dvA = Math.abs(a - NUM_ANGLE_BINS / 2);
-      const dvB = Math.abs(b - NUM_ANGLE_BINS / 2);
-      return dvA - dvB;
-    })[0] ?? sorted[1]!;
+  // X8 closure — single-pass min-search replaces the previous sort-then-sort
+  // pattern (O(n log n) × 2). For n ≥ 2 strongBins (precondition of this
+  // helper) we just scan once for the bin closest to horizontal, then once
+  // more excluding that index for the bin closest to vertical.
+  const distFromHorizontal = (b: number): number =>
+    Math.min(b, NUM_ANGLE_BINS - b);
+  const distFromVertical = (b: number): number =>
+    Math.abs(b - NUM_ANGLE_BINS / 2);
+
+  let hIdx = 0;
+  let hBest = distFromHorizontal(strongBins[0]!);
+  for (let i = 1; i < strongBins.length; i++) {
+    const d = distFromHorizontal(strongBins[i]!);
+    if (d < hBest) {
+      hBest = d;
+      hIdx = i;
+    }
+  }
+  const h = strongBins[hIdx]!;
+
+  let v = h;
+  let vBest = Infinity;
+  for (let i = 0; i < strongBins.length; i++) {
+    if (i === hIdx) continue;
+    const d = distFromVertical(strongBins[i]!);
+    if (d < vBest) {
+      vBest = d;
+      v = strongBins[i]!;
+    }
+  }
   return [h, v];
 }
 

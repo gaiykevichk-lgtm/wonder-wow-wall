@@ -45,6 +45,12 @@ import type { Point, AccentZone, PerspectiveCorners } from '../model/types';
 const { Title, Text } = Typography;
 
 export default function PhotoEditorPage() {
+  // TODO(X2): this subscribes the component to every field on the store,
+  // so unrelated mutations (undo stack push, cost recompute, sync in-flight
+  // status) re-render the whole page. Migrating the 114 `store.X` call sites
+  // to individual `useVisualizerStore((s) => s.X)` selectors is tracked as
+  // post-5C tech debt; the page's render cost is dominated by the Konva
+  // stage today, so the re-render churn is not yet user-visible.
   const store = useVisualizerStore();
   const hasSubscription = useSubscriptionStore((s) => s.hasSubscription);
   const addCartItem = useCartStore((s) => s.addItem);

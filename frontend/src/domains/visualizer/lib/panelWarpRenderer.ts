@@ -236,7 +236,12 @@ function buildCacheKey(opts: WarpOptions, dstQuad: Quad): string {
     .join('_');
   // encodeURIComponent the URL so a stray `|` in the URL can't collide with
   // the field separator (e.g. data URIs or querystrings containing pipes).
-  return `${encodeURIComponent(opts.designUrl)}|${quadHash}|${opts.opacity.toFixed(3)}|${opts.colorTint || ''}`;
+  // X3 closure — include gridSize in the key: two warps with the same design,
+  // quad, opacity, tint but different gridSize produce visibly different mesh
+  // tessellations (more triangles = smoother perspective). Without this they
+  // would collide and the second caller would get the first caller's mesh.
+  const gridSize = opts.gridSize ?? 8;
+  return `${encodeURIComponent(opts.designUrl)}|${quadHash}|${opts.opacity.toFixed(3)}|${opts.colorTint || ''}|g${gridSize}`;
 }
 
 /** Drop all cached warps. Call when perspective corners change. */
@@ -327,9 +332,14 @@ export function renderPanelToQuad(opts: WarpOptions): WarpResult {
       ctx.setTransform(m[0], m[1], m[2], m[3], m[4] - bbox.x, m[5] - bbox.y);
       ctx.drawImage(designImage, 0, 0, wallRect.width, wallRect.height);
       ctx.restore();
-    } catch {
-      // Degenerate triangle (e.g. quad collapsed to a line near horizon).
-      // Skip it silently — the rest of the mesh will still render.
+    } catch (err) {
+      // Degenerate triangle (e.g. quad collapsed to a line near horizon) or
+      // a singular affine matrix from `affineFromTriangles`. Skip — the rest
+      // of the mesh still renders. X4 closure: surface in DEV so unknown
+      // exceptions (not just degenerate-geometry ones) are not hidden.
+      if (import.meta.env.DEV) {
+        console.warn('[renderPanelToQuad] mesh triangle skipped:', err);
+      }
     }
   }
 

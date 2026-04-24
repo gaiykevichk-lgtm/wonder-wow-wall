@@ -776,6 +776,132 @@ describe('visualizerStore — backend autosave (Phase 5C)', () => {
     });
   });
 
+  // X9 closure — before this coverage, `applyCalibration` and
+  // `applyReferenceCandidate` wrote `scene.calibration` via direct `set()`
+  // without firing any PATCH. The audit caught the regression only because
+  // the apply-methods were reviewed manually; these tests make the sync
+  // contract executable so future refactors cannot silently unwire it.
+  describe('applyCalibration — X1 sync wiring', () => {
+    it('triggers a debounced PATCH when projectId is set', async () => {
+      const spy = vi.spyOn(visualizerApi, 'updateCalibration')
+        .mockResolvedValue(dto({ version: 5 }));
+      useVisualizerStore.getState().setScene(makeScene());
+      useVisualizerStore.getState().setLoadedProject(dto({ id: 'p1', version: 4 }));
+
+      const store = useVisualizerStore.getState();
+      store.setCalibrationPoint('start', { x: 0, y: 0 });
+      store.setCalibrationPoint('end', { x: 100, y: 0 });
+      store.setCalibrationReference(100); // 100cm, 100px → pixels_per_cm = 1
+      const ok = store.applyCalibration();
+      expect(ok).toBe(true);
+
+      // Local state reflects the manual calibration immediately.
+      const after = useVisualizerStore.getState();
+      expect(after.scene!.calibration?.method).toBe('reference');
+      expect(after.scene!.calibration?.pixelsPerCm).toBeCloseTo(1);
+      expect(after.scene!.calibrationAutoDetected).toBe(false);
+
+      // Debounced PATCH fires after the window.
+      await vi.advanceTimersByTimeAsync(1100);
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(spy.mock.calls[0]![0]).toBe('p1');
+      expect(spy.mock.calls[0]![2]).toBe(4);
+      expect(useVisualizerStore.getState().serverVersion).toBe(5);
+    });
+
+    it('is local-only when projectId is null (unsaved scene)', async () => {
+      const spy = vi.spyOn(visualizerApi, 'updateCalibration')
+        .mockResolvedValue(dto());
+      useVisualizerStore.getState().setScene(makeScene());
+      // No setLoadedProject — projectId remains null.
+
+      const store = useVisualizerStore.getState();
+      store.setCalibrationPoint('start', { x: 0, y: 0 });
+      store.setCalibrationPoint('end', { x: 100, y: 0 });
+      store.setCalibrationReference(100);
+      store.applyCalibration();
+      await vi.advanceTimersByTimeAsync(2000);
+
+      // Backend never touched on an unsaved scene — PATCH would 404.
+      expect(spy).not.toHaveBeenCalled();
+      // Local mirror still updates so the user sees immediate feedback.
+      expect(useVisualizerStore.getState().scene!.calibration?.method).toBe('reference');
+    });
+  });
+
+  describe('applyReferenceCandidate — X1 sync wiring', () => {
+    it('triggers a debounced PATCH when projectId is set', async () => {
+      const spy = vi.spyOn(visualizerApi, 'updateCalibration')
+        .mockResolvedValue(dto({ version: 6 }));
+      useVisualizerStore.getState().setScene(makeScene());
+      useVisualizerStore.getState().setLoadedProject(dto({ id: 'p1', version: 5 }));
+
+      // Outlet candidate (≈86 × 86 mm = 8.6 cm), bbox 86 px → ~10 px/cm.
+      useVisualizerStore.getState().applyReferenceCandidate({
+        type: 'outlet',
+        bbox: { x: 10, y: 10, width: 86, height: 86 },
+        confidence: 0.9,
+      });
+
+      const after = useVisualizerStore.getState();
+      expect(after.scene!.calibration?.method).toBe('auto');
+      expect(after.scene!.calibrationAutoDetected).toBe(true);
+
+      await vi.advanceTimersByTimeAsync(1100);
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(spy.mock.calls[0]![0]).toBe('p1');
+      expect(spy.mock.calls[0]![2]).toBe(5);
+      expect(useVisualizerStore.getState().serverVersion).toBe(6);
+    });
+  });
+
+  // X10 closure — `_perspectiveSyncCtrl` and `_calibrationSyncCtrl` are
+  // per-kind: an in-flight calibration PATCH must not be aborted by a new
+  // perspective drag, and vice versa. This was documented in the module-
+  // level comment but never exercised.
+  describe('per-kind AbortController independence (X10)', () => {
+    it('a new perspective edit does not abort an in-flight calibration PATCH', async () => {
+      // Calibration PATCH takes 2s to resolve — still in flight when we
+      // fire the perspective edit.
+      vi.spyOn(visualizerApi, 'updateCalibration').mockImplementation(
+        (_pid, _cal, _ver, opts) =>
+          new Promise((resolve, reject) => {
+            opts?.signal?.addEventListener('abort', () => {
+              reject(new DOMException('aborted', 'AbortError'));
+            });
+            setTimeout(() => resolve(dto({ version: 5 })), 2000);
+          }),
+      );
+      const pSpy = vi.spyOn(visualizerApi, 'updatePerspective')
+        .mockResolvedValue(dto({ version: 6 }));
+
+      useVisualizerStore.getState().setScene(makeScene());
+      useVisualizerStore.getState().setLoadedProject(dto({ id: 'p1', version: 4 }));
+
+      // Kick off calibration PATCH: debounces 1s, then request flies.
+      useVisualizerStore.getState().setCalibrationAndSync({
+        method: 'manual',
+        pixelsPerCm: 8,
+      });
+      await vi.advanceTimersByTimeAsync(1000); // calibration PATCH now in flight
+
+      // Fire perspective edit while calibration is still pending — should
+      // use a *separate* AbortController (per-kind).
+      useVisualizerStore.getState().setPerspectiveCornersAndSync(square());
+      await vi.advanceTimersByTimeAsync(1100); // perspective PATCH fires
+
+      // Perspective PATCH completed on its own controller.
+      expect(pSpy).toHaveBeenCalledTimes(1);
+      // Calibration PATCH is still in flight, *not* aborted.
+      // Let it resolve and verify it lands cleanly.
+      await vi.advanceTimersByTimeAsync(1000);
+      await Promise.resolve();
+      await Promise.resolve();
+      // The calibration controller signal never aborted → no AbortError warning.
+      expect(message.warning).not.toHaveBeenCalled();
+    });
+  });
+
   describe('cancelPendingSync / reset', () => {
     it('reset() aborts pending PATCH', async () => {
       const spy = vi.spyOn(visualizerApi, 'updatePerspective')
