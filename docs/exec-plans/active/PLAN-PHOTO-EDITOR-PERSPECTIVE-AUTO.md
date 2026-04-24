@@ -112,7 +112,45 @@
 
 - [ ] Скриншот «до/после» с реальным фото в design-doc — **отложено**: требует UI-сессии с прогоном через браузер, не делается в Фазе 1A автоматически. Будет приложено в момент QA-релиза.
 
+### 1A.4 Аудит реализации (24.04.2026)
+
+> **Метод:** code-review line-by-line всех изменённых файлов из коммита Фазы 1A; перекрёстная проверка с `frontend/CONVENTIONS.md`; полный прогон test-suite домена `visualizer` (16 файлов / 157 тестов); проверка типов через резолв `Konva.Context` в `node_modules/konva/lib/_CoreInternals.d.ts:198,211`; статический поиск остаточных `console.log` / `any` в изменённых файлах.
+
+#### Что именно проверено
+
+| Артефакт | Что искал | Результат |
+|----------|-----------|-----------|
+| `KonvaCanvas.tsx:554-610` (новая ветка perspective) | Структуру `<Group>/<Group clipFunc>/<KonvaImage>+<Line>/<Line>`; типизацию `ctx: Konva.Context`; передачу `panelHandlers` на топовый `<Line>` (а не на `<KonvaImage>`); `listening={false}` у фоновых элементов; opacity-арифметику `0.85 + brightnessAdj` и `designImg ? 0.25 : 0.85+adj`; цвет fallback `#CCCCCC` | Соответствует логике плоской ветки (614-665), R1 закрыт |
+| `KonvaCanvas.tsx:1-12` (импорты) | Добавлены ли `Line`, `transformRect`, `quadToFlatPoints`, `Konva` (type-only); кэш `konvaDesignImageCache` не сломан | Все импорты на месте, `import type Konva from 'konva'` работает (Context экспортирован в namespace) |
+| `layoutEngine.ts` | Удалён ли debug `console.log('[autoFill]', …)` из `autoFillWall()` | Удалён; других `console.*` в файле нет; `console.error` в `visualizerStore.ts:219` — легитимный (в catch-блоке), не из этой фазы |
+| `KonvaCanvas.test.tsx` | Полнота моков react-konva (Line раньше отсутствовал!); поведение мока `Group` относительно `clipFunc`; покрытие новой ветки 4 тестами | Mock `<Line>` добавлен с `data-fill`; `<Group>` инвоцирует `clipFunc(stubCtx)` и выставляет `data-clipped`; есть тест регрессии для не-perspective ветки |
+| Конвенции (`frontend/CONVENTIONS.md`) | Без `any` в продовом коде; PascalCase/camelCase; inline styles; селекторный Zustand (стор не трогали) | Соответствует. `(el as any)` в тесте — pre-existing с `eslint-disable`, не из Фазы 1A |
+| Тип `Konva.Context` | Резолвится через `import type Konva from 'konva'` | `node_modules/konva/lib/_CoreInternals.d.ts:198` (`Context: typeof Context`) и `:211` (`type Context = …`) — namespace expose подтверждён |
+| Регрессия тестов | `vitest run src/domains/visualizer/` | **16 файлов / 157 тестов — все зелёные** (18.42s) |
+
+#### Критические проблемы (блокируют фичу)
+
+**Не найдено.** Ветка perspective включается только при `perspectiveTransform != null`, имеет полное покрытие (clip-Group + backdrop Line + outline Line), не падает без `designImg`, не ломает плоскую ветку (регресс-тест зелёный + ручная диффовка с lines 614-665).
+
+#### Некритические проблемы (технический долг)
+
+| # | Файл / стр. | Проблема | Серьёзность | Куда отнести |
+|---|-------------|----------|-------------|--------------|
+| A1 | `KonvaCanvas.tsx:567-574` | `quadClipFunc` создаётся **в render-loop** на каждый рендер каждой панели — нет `useMemo`. При 50+ панелях добавит давление на GC. Не влияет на корректность. | low | Фаза 1B (когда заменим на полноценный warp — этот код всё равно уйдёт) |
+| A2 | `KonvaCanvas.tsx:599-608` | Тень и обводка применены **только к outline Line** снаружи clip. В плоской ветке тень — у самого `KonvaImage` (`:628-630`). Визуально: тень в перспективе чуть «другая», лежит вокруг quad, а не под текстурой. | low | Косметика, фиксить в 1B вместе с warp |
+| A3 | `KonvaCanvas.test.tsx:54-77` | Mock `<Group>` оборачивает вызов `clipFunc` в `try/catch` и **глушит все ошибки**. Если в `clipFunc` возникнет реальный bug (например `quad[0]` undefined), тест не упадёт. | low | Заменить на `expect(...).not.toThrow()`-подобный паттерн в Фазе 1B |
+| A4 | `KonvaCanvas.test.tsx:295,310,326` | Уродливый каст `corners as unknown as Parameters<typeof KonvaCanvas>[0]['perspectiveCorners']` повторяется 3 раза. Можно завести `const cornersTyped: PerspectiveCornersType = [...]` через прямой импорт типа. | low | Тех.долг тестов, не блокер |
+| A5 | `KonvaCanvas.test.tsx:319-330` | Тест «не падает без загруженной картинки» **слабый**: в нём `panelImages` всегда пуст (нет загрузчика), т.е. ветка `designImg = null` тестируется и в обычных кейсах. Реально не покрывает «картинка ещё грузится». | low | Усилить, замокав `panelImages` Map с loading-состоянием |
+| A6 | `KonvaCanvas.test.tsx:332-339` | Регресс-тест считает clipped-Group по факту наличия `data-clipped="true"` без привязки к panel.id. Если в будущем появится другой clipped Group (например, для accent-zone) — тест ложно позеленеет/покраснеет. | low | Уточнить селектор по `data-panel-id` (когда добавим атрибут в компонент) |
+| A7 | `KonvaCanvas.test.tsx` весь | Нет теста: (а) **порядка рендера** внутри clip — `KonvaImage` должен идти ДО color tint Line, иначе цвет затрёт текстуру; (б) **outline Line — снаружи clip** (сейчас просто проверяется наличие); (в) поведения при **загруженном `designImg`** (opacity 0.25 у tint vs 0.85 у backdrop). | medium | Добавить в Фазе 1B при переезде на warp |
+| A8 | `1A.3` | Скриншот «до/после» с реальным фото не приложен. Чек-лист помечен как «отложено», но без него нельзя 100% объявить R1 закрытым визуально. | medium | Сделать в QA-сессии перед Фазой 1B |
+
+#### Вывод
+
+Phase 1A может быть **принята как hot-fix RC**: критических багов и регрессий нет, тесты зелёные, типы валидны, конвенции не нарушены. Все 8 пунктов выше — известный тех.долг, явно адресуемый в Фазе 1B (warp перепишет половину этого кода).
+
 > **Definition of Done:** ✅ при включении ручной перспективы видно текстуру дизайна (внутри quad-clip), а не цветную трапецию. Backdrop `panel.color` сохранён под полупрозрачным дизайном. Релиз-кандидат готов.
+> **Аудит:** ✅ пройден 24.04.2026 — критических проблем нет, тех.долг (A1-A8) отнесён в Фазу 1B и QA.
 
 ---
 
