@@ -139,6 +139,48 @@
 
 > Фаза 1 завершена — базовый admin-guard работает end-to-end (JWT claim → `get_current_admin_id` → `<RequireAdmin>` → `/api/admin/me`). Фаза 2 разблокирована.
 
+### Аудит по итогам реализации (2026-04-24)
+
+Проверено построчно: 27 файлов в коммите `2b34f78`. 27 backend + 9 frontend тестов зелёные. Typecheck чист.
+
+**Долги, требующие фикса до Фазы 5 — ЗАКРЫТЫ (2026-04-24, follow-up commit):**
+- [x] `backend/app/infrastructure/api/error_handlers.py` — добавлены `last_admin_removal_handler` (→ 409 `{code: "last_admin"}`) и `not_authorized_handler` (→ 403 `{code: "not_authorized"}`); зарегистрированы в `app/main.py`. Docstring `domain/user/exceptions.py` теперь не врёт. Покрыто `tests/api/test_error_handlers_admin.py` (3 теста: shape каждого handler-а + проверка регистрации в `app.exception_handlers`).
+- [x] `backend/app/infrastructure/persistence/repositories/sql.py` — `count_admins()` сравнивает с `UserRole.ADMIN.value` (импорт поднят на top-level модуля, inline-import в `_user_to_domain` убран). `memory.py` — аналогично, `UserRole.ADMIN` на top-level.
+
+**Некритический тех-долг Фазы 1:**
+- [x] `backend/app/cli.py` — `sys.exit(2)` больше не вызывается внутри `async with async_session()`. Вместо этого `_grant_admin`/`_revoke_admin` поднимают CLI-локальный `_UserNotFound`, который проходит через `except Exception` блок `_with_repo` (rollback на пустой read-only txn), а затем перехватывается снаружи — там вызывается `sys.exit(2)` как и раньше. Поведение для пользователя не изменилось, но транзакция закрывается корректно.
+- [ ] Alembic-тесты (`tests/infrastructure/test_alembic.py`) падают только при запуске всего pytest-пакета (5 тестов); при изолированном запуске все 6 зелёные. **Pre-existing** (повторялось и до Фазы 1): `monkeypatch.setattr(settings, "DATABASE_URL", ...)` не выдерживает test-order, когда какой-то предыдущий тест уже создал async-engine к Postgres. Issue для Фазы 5 DX.
+
+**Отсутствие регрессий подтверждено:**
+- 269 backend тестов (кроме alembic, +3 новых на handlers) + 18 frontend тестов auth/admin домена — всё зелёно. Alembic при изолированном запуске — 6/6.
+- Существующие публичные эндпоинты `/api/auth/*` отдают `role` в `UserResponse` (auth.py:29-32), фронт опционально принимает — нет ломающих изменений в API-схеме.
+- `create_access_token(user_id)` сохраняет старую арность благодаря `role: str = "CUSTOMER"` default (jwt.py:23).
+- `decode_access_token` для legacy-токенов без claim `role` возвращает `(user_id, "CUSTOMER")` — старые сессии не сыпятся (jwt.py:50, R1).
+- Persist-миграция authStore v0→v1 бэкфилит `role: 'CUSTOMER'` для legacy-blob-ов в localStorage — покрыто тестом `authStore.role.test.ts` (R10).
+- Миграция 006 round-trip `upgrade → downgrade → upgrade` зелёная на SQLite — подтверждено новым тестом `test_phase1_role_column_added_by_006`.
+
+**Что проверено в каждом файле:**
+- `domain/user/entities.py` — `role` поле, `promote_to_admin`/`demote_to_customer` идемпотентны, `is_admin` property. Dependency Rule не нарушен: entity не видит репозиторий.
+- `domain/user/value_objects.py` — `UserRole(str, Enum)` с `CUSTOMER`/`ADMIN`. Строковый enum позволяет SQL хранить значение без конвертации.
+- `domain/user/exceptions.py` — `LastAdminRemovalError`, `NotAuthorizedError` от `Exception` (соответствует `CONVENTIONS.md`). Docstring актуален: handlers зарегистрированы.
+- `domain/user/repositories.py` — `count_admins()` как абстрактный метод обоих реализаций.
+- `application/user/use_cases.py` — `_ensure_actor_is_admin` с `SYSTEM` bypass для bootstrap; `RevokeAdminRole` делает `count_admins() <= 1` до `demote_to_customer()`; `GrantAdminRole` идемпотентен; `Register`/`Login` пробрасывают `user.role.value` в JWT.
+- `infrastructure/persistence/models.py` — `role` с `nullable=False, default="CUSTOMER", server_default="CUSTOMER"` (паттерн для миграции `NOT NULL` колонки на существующих строках).
+- `infrastructure/persistence/repositories/sql.py` — `_user_to_domain` с `try/except ValueError` fallback на `CUSTOMER`; `update()` синхронизирует `role`; `count_admins()` делает `SELECT COUNT(*)` с условием `UserModel.role == UserRole.ADMIN.value` (enum-safe).
+- `infrastructure/persistence/repositories/memory.py` — `count_admins()` через генератор `sum(...)` с сравнением по `UserRole.ADMIN`.
+- `infrastructure/security/jwt.py` — `create_access_token(user_id, role="CUSTOMER")` default; `decode_access_token` возвращает tuple, legacy fallback на `CUSTOMER`.
+- `infrastructure/api/auth.py` — `UserResponse` расширен `role: str`; все три endpoint (`register`, `login`, `me`, `update_profile`) отдают `user.role.value`.
+- `infrastructure/api/admin/__init__.py` — aggregator router с `include_router(_auth.router, prefix="", tags=["admin"])`. Готово для будущих саб-роутеров Фазы 2+.
+- `infrastructure/api/admin/auth.py` — `GET /me` под `get_current_admin_id`; 401 на удалённого-после-выдачи-токена юзера (stale token).
+- `utils/dependencies.py` — `get_current_admin_id` двух-шаговый: 401 → 403. Защита на уровне маршрута. `RequireAdmin` use case — defense-in-depth для внутренних операций.
+- `main.py` — `admin_api.router` под `/api/admin`.
+- `cli.py` — `grant_admin` / `revoke_admin` через `SYSTEM` actor; общий `_with_repo` обработчик SQL-сессии с commit/rollback. `_UserNotFound` sentinel вместо `sys.exit` внутри транзакции (см. audit fix выше).
+- `infrastructure/api/error_handlers.py` — два новых handler-а (`last_admin`/`not_authorized`), следуют той же схеме `{detail, code}`, что и visualizer-контекст.
+- `alembic/versions/006_add_role_to_users.py` — `server_default="CUSTOMER"` (R5 default-pattern); `downgrade()` через `op.drop_column`.
+- Frontend `authStore.ts` — persist `version: 1` + `migrate` callback для R10; `useIsAdmin` селектор отдельный от `user` (меньше re-render).
+- Frontend `RequireAdmin.tsx` — soft-redirect на `/login?redirect=...` (не-auth) и `/` (customer), без 404 (не палим existence роута).
+- Frontend `router.tsx` — `/admin` route **вне `<ShopLayout>`**, корректно под `<RequireAdmin>`.
+
 ---
 
 ## Фаза 2: Базовый layout админки + навигация

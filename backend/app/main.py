@@ -4,6 +4,10 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
+from app.domain.user.exceptions import (
+    LastAdminRemovalError,
+    NotAuthorizedError,
+)
 from app.domain.visualizer.exceptions import (
     CollinearCornersError,
     DepthEstimationError,
@@ -15,6 +19,8 @@ from app.infrastructure.api import admin as admin_api
 from app.infrastructure.api.error_handlers import (
     collinear_corners_handler,
     depth_estimation_handler,
+    last_admin_removal_handler,
+    not_authorized_handler,
     plane_fitting_handler,
     stale_scene_version_handler,
 )
@@ -40,6 +46,11 @@ app.add_exception_handler(StaleSceneVersionError, stale_scene_version_handler)
 # retry/fallback" and "surface a banner".
 app.add_exception_handler(DepthEstimationError, depth_estimation_handler)
 app.add_exception_handler(PlaneFittingError, plane_fitting_handler)
+# Phase 1 — admin-panel user/role errors. Register even though Phase 1
+# itself has no endpoint raising them: Phase 5 user management WILL, and
+# registering here keeps `main.py` stable across follow-up phases.
+app.add_exception_handler(LastAdminRemovalError, last_admin_removal_handler)
+app.add_exception_handler(NotAuthorizedError, not_authorized_handler)
 
 # ─── Security Headers ──────────────────────────────────────────────
 app.add_middleware(SecurityHeadersMiddleware)

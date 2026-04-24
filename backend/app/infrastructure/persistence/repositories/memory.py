@@ -14,6 +14,7 @@ from app.domain.subscription.entities import Subscription
 from app.domain.subscription.repositories import SubscriptionRepository
 from app.domain.user.entities import User
 from app.domain.user.repositories import UserRepository
+from app.domain.user.value_objects import UserRole
 
 
 # ─── Catalog ─────────────────────────────────────────────────────────
@@ -155,5 +156,4 @@ class InMemoryUserRepository(UserRepository):
         return user
 
     async def count_admins(self):
-        from app.domain.user.value_objects import UserRole
         return sum(1 for u in self._users if u.role == UserRole.ADMIN)

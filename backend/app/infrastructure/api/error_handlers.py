@@ -15,6 +15,10 @@ Phase 5C wires:
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
+from app.domain.user.exceptions import (
+    LastAdminRemovalError,
+    NotAuthorizedError,
+)
 from app.domain.visualizer.exceptions import (
     CollinearCornersError,
     DepthEstimationError,
@@ -74,4 +78,36 @@ async def plane_fitting_handler(request: Request, exc: PlaneFittingError):
     return JSONResponse(
         status_code=422,
         content={"detail": str(exc), "code": "plane_fit_failed"},
+    )
+
+
+# ─── Phase 1 — admin-panel user/role errors ──────────────────────────
+# Closes the gap where `RevokeAdminRole`/`RequireAdmin` could bubble
+# domain exceptions up as 500. Fronted by Фаза 5 user-management UI
+# which branches on the `code` field.
+
+
+async def last_admin_removal_handler(request: Request, exc: LastAdminRemovalError):
+    """Attempt to demote the only remaining admin → 409.
+
+    Same `code` pattern as `stale_version` so the frontend can map it to a
+    dedicated toast ("Нельзя снять роль у последнего администратора").
+    """
+    return JSONResponse(
+        status_code=409,
+        content={"detail": str(exc), "code": "last_admin"},
+    )
+
+
+async def not_authorized_handler(request: Request, exc: NotAuthorizedError):
+    """Actor is signed in but lacks the required role → 403.
+
+    Distinct from `get_current_admin_id`'s inline 403 because this one is
+    raised deep inside a use case (e.g. when an admin was just demoted and
+    replays a stale JWT). `code` lets the frontend detect "force re-login"
+    rather than showing a generic forbidden page.
+    """
+    return JSONResponse(
+        status_code=403,
+        content={"detail": str(exc), "code": "not_authorized"},
     )

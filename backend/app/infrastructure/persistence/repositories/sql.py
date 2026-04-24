@@ -19,6 +19,7 @@ from app.domain.subscription.repositories import SubscriptionRepository
 from app.domain.subscription.value_objects import SubscriptionStatus
 from app.domain.user.entities import User, UserAddress
 from app.domain.user.repositories import UserRepository
+from app.domain.user.value_objects import UserRole
 
 from app.infrastructure.persistence.models import (
     DesignModel,
@@ -107,7 +108,6 @@ def _subscription_to_domain(m: SubscriptionModel) -> Subscription:
 
 
 def _user_to_domain(m: UserModel) -> User:
-    from app.domain.user.value_objects import UserRole
     addresses = [
         UserAddress(
             id=a.id, label=a.label, city=a.city, street=a.street,
@@ -429,7 +429,12 @@ class SqlUserRepository(UserRepository):
         return user
 
     async def count_admins(self) -> int:
+        # Compare against the enum value rather than a hardcoded literal so a
+        # future rename of `UserRole.ADMIN.value` surfaces as a single-file
+        # change instead of a silent query mismatch.
         result = await self._session.execute(
-            select(func.count()).select_from(UserModel).where(UserModel.role == "ADMIN")
+            select(func.count())
+            .select_from(UserModel)
+            .where(UserModel.role == UserRole.ADMIN.value)
         )
         return int(result.scalar_one())

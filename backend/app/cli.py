@@ -21,6 +21,16 @@ from app.application.user.use_cases import GrantAdminRole, RevokeAdminRole
 from app.config import settings
 
 
+class _UserNotFound(Exception):
+    """CLI-local sentinel: `get_by_email` returned None.
+
+    Raised inside `_with_repo`'s transaction so the async-with block exits
+    via the `except` branch (rolling back the empty read-only txn) instead
+    of via `sys.exit`, which would escape as `SystemExit` and bypass the
+    `except Exception` rollback.
+    """
+
+
 async def _with_repo(coro_factory):
     """Open a repo (SQL or in-memory) and pass it to `coro_factory(repo)`.
 
@@ -49,24 +59,30 @@ async def _grant_admin(email: str) -> None:
     async def _run(repo):
         user = await repo.get_by_email(email)
         if user is None:
-            print(f"error: user not found by email: {email}", file=sys.stderr)
-            sys.exit(2)
+            raise _UserNotFound(email)
         uc = GrantAdminRole(repo)
         updated = await uc.execute(GrantAdminRole.SYSTEM_ACTOR, user.id)
         print(f"OK: {updated.email} (id={updated.id}) is now {updated.role.value}")
-    await _with_repo(_run)
+    try:
+        await _with_repo(_run)
+    except _UserNotFound as exc:
+        print(f"error: user not found by email: {exc}", file=sys.stderr)
+        sys.exit(2)
 
 
 async def _revoke_admin(email: str) -> None:
     async def _run(repo):
         user = await repo.get_by_email(email)
         if user is None:
-            print(f"error: user not found by email: {email}", file=sys.stderr)
-            sys.exit(2)
+            raise _UserNotFound(email)
         uc = RevokeAdminRole(repo)
         updated = await uc.execute(RevokeAdminRole.SYSTEM_ACTOR, user.id)
         print(f"OK: {updated.email} (id={updated.id}) is now {updated.role.value}")
-    await _with_repo(_run)
+    try:
+        await _with_repo(_run)
+    except _UserNotFound as exc:
+        print(f"error: user not found by email: {exc}", file=sys.stderr)
+        sys.exit(2)
 
 
 def main(argv: list[str] | None = None) -> None:
