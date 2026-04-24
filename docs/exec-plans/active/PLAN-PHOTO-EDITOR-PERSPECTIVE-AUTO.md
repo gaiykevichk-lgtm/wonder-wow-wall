@@ -744,6 +744,47 @@ Alembic уже инициализирован: `backend/alembic.ini`, `backend/a
 | `tests/infrastructure/__init__.py` | NEW (пустой) |
 | `tests/infrastructure/test_alembic.py` | NEW — 4 smoke-теста |
 
+### 5A.5 Аудит реализации Phase 5A (24.04.2026)
+
+Построчно проверены все файлы Phase 5A. Тесты в sandbox прогнать невозможно (нет pip / SQLAlchemy / pytest), runtime-валидация делегирована CI.
+
+**Что проверено (file:line):**
+- `alembic/versions/004_visualization_projects.py` (1-58) — структура колонок vs `VisualizationProjectModel` (`models.py:173-188`), FK ondelete, server_default-значения.
+- `alembic/versions/001_initial_schema.py:120-126, 143-145` — оба плеча dialect-guard для CREATE/DROP SEQUENCE; downgrade-цепочка не нарушена.
+- `alembic/env.py` (1-75) — `do_run_migrations` (39-51), `run_migrations_offline` (25-36): `render_as_batch=True` только для SQLite; импорт `Base` и моделей не сломан; sync→async обвязка цела.
+- `requirements.txt:24-29` — добавлена pinned-зависимость `aiosqlite==0.20.0` в секцию Testing.
+- `tests/infrastructure/__init__.py` — пустой, валидный package marker.
+- `tests/infrastructure/test_alembic.py` (1-108) — fixture `alembic_cfg` (39-54), helper `_table_exists` (57-65), три теста (68-108).
+- `app/infrastructure/persistence/models.py:173-190` — sanity-check, что 004 действительно отражает текущее состояние ORM.
+- `backend/CONVENTIONS.md` (1-60) — структура `tests/infrastructure/` явно не описана, но план её предписывает; конвенциям следует.
+
+**Регрессии:**
+- 001 dialect-guard на postgres-инстансах ничего не меняет (миграция уже applied; новые dev-инстансы получат тот же CREATE SEQUENCE через ту же ветку).
+- env.py: для postgres `render_as_batch=False` → дефолтное alembic-поведение неизменно.
+- requirements: только +1 test-only зависимость, prod-bundle не затронут.
+
+**Критические проблемы:** 0.
+
+**Некритические находки (тех.долг):**
+
+| # | Файл:строка | Проблема | План |
+|---|---|---|---|
+| **B22** | `004_visualization_projects.py:41-50` | Большинство non-Optional колонок (`photo_url`, `wall_mask_base64`, `placement_mode`, `panels_json`) не имеют явного `nullable=False`. ORM-маппинг `Mapped[str]` в SA 2.0 = `nullable=False`, миграция → `nullable=True` (default) ⇒ schema-drift, autogenerate выдаст diff. На рантайме защищено `server_default`, поэтому NULL не попадёт. | Точечный фикс в 004 (добавить `nullable=False` для всех `Mapped[str]/int/float`); параллельно почистить тот же drift в 001 — отдельной фазой/PR (трогает legacy-миграции). |
+| **B23** | `004_visualization_projects.py:36` vs `models.py:177` | ORM объявляет `ForeignKey("users.id")` без `ondelete`, миграция — `ondelete="CASCADE"`. ORM-cascade `delete-orphan` живёт на app-уровне, БД-CASCADE работает независимо. Drift, но согласуется со стилем 001 (например, `user_addresses.user_id` тот же кейс). | Привести ORM к виду `ForeignKey("users.id", ondelete="CASCADE")` в `models.py:177` (это ORM-фикс, не миграция). Не блокирует. |
+| **B24** | `004_visualization_projects.py:38` vs `models.py:177` | `index=True` на `user_id` в миграции, в ORM не объявлен — autogenerate-diff. Индекс по FK здравый (запросы `get_by_user`), но рассинхрон. | Добавить `index=True` в `models.py:177`. |
+| **B25** | `alembic/env.py:40-43` (комментарий) | Комментарий обещает, что `render_as_batch=True` оборачивает `op.drop_column` в 003 для round-trip на SQLite < 3.35. **Это не так**: `render_as_batch` влияет на autogenerate, а не на уже-написанные `op.drop_column` (для них нужен явный `with op.batch_alter_table(...)`). На SQLite ≥ 3.35 нативный `DROP COLUMN` работает и без батча — фактически тесты пройдут на современном Linux (Ubuntu 22.04+ / python:3.11-slim ⇒ sqlite ≥ 3.37). Сам флаг полезен для **будущих** автоген-миграций. | Уточнить комментарий: «для будущих автоген-миграций; round-trip 003 в тестах работает за счёт SQLite ≥ 3.35, а не за счёт batch». |
+| **B26** | `tests/infrastructure/test_alembic.py:103-108` | `test_downgrade_to_base_drops_everything` доходит до base, но не делает `upgrade head` обратно. Если 001/002 после downgrade ломаются на re-apply (не пройдут полный round-trip), тест не словит. | Добавить assert после `downgrade base`: `command.upgrade(cfg, "head")` + spot-check таблиц. |
+| **B27** | `tests/infrastructure/test_alembic.py` | Нет ассерта на `alembic_version.version_num == "004"` после `upgrade head`. | Опционально: `select version_num from alembic_version` ⇒ "004". Косметика. |
+| **B28** | `tests/infrastructure/test_alembic.py` (целиком) | `pytest.importorskip` для `aiosqlite` означает, что в окружении без него тесты **тихо** скипаются — green CI, но реально миграции не проверены. Защита: `requirements.txt` пиннит `aiosqlite`, а в CI `pip install -r requirements.txt` гарантирует наличие. Опасность только в рваном окружении разработчика. | Добавить в CI явный шаг `pip show aiosqlite` или fail-on-skip для `tests/infrastructure/`. Низкий приоритет. |
+| **B29** | `models.py:184` (pre-existing, не Phase 5A) | `panels_json: Mapped[dict] = mapped_column(JSON, default=list)` — type-hint `dict`, default — list (`[]`). Должен быть `Mapped[list]`. | Pre-existing tech debt, вне scope 5A. Зафиксировать для отдельного PR. |
+
+**Что не проверено:**
+- Реальный прогон `alembic upgrade head` / `downgrade -1` на postgres — нужен CI-runner с docker postgres.
+- Поведение на SQLite 3.34 и старше (для 003 `drop_column`) — обоснованно, поскольку проектные runtime-окружения новее.
+- Совместимость с будущими миграциями 005+ (Phase 5B будет писать новые ALTER) — отдельный аудит после 5B.
+
+**Итог аудита Phase 5A:** код готов к мерджу. Все находки — non-blocking schema-drift между ORM и миграцией (B22-B24), точность одного комментария (B25), пробел в покрытии тестов (B26-B27), CI-ловушка тихого skip (B28). Pre-existing B29 не относится к фазе. Рантайм-проверка миграций — за CI.
+
 ---
 
 ## Фаза 5B: Backend — domain + persistence для perspective/calibration
