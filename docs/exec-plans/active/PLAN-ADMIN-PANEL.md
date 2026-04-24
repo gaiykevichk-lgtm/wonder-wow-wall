@@ -135,9 +135,9 @@
 - (нет изменений)
 
 ### Frontend
-- [ ] `domains/admin/ui/AdminLayout.tsx` — `<Layout>` с `<Sider>` (Ant Design), боковое меню разделов: Дашборд / Заказы / Пользователи / Каталог / Магазин / Загрузка / Аудит.
+- [ ] `domains/admin/ui/AdminLayout.tsx` — `<Layout>` с `<Sider>` (Ant Design), боковое меню разделов: Дашборд / Заказы / Пользователи / Каталог / Магазин / Загрузка / Рекомендации / Аудит.
 - [ ] Цветовые константы Design System в файле компонента (DARK / GREEN / GRAY_TEXT / FONT) — по [`frontend/CONVENTIONS.md`](../../../frontend/CONVENTIONS.md).
-- [ ] Заглушки страниц: `AdminDashboardPage`, `AdminOrdersPage`, `AdminUsersPage`, `AdminCatalogPage`, `AdminShopPage`, `AdminUploadPage`, `AdminAuditPage` — каждая в `domains/admin/ui/`.
+- [ ] Заглушки страниц: `AdminDashboardPage`, `AdminOrdersPage`, `AdminUsersPage`, `AdminCatalogPage`, `AdminShopPage`, `AdminUploadPage`, `AdminRecommendationsPage`, `AdminAuditPage` — каждая в `domains/admin/ui/`.
 - [ ] Все маршруты `/admin/*` через `<RequireAdmin>` (общий wrapper в `router.tsx`).
 - [ ] Hook `useAdminNavigation()` — только активный раздел; без бизнес-логики.
 - [ ] Mobile: при `max-width: 768px` сайдбар сворачивается в `<Drawer>` (по конвенциям — через `<style>` блок media query).
@@ -145,10 +145,10 @@
 
 ### Тесты
 - [ ] `frontend/src/domains/admin/__tests__/AdminLayout.test.tsx` — рендер меню, активный раздел, выход.
-- [ ] Manual: пройти по всем 7 разделам, проверить URL и активный пункт меню.
+- [ ] Manual: пройти по всем 8 разделам, проверить URL и активный пункт меню.
 
 ### Definition of Done
-- Все 7 разделов открываются, маршрут отражается в URL.
+- Все 8 разделов открываются, маршрут отражается в URL.
 - На мобильном сайдбар работает как drawer.
 - Customer на любую `/admin/*` страницу → редирект на `/login`.
 
@@ -444,6 +444,94 @@
 
 ---
 
+## Фаза 10: Управление рекомендациями («с этим покупают»)
+
+> **Цель:** Админ вручную задаёт, какие дизайны/панели рекомендовать в карточке товара. Заменяет текущую клиентскую эвристику (`ProductPage.tsx:96–107` — фильтр по `category_id`, `slice(0, 3)`, fallback на `mockProducts`) на админ-управляемые связи. При отсутствии ручных связей — fallback на ту же эвристику (старое поведение не ломается).
+
+### Сущностная модель
+
+- **Recommendation** — направленная связь от source-товара к target-товарам.
+  - `source_type: RecommendationSourceType` (`DESIGN` | `PANEL`) — для какой сущности рекомендация.
+  - `source_id: str` — id дизайна или панели (на уровне домена тип валидируется по `source_type`).
+  - `targets: list[RecommendationTarget]` — упорядоченный список целевых товаров.
+- **RecommendationTarget** — VO внутри агрегата `Recommendation`.
+  - `target_type: RecommendationTargetType` (`DESIGN` | `PANEL`) — рекомендация может быть кросс-типа (для дизайна рекомендовать панели).
+  - `target_id: str`
+  - `position: int` — порядок отображения (drag-to-reorder).
+- **Инвариант:** `(source_type, source_id)` — уникален; связь сама-на-себя запрещена; дубли target в одном `Recommendation` запрещены.
+- **Лимит:** по умолчанию 12 рекомендаций на источник (настраивается в `ShopSettings`).
+
+### Backend
+
+- [ ] Domain: новый агрегат `Recommendation` в `domain/catalog/` (рекомендации — часть catalog bounded context).
+- [ ] Domain: VO `RecommendationSourceType`, `RecommendationTargetType` (Enum), `RecommendationTarget` (`@dataclass(frozen=True)`).
+- [ ] Domain: методы `Recommendation.add_target(target)`, `remove_target(target_id)`, `reorder([target_ids])`, `replace_all([targets])`.
+- [ ] Domain: исключения `SelfRecommendationError`, `DuplicateRecommendationTargetError`, `RecommendationLimitExceededError`, `RecommendationTargetNotFoundError`.
+- [ ] Domain: интерфейс `RecommendationRepository` (ABC) — `find_by_source(source_type, source_id) -> Recommendation | None`, `save(rec)`, `delete(source_type, source_id)`, `find_all_paginated(filters, page, size)`, `find_by_target(target_type, target_id) -> list[Recommendation]` (для каскадной чистки при удалении товара).
+- [ ] Application: use cases `GetRecommendationAdmin`, `UpsertRecommendationAdmin.execute(actor_id, source_type, source_id, targets)`, `DeleteRecommendationAdmin`, `ListRecommendationsAdmin` (для общей таблицы со статусом покрытия), `GetPublicRecommendations.execute(source_type, source_id, limit) -> list[ProductSummaryDTO]` — публичный read-use case с автоматическим fallback на эвристику «по категории».
+- [ ] Application: доменный сервис `RecommendationFallbackService` — содержит эвристику (по категории, последним просмотрам, популярности). Используется только когда ручной `Recommendation` отсутствует или содержит < N targets (доборка).
+- [ ] Application: при удалении дизайна (Фаза 7A) и панели (Фаза 7B) — каскадно удалять `Recommendation` где этот товар — `source` ИЛИ `target`. Реализуется через domain event `DesignDeleted`/`PanelDeleted` + handler `CleanupRecommendationsOnDelete`. **Регрессия Фаз 7A/7B**, см. [R8].
+- [ ] Infrastructure: миграция `create_recommendations` (таблица `recommendations` + `recommendation_targets`):
+  - `recommendations(id PK, source_type VARCHAR(16), source_id VARCHAR(36), updated_at, UNIQUE(source_type, source_id))`
+  - `recommendation_targets(recommendation_id FK, target_type, target_id, position, UNIQUE(recommendation_id, target_type, target_id))` с индексом `(target_type, target_id)` для каскадной чистки.
+  - Обязательный `downgrade()`.
+- [ ] Infrastructure: ORM-модели `RecommendationModel`, `RecommendationTargetModel` + `SqlRecommendationRepository`.
+- [ ] Infrastructure: Pydantic DTO `RecommendationTargetCreate`, `RecommendationUpsert`, `RecommendationResponse`, `RecommendationListItemResponse`, `PublicRecommendationsResponse`.
+- [ ] Infrastructure: эндпоинты:
+  - `GET /api/admin/recommendations?source_type=&search=&has_manual=&page=&size=` — таблица всех источников (со статусом «настроено / fallback / нет товара»).
+  - `GET /api/admin/recommendations/:source_type/:source_id` — текущие связи + предложения от fallback-сервиса (для UI с кнопкой «Принять авто-предложение»).
+  - `PUT /api/admin/recommendations/:source_type/:source_id` — upsert полной коллекции targets (idempotent).
+  - `DELETE /api/admin/recommendations/:source_type/:source_id` — сброс к fallback.
+  - `GET /api/recommendations/:source_type/:source_id?limit=` — публичный (без auth), используется фронтом-каталогом; кеш `Cache-Control: max-age=300, public`.
+- [ ] Infrastructure: маппинг ошибок в `error_handlers.py`:
+  - `SelfRecommendationError` → 422 `RECOMMENDATION_SELF`
+  - `DuplicateRecommendationTargetError` → 422 `RECOMMENDATION_DUPLICATE`
+  - `RecommendationLimitExceededError` → 422 `RECOMMENDATION_LIMIT_EXCEEDED`
+  - `RecommendationTargetNotFoundError` → 404 `RECOMMENDATION_TARGET_NOT_FOUND`
+- [ ] Infrastructure: `ShopSettings` (Фаза 8) расширить полем `recommendations_limit_per_source: int = 12`.
+- [ ] Audit (Фаза 9): action `RECOMMENDATION_UPSERT`, `RECOMMENDATION_DELETE`. Декоратор `@audited` на admin use cases.
+
+### Frontend
+
+- [ ] `domains/admin/api/recommendationsAdminApi.ts` — fetch list / get one / upsert / delete (TanStack Query mutations с invalidate).
+- [ ] `domains/admin/model/recommendationsAdminStore.ts` — фильтры / source_type taб / current draft (для несохранённых изменений в редакторе).
+- [ ] `domains/admin/ui/AdminRecommendationsPage.tsx` — таб «Дизайны» / «Панели»; таблица: превью source, имя, категория, статус («настроено вручную: N / fallback: K / пусто»), кнопка «Настроить».
+- [ ] `domains/admin/ui/AdminRecommendationEditor.tsx` (модалка/боковая панель):
+  - Слева: карточка source-товара.
+  - Справа: текущий список targets (drag-to-reorder через `react-dnd` или Ant Design `<Sortable>`-обёртка), кнопка «Удалить» на каждом, индикатор позиции.
+  - Снизу: блок «Добавить рекомендацию» — селектор типа (Design/Panel) + `<Select showSearch>` с поиском по имени с дебаунсом 300мс.
+  - Блок «Авто-предложения» — chips-список target-кандидатов от fallback-сервиса с кнопкой «+» для каждого.
+  - Кнопки «Сохранить» (PUT) / «Отмена» / «Сбросить к авто» (DELETE).
+- [ ] **Bulk actions:** в таблице — чекбоксы + кнопка «Скопировать рекомендации с другого товара» (выбор source-донора + confirm) — частый кейс при добавлении новых коллекций.
+- [ ] Публично: `domains/catalog/api/recommendationsApi.ts` — `fetchRecommendations(source_type, source_id, limit)` через TanStack Query.
+- [ ] **Refactor `ProductPage.tsx:96–107`:**
+  - Заменить `useMemo(relatedProducts)` на `useQuery(['recommendations', 'DESIGN', product.id])`.
+  - При ошибке/отсутствии данных — оставить старую эвристику как client-side fallback (двойная защита: бэкенд тоже подмешивает fallback, но если API упал, фронт не пуст).
+  - Сохранить визуальный дизайн блока (строки 821–860) — изменить только источник данных.
+
+### Тесты
+
+- [ ] `tests/domain/catalog/test_recommendation.py` — все инварианты (self, duplicate, limit, reorder).
+- [ ] `tests/application/catalog/test_upsert_recommendation_admin.py` — happy path, ошибки, идемпотентность PUT.
+- [ ] `tests/application/catalog/test_get_public_recommendations.py` — fallback ветка (нет manual → эвристика), доборка (manual < limit → добор fallback-ом без дубликатов).
+- [ ] `tests/application/catalog/test_cleanup_on_delete.py` — удаление дизайна чистит связи как source И как target. **Регрессия Фазы 7A.**
+- [ ] `tests/api/admin/test_recommendations_crud.py` — 200/422/404/403, контракт DTO.
+- [ ] `tests/api/catalog/test_public_recommendations.py` — публичный эндпоинт, заголовки кеша, отсутствие auth.
+- [ ] `frontend/src/domains/admin/__tests__/recommendationsAdminStore.test.ts`.
+- [ ] `frontend/src/domains/admin/__tests__/AdminRecommendationEditor.test.tsx` — drag-reorder, добавление, удаление, дисабл «Сохранить» при отсутствии изменений.
+- [ ] `frontend/src/domains/catalog/__tests__/ProductPage.recommendations.test.tsx` — показывает данные из API; при ошибке — fallback на старую эвристику; **регрессия:** визуально блок не изменился.
+
+### Definition of Done
+
+- Админ для конкретного дизайна задаёт 4 рекомендации → они появляются в карточке товара в указанном порядке.
+- Удаление дизайна (Фаза 7A) → нет «битых» рекомендаций ни как source, ни как target.
+- При offline/500 публичного API карточка товара не пустая — показывает старую эвристику.
+- Лимит 12 enforced и на бэке (422), и в UI (disable «Добавить»).
+- Audit-лог содержит запись для каждого upsert/delete.
+- Performance: публичный `/api/recommendations` за <50мс при N=12 (с прогретым кешем) на dataset 10k дизайнов.
+
+---
+
 ## Риски и митигации
 
 ### R — Регрессии (пересечение с существующей логикой)
@@ -457,6 +545,8 @@
 | R5 | 7A | Публичный `GET /api/catalog/designs` | После добавления `is_published` старые дизайны могут пропасть (default `false`) | Default `True` в миграции для существующих; default `True` в entity |
 | R6 | 7B | `frontend/src/shared/config/constants.ts` используется в `constructor/` и `catalog/` | Удаление констант ломает конструктор | Двухшаговый refactor: сначала API + fallback на константы, через релиз — удалить fallback |
 | R7 | 9 | Use cases из Фаз 1/4B/5/7/8 | Декоратор `@audited` затрагивает уже задеплоенный код — требует регрессии всех админ-эндпоинтов | E2E smoke-тест на каждое из 10 действий после внедрения декоратора; canary-релиз |
+| R8 | 10 | `ProductPage.tsx:96–107` уже считает related из `allDesigns` по `category_id` + `slice(0,3)` | Замена источника данных может: (а) сломать визуал блока, (б) показать пустоту при медленном API, (в) дать дубли (один товар и в manual, и в эвристике) | Сохранить старый рендер, заменить только источник. Client-side fallback на старую эвристику при error/timeout. Дедупликация по id и в backend (доборка fallback-ом игнорирует те id, что уже в manual), и в публичном DTO |
+| R9 | 10 → 7A/7B | Удаление дизайна/панели должно каскадно чистить `Recommendation` как source И как target | Domain event `DesignDeleted`/`PanelDeleted` + handler `CleanupRecommendationsOnDelete`. **Если Фаза 10 идёт после 7A/7B уже задеплоенных** — нужен бэкфил-скрипт, чистящий orphan-targets. Тест `test_cleanup_on_delete.py` обязателен |
 
 ### D — Неявные зависимости между backend и frontend
 
@@ -467,6 +557,8 @@
 | D3 | 6 → 7 | Загрузка дизайна/панели требует `MediaAsset` API | Жёсткая последовательность: Фаза 6 обязательно перед 7. Документировать в плане |
 | D4 | 7B → 8 | `ShopSettings.installation_price` влияет на расчёт стоимости в конструкторе | Конструктор должен брать цены из `/api/shop/settings`. До Фазы 8 — fallback на константы |
 | D5 | 9 | Декоратор `@audited` извлекает `actor_id` из request context | Внедрить `ContextVar[str]` для actor_id в middleware ДО Фазы 9 (можно в Фазе 1 закладкой) |
+| D6 | 10 → 7A/7B | Каскадная чистка рекомендаций требует, чтобы `DeleteDesignAdmin`/`DeletePanelAdmin` диспатчили domain event | Если Фазы 7A/7B идут раньше 10 без events — добавить event-bus (даже пустой) ещё в 7A. Альтернатива: при релизе 10 сделать рефактор `DeleteDesignAdmin` (тогда фаза дороже). Решение в Open Question OQ9 |
+| D7 | 10 → 8 | `recommendations_limit_per_source` хранится в `ShopSettings` | Если 10 идёт ДО 8 — захардкодить `12` константой, в 8 вынести в settings |
 
 ### T — Технически сложные места
 
@@ -477,6 +569,9 @@
 | T3 | 6 | XSS через имя файла или SVG | Запретить SVG в whitelist mimes для `DESIGN_PREVIEW`; нормализация имени (uuid + ext); `Content-Disposition: attachment` для админ-просмотра |
 | T4 | 7B | Миграция `PANEL_SIZES` из фронт-констант в БД без даунтайма | Двухфазный refactor (R6); seed-data в миграции |
 | T5 | 9 | Декоратор должен работать с разными сигнатурами use cases | Декоратор-фабрика, явно указывает, какой аргумент — `target_id`. Тест на каждый из 10 use cases |
+| T6 | 10 | Кросс-типовые рекомендации (`source_type=DESIGN`, `target_type=PANEL`) — нужна нормализация в `ProductSummaryDTO` | Единый DTO с дискриминатором `kind: 'design' \| 'panel'` и общими полями `id/name/image/price`. Маппер в application-слое, не на фронте |
+| T7 | 10 | UI drag-to-reorder с 12 элементами и async save | Локальный draft-state в editor; PUT только на «Сохранить»; optimistic UI с откатом на ошибке |
+| T8 | 10 | N+1 при выдаче `GetPublicRecommendations` (12 targets → 12 SELECT) | Батч-загрузка по ids: один `WHERE id IN (...)` на дизайны и один на панели; или join через `RecommendationRepository.find_with_resolved_targets()` |
 
 ### E — Edge cases
 
@@ -495,6 +590,13 @@
 | E11 | 8 | Активный баннер с битой ссылкой на удалённый MediaAsset | Cascade delete недопустим; запретить удалять MediaAsset со ссылками (`MediaInUseError`) |
 | E12 | 9 | Audit-лог переполняется (миллионы строк) | Партиционирование по месяцу + retention 12 мес; вынести в отдельный задачник позже |
 | E13 | All | Действия на mobile-разрешении админки | Сайдбар-drawer; admin-панель официально desktop-first, но не должна ломаться на mobile |
+| E14 | 10 | Админ кладёт дизайн в рекомендации к самому себе | `SelfRecommendationError` → 422; UI блокирует выбор source-товара в селекторе |
+| E15 | 10 | Админ добавляет в рекомендации скрытый (`is_published=false`) дизайн | Разрешено сохранить (admin может готовить связи заранее), но публичный `GET /api/recommendations` фильтрует unpublished/inactive — и показывает индикатор «N скрыто» в админ-редакторе |
+| E16 | 10 | Удалён target-товар, но связь осталась (без cascade) | Cascade чистка через domain event (см. R9). Cron-задача `cleanup_orphan_recommendation_targets` раз в сутки как страховка |
+| E17 | 10 | Циклы (A → B, B → A) | Допустимы (это не граф навигации, а независимые списки); тест фиксирует, что цикл не приводит к рекурсии в публичной выдаче |
+| E18 | 10 | Bulk «Скопировать рекомендации с другого товара» при наличии существующих связей | Confirm-модалка с радио: «Заменить» / «Дополнить (с дедупликацией)» |
+| E19 | 10 | Тип source/target невалиден для своего id (например, `source_type=DESIGN`, но `source_id` принадлежит панели) | Доменная валидация в `UpsertRecommendationAdmin` — проверка существования через соответствующий репозиторий → `RecommendationTargetNotFoundError` (404) с пояснением «тип не совпадает» |
+| E20 | 10 | Фронт-кеш `/api/recommendations` устарел после изменения админом | Invalidate ключ `['recommendations', source_type, source_id]` после mutate; для публичной части `Cache-Control: max-age=300` — допустимая задержка 5 мин (как и в Фазе 8 для shop settings) |
 
 ---
 
@@ -514,7 +616,8 @@
 | 7B Панели | 2 | 1.5 | 1 | 4.5 |
 | 8  Магазин | 2 | 2 | 1 | 5 |
 | 9  Audit | 1.5 | 1 | 1 | 3.5 |
-| **Итого** | **18.5** | **14** | **9** | **42** |
+| 10 Рекомендации | 2.5 | 2 | 1 | 5.5 |
+| **Итого** | **21** | **16** | **10** | **47.5** |
 
 > Это голая разработка. Не включает: code review, deploy, hotfixes, design-iter.
 
@@ -522,7 +625,7 @@
 
 ## Definition of Done (общий для плана)
 
-- [ ] Все фазы 0–9 имеют свой DoD ✓.
+- [ ] Все фазы 0–10 имеют свой DoD ✓.
 - [ ] `pytest backend/tests/` — зелёный.
 - [ ] `pnpm test` (frontend) — зелёный.
 - [ ] Coverage backend новых модулей — ≥80%.
@@ -543,6 +646,8 @@
 4. Генеральный директор видит revenue за месяц на одном экране.
 5. После инцидента (например, ошибочное изменение статуса заказа) можно по audit-лог восстановить, кто и когда сделал.
 6. Заблокированный недобросовестный пользователь не может оформить новый заказ.
+7. Контент-менеджер может вручную задать «с этим часто покупают» для конкретного товара; изменения видны на витрине ≤5 мин.
+8. При удалении товара рекомендации с ним автоматически чистятся — нет «битых» ссылок в карточках.
 
 ---
 
@@ -556,6 +661,9 @@
 - [ ] **OQ6** Экспорт данных (CSV / Excel) для заказов и юзеров? Не в скоупе; отдельный план.
 - [ ] **OQ7** Web-сокеты для real-time уведомлений (новый заказ → бейдж в админке)? Не в скоупе; пока polling раз в 30с.
 - [ ] **OQ8** Языки админки: только русский (как и весь UI) или EN/RU? По умолчанию — только RU, по конвенциям.
+- [ ] **OQ9** Domain events: вводим event-bus уже в Фазе 7A (для будущей каскадной чистки рекомендаций) или откладываем до Фазы 10 с рефактором `DeleteDesignAdmin`/`DeletePanelAdmin`? Рекомендация — ввести лёгкий sync event-bus в 7A, дешевле в перспективе.
+- [ ] **OQ10** Кросс-типовые рекомендации (для дизайна показывать в т.ч. панели и наоборот) — в скоупе MVP или только same-type? По умолчанию — да, в скоупе (см. Фазу 10 модель). Если нет — упрощается DTO и UI.
+- [ ] **OQ11** Аналитика рекомендаций (CTR, влияние на конверсию) — в скоупе? По умолчанию — нет, отдельный план; в Фазе 10 только настройка, не измерение.
 
 ---
 
@@ -564,5 +672,7 @@
 1. Закрыть **OQ1, OQ2** (10 минут со стейкхолдером).
 2. Запустить **Фазу 0** (аудит, 0.5 дня).
 3. По итогам аудита — уточнить трудозатраты Фазы 8 и инфры (Фаза 6).
-4. Зафиксировать релизный порядок: 1 → 2 → (3 ‖ 4A) → 4B → 5 → 6 → (7A → 7B ‖ 8) → 9.
+4. Зафиксировать релизный порядок: 1 → 2 → (3 ‖ 4A) → 4B → 5 → 6 → (7A → 7B ‖ 8) → 10 → 9.
+   - **Фаза 10 после 7A/7B** (нужны товары как source/target) и **до или после 9** (audit для рекомендаций — хорошо, но не блокирует).
+   - Если ввести event-bus в 7A (см. OQ9) — каскадная чистка работает «из коробки», бэкфил не нужен.
 5. Создать issue/branch на каждую фазу. Не мерджить фазы N+1 без merged N.
