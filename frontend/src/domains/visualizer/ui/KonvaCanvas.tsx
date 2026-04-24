@@ -551,7 +551,10 @@ export function KonvaCanvas({
               },
             };
 
-            // With perspective: render as quadrilateral via <Line closed>
+            // With perspective: clip a rect-rendered design by the quad shape.
+            // Phase 1A hot-fix: design texture is now visible inside the quad
+            // (previously only solid-color fill was rendered — see PERSPECTIVE-AUDIT R1).
+            // Full perspective warp will land in Phase 1B.
             if (perspectiveTransform) {
               const quad = transformRect(perspectiveTransform, {
                 x: panel.x,
@@ -560,19 +563,48 @@ export function KonvaCanvas({
                 height: panel.renderHeight,
               });
               const flatPts = quadToFlatPoints(quad);
+              const designImg = panel.designImage ? panelImages.get(panel.designImage) : null;
+              const quadClipFunc = (ctx: Konva.Context) => {
+                ctx.beginPath();
+                ctx.moveTo(quad[0].x, quad[0].y);
+                ctx.lineTo(quad[1].x, quad[1].y);
+                ctx.lineTo(quad[2].x, quad[2].y);
+                ctx.lineTo(quad[3].x, quad[3].y);
+                ctx.closePath();
+              };
               return (
                 <Group key={panel.id}>
+                  {/* Design + color tint, clipped by quad */}
+                  <Group clipFunc={quadClipFunc}>
+                    {designImg && (
+                      <KonvaImage
+                        image={designImg}
+                        x={panel.x}
+                        y={panel.y}
+                        width={panel.renderWidth}
+                        height={panel.renderHeight}
+                        opacity={0.85 + brightnessAdj}
+                        listening={false}
+                      />
+                    )}
+                    <Line
+                      points={flatPts}
+                      closed
+                      fill={panel.color || '#CCCCCC'}
+                      opacity={designImg ? 0.25 : 0.85 + brightnessAdj}
+                      {...panelHandlers}
+                    />
+                  </Group>
+                  {/* Outline + shadow rendered outside the clip so quad edges stay crisp */}
                   <Line
                     points={flatPts}
                     closed
-                    fill={panel.color || '#CCCCCC'}
-                    opacity={0.85 + brightnessAdj}
                     stroke={strokeColor}
                     strokeWidth={strokeW}
                     shadowColor={shadowCol}
                     shadowBlur={shadowB}
                     shadowOffsetY={shadowOY}
-                    {...panelHandlers}
+                    listening={false}
                   />
                 </Group>
               );

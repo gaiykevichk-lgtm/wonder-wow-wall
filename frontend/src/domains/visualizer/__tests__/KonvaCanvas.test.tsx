@@ -51,10 +51,39 @@ vi.mock('react-konva', () => {
       onClick: props.onClick,
     });
 
-  const Group = (props: Record<string, unknown>) =>
-    React.createElement('div', { 'data-testid': 'konva-group' }, props.children);
+  const Group = (props: Record<string, unknown>) => {
+    // Invoke clipFunc with a stub context so tests can detect quad clipping
+    if (typeof props.clipFunc === 'function') {
+      const stubCtx = {
+        beginPath: () => {},
+        moveTo: () => {},
+        lineTo: () => {},
+        closePath: () => {},
+      };
+      try {
+        (props.clipFunc as (ctx: unknown) => void)(stubCtx);
+      } catch {
+        /* ignore — only used to surface bugs in clipFunc */
+      }
+    }
+    return React.createElement(
+      'div',
+      {
+        'data-testid': 'konva-group',
+        'data-clipped': props.clipFunc ? 'true' : 'false',
+      },
+      props.children,
+    );
+  };
 
-  return { Stage, Layer, Rect, Image, Circle, Group };
+  const Line = (props: Record<string, unknown>) =>
+    React.createElement('div', {
+      'data-testid': 'konva-line',
+      'data-fill': props.fill,
+      onClick: props.onClick,
+    });
+
+  return { Stage, Layer, Rect, Image, Circle, Group, Line };
 });
 
 // Polyfill ResizeObserver for jsdom
@@ -246,5 +275,67 @@ describe('KonvaCanvas', () => {
     render(<KonvaCanvas {...defaultProps} />);
     const container = screen.getByTestId('konva-canvas-container');
     expect(container.style.borderRadius).toBe('12px');
+  });
+
+  // ─── R1 hot-fix: perspective rendering shows design texture, not just colored quad ───
+  describe('perspective rendering (R1 hot-fix)', () => {
+    const corners = [
+      { x: 50, y: 50 },
+      { x: 350, y: 60 },
+      { x: 340, y: 250 },
+      { x: 60, y: 240 },
+    ] as const;
+
+    it('uses clipFunc Group for panels when perspective corners are set', () => {
+      const panel = createTestPanel();
+      render(
+        <KonvaCanvas
+          {...defaultProps}
+          panels={[panel]}
+          perspectiveCorners={corners as unknown as Parameters<typeof KonvaCanvas>[0]['perspectiveCorners']}
+        />,
+      );
+      const groups = screen.getAllByTestId('konva-group');
+      const clipped = groups.filter((g) => g.getAttribute('data-clipped') === 'true');
+      // At least one clipped Group per panel = the new R1-fix code path
+      expect(clipped.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('renders backdrop Line with panel color in perspective branch', () => {
+      const panel = createTestPanel({ color: '#FF0000' });
+      render(
+        <KonvaCanvas
+          {...defaultProps}
+          panels={[panel]}
+          perspectiveCorners={corners as unknown as Parameters<typeof KonvaCanvas>[0]['perspectiveCorners']}
+        />,
+      );
+      const lines = screen.getAllByTestId('konva-line');
+      const colorLines = lines.filter((l) => l.getAttribute('data-fill') === '#FF0000');
+      // backdrop fill Line must exist
+      expect(colorLines.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('does not crash when perspective is on but design image not loaded yet', () => {
+      const panel = createTestPanel({ designImage: 'not-loaded.jpg' });
+      expect(() =>
+        render(
+          <KonvaCanvas
+            {...defaultProps}
+            panels={[panel]}
+            perspectiveCorners={corners as unknown as Parameters<typeof KonvaCanvas>[0]['perspectiveCorners']}
+          />,
+        ),
+      ).not.toThrow();
+    });
+
+    it('regression: without perspective corners panels still use the unclipped path', () => {
+      const panel = createTestPanel();
+      render(<KonvaCanvas {...defaultProps} panels={[panel]} />);
+      const groups = screen.getAllByTestId('konva-group');
+      // No panel Group should be clipped when perspective is disabled
+      const clippedPanelGroups = groups.filter((g) => g.getAttribute('data-clipped') === 'true');
+      expect(clippedPanelGroups.length).toBe(0);
+    });
   });
 });

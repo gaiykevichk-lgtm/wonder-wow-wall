@@ -86,7 +86,7 @@
 
 ---
 
-## Фаза 1A: Hot-fix визуальной регрессии перспективы
+## Фаза 1A: Hot-fix визуальной регрессии перспективы ✅ ЗАВЕРШЕНА (24.04.2026)
 
 > **Цель:** Закрыть критический баг R1 — в существующей ручной перспективе панели рендерятся как сплошной цветной quad без дизайна. Это **минимальный self-contained релиз**, не требующий новых зависимостей.
 > **Bounded Context:** только frontend / `visualizer`. Backend: без изменений.
@@ -94,19 +94,25 @@
 
 ### 1A.1 Frontend — patch рендеринга
 
-- [ ] В `KonvaCanvas.tsx:555–578` заменить `<Line closed fill={panel.color}>` на временное решение: пока quad — заливка `panel.color` + поверх растровый дизайн через простую CSS-перспективу (`<KonvaImage>` поверх с `clip` по quad). Это не финальный warp, но дизайн становится виден.
-- [ ] Удалить дебаг `console.log('[autoFill]', ...)` в `layoutEngine.ts:161` (одна строка, попутно).
+- [x] В `KonvaCanvas.tsx:554–610` заменена ветка перспективы: outer `<Group>` → inner `<Group clipFunc>` по quad, внутри `<KonvaImage>` дизайна (rect-rendered) + цветной `<Line>` (backdrop без дизайна / color tint при наличии); снаружи clip — отдельный `<Line>` с обводкой и тенью (чтобы quad-границы не обрезались).
+- [x] Удалён дебаг `console.log('[autoFill]', ...)` в `layoutEngine.ts:161`.
 
 ### 1A.2 Frontend — тесты
 
-- [ ] Добавить в `__tests__/KonvaCanvas.test.tsx` сценарий: `perspectiveCorners != null` + `panel.designImage != null` → в DOM/snapshot должен быть `<KonvaImage>`, не только `<Line>`.
-- [ ] Регресс-тест: `perspectiveCorners == null` → старый рендер не сломан.
+- [x] Добавлен мок `<Line>` в `__tests__/KonvaCanvas.test.tsx` (раньше отсутствовал) с `data-fill` для проверки backdrop-цвета.
+- [x] Мок `<Group>` теперь экспонирует `data-clipped="true|false"` в зависимости от наличия `clipFunc` — это атомарный сигнал, что новый код-путь активен.
+- [x] 4 новых теста в `describe('perspective rendering (R1 hot-fix)')`:
+  - clipFunc Group присутствует, когда `perspectiveCorners` заданы;
+  - backdrop Line с `panel.color` рендерится в перспективе;
+  - не падает, если перспектива включена, но картинка дизайна ещё не загружена;
+  - регрессия: без `perspectiveCorners` clip-Group для панели не создаётся.
+- [x] Все 16/16 KonvaCanvas-тестов зелёные. Регрессия `layoutEngine.test.ts` + `perspectiveEngine.test.ts` — 40/40 зелёные. `tsc --noEmit` — чисто.
 
 ### 1A.3 Дизайн / QA
 
-- [ ] Скриншот «до/после» с реальным фото в design-doc `docs/design-docs/PERSPECTIVE-AUDIT.md`.
+- [ ] Скриншот «до/после» с реальным фото в design-doc — **отложено**: требует UI-сессии с прогоном через браузер, не делается в Фазе 1A автоматически. Будет приложено в момент QA-релиза.
 
-> **Definition of Done:** при включении ручной перспективы видно текстуру дизайна, а не цветную трапецию. Релиз-кандидат сразу после фазы 1A.
+> **Definition of Done:** ✅ при включении ручной перспективы видно текстуру дизайна (внутри quad-clip), а не цветную трапецию. Backdrop `panel.color` сохранён под полупрозрачным дизайном. Релиз-кандидат готов.
 
 ---
 
