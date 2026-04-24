@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { KonvaCanvas } from '../ui/KonvaCanvas';
 import { createEmptyMask } from '../lib/maskUtils';
-import type { Scene, PlacedPanel } from '../model/types';
+import type { Scene, PlacedPanel, PerspectiveCorners } from '../model/types';
 
 // Mock Konva — react-konva needs canvas/WebGL which jsdom doesn't have
 vi.mock('react-konva', () => {
@@ -52,7 +52,9 @@ vi.mock('react-konva', () => {
     });
 
   const Group = (props: Record<string, unknown>) => {
-    // Invoke clipFunc with a stub context so tests can detect quad clipping
+    // Invoke clipFunc with a stub context so tests can detect quad clipping.
+    // Errors are intentionally NOT swallowed — if clipFunc has a bug
+    // (e.g. undefined quad point), the test must fail loudly.
     if (typeof props.clipFunc === 'function') {
       const stubCtx = {
         beginPath: () => {},
@@ -60,11 +62,7 @@ vi.mock('react-konva', () => {
         lineTo: () => {},
         closePath: () => {},
       };
-      try {
-        (props.clipFunc as (ctx: unknown) => void)(stubCtx);
-      } catch {
-        /* ignore — only used to surface bugs in clipFunc */
-      }
+      (props.clipFunc as (ctx: unknown) => void)(stubCtx);
     }
     return React.createElement(
       'div',
@@ -279,21 +277,17 @@ describe('KonvaCanvas', () => {
 
   // ─── R1 hot-fix: perspective rendering shows design texture, not just colored quad ───
   describe('perspective rendering (R1 hot-fix)', () => {
-    const corners = [
+    const corners: PerspectiveCorners = [
       { x: 50, y: 50 },
       { x: 350, y: 60 },
       { x: 340, y: 250 },
       { x: 60, y: 240 },
-    ] as const;
+    ];
 
     it('uses clipFunc Group for panels when perspective corners are set', () => {
       const panel = createTestPanel();
       render(
-        <KonvaCanvas
-          {...defaultProps}
-          panels={[panel]}
-          perspectiveCorners={corners as unknown as Parameters<typeof KonvaCanvas>[0]['perspectiveCorners']}
-        />,
+        <KonvaCanvas {...defaultProps} panels={[panel]} perspectiveCorners={corners} />,
       );
       const groups = screen.getAllByTestId('konva-group');
       const clipped = groups.filter((g) => g.getAttribute('data-clipped') === 'true');
@@ -304,11 +298,7 @@ describe('KonvaCanvas', () => {
     it('renders backdrop Line with panel color in perspective branch', () => {
       const panel = createTestPanel({ color: '#FF0000' });
       render(
-        <KonvaCanvas
-          {...defaultProps}
-          panels={[panel]}
-          perspectiveCorners={corners as unknown as Parameters<typeof KonvaCanvas>[0]['perspectiveCorners']}
-        />,
+        <KonvaCanvas {...defaultProps} panels={[panel]} perspectiveCorners={corners} />,
       );
       const lines = screen.getAllByTestId('konva-line');
       const colorLines = lines.filter((l) => l.getAttribute('data-fill') === '#FF0000');
@@ -320,11 +310,7 @@ describe('KonvaCanvas', () => {
       const panel = createTestPanel({ designImage: 'not-loaded.jpg' });
       expect(() =>
         render(
-          <KonvaCanvas
-            {...defaultProps}
-            panels={[panel]}
-            perspectiveCorners={corners as unknown as Parameters<typeof KonvaCanvas>[0]['perspectiveCorners']}
-          />,
+          <KonvaCanvas {...defaultProps} panels={[panel]} perspectiveCorners={corners} />,
         ),
       ).not.toThrow();
     });
