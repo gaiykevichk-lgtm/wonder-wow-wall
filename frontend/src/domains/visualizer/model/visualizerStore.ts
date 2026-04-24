@@ -412,24 +412,31 @@ export const useVisualizerStore = create<VisualizerState>()(
     }
   },
   applyReferenceCandidate: (candidate) => {
-    const scene = get().scene;
+    const state = get();
+    const scene = state.scene;
     if (!scene) return false;
-    const perspective = get().perspectiveCorners
-      ? createPerspective(get().perspectiveCorners!, {
+    // Cache perspectiveCorners once (B14): the previous code re-read
+    // `get().perspectiveCorners` three times — collapse to a single read.
+    const corners = state.perspectiveCorners;
+    const perspective = corners
+      ? createPerspective(corners, {
           w: scene.photo.width,
           h: scene.photo.height,
         })
       : undefined;
     const estimated = estimateScaleFromReference(candidate, perspective);
     if (!estimated) return false;
+    // Only close the calibration overlay if the user invoked this *from* it
+    // (B16). Future call sites (e.g. Konva bbox-overlay in 4.2a) must not
+    // silently flip the editor mode from under the user.
+    const closeOverlay = state.editorMode === 'calibrating';
     set({
       scene: {
         ...scene,
         calibration: estimated.calibration,
         calibrationAutoDetected: true,
       },
-      // Close the calibration overlay if it's open — user picked their option.
-      editorMode: 'default',
+      ...(closeOverlay ? { editorMode: 'default' as const } : {}),
     });
     return true;
   },

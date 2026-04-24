@@ -172,15 +172,21 @@ export function pickBestCandidate(
   for (let i = 1; i < candidates.length; i++) {
     const c = candidates[i]!;
     const s = scoreCandidate(c);
-    if (
-      s > bestScore ||
-      (s === bestScore && c.confidence > best.confidence) ||
-      (s === bestScore &&
-        c.confidence === best.confidence &&
-        bboxArea(c.bbox) > bboxArea(best.bbox))
-    ) {
+    // Branch order matters: only the first branch can shift `bestScore`;
+    // tie-breaks (s === bestScore) just swap `best` while keeping the score
+    // (B19 in audit — previous code redundantly reassigned `bestScore` on
+    // every branch).
+    if (s > bestScore) {
       best = c;
       bestScore = s;
+    } else if (s === bestScore && c.confidence > best.confidence) {
+      best = c;
+    } else if (
+      s === bestScore &&
+      c.confidence === best.confidence &&
+      bboxArea(c.bbox) > bboxArea(best.bbox)
+    ) {
+      best = c;
     }
   }
   return best;

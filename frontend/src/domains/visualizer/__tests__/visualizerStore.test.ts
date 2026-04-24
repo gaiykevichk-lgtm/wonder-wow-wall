@@ -572,6 +572,33 @@ describe('visualizerStore', () => {
       useVisualizerStore.getState().setCalibration({ method: 'manual', pixelsPerCm: 7 });
       expect(useVisualizerStore.getState().scene!.calibrationAutoDetected).toBe(false);
     });
+
+    it('closes the calibration overlay when invoked from calibrating mode', () => {
+      setupReadyScene();
+      useVisualizerStore.getState().setEditorMode('calibrating');
+      const ok = useVisualizerStore.getState().applyReferenceCandidate({
+        type: 'outlet',
+        bbox: { x: 100, y: 100, width: 80, height: 80 },
+        confidence: 0.9,
+      });
+      expect(ok).toBe(true);
+      expect(useVisualizerStore.getState().editorMode).toBe('default');
+    });
+
+    it('preserves editorMode when invoked from a non-calibrating mode (B16)', () => {
+      setupReadyScene();
+      useVisualizerStore.getState().setEditorMode('perspective');
+      const ok = useVisualizerStore.getState().applyReferenceCandidate({
+        type: 'outlet',
+        bbox: { x: 100, y: 100, width: 80, height: 80 },
+        confidence: 0.9,
+      });
+      expect(ok).toBe(true);
+      // Mode must NOT be reset — future call sites (e.g. Konva bbox overlay)
+      // can apply a candidate without yanking the user out of perspective edit.
+      expect(useVisualizerStore.getState().editorMode).toBe('perspective');
+      expect(useVisualizerStore.getState().scene!.calibrationAutoDetected).toBe(true);
+    });
   });
 
   describe('reset', () => {

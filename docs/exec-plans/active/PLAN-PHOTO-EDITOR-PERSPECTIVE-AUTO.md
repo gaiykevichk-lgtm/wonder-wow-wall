@@ -671,16 +671,18 @@ Phase 1B v1 принимается как warp-замена Phase 1A. Math фо�
 
 **Некритические находки (тех.долг):**
 
-| # | Файл:строка | Проблема | План |
+| # | Файл:строка | Проблема | Статус |
 |---|---|---|---|
-| B14 | `model/visualizerStore.ts:417-418` | `get().perspectiveCorners` вызывается 3 раза (1 в условии + 2 для `createPerspective`) — стоит закэшировать в локальную const. Косметика, перф-эффект нулевой. | Закрыть в 4.1c вместе с другим cleanup. |
-| B15 | `model/visualizerStore.ts:389-413` | Нет `AbortController` — при `reset()` между `await detector(...)` и записью результата inflight-инференс продолжит крутить worker. Race-protection через `photo.url` ловит state-misapply, но не cancel. Parity-проблема с Phase 3 B2. | Уже зафиксировано в 4.7 → 4.1c (одним пакетом с тем же фиксом для `runAutoPerspective`). |
-| B16 | `model/visualizerStore.ts:432` | `applyReferenceCandidate` всегда переключает `editorMode: 'default'`. Сейчас безопасно (единственный call site — `PhotoEditorPage.tsx:799` внутри `editorMode === 'calibrating'`-блока), но при будущем втором call site (Konva-overlay из 4.2a) приведёт к молчаливому переключению режима. Комментарий «if it's open» не отражён в коде. | При реализации 4.2a — добавить guard `if (editorMode === 'calibrating')` или вынести смену режима в call site. |
-| B17 | `model/visualizerStore.ts:511-527` | `reset()` явно не сбрасывает `referenceCandidates` / `calibrationAutoDetected`. Бага нет: оба поля живут внутри `scene`, а `scene: null` их обнуляет. Косметика. | Не фиксить (избыточный код). |
-| B18 | `model/visualizerStore.ts:395-402` | Race-snapshot сравнивает только `photo.url`. Если пользователь повторно загрузит фото с тем же URL, stale-кандидаты долетят на новую сцену. Для `data:`-URL из `processUploadedImage` это маловероятно (URL уникален per-file), но строго не исключено. | Низкий приоритет; чище — сравнивать ссылку на `Scene` (через WeakRef или `idMonotonic`). Не блокирует фичу. |
-| B19 | `lib/scaleEstimator.ts:175-184` | В `pickBestCandidate` после tie-break по confidence/area строка `bestScore = s` избыточна (s === bestScore). Не баг, просто dead set. | Косметический cleanup. |
-| B20 | `__tests__/referenceDetector.test.ts` (целиком) | Покрыт только stub-throws путь. Контракт `ReferenceDetector` типизирован, но «реальный» детектор с тем же shape не проверяется тестом. | Закроется автоматически в 4.1c, когда добавится тест на real-adapter с фейковым ORT-сессией. |
-| B21 | `ui/PhotoEditorPage.tsx:632-666` | Hardcoded inline style для нового зелёного баннера (`#E8F5E9` / `#2E7D32`) — дублирует паттерн Phase 3 perspective-баннера. Theme-токены не извлечены. | Тот же тех.долг, что и в Phase 3 B11; можно закрыть одним рефактором при появлении theme-системы. |
+| B14 | `model/visualizerStore.ts:417-418` | `get().perspectiveCorners` вызывается 3 раза. | ✅ ЗАКРЫТО (24.04.2026): один `get()` + локальный `const corners`. |
+| B15 | `model/visualizerStore.ts:389-413` | Нет `AbortController` для inflight-инференса. Parity-проблема с Phase 3 B2. | ⏸ Отложено в 4.1c одним пакетом с тем же фиксом для `runAutoPerspective`. |
+| B16 | `model/visualizerStore.ts:432` | `applyReferenceCandidate` всегда переключает `editorMode: 'default'`. Сломается при втором call site (Konva-overlay 4.2a). | ✅ ЗАКРЫТО (24.04.2026): `closeOverlay = state.editorMode === 'calibrating'`, conditional spread в `set`. Покрыто двумя новыми тестами в `visualizerStore.test.ts`. |
+| B17 | `model/visualizerStore.ts:511-527` | `reset()` не сбрасывает `referenceCandidates` / `calibrationAutoDetected` явно. Бага нет (`scene: null` их обнуляет). | ⏭ Не фиксим (избыточный код). |
+| B18 | `model/visualizerStore.ts:395-402` | Race-snapshot сравнивает только `photo.url`. Повторная загрузка фото с тем же URL пропустит защиту. Маловероятно для `data:`-URL. | ⏭ Низкий приоритет; не блокирует фичу. |
+| B19 | `lib/scaleEstimator.ts:175-184` | В `pickBestCandidate` после tie-break строка `bestScore = s` избыточна (s === bestScore). | ✅ ЗАКРЫТО (24.04.2026): ветки `if/else if/else if`, `bestScore` обновляется только в первой. |
+| B20 | `__tests__/referenceDetector.test.ts` (целиком) | Покрыт только stub-throws путь. | ⏸ Закроется автоматически в 4.1c при появлении real-adapter. |
+| B21 | `ui/PhotoEditorPage.tsx:632-666` | Hardcoded inline-цвета баннера (`#E8F5E9` / `#2E7D32`) — дублирует Phase 3 паттерн. | ⏭ Тот же тех.долг, что Phase 3 B11; общий рефактор при появлении theme-системы. |
+
+**Итоги fix-pass:** 3 из 8 закрыто (B14, B16, B19), 2 явно отложено в следующие фазы (B15, B20), 3 признаны не-багами (B17, B18, B21). Тесты после фикса: visualizer **257/257 ✅** (+2 на B16), tsc clean.
 
 **Что не проверено (вне scope Phase 4):**
 - E2E-сценарий «загрузка фото → авто-кандидат → клик → calibration» — невозможен без рабочего ORT-детектора (4.1c).
