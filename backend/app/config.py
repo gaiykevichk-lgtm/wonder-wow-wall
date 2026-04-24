@@ -10,6 +10,14 @@ class Settings(BaseSettings):
     USE_MEMORY_REPOS: bool = False
     ENV: str = "development"
 
+    # ─── Phase 6 — depth-estimation settings ─────────────────────────
+    # `stub` is the safe default — the real adapter requires onnxruntime +
+    # numpy + pillow + a checkpoint on disk. Production sets `local`.
+    # See docs/design-docs/DEPTH-ESTIMATION-INFRA.md.
+    DEPTH_PROVIDER: str = "stub"
+    DEPTH_MODEL_PATH: str = ""
+    DEPTH_INPUT_SIZE: int = 256
+
     # Derived
     @property
     def cors_origins_list(self) -> list[str]:

@@ -12,8 +12,11 @@ Phase 5C extensions:
 from dataclasses import replace
 from datetime import datetime
 
+from app.domain.visualizer.depth_estimator import DepthEstimator
 from app.domain.visualizer.entities import VisualizationProject
+from app.domain.visualizer.exceptions import PlaneFittingError
 from app.domain.visualizer.repositories import VisualizationProjectRepository
+from app.domain.visualizer.services import PlaneFittingService
 from app.domain.visualizer.value_objects import (
     PerspectiveCorners,
     ScaleCalibration,
@@ -182,3 +185,69 @@ class UpdateCalibration:
             version=version,
         )
         return await self.repo.update(update)
+
+
+# ─── Phase 6 — depth-based perspective fallback ──────────────────────
+
+
+class DetectPerspectiveFromDepth:
+    """Phase 6 — orchestrates depth inference + plane fitting.
+
+    Used when vanishing-point detection (Phase 3, frontend) returned low
+    confidence, e.g. on empty single-tone walls. Pure orchestration: the
+    real work lives in `DepthEstimator` (infrastructure) and
+    `PlaneFittingService` (domain).
+
+    The use case never reads the repository — depth is a pure photo→corners
+    transform; persistence is the caller's job (the API hands the corners
+    back to the frontend, which then PATCHes via `UpdatePerspective` if the
+    user accepts them).
+
+    Why pass `wall_mask` as a flat `list[bool]` rather than e.g. a numpy
+    array: keeps the application layer free of numpy. The API adapter is
+    responsible for decoding the PNG mask the frontend uploads into a
+    flat boolean list before calling `execute`.
+    """
+
+    def __init__(
+        self,
+        depth_estimator: DepthEstimator,
+        plane_fitter: PlaneFittingService,
+    ):
+        self.depth_estimator = depth_estimator
+        self.plane_fitter = plane_fitter
+
+    async def execute(
+        self,
+        image_bytes: bytes,
+        wall_mask: list[bool],
+        mask_width: int,
+        mask_height: int,
+    ) -> PerspectiveCorners:
+        """Return perspective corners derived from a monocular depth pass.
+
+        Args:
+            image_bytes: raw photo bytes (JPEG/PNG).
+            wall_mask: row-major boolean mask aligned to the depth-map size
+                (NOT the original photo size — the API layer downsamples the
+                user's mask to match the model's output resolution).
+            mask_width / mask_height: dimensions of `wall_mask`.
+
+        Raises:
+            DepthEstimationError: from the estimator (missing model, decode
+                failure). Mapped to HTTP 503 by the error handler.
+            PlaneFittingError: from the service (mask too small, no plane
+                consensus, degenerate bounding box). Mapped to HTTP 422.
+        """
+        depth = await self.depth_estimator.estimate(image_bytes)
+        # The estimator and the wall mask must agree on dimensions — the API
+        # adapter is responsible for resizing the user's mask down to model
+        # input size. Verify the contract here so a misconfigured adapter
+        # surfaces a clear PlaneFittingError instead of an opaque IndexError
+        # deep inside the fitter.
+        if (depth.width, depth.height) != (mask_width, mask_height):
+            raise PlaneFittingError(
+                f"Depth map ({depth.width}×{depth.height}) does not match "
+                f"wall mask ({mask_width}×{mask_height})."
+            )
+        return self.plane_fitter.fit(depth, wall_mask)

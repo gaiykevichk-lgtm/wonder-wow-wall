@@ -159,3 +159,45 @@ class PerspectiveCorners:
             bottom_right=pts[2],
             bottom_left=pts[3],
         )
+
+
+@dataclass(frozen=True)
+class DepthMap:
+    """Phase 6 — monocular depth map produced by `DepthEstimator`.
+
+    Stored as a flat row-major `tuple[float, ...]` (not numpy) so the value
+    object stays serialisable and framework-free — `numpy` lives in the
+    infrastructure adapter only. For typical model output sizes (256×256 =
+    65 536 floats) the overhead is acceptable for a single inference.
+
+    Values are *normalised relative depth* in [0, 1] (0 = nearest, 1 = farthest)
+    to make the contract independent of the underlying model's scale (MiDaS
+    outputs inverse depth in arbitrary units; the adapter is responsible for
+    normalising). Plane fitting is unit-agnostic so this is fine.
+    """
+
+    width: int
+    height: int
+    # Row-major, length must equal width * height. Stored as tuple for hash
+    # stability (frozen dataclass) — list would defeat that.
+    values: tuple[float, ...]
+
+    def __post_init__(self) -> None:
+        if self.width <= 0 or self.height <= 0:
+            raise ValueError(
+                f"DepthMap dimensions must be positive, got {self.width}×{self.height}"
+            )
+        if len(self.values) != self.width * self.height:
+            raise ValueError(
+                f"DepthMap.values length {len(self.values)} does not match "
+                f"width*height = {self.width * self.height}"
+            )
+
+    def at(self, x: int, y: int) -> float:
+        """Sample depth at integer pixel `(x, y)`. Bounds-checked — callers
+        that iterate are expected to use `values` directly for speed."""
+        if not (0 <= x < self.width and 0 <= y < self.height):
+            raise IndexError(
+                f"DepthMap.at: ({x}, {y}) out of bounds {self.width}×{self.height}"
+            )
+        return self.values[y * self.width + x]

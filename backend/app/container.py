@@ -4,6 +4,8 @@ Provides FastAPI dependency functions for repository injection.
 Set USE_MEMORY_REPOS=true to use in-memory (for tests / no-DB dev).
 """
 
+import threading
+
 from fastapi import Depends
 
 from app.config import settings
@@ -143,3 +145,56 @@ def get_visualization_repo(session=Depends(get_db_session)):
     if settings.USE_MEMORY_REPOS:
         return _mem_visualization_repo
     return _get_sql_repo_classes()["visualization"](session)
+
+
+# ─── Phase 6 — Depth Estimator (singleton across the process) ──────────
+
+_depth_estimator = None  # type: ignore[var-annotated]
+# Guards the singleton against concurrent first-call initialisation. Uvicorn
+# runs one event loop per worker so in practice requests are serialised at
+# this point, but gunicorn with `--preload` or multi-threaded test runners
+# can race; a threading.Lock is the cheapest way to close that window and
+# works equally well from sync and async call sites.
+_depth_estimator_lock = threading.Lock()
+
+
+def get_depth_estimator():
+    """Return a singleton `DepthEstimator` per process.
+
+    Selection by `settings.DEPTH_PROVIDER`:
+      * `stub`  → `StubDepthEstimator` (default; no ML deps, no checkpoint).
+      * `local` → `LocalMiDaSDepthEstimator` (CPU ONNX). Requires onnxruntime,
+                  numpy, pillow at runtime; loads the model lazily.
+
+    Singleton because:
+      * The stub holds no resources.
+      * The local adapter caches a 150–200 MB ONNX session that we want to
+        amortise across requests.
+
+    Future providers (`replicate`, `modal`) plug in here without touching
+    the use case or API layer.
+    """
+    global _depth_estimator
+    if _depth_estimator is not None:
+        return _depth_estimator
+    with _depth_estimator_lock:
+        # Re-check under the lock — another thread may have built it while
+        # we were waiting.
+        if _depth_estimator is not None:
+            return _depth_estimator
+        provider = settings.DEPTH_PROVIDER.lower()
+        if provider == "stub":
+            from app.infrastructure.ml.depth_estimators import StubDepthEstimator
+            _depth_estimator = StubDepthEstimator()
+        elif provider == "local":
+            from app.infrastructure.ml.depth_estimators import LocalMiDaSDepthEstimator
+            _depth_estimator = LocalMiDaSDepthEstimator(
+                model_path=settings.DEPTH_MODEL_PATH,
+                input_size=settings.DEPTH_INPUT_SIZE,
+            )
+        else:
+            raise RuntimeError(
+                f"Unknown DEPTH_PROVIDER={settings.DEPTH_PROVIDER!r}; "
+                f"expected one of: stub, local"
+            )
+    return _depth_estimator

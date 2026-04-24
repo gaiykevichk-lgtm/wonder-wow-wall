@@ -1103,45 +1103,193 @@ Alembic уже инициализирован: `backend/alembic.ini`, `backend/a
 
 ### 6.1 Backend — ML инфраструктура
 
-- [ ] Решение по инфраструктуре (design-doc `docs/design-docs/DEPTH-ESTIMATION-INFRA.md`):
+- [x] Решение по инфраструктуре (design-doc `docs/design-docs/DEPTH-ESTIMATION-INFRA.md`):
   - Вариант A: FastAPI + `onnxruntime` на CPU (медленно, ~3–5 сек/фото, бесплатно).
   - Вариант B: GPU-инстанс (3–10k ₽/мес).
   - Вариант C: managed inference API (Replicate / Modal / HuggingFace, ~$0.005/вызов).
-- [ ] Выбор и обоснование.
+- [x] **Выбор и обоснование — Вариант A** (free variant), зафиксирован в design-doc 2026-04-24.
 
 ### 6.2 Backend — Domain + Application
 
-- [ ] В `domain/visualizer/services.py`:
-  - `class PlaneFittingService` (stateless) — RANSAC fitting плоскости по точкам с depth. Без зависимостей от ML/инфры.
-- [ ] В `application/visualizer/use_cases.py`:
-  - `class DetectPerspectiveFromDepth` — `execute(image_bytes, wall_mask) -> PerspectiveCorners | None`.
+- [x] В `domain/visualizer/services.py`:
+  - `class PlaneFittingService` — RANSAC fitting плоскости по точкам с depth. Без зависимостей от ML/инфры. Stateful только в части RNG (детерминизм тестов через `rng_seed=42`).
+- [x] В `application/visualizer/use_cases.py`:
+  - `class DetectPerspectiveFromDepth` — `execute(image_bytes, wall_mask, mask_w, mask_h) -> PerspectiveCorners`.
   - Координирует: вызов `IDepthEstimator` (ABC из domain) → `PlaneFittingService` → `PerspectiveCorners`.
+- [x] В `domain/visualizer/value_objects.py`: добавлен `DepthMap` (frozen, tuple-storage, bounds-checked `at`).
+- [x] В `domain/visualizer/exceptions.py`: добавлены `DepthEstimationError` (→ HTTP 503) и `PlaneFittingError` (→ HTTP 422).
 
 ### 6.3 Backend — Infrastructure
 
-- [ ] `domain/visualizer/repositories.py` (или новый `services.py`): добавить ABC `IDepthEstimator`.
-- [ ] `infrastructure/ml/midas_depth_estimator.py`:
-  - Реализация `MiDaSDepthEstimator(IDepthEstimator)` (CPU через onnxruntime) **или** `ReplicateDepthEstimator(IDepthEstimator)` (managed API) — выбор по конфигу `DEPTH_PROVIDER` в `settings`.
-- [ ] `infrastructure/api/visualizer.py`:
-  - Endpoint `POST /api/visualizer/perspective/auto-detect` — body: `multipart/form-data { photo, wall_mask_png }`.
-  - Async очередь — фронт получает 202 + polling URL, либо WebSocket-прогресс.
-- [ ] `config.py`: добавить `DEPTH_PROVIDER: Literal["local", "replicate"]`, `DEPTH_API_KEY: str | None`.
+- [x] `domain/visualizer/depth_estimator.py` (новый файл вместо размещения внутри `repositories.py` — N2 в аудите): добавлен ABC `IDepthEstimator`.
+- [x] `infrastructure/ml/depth_estimators.py`:
+  - `StubDepthEstimator(IDepthEstimator)` — детерминированный radial gradient (для unit/API-тестов и dev без чекпоинта).
+  - `LocalMiDaSDepthEstimator(IDepthEstimator)` — CPU ONNX, lazy imports `numpy/onnxruntime/PIL`, кешированная сессия.
+- [ ] **C1 — `infrastructure/api/visualizer.py`: endpoint `POST /api/visualizer/perspective/auto-detect`** (multipart `photo` + `wall_mask_png`, синхронный single-POST per design-doc — без 202+polling в v1).
+- [ ] **N9 — Решить префикс роутера**: текущий `/api/visualizer/projects` не подходит для `/perspective/auto-detect`. Варианты: (a) отдельный роутер `perspective_router` под `/api/visualizer`, (b) переподключение `visualizer.router` под `/api/visualizer` с явным `prefix="/projects"` внутри.
+- [ ] **C2 — `app/main.py`: зарегистрировать handlers** `DepthEstimationError` (503) и `PlaneFittingError` (422) — добавить функции в `error_handlers.py` и вызвать `app.add_exception_handler(...)`.
+- [ ] **C6 — `app/container.py`: добавить FastAPI-`Depends`-фабрику** `get_detect_perspective_from_depth_use_case(...)` для DI use-case в роутере.
+- [x] `config.py`: добавлены `DEPTH_PROVIDER: str = "stub"`, `DEPTH_MODEL_PATH: str = ""`, `DEPTH_INPUT_SIZE: int = 256` (вместо `Literal["local","replicate"]` + `DEPTH_API_KEY` — последнее отнесено к Phase 6.5 для managed-провайдера).
 
 ### 6.4 Frontend
 
+- [ ] **C7 — `frontend/src/domains/visualizer/lib/depthFallbackDetector.ts`** (отсутствует): клиент к `/perspective/auto-detect`, FormData (photo + wall_mask PNG), таймаут, race-protection через AbortController/токен запроса.
 - [ ] В `lib/vanishingPointDetector.ts`: если LSD-confidence < 0.6 **и** `editorMode !== 'perspective'` (юзер ещё не открыл ручной редактор) → fallback на бэкенд `auto-detect`. См. [D6].
 - [ ] Прогресс «Анализ глубины…» в шапке canvas (Ant Design `Progress`).
-- [ ] EXIF orientation нормализация на фронте перед upload. См. [T8].
+- [ ] EXIF orientation нормализация на фронте перед upload. См. [T8] (отнесено в follow-up по design-doc § "Out of scope").
 
 ### 6.5 Тесты
 
-- [ ] Backend `tests/domain/test_plane_fitting.py`: чистый unit-тест `PlaneFittingService` (фиктивный depth_map → ожидаемая нормаль).
-- [ ] Backend `tests/application/test_detect_perspective_from_depth.py`: мок `IDepthEstimator` + мок `PlaneFittingService` → корректная оркестрация.
-- [ ] Backend `tests/api/test_perspective_auto_detect_api.py`: интеграция с мок-IDepthEstimator.
-- [ ] Frontend: race-condition тест — late depth response при `editorMode === 'perspective'` → ответ игнорируется.
+- [ ] **C3 — Backend `tests/domain/test_plane_fitting.py`**: unit-тест `PlaneFittingService` + `DepthMap`. Минимум: (1) плоский depth + полная маска → bbox = маска; (2) маска <50 пикселей → `PlaneFittingError("min=50")`; (3) длина mask != w*h → `PlaneFittingError`; (4) равномерный depth (все одинаковые) → `PlaneFittingError("did not converge")`; (5) `DepthMap.at` bounds-check.
+- [ ] **C4 — Backend `tests/application/test_detect_perspective_from_depth.py`**: моки `IDepthEstimator` + `PlaneFittingService`, проверить (a) happy path; (b) пробрасывание `DepthEstimationError`; (c) ветка несовпадения размерностей depth vs mask (use_cases.py:247).
+- [ ] **C5 — Backend `tests/api/test_perspective_auto_detect_api.py`**: с переопределённым `get_depth_estimator` через FastAPI override — happy 200, 503 на пустых байтах, 422 на mismatch dims, 422 на degenerate mask.
+- [ ] **C8 — Frontend** `__tests__/depthFallbackDetector.test.ts`: race-condition — late depth response при `editorMode === 'perspective'` → ответ игнорируется (AbortController срабатывает; UI-store не обновляется).
 - [ ] **Датасет-acceptance** (вне CI): 50 «сложных» фото → coverage с фазой 6 vs без.
 
 > **Definition of Done:** для пустой однотонной стены, где фаза 3 возвращала `null`, теперь возвращается валидный `PerspectiveCorners` в ≥70% случаев.
+
+### 6.6 Аудит-фиксы (technical debt)
+
+Карты из аудита 2026-04-24 (см. конец фазы):
+
+- [x] **N1** Переименовать `IDepthEstimator` → `DepthEstimator` (без префикса `I`) для соответствия `CONVENTIONS.md` "Именование". Обновлены: `domain/visualizer/depth_estimator.py`, все docstring в `exceptions.py`/`value_objects.py`/`__init__.py`, type-hint в `application/visualizer/use_cases.py`.
+- [ ] **N2** Решить размещение порта: оставить как есть в отдельном `depth_estimator.py` (текущий вариант) или переместить в `domain/visualizer/repositories.py` / `services.py` per плановой структуре. Решение зафиксировать в design-doc.
+- [x] **N3** Перенести `from app.domain.visualizer.exceptions import PlaneFittingError` (use_cases.py:248) в шапку модуля — убрать inline-import.
+- [x] **N4** В docstring `PlaneFittingService` явно отметить, что RNG-state — допустимое отступление от "stateless" ради детерминизма тестов. (services.py:83-88 добавлен абзац «The lone stateful bit…».)
+- [x] **N5** Убрать двойную конверсию `tuple(float(v) for v in absolute.reshape(-1).tolist())` → `tuple(absolute.reshape(-1).tolist())` (`depth_estimators.py:173`).
+- [x] **N6** Вынести магическое 0.9 (early-exit threshold) в named-константу `_EARLY_EXIT_INLIER_RATIO` (`services.py:20`).
+- [ ] **N7 (backlog)** Когда модель будет апгрейднута до 384×384, оценить переход с `tuple[float,...]` хранения depth на `array.array('f', ...)`.
+- [ ] **N8** Опционально переименовать `infrastructure/ml/depth_estimators.py` → `midas_depth_estimator.py` per плану §6.3 (если решено держать только MiDaS-варианты в одном файле — иначе оставить множественное число).
+- [ ] **N10** При добавлении `replicate`-провайдера обновить `RuntimeError` message в `container.py` и таблицу Configuration в design-doc.
+- [x] **Thread-safety `LocalMiDaSDepthEstimator._session`**: добавлен `asyncio.Lock` (`depth_estimators.py:100`) с double-checked locking.
+- [x] **Thread-safety `_depth_estimator` singleton** в `container.py`: добавлен `threading.Lock` (`container.py:154`) с double-checked locking.
+
+### Статус Фазы 6 на 2026-04-24
+
+**Готово (~60%):**
+- Design-doc одобрен (Variant A — local CPU ONNX).
+- Domain: `DepthEstimator` ABC (N1 fix), `DepthMap` VO, `DepthEstimationError`/`PlaneFittingError`, `PlaneFittingService` (RANSAC pure-Python).
+- Application: `DetectPerspectiveFromDepth` use case.
+- Infrastructure (ML): `StubDepthEstimator` (линейный градиент после C9-фикса) + `LocalMiDaSDepthEstimator` (lazy imports, cached session под `asyncio.Lock`).
+- Config: `DEPTH_PROVIDER`/`DEPTH_MODEL_PATH`/`DEPTH_INPUT_SIZE`.
+- Container: `get_depth_estimator()` singleton под `threading.Lock`.
+- Закрыт technical debt: N1, N3, N4, N5, N6, N11, N12, N13, N14, thread-safety session+singleton.
+
+**Не готово (блокирует релиз фазы):**
+- C1 — HTTP-эндпойнт `POST /api/visualizer/perspective/auto-detect`.
+- C2 — регистрация exception-handlers в `main.py` для `DepthEstimationError` / `PlaneFittingError`.
+- C6 — `Depends`-фабрика для use-case.
+- N9 — решение по router-prefix (`/api/visualizer/projects` vs `/api/visualizer`).
+- C3/C4/C5 — все backend-тесты (domain, application, api). **C5 теперь пишется (C9 закрыт фиксом §6.8).**
+- C7 — frontend-клиент `depthFallbackDetector.ts`.
+- C8 — frontend race-condition тест.
+- Интеграция в `vanishingPointDetector.ts` fallback chain (план §6.4).
+
+**Carry-over из 5C:** B48 (миграция `calibration_pixels_per_cm` в типизированный `ScaleCalibration` VO) — остаётся в parking lot, не пересекается с Phase 6.
+
+### 6.7 Аудит реализации (2026-04-24)
+
+Line-by-line проверка всех файлов, затронутых фазой. Что проверено:
+
+- `backend/app/domain/visualizer/depth_estimator.py` (38 строк, новый) — ABC + docstring.
+- `backend/app/domain/visualizer/services.py` (199 строк, новый) — `_fit_plane_through_three_points`, `PlaneFittingService.__init__`, `.fit` (3 стадии: subsample, RANSAC, BBox).
+- `backend/app/domain/visualizer/value_objects.py` (+42 строк) — `DepthMap` VO + `__post_init__` + `at`.
+- `backend/app/domain/visualizer/exceptions.py` (+25 строк) — `DepthEstimationError`, `PlaneFittingError`.
+- `backend/app/application/visualizer/use_cases.py` (+69 строк) — `DetectPerspectiveFromDepth` + dim-mismatch guard.
+- `backend/app/infrastructure/ml/__init__.py` + `depth_estimators.py` (174 строки, новый) — `StubDepthEstimator`, `LocalMiDaSDepthEstimator` (lazy imports, cached session).
+- `backend/app/config.py` (+8 строк) — три settings.
+- `backend/app/container.py` (+42 строк) — `get_depth_estimator()` singleton + селектор провайдера.
+- `docs/design-docs/DEPTH-ESTIMATION-INFRA.md` (102 строки, новый).
+
+Дополнительно проверено:
+- Правило зависимостей DDD (domain не импортирует application/infrastructure) — ✅ соблюдено.
+- Отсутствие регрессий в существующих тестах (grep по новым символам в `tests/`) — ✅ новые символы нигде не импортируются старым кодом; изменения в `value_objects.py`/`exceptions.py` аддитивные.
+- Smoke-run доменной логики на `.venv/bin/python` (без fastapi): `DepthMap` валидация, `PlaneFittingService.fit` на flat/tilted plane / empty mask / wrong length / uniform depth / <50 px — все ветки отрабатывают как задокументировано, **кроме** интеграции stub↔fitter (см. C9 ниже).
+
+#### Критические находки
+
+- [ ] **C9 — Stub несовместим со своим же fitter на default-настройках.** `StubDepthEstimator` генерирует радиально-симметричный градиент (`0.5 * r + 0.25` от центра, `depth_estimators.py:67-72`). Такая поверхность — конус, не плоскость. RANSAC в `PlaneFittingService` при default `inlier_tolerance=0.03` не находит консенсуса и бросает `PlaneFittingError("RANSAC did not converge: best inlier ratio=0.21, required ≥0.4")`. Проверено через `.venv/bin/python`: `StubDepthEstimator()` (64×64) + `PlaneFittingService()` + `[True]*4096` → **FAIL**. Это противоречит docstring стаба (`depth_estimators.py:44-46`: "a single dominant plane is detectable by RANSAC, so the integration test path (PlaneFittingService.fit) returns something deterministic instead of failing with PlaneFittingError"). Последствия: запланированный тест **C5** ("happy 200 через FastAPI override на стабе") в том виде, как описан в §6.5, провалится — endpoint вернёт 422 PlaneFittingError вместо 200. Варианты фикса (выбрать один в §6 design-doc):
+  - (a) Переписать стаб на настоящий линейно-наклонный градиент (`0.3 + 0.4*x/(width-1)`) — один плоский план, 100% инлайеров при любой tolerance.
+  - (b) Оставить радиальный стаб, но документировать, что интеграционные тесты должны конструировать `PlaneFittingService(inlier_tolerance=0.2)` — противоречит идее «дефолтный DI из container».
+  - (c) Дать стабу конструкторный флаг `shape: Literal["radial","linear"] = "linear"`, и по умолчанию использовать linear.
+  - Рекомендуется (a): минимальное изменение, стаб продолжает служить целям «deterministic, no ML deps, сравним с прод-путём».
+
+> Остальные «не готово» из подраздела «Статус Фазы 6» (C1, C2, C6, C7, C8, N9 и все тесты) — не находки аудита, а осознанно запланированный scope, уже зафиксированный выше. Они блокируют релиз фазы, но не являются новыми дефектами.
+
+#### Некритические находки (technical debt)
+
+- [ ] **N11 — Сэмплирование с strid'ом занижает BBox.** `services.py:134-138`: итерация идёт `range(0, h, stride)` + `range(0, w, stride)`. Для mask шириной W последний посещённый `x = ((W-1) // stride) * stride`, т.е. BBox x_max меньше реального края mask до `stride-1` пикселей. На 256×256 (stride=4) — до 3 px потерь. Некритично для v1 (ошибка < 1% от размера), но стоит либо добавить финальный pass по крайним строкам/колонкам, либо использовать `min(x_max + stride - 1, w - 1)` при формировании BBox. Проверено через smoke-run: `32×32` flat mask → BBox `(0..28, 0..28)` вместо ожидаемого `(0..31, 0..31)`.
+
+- [ ] **N12 — Семантика `min_mask_pixels` отличается от плана.** План §6.5 C3 пункт (2): «маска <50 пикселей → `PlaneFittingError("min=50")`». Код (`services.py:140-144`) считает **пост-stride** сэмплы (т.е. `len(samples)`, не `sum(wall_mask)`). Маска в 200 True-пикселей, случайно попавших «мимо» сетки stride=4, даст `len(samples) < 50` → отказ. Поведение безопаснее плана, но тест C3(2) должен либо пропускать этот нюанс, либо подавать достаточную mask (≥`50 * stride² = 800` px для гарантии). Уточнить формулировку DoD.
+
+- [ ] **N13 — Мёртвая ветка в error-path.** `services.py:172`: `ratio = (len(best_inliers) / n) if n else 0.0`. К моменту вычисления `n = len(samples) ≥ min_mask_pixels ≥ 3` (проверено строкой 140), поэтому `if n else` — недостижимый fallback. Можно упростить до `ratio = len(best_inliers) / n`.
+
+- [ ] **N14 — Docstring стаба неточен про «tilt».** `depth_estimators.py:68-72`: комментарий «Tilt slightly so the resulting plane is non-trivial — pure radial would be axially symmetric and the bbox of inliers would be the entire image». Фактически форма `0.5 * r + 0.25` остаётся осесимметричной (зависит только от `r`), никакого tilt не добавлено. Это первопричина C9. При фиксе C9 нужно переписать и комментарий.
+
+- [ ] **N15 — Повтор ранее отмеченных пунктов из §6.6 остаётся в силе после аудита:** N1 (префикс `I`), N3 (inline import `PlaneFittingError` на `use_cases.py:248`), N5 (двойная конверсия в `depth_estimators.py:173`), N6 (магическое 0.9 на `services.py:168`), «Thread-safety `_session`» и аналогичный риск для глобального `_depth_estimator` в `container.py:150` (отсутствие lock; для single-worker uvicorn допустимо, для gunicorn-preload может гонять).
+
+#### Тесты
+
+**Отсутствуют полностью.** Ни одного теста для:
+- `DepthMap` (VO, валидация, `.at`).
+- `PlaneFittingService` (все ветки — subsample, RANSAC convergence, degenerate bbox, wrong mask length, min pixels).
+- `DetectPerspectiveFromDepth` (happy + dim mismatch + пробрасывание исключений).
+- `StubDepthEstimator` / `LocalMiDaSDepthEstimator` (empty bytes → 503; MiDaS lazy-import fallback; missing model file).
+- `get_depth_estimator()` селектор (stub / local / unknown → `RuntimeError`).
+
+Плановые C3/C4/C5/C8 помечены `[ ]`, пункт DoD §6 «покрытие ≥85%» не выполним без них. **До фикса C9 happy-path теста C5 написать нельзя** — важно в какой последовательности закрывать.
+
+#### Регрессии
+
+Не выявлены. Проверено:
+- Старые тесты `tests/domain/test_visualizer_value_objects.py` импортируют только `CollinearCornersError` и существующие VO — на добавление `DepthMap`/новых exceptions не влияет.
+- `tests/application/test_visualizer_use_cases.py` не ссылается на `DetectPerspectiveFromDepth` или `IDepthEstimator` → изменение `use_cases.py` аддитивное.
+- `container.py` — `get_depth_estimator()` не меняет существующие DI-фабрики (`get_visualization_repo` и др. остались без изменений; global state `_depth_estimator` изолирован).
+- Роутер `visualizer.py` не затронут (C1 ещё не сделан), поэтому существующие endpoints `/api/visualizer/projects/*` работают как раньше.
+
+#### Итог
+
+Ядро Phase 6 (domain + application + infrastructure adapters + DI) написано корректно и согласно DDD-контурам. Одна **критическая** логическая несогласованность (C9) между stub и fitter блокирует написание happy-path API-теста C5 — требует фикса до старта тестового блока. Остальные находки — технический долг, который можно закрывать параллельно с C1/C2/C6/C7.
+
+### 6.8 Fix-pass по аудиту §6.7 (2026-04-24)
+
+Исправлены все критические и большинство некритических находок. Оставшиеся `[ ]` — backlog / внешние решения.
+
+**Критические (исправлены):**
+
+- [x] **C9** `StubDepthEstimator` переведён с радиального (`0.5*r + 0.25`) на линейный градиент `0.3 + 0.4*x/(width-1)` (`backend/app/infrastructure/ml/depth_estimators.py:61-67`). Это **настоящая плоскость** в 3D, `PlaneFittingService` на дефолтной `inlier_tolerance=0.03` принимает её с ratio≈1.0. Проверено сквозным смоук-тестом stub→fitter→`DetectPerspectiveFromDepth`: возвращает `Point(0,0)`→`Point(63,63)` на 64×64 mask. Блокер для C5 снят. Docstring стаба переписан (N14).
+
+**Некритические (исправлены):**
+
+- [x] **N1** `IDepthEstimator` → `DepthEstimator` по всему коду (`depth_estimator.py`, `use_cases.py`, `depth_estimators.py`, все docstring-ссылки).
+- [x] **N3** inline-import `PlaneFittingError` удалён, импорт поднят в шапку `use_cases.py:14`.
+- [x] **N4** в docstring `PlaneFittingService` добавлен абзац про RNG-state как допустимое отступление от stateless (`services.py:83-88`).
+- [x] **N5** двойная конверсия `tuple(float(v) for v in arr.reshape(-1).tolist())` → `tuple(arr.reshape(-1).tolist())` (`depth_estimators.py:174-177`).
+- [x] **N6** магическое `0.9` вынесено в `_EARLY_EXIT_INLIER_RATIO` с docstring (`services.py:20-24`).
+- [x] **N11** Edge-индексы `w-1` / `h-1` добавлены в стриду (`services.py:156-161`), BBox теперь достигает края mask. Проверено на 33×33 с stride=4: BBox `(0..32, 0..32)` вместо `(0..28, 0..28)`.
+- [x] **N12** Перед stride-сэмплингом добавлен raw-mask gate (`services.py:141-146`): `sum(1 for px in wall_mask if px) < min_mask_pixels` → понятная ошибка с реальным числом пикселей. Пост-stride гейт остался как `len(samples) < 3` (минимум для RANSAC) с отдельным сообщением (`services.py:169-177`).
+- [x] **N13** мёртвая ветка `ratio = (len(best_inliers) / n) if n else 0.0` упрощена до `ratio = len(best_inliers) / n` (`services.py:207`) — `n ≥ 3` по гейту выше.
+- [x] **N14** docstring стаба переписан в рамках C9.
+- [x] **Thread-safety session**: `LocalMiDaSDepthEstimator._session_lock = asyncio.Lock()` + double-checked locking (`depth_estimators.py:100,118-136`).
+- [x] **Thread-safety singleton**: `container._depth_estimator_lock = threading.Lock()` + double-checked locking (`container.py:154-156,172-190`).
+
+**Проверено после фиксов:**
+
+- Sмоук-скрипт на `.venv/bin/python` без fastapi: `DepthEstimator` ABC + `StubDepthEstimator`/`LocalMiDaSDepthEstimator` isinstance, `PlaneFittingService.fit` на полном и частичном mask, N12 raw-gate, E2E stub→fitter→use-case (corners `(0,0)`→`(63,63)`), dim-mismatch guard.
+- Нет регрессий по именам: `grep IDepthEstimator` по backend/ — **0 совпадений**.
+- Не менялась публичная поверхность: `DepthMap.__init__`/`.at`, `DetectPerspectiveFromDepth.execute`, `get_depth_estimator()` сигнатуры те же.
+
+**Остались открытыми (осознанно):**
+
+- **N2** (решение по размещению порта — дизайн-вопрос, не код).
+- **N7** (array.array-апгрейд при переходе на 384×384 — backlog до реального перехода).
+- **N8** (переименование файла — после решения о MiDaS-only vs multi-vendor).
+- **N10** (обновление Runtime-message — триггер: добавление replicate-адаптера).
+- **N9** + C1 / C2 / C6 / C7 / C8 + тесты C3 / C4 / C5 — это запланированный scope фазы, не находки аудита.
+
+#### Итог фиксов
+
+Все критические блокеры из аудита §6.7 закрыты. Ядро Phase 6 готово к написанию unit-тестов (C3/C4) и подготовке HTTP-слоя (C1/C2/C6) — этих работ аудит не касался.
 
 ---
 

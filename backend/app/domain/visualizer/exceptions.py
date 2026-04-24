@@ -17,6 +17,31 @@ class CollinearCornersError(ValueError):
     """
 
 
+class DepthEstimationError(Exception):
+    """Phase 6 — monocular-depth inference failed.
+
+    Raised by adapters implementing `DepthEstimator`. Failure modes:
+    * Model checkpoint missing on disk (deployment misconfiguration).
+    * `onnxruntime` import error (production image built without ML deps).
+    * Image bytes cannot be decoded (corrupt upload).
+    * Inference timed out or threw at the runtime boundary.
+
+    Mapped to HTTP 503 by `infrastructure/api/error_handlers.py` — the user
+    keeps manual perspective and the frontend logs/swallows; depth is a
+    fallback, never a hard requirement.
+    """
+
+
+class PlaneFittingError(Exception):
+    """Phase 6 — RANSAC could not find a dominant plane in the depth map
+    inside the wall mask. Typical causes: mask too small (<50 px), depth map
+    is uniform (failed inference), wall surface is not planar (curtain, fabric).
+
+    Mapped to HTTP 422 — the request was well-formed but the algorithm could
+    not produce a result.
+    """
+
+
 class StaleSceneVersionError(Exception):
     """Optimistic-lock conflict: the `version` carried by the inbound
     `VisualizationProject` does not match the row in the database.
