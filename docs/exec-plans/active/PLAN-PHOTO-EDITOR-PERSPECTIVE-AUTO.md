@@ -256,6 +256,55 @@ Phase 1A принята как hot-fix RC: критических багов и 
 > **Definition of Done v1 (этот коммит):** ✅ при включении ручной перспективы текстура дизайна реально warp'нута на quad (mesh, не clip). Кэш warp'ов рассеивается при смене перспективы. Fallback на clip при незагруженной картинке. Все тесты зелёные.
 > **Definition of Done v2:** см. общий раздел «Definition of Done» в конце плана.
 
+### 1B.7 Аудит реализации v1 (24.04.2026)
+
+> **Метод:** code-review line-by-line всех изменённых файлов из коммита `1594cd1`; математическая верификация формул `affineFromTriangles` через Cramer (символьная развёртка); анализ canvas operation order (clip vs setTransform); сравнение поведения с Phase 1A (`opacity`, hit-area); прогон `vitest run src/domains/visualizer/` (177/177 ✅) и `tsc --noEmit` (чисто).
+
+#### Что именно проверено
+
+| Артефакт | Что проверял | Результат |
+|----------|--------------|-----------|
+| `panelWarpRenderer.ts:73-125` `buildMeshTriangles` | Корректность грид-резки, передача `wallRect.x/y` offset в `transformPoint`, src-координаты относительно wallRect (для drawImage), 2 треугольника на ячейку | Корректно. Триангуляция стандартная: TL→TR→BR + TL→BR→BL |
+| `panelWarpRenderer.ts:139-196` `affineFromTriangles` | Развернул Cramer для всех 6 коэффициентов (a,b,c,d,e,f). Сравнил с формулами в коде. | **Математически верно.** Формулы для `a` (det по 1-й колонке для x), `c` (по 2-й для x), `e` (по 3-й для x) и зеркально для y совпадают с символьной развёрткой |
+| `panelWarpRenderer.ts:202-219` `quadBoundingBox` | Корректность min/max + `Math.floor`/`Math.ceil`, защита `Math.max(1, ...)` от collapsed quad | Корректно |
+| `panelWarpRenderer.ts:251-333` `renderPanelToQuad` | Порядок canvas operations: `beginPath/moveTo/lineTo/closePath/clip` ДО `setTransform` (clip в pixel-space, transform применяется только к drawImage); `globalAlpha = opacity`; offset `m[4] - bbox.x`/`m[5] - bbox.y` | Семантика clip+setTransform верна — clip фиксируется в pixel-space на момент вызова. Image draws через 0,0 → wallRect.w/h, что matches src triangle координаты |
+| `panelWarpRenderer.ts:226-231` cache key | Уникальность ключа от `designUrl`, `quadHash` (4 точки × 2 координаты по 1 знаку), `opacity` (3 знака), `colorTint` | Работоспособно для типичных URL (см. B3 ниже про `\|`) |
+| `panelWarpRenderer.ts:325-329` FIFO eviction | `Map.keys().next().value` берёт самый старый ключ; `delete` + `set` поддерживает ≤ MAX_CACHE_ENTRIES | Корректно. Map в JS сохраняет insertion order |
+| `KonvaCanvas.tsx:435-437` cache invalidation | `useEffect(clearWarpCache, [perspectiveTransform])` — срабатывает при смене transform | Корректно. На initial mount тоже срабатывает (см. B4) |
+| `KonvaCanvas.tsx:565-613` warp branch | Загруженная картинка → `<KonvaImage image={warpedCanvas} x={bbox.x} ... />`; иначе fallback на Phase 1A clip | Логика разветвления верна |
+| `KonvaCanvas.tsx:614-647` fallback branch | Идентична Phase 1A (clip + backdrop fill Line) — но **без `<KonvaImage>` ветки** для случая когда картинка ещё не загружена. Корректно: backdrop через `panel.color` Line | Корректно |
+| Конвенции (`frontend/CONVENTIONS.md`) | Без `any`; PascalCase/camelCase; типы домена в `model/types.ts`; новые типы (`Triangle`, `MeshTriangle`, `AffineMatrix`, `WallRect`, `WarpOptions`, `WarpResult`) в `lib/panelWarpRenderer.ts` — это **не доменные** типы, а инфраструктурные для рендера, держим рядом с реализацией | Соответствует |
+| Регрессия | `vitest run src/domains/visualizer/` | **17 файлов / 177 тестов зелёные** (19.32s) |
+| Типы | `tsc --noEmit` | Чисто |
+| Тесты `panelWarpRenderer.test.ts` | 19 тестов: math + cache hit/miss/clear | Покрыто |
+| Тесты `KonvaCanvas.test.tsx` | 17 тестов: fallback ветка + outline-outside-clip + регрессия | Покрыто (warp ветка не покрыта — см. B6) |
+
+#### Критические проблемы (блокируют работу фичи)
+
+**Не найдено.** Math корректна, тесты зелёные, типы валидны, fallback гарантирует, что юзер всегда видит панель (даже при незагруженной картинке).
+
+#### Некритические проблемы (технический долг)
+
+| # | Файл / стр. | Проблема | Серьёзность | Куда отнести |
+|---|-------------|----------|-------------|--------------|
+| **B1** | `panelWarpRenderer.ts:283-298` | **Color tint визуальная регрессия vs Phase 1A.** Backdrop tint рисуется ПОД image с тем же `globalAlpha = opacity (=0.85)`. Когда image непрозрачен, эффективная видимость tint падает с ~25% (Phase 1A: tint as overlay alpha=0.25 over image alpha=0.85) до ~13% (alpha=0.85 *(1-0.85) = 0.1275). Цвет панели стал заметно бледнее. | **medium** | v2: рисовать tint **после** image с alpha 0.25, либо использовать `globalCompositeOperation = 'multiply'` |
+| **B2** | `KonvaCanvas.tsx:592-599` | **Hit-testing регрессия.** `panelHandlers` стоят на `<KonvaImage>`, чья hit-area = axis-aligned bbox warp-канваса, а не quad. При сильной перспективе клики срабатывают на пустых углах bbox (вне quad'а), могут перехватывать клики соседних панелей. В Phase 1A handlers были на quad-shaped Line. | **medium** | v2: добавить невидимый `<Line points={flatPts} closed listening={true}>` с handlers поверх KonvaImage, либо использовать `hitFunc` на самом KonvaImage |
+| **B3** | `panelWarpRenderer.ts:230` | **Cache key collision risk.** Разделитель `\|` теоретически может встретиться в `designUrl` (data-URI с base64 не содержит `\|`, но кастомные query-params могут). Коллизия даст показ чужой текстуры. | low | v2: `encodeURIComponent(designUrl)` или sha-256 |
+| **B4** | `KonvaCanvas.tsx:435-437` | `useEffect(clearWarpCache, [perspectiveTransform])` срабатывает при первом mount даже когда `perspectiveTransform === null`. Безвредно (clear пустой Map), но лишний вызов. | low | Не фиксить — стоимость нулевая |
+| **B5** | `panelWarpRenderer.ts:256-264` + `KonvaCanvas.tsx:566-571` | **Дубликация вычисления dst-quad.** `transformRect` в KonvaCanvas + 4 вызова `transformPoint` внутри `renderPanelToQuad` — для одного и того же rect. ~8 лишних умножений-делений на panel на render. | low | v2: принимать готовый `dstQuad: Quad` параметром в `renderPanelToQuad` |
+| **B6** | `KonvaCanvas.test.tsx` | **Нет теста для warp ветки** (когда designImg загружен). Все perspective-тесты пользуются fallback'ом через `designImage='not-loaded.jpg'`. Реальный код-путь Phase 1B v1 не покрыт component-тестом. | **medium** | v2: мок image-loader (resolve `Image.onload` синхронно) → ассертить `<konva-image>` с warped canvas вместо clipped Group |
+| **B7** | `panelWarpRenderer.test.ts` | **Нет теста FIFO eviction.** Кэш-логика `MAX_CACHE_ENTRIES=100` + drop oldest — не покрыта. Простая регрессия (сменить `>=` на `>`) пройдёт незамеченной. | low | v2: добавить тест с 101 уникальным ключом → ассертить `getWarpCacheSize() === 100` |
+| **B8** | `panelWarpRenderer.ts:317-320` | **try/catch глушит per-triangle ошибки.** При `wallRect.width === 0` все треугольники degenerate → silent blank canvas. Нет логирования / warning для разработчика. | low | v2: log.warn один раз при первой ошибке + early-return при `wallRect.width===0\|\|height===0` |
+| **B9** | `KonvaCanvas.tsx:565-612` | **Per-render call в panels.map.** `renderPanelToQuad` дёргается на каждый рендер (cache hit O(1), но всё равно вызов). Не критично — кэш закрывает работу. | low | v2: useMemo на массив warp-результатов |
+| **B10** | `panelWarpRenderer.ts:281-283` | `imageSmoothingEnabled` / `globalAlpha` устанавливаются **без** save/restore вокруг них. На fresh canvas нет проблемы, но если в будущем кто-то будет переиспользовать ctx — leak. | low | Cosmetic |
+| **B11** | `panelWarpRenderer.ts:1-3` | Опечатка: «kuso-affine» вместо «piecewise-affine» в JSDoc заголовке файла. | low | Cosmetic |
+
+#### Вывод
+
+Phase 1B v1 принимается как warp-замена Phase 1A. Math формально верифицирована (Cramer), canvas operation order корректен, fallback гарантирует UX. Из 11 пунктов тех.долга **3 medium-приоритета** (B1, B2, B6) — рекомендуются к закрытию в Phase 1B v2 одним пакетом вместе с wallSpace + drag. Остальные — косметика и микро-перф.
+
+> **Аудит:** ✅ пройден 24.04.2026 — критических проблем нет, перечислен 11-пунктовый тех.долг (B1–B11), приоритет на B1/B2/B6 в v2.
+
 ---
 
 ## Фаза 2: Связка калибровки масштаба с раскладкой
