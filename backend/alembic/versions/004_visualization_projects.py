@@ -26,6 +26,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # All non-Optional ORM fields get an explicit `nullable=False` so the BD
+    # schema matches `Mapped[str]/int/float` semantics (B22 in audit).
+    # `server_default` still protects partial INSERTs.
     op.create_table(
         "visualization_projects",
         sa.Column("id", sa.String(36), primary_key=True),
@@ -38,18 +41,18 @@ def upgrade() -> None:
             index=True,
         ),
         sa.Column("name", sa.String(100), nullable=False, server_default=""),
-        sa.Column("photo_url", sa.Text, server_default=""),
-        sa.Column("photo_width", sa.Integer, server_default="0"),
-        sa.Column("photo_height", sa.Integer, server_default="0"),
-        sa.Column("wall_mask_base64", sa.Text, server_default=""),
-        sa.Column("calibration_pixels_per_cm", sa.Float, server_default="5.0"),
-        sa.Column("panels_json", sa.JSON, server_default="[]"),
-        # `perspective_corners` is JSON to keep schema flexible while frontend
-        # corner-shape still evolves (Phase 5B will harden the value-object).
+        sa.Column("photo_url", sa.Text, nullable=False, server_default=""),
+        sa.Column("photo_width", sa.Integer, nullable=False, server_default="0"),
+        sa.Column("photo_height", sa.Integer, nullable=False, server_default="0"),
+        sa.Column("wall_mask_base64", sa.Text, nullable=False, server_default=""),
+        sa.Column("calibration_pixels_per_cm", sa.Float, nullable=False, server_default="5.0"),
+        sa.Column("panels_json", sa.JSON, nullable=False, server_default="[]"),
+        # `perspective_corners` is the only nullable column — ORM has
+        # `Mapped[dict | None]` (Phase 5B will harden this into a typed VO).
         sa.Column("perspective_corners", sa.JSON, nullable=True),
-        sa.Column("placement_mode", sa.String(20), server_default="manual"),
-        sa.Column("created_at", sa.DateTime, server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime, server_default=sa.func.now()),
+        sa.Column("placement_mode", sa.String(20), nullable=False, server_default="manual"),
+        sa.Column("created_at", sa.DateTime, nullable=False, server_default=sa.func.now()),
+        sa.Column("updated_at", sa.DateTime, nullable=False, server_default=sa.func.now()),
     )
 
 

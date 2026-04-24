@@ -65,6 +65,17 @@ def _table_exists(db_path: Path, name: str) -> bool:
         con.close()
 
 
+def _current_revision(db_path: Path) -> str | None:
+    """Read the head revision recorded by Alembic in `alembic_version`."""
+    con = sqlite3.connect(db_path)
+    try:
+        cur = con.execute("SELECT version_num FROM alembic_version")
+        row = cur.fetchone()
+        return row[0] if row else None
+    finally:
+        con.close()
+
+
 def test_upgrade_head_creates_all_core_tables(alembic_cfg):
     cfg, db_path = alembic_cfg
     alembic_cmd.upgrade(cfg, "head")
@@ -77,6 +88,8 @@ def test_upgrade_head_creates_all_core_tables(alembic_cfg):
         "visualization_projects",  # 004 — Phase 5A new
     ):
         assert _table_exists(db_path, table), f"{table} should exist after upgrade head"
+    # B27: head revision must equal the latest migration id.
+    assert _current_revision(db_path) == "004"
 
 
 def test_round_trip_upgrade_downgrade_upgrade(alembic_cfg):
@@ -106,3 +119,23 @@ def test_downgrade_to_base_drops_everything(alembic_cfg):
     alembic_cmd.downgrade(cfg, "base")
     for table in ("users", "designs", "visualization_projects"):
         assert not _table_exists(db_path, table), f"{table} should be dropped at base"
+    # alembic_version row is gone (or the table itself dropped) at base.
+    assert _current_revision(db_path) is None
+
+
+def test_full_round_trip_head_base_head(alembic_cfg):
+    """Full round-trip `head → base → head` (B26 in audit).
+
+    `test_round_trip_upgrade_downgrade_upgrade` only walks one step down/up;
+    this asserts that the *entire* downgrade chain is followed by a clean
+    upgrade — catches a broken `upgrade()` in any migration once it's been
+    rolled back, which the prior test misses.
+    """
+    cfg, db_path = alembic_cfg
+    alembic_cmd.upgrade(cfg, "head")
+    alembic_cmd.downgrade(cfg, "base")
+    assert _current_revision(db_path) is None
+    alembic_cmd.upgrade(cfg, "head")
+    assert _current_revision(db_path) == "004"
+    for table in ("users", "designs", "subscriptions", "visualization_projects"):
+        assert _table_exists(db_path, table), f"{table} should be re-created at head"

@@ -174,7 +174,11 @@ class VisualizationProjectModel(Base):
     __tablename__ = "visualization_projects"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=gen_uuid)
-    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
+    # ondelete=CASCADE mirrors migration 004 + relationship(cascade="all, delete-orphan").
+    # index=True for `get_by_user`-style lookups (FK without index ⇒ full scan).
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     photo_url: Mapped[str] = mapped_column(Text, default="")
     photo_width: Mapped[int] = mapped_column(Integer, default=0)
