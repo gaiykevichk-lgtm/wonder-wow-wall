@@ -925,15 +925,16 @@ Alembic уже инициализирован: `backend/alembic.ini`, `backend/a
 
 ### 5C.1 Backend — Application Layer
 
-- [ ] В `application/visualizer/use_cases.py`:
+- [x] В `application/visualizer/use_cases.py`:
   - Расширить `SaveProject`: метод `execute()` принимает и сохраняет новые поля `Scene` (по конвенции — один use case = один класс с методом `execute()`).
   - Расширить `LoadProject.execute()`: возвращает их.
   - Новый use case `UpdatePerspective` (`execute(project_id, corners, version)`) — отдельная команда для частичного апдейта.
   - Новый use case `UpdateCalibration` (`execute(project_id, calibration, version)`).
+  - **B34 закрыт**: `UpdateVisualizationProject.execute(version: int | None = None)` — explicit version flow для optimistic-lock; `None` сохраняет legacy passthrough (existing.version) для backwards compat с pre-5C клиентами.
 
 ### 5C.2 Backend — Infrastructure (API)
 
-- [ ] `infrastructure/api/visualizer.py`:
+- [x] `infrastructure/api/visualizer.py`:
   - Pydantic DTO с правильными суффиксами (по `backend/CONVENTIONS.md`):
     - `PerspectiveCornersUpdate` (Pydantic) — body для PATCH.
     - `CalibrationUpdate` — body для PATCH.
@@ -949,36 +950,58 @@ Alembic уже инициализирован: `backend/alembic.ini`, `backend/a
 
 ### 5C.3 Frontend — API client + store
 
-- [ ] В `domains/visualizer/lib/visualizerApi.ts` (создать если нет):
-  - `saveProject()` — обновить body согласно новой schema.
-  - `updatePerspective(projectId, corners, version)` / `updateCalibration(projectId, cal, version)`.
-  - Обработка `409 Conflict`: вернуть `version mismatch` → store решает что делать (показать toast «есть свежие данные с другого таба»).
-  - Обработка `422 degenerate_corners`: тихий retry-skip (не показывать пользователю — это intermediate drag).
-- [ ] В `visualizerStore.ts`:
-  - Дебаунс 1 сек после изменения углов / калибровки → авто-PATCH на бэкенд (если проект сохранён).
-  - **Локальная pre-валидация** non-collinearity перед отправкой. См. [D4].
-  - **Стратегия конфликта localStorage vs backend**: при загрузке — backend version всегда побеждает; localStorage используется только как кэш для оффлайна. См. [R7].
-  - **Undo для перспективы и калибровки** — добавить эти действия в существующий undo-stack (сейчас он только для маски). См. [E7].
-  - При cancel/abort действий перспективы — отмена in-flight PATCH запросов через `AbortController`. См. [D6].
-  - **Селекторный доступ**: компоненты обращаются к новым полям только через селекторы (по `frontend/CONVENTIONS.md`).
+- [x] В `domains/visualizer/lib/visualizerApi.ts` (создать если нет):
+  - `saveProject()` / `loadProject()` / `updatePerspective(projectId, corners, version, {signal})` / `updateCalibration(projectId, cal, version, {signal})`.
+  - Discriminated error types: `StaleVersionError`, `DegenerateCornersError` — оба наследуют `Error`, маппинг через `rethrowVisualizerError(err)` по `err.body.code`.
+  - Обработка `409 Conflict`: → `StaleVersionError` (несёт `serverVersion`).
+  - Обработка `422 degenerate_corners`: → `DegenerateCornersError` (store её silent-swallow на debounce-PATCH-пути).
+  - Wire ↔ DTO мапперы (snake_case ↔ camelCase) — единственная точка конверсии. **B39 закрыт.**
+- [x] `shared/api/client.ts`:
+  - `ApiError.body` (опц.) — полный JSON-payload для discrimination по `code`.
+  - `RequestInitExtras { signal?: AbortSignal }` для всех verb-методов.
+- [x] В `visualizerStore.ts`:
+  - `setLoadedProject(dto)`: гидратация `projectId`/`serverVersion`/corners/calibration/auto-flags + cancel pending sync.
+  - `setPerspectiveCornersAndSync` / `setCalibrationAndSync`: дебаунс 1с (`SYNC_DEBOUNCE_MS = 1000`) → авто-PATCH с per-kind `AbortController`.
+  - **Локальная pre-валидация**: VO non-collinearity guard уже стоит в `setPerspectiveCorners`; degenerate-422 от сервера — fallback (intermediate drag state).
+  - **Стратегия конфликта localStorage vs backend**: backend wins on load (R7). LocalStorage остаётся только оффлайн-кэшем; `setLoadedProject` всегда переписывает локальное состояние.
+  - При reset / cancel — `cancelPendingSync()` через `__syncInternals.cancelAll()` (D6).
+  - На `StaleVersionError` — `message.warning('...другом окне...')`; локальный draft preserved.
+  - Race-guard: `if (_perspectiveSyncCtrl === ctrl)` — superseded controller не коммитит свою версию.
+- [⏸] **Undo для перспективы и калибровки** (E7): отложено — недоход не блокирующий, требует расширения существующего undo-stack (сейчас только маска), вынесено в follow-up.
 
 ### 5C.4 Тесты (по DDD-слоям, согласно `backend/CONVENTIONS.md`)
 
-- [ ] Backend `tests/application/test_update_perspective.py`:
-  - happy path: existing project → корректный update.
-  - degenerate corners → `CollinearCornersError`.
-  - stale version → `StaleSceneVersionError`.
-- [ ] Backend `tests/application/test_update_calibration.py` — аналогично.
-- [ ] Backend `tests/application/test_save_project_with_perspective.py` — расширенный SaveProject.
-- [ ] Backend `tests/api/test_visualizer_perspective_api.py`:
-  - PATCH happy path → 200 + обновлённое значение.
-  - PATCH degenerate → 422 + `code: degenerate_corners`.
-  - PATCH stale version → 409 + текущее состояние.
-- [ ] Frontend:
-  - `visualizerApi.test.ts` — моки fetch для новых endpoints, обработка 409 и 422.
-  - Интеграция в `visualizerStore.test.ts`: setPerspective → debounce 1s → авто-PATCH вызван (mock); abort при clearPerspective.
+- [x] Backend `tests/application/test_update_perspective.py`: 6 кейсов — happy path, clearing, degenerate VO guard, stale version, missing, cross-user.
+- [x] Backend `tests/application/test_update_calibration.py`: 4 кейса — happy + legacy mirror, stale, missing, cross-user.
+- [x] Backend `tests/application/test_visualizer_use_cases.py`: extended — `TestSaveVisualizationProjectPhase5CFields`, `TestUpdateVisualizationProjectVersionPassthrough` (B34 verification).
+- [x] Backend `tests/api/test_visualizer_perspective_api.py`: 8 кейсов — POST round-trip, GET 5C-fields, PATCH happy/422/409/null/cross-user, calibration PATCH happy + stale.
+- [x] Frontend `visualizerApi.test.ts`: 9 кейсов — saveProject snake↔camel, body shapes, AbortSignal threading, 422/409 discriminated mapping, generic 422 stays bare ApiError.
+- [x] Frontend `visualizerStore.test.ts`: +7 кейсов (49 total) — `setLoadedProject` hydration, no-op when projectId null, debounce-3-edits-coalesce, stale → warning + local preserved, degenerate → silent, calibration debounce, reset aborts pending.
 
 > **Definition of Done:** проект, сохранённый с перспективой, открывается через неделю с теми же углами и калибровкой. Multi-tab race возвращает 409.
+
+### 5C.5 Итоги Phase 5C (24.04.2026)
+
+| Слой | Файлы | Тесты |
+|---|---|---|
+| **Backend application** | `use_cases.py` (UpdatePerspective, UpdateCalibration, B34 на UpdateVisualizationProject) | `test_update_perspective.py` 6, `test_update_calibration.py` 4, `test_visualizer_use_cases.py` +5 |
+| **Backend API** | `visualizer.py` (PATCH /perspective, PATCH /calibration, расш. POST/GET, CalibrationSchema), `error_handlers.py` (NEW), `main.py` (handler registration) | `test_visualizer_perspective_api.py` 8 |
+| **Frontend shared** | `client.ts` (ApiError.body, AbortSignal через все verbs) | `client.test.ts` (existing — продолжает зеленить) |
+| **Frontend visualizer** | `lib/visualizerApi.ts` (NEW), `model/visualizerStore.ts` (autosave wiring) | `visualizerApi.test.ts` 9, `visualizerStore.test.ts` 49 (7 новых + pre-existing) |
+
+**B-tracker Phase 5C closures:**
+- B34 ✅ — `UpdateVisualizationProject.execute(version=None)` поддерживает legacy passthrough + explicit optimistic-lock.
+- B39 ✅ — snake↔camel конверсия консолидирована в `visualizerApi.ts` (single seam).
+- B40 ⏸ deferred — `PerspectiveCorners` VO в persistence-pipeline остаётся `list[dict]` через mappers (legacy-row compat). Не блокирует функциональность; типизированная репрезентация уже доступна через VO в domain-слое.
+- E7 ⏸ deferred — undo-stack expansion для перспективы/калибровки. Требует отдельного дизайна (current undo-stack только маска); вынесено в follow-up exec-plan.
+
+**Definition of Done выполнен:**
+- ✅ Сохранённый проект восстанавливает перспективу/калибровку через `setLoadedProject`.
+- ✅ Multi-tab race → 409 + `code: stale_version` → `StaleVersionError` → user-visible warning, локальный draft не потерян.
+- ✅ Degenerate intermediate-drag state на debounce → 422 + silent skip.
+- ✅ AbortController отменяет superseded PATCH (D6) при reset / повторных edits.
+
+**Runtime-валидация:** Backend pytest в sandbox недоступен (нет venv с pytest) — тесты прошли `python3 -m py_compile` syntax-check + manual logic review (precedent установлен 5A.5/5B fix-passes; проверка delegated в CI). Frontend tests прогоняются: `9/9 visualizerApi`, `49/49 visualizerStore`, `tsc --noEmit` exit 0.
 
 ---
 

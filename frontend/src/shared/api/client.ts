@@ -7,6 +7,13 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     public detail: string,
+    /**
+     * Full parsed JSON body — needed by callers that distinguish error
+     * variants by a `code` field (e.g. visualizer PATCH returns
+     * `{detail, code: "stale_version"|"degenerate_corners"}`). Not present
+     * when the server returned non-JSON (we fall back to `{detail}` only).
+     */
+    public body?: Record<string, unknown>,
   ) {
     super(detail);
     this.name = 'ApiError';
@@ -58,7 +65,7 @@ async function request<T>(
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new ApiError(res.status, body.detail || 'Something went wrong');
+    throw new ApiError(res.status, body.detail || 'Something went wrong', body);
   }
 
   if (res.status === 204) return undefined as T;
@@ -67,17 +74,40 @@ async function request<T>(
 
 // ─── HTTP Methods ───────────────────────────────────────────────────────────
 
+/**
+ * Optional per-request controls. Currently exposes `signal` for in-flight
+ * cancellation — the visualizer auto-PATCH path needs this so a debounced
+ * corner-drag aborts when the user keeps dragging or hits "reset".
+ */
+export interface RequestInitExtras {
+  signal?: AbortSignal;
+}
+
 export const api = {
-  get: <T>(path: string) => request<T>(path),
+  get: <T>(path: string, init?: RequestInitExtras) =>
+    request<T>(path, { signal: init?.signal }),
 
-  post: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
+  post: <T>(path: string, body?: unknown, init?: RequestInitExtras) =>
+    request<T>(path, {
+      method: 'POST',
+      body: body ? JSON.stringify(body) : undefined,
+      signal: init?.signal,
+    }),
 
-  put: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: 'PUT', body: body ? JSON.stringify(body) : undefined }),
+  put: <T>(path: string, body?: unknown, init?: RequestInitExtras) =>
+    request<T>(path, {
+      method: 'PUT',
+      body: body ? JSON.stringify(body) : undefined,
+      signal: init?.signal,
+    }),
 
-  patch: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined }),
+  patch: <T>(path: string, body?: unknown, init?: RequestInitExtras) =>
+    request<T>(path, {
+      method: 'PATCH',
+      body: body ? JSON.stringify(body) : undefined,
+      signal: init?.signal,
+    }),
 
-  delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
+  delete: <T>(path: string, init?: RequestInitExtras) =>
+    request<T>(path, { method: 'DELETE', signal: init?.signal }),
 };

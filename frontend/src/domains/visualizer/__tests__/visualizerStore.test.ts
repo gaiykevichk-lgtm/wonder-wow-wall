@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useVisualizerStore } from '../model/visualizerStore';
 import { createEmptyMask } from '../lib/maskUtils';
 import type { Scene, PlacedPanel, PerspectiveCorners } from '../model/types';
@@ -613,6 +613,183 @@ describe('visualizerStore', () => {
       expect(state.layout.panels).toHaveLength(0);
       expect(state.selectedDesignId).toBe('');
       expect(state.undoStack).toHaveLength(0);
+    });
+  });
+});
+
+// ─── Phase 5C — backend autosave wiring ────────────────────────────
+
+import * as visualizerApi from '../lib/visualizerApi';
+import { __syncInternals } from '../model/visualizerStore';
+
+describe('visualizerStore — backend autosave (Phase 5C)', () => {
+  beforeEach(() => {
+    useVisualizerStore.getState().reset();
+    __syncInternals.cancelAll();
+    vi.useFakeTimers();
+    vi.mocked(message.warning).mockClear();
+    vi.mocked(message.error).mockClear();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  const dto = (overrides: Partial<visualizerApi.VisualizationProjectDTO> = {}): visualizerApi.VisualizationProjectDTO => ({
+    id: 'proj-1',
+    name: 'P',
+    photoUrl: '',
+    photoWidth: 0,
+    photoHeight: 0,
+    wallMaskBase64: '',
+    calibrationPixelsPerCm: 5,
+    perspectiveCorners: null,
+    placementMode: 'manual',
+    createdAt: '',
+    updatedAt: '',
+    calibration: null,
+    perspectiveAutoDetected: false,
+    calibrationAutoDetected: false,
+    version: 1,
+    panels: [],
+    ...overrides,
+  });
+
+  const square = (): PerspectiveCorners => [
+    { x: 0, y: 0 }, { x: 100, y: 0 },
+    { x: 100, y: 100 }, { x: 0, y: 100 },
+  ];
+
+  describe('setLoadedProject', () => {
+    it('hydrates projectId, version, corners, calibration', () => {
+      useVisualizerStore.getState().setScene(makeScene());
+      useVisualizerStore.getState().setLoadedProject(dto({
+        id: 'srv-42',
+        version: 9,
+        perspectiveCorners: square(),
+        calibration: { method: 'manual', pixelsPerCm: 7 },
+      }));
+
+      const s = useVisualizerStore.getState();
+      expect(s.projectId).toBe('srv-42');
+      expect(s.serverVersion).toBe(9);
+      expect(s.perspectiveCorners).toEqual(square());
+      expect(s.scene!.calibration).toEqual({ method: 'manual', pixelsPerCm: 7 });
+    });
+  });
+
+  describe('setPerspectiveCornersAndSync', () => {
+    it('is a no-op (network) when projectId is null', async () => {
+      const spy = vi.spyOn(visualizerApi, 'updatePerspective')
+        .mockResolvedValue(dto());
+
+      // No setLoadedProject — projectId stays null.
+      useVisualizerStore.getState().setPerspectiveCornersAndSync(square());
+      await vi.advanceTimersByTimeAsync(2000);
+
+      // Local state still updates so the UI is responsive.
+      expect(useVisualizerStore.getState().perspectiveCorners).toEqual(square());
+      // …but the backend is never touched while the project is unsaved.
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('debounces ~1s and PATCHes once with current version', async () => {
+      const spy = vi.spyOn(visualizerApi, 'updatePerspective')
+        .mockResolvedValue(dto({ version: 5 }));
+      useVisualizerStore.getState().setLoadedProject(dto({ id: 'p1', version: 4 }));
+
+      const setter = useVisualizerStore.getState().setPerspectiveCornersAndSync;
+      // Three rapid edits inside the debounce window collapse to one PATCH.
+      setter(square());
+      setter(square());
+      setter(square());
+
+      // Just before the debounce fires.
+      await vi.advanceTimersByTimeAsync(900);
+      expect(spy).not.toHaveBeenCalled();
+
+      // After the debounce window.
+      await vi.advanceTimersByTimeAsync(200);
+      expect(spy).toHaveBeenCalledTimes(1);
+      const args = spy.mock.calls[0]!;
+      expect(args[0]).toBe('p1');
+      expect(args[2]).toBe(4); // version we loaded
+      // Server's bumped version is committed.
+      expect(useVisualizerStore.getState().serverVersion).toBe(5);
+    });
+
+    it('on stale-version error: warns the user but keeps local state', async () => {
+      vi.spyOn(visualizerApi, 'updatePerspective').mockRejectedValue(
+        new visualizerApi.StaleVersionError('stale', 12),
+      );
+      useVisualizerStore.getState().setLoadedProject(dto({ id: 'p1', version: 4 }));
+
+      useVisualizerStore.getState().setPerspectiveCornersAndSync(square());
+      await vi.advanceTimersByTimeAsync(1100);
+      // microtask flush so the rejected promise's catch runs
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(message.warning).toHaveBeenCalledWith(
+        expect.stringContaining('другом окне'),
+      );
+      // Local edit is preserved — the user can still see what they were doing.
+      expect(useVisualizerStore.getState().perspectiveCorners).toEqual(square());
+    });
+
+    it('on degenerate-corners error: silent skip (intermediate drag state)', async () => {
+      vi.spyOn(visualizerApi, 'updatePerspective').mockRejectedValue(
+        new visualizerApi.DegenerateCornersError('degenerate'),
+      );
+      useVisualizerStore.getState().setLoadedProject(dto({ id: 'p1', version: 4 }));
+
+      useVisualizerStore.getState().setPerspectiveCornersAndSync(square());
+      await vi.advanceTimersByTimeAsync(1100);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // No toast, no console.error path
+      expect(message.warning).not.toHaveBeenCalled();
+      expect(message.error).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('setCalibrationAndSync', () => {
+    it('debounces and PATCHes calibration with version', async () => {
+      const spy = vi.spyOn(visualizerApi, 'updateCalibration')
+        .mockResolvedValue(dto({ version: 5 }));
+      useVisualizerStore.getState().setScene(makeScene());
+      useVisualizerStore.getState().setLoadedProject(dto({ id: 'p1', version: 4 }));
+
+      useVisualizerStore.getState().setCalibrationAndSync({
+        method: 'manual',
+        pixelsPerCm: 8,
+      });
+      await vi.advanceTimersByTimeAsync(1100);
+
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(spy.mock.calls[0]![2]).toBe(4);
+      expect(useVisualizerStore.getState().serverVersion).toBe(5);
+      // Local mirror updated immediately, before the network round trip.
+      expect(useVisualizerStore.getState().scene!.calibration?.pixelsPerCm).toBe(8);
+    });
+  });
+
+  describe('cancelPendingSync / reset', () => {
+    it('reset() aborts pending PATCH', async () => {
+      const spy = vi.spyOn(visualizerApi, 'updatePerspective')
+        .mockResolvedValue(dto());
+      useVisualizerStore.getState().setLoadedProject(dto({ id: 'p1', version: 4 }));
+      useVisualizerStore.getState().setPerspectiveCornersAndSync(square());
+      // Don't advance timers — debounce is pending.
+
+      useVisualizerStore.getState().reset();
+      await vi.advanceTimersByTimeAsync(2000);
+
+      // The pending debounce was cleared by reset → no PATCH ever fired.
+      expect(spy).not.toHaveBeenCalled();
+      expect(useVisualizerStore.getState().projectId).toBeNull();
     });
   });
 });

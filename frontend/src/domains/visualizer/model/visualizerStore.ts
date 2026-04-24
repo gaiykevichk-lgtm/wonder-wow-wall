@@ -32,6 +32,13 @@ import {
   type ReferenceCandidate,
 } from '../lib/scaleEstimator';
 import type { ReferenceDetector } from '../lib/referenceDetector';
+import {
+  DegenerateCornersError,
+  StaleVersionError,
+  updateCalibration as apiUpdateCalibration,
+  updatePerspective as apiUpdatePerspective,
+  type VisualizationProjectDTO,
+} from '../lib/visualizerApi';
 
 interface VisualizerState {
   // Scene
@@ -127,9 +134,81 @@ interface VisualizerState {
   // Persistence (API — explicit user action)
   getProjectPayload: () => Record<string, unknown> | null;
 
+  // ─── Phase 5C — backend autosave wiring ─────────────────────────
+  /**
+   * Server-assigned ID. `null` until the user explicitly saves the project
+   * via the create endpoint. Autosave is a no-op while `projectId` is null —
+   * the typical UX is "edit locally, then save", and we don't want to fire
+   * partial PATCHes against a row that doesn't exist yet.
+   */
+  projectId: string | null;
+  /**
+   * Server's `version` field for the loaded project. This is the value we
+   * echo back on PATCH for optimistic-lock; the API responds with `version+1`
+   * which we then store here.
+   *
+   * R7 strategy: backend always wins on load. We never persist this in
+   * localStorage to avoid stale PATCHes after a long offline session — on
+   * cold start, a fresh `loadProject` call re-populates it.
+   */
+  serverVersion: number;
+  /**
+   * Hydrate the store from a backend `loadProject` response. Replaces
+   * `perspectiveCorners`, `scene.calibration`, and the auto-detected flags.
+   * Also clears any in-flight sync (otherwise a previously-debounced PATCH
+   * could clobber the freshly-loaded version).
+   */
+  setLoadedProject: (dto: VisualizationProjectDTO) => void;
+  /**
+   * Public alias of `setPerspectiveCorners` that *also* fires a debounced
+   * PATCH against the backend (D6 abort semantics applied). Components that
+   * need pure local state (no sync) should keep using `setPerspectiveCorners`.
+   */
+  setPerspectiveCornersAndSync: (corners: PerspectiveCorners | null) => void;
+  /** Same as above for calibration. */
+  setCalibrationAndSync: (calibration: ScaleCalibration) => void;
+  /**
+   * Cancel any in-flight perspective/calibration PATCH and clear the debounce
+   * timers. Called on `reset` and when loading a different project.
+   */
+  cancelPendingSync: () => void;
+
   // Reset
   reset: () => void;
 }
+
+// ─── Module-level sync state (Phase 5C) ──────────────────────────────
+//
+// These live outside the store on purpose:
+//  - `AbortController` / `setTimeout` handles are not serializable so they
+//    must not appear in zustand's persisted partition.
+//  - There is exactly one active sync per kind at a time (last-write-wins),
+//    so a module-level singleton is a faithful model.
+//
+// Keeping them per-kind (rather than one shared controller) means a
+// perspective drag mid-flight does NOT abort an in-flight calibration save —
+// they are independent edits.
+
+const SYNC_DEBOUNCE_MS = 1000;
+
+let _perspectiveSyncTimer: ReturnType<typeof setTimeout> | null = null;
+let _perspectiveSyncCtrl: AbortController | null = null;
+let _calibrationSyncTimer: ReturnType<typeof setTimeout> | null = null;
+let _calibrationSyncCtrl: AbortController | null = null;
+
+/** Test-only hook — Vitest can swap this to a synchronous fake when needed. */
+export const __syncInternals = {
+  cancelAll(): void {
+    if (_perspectiveSyncTimer) clearTimeout(_perspectiveSyncTimer);
+    if (_calibrationSyncTimer) clearTimeout(_calibrationSyncTimer);
+    _perspectiveSyncCtrl?.abort();
+    _calibrationSyncCtrl?.abort();
+    _perspectiveSyncTimer = null;
+    _calibrationSyncTimer = null;
+    _perspectiveSyncCtrl = null;
+    _calibrationSyncCtrl = null;
+  },
+};
 
 const EMPTY_LAYOUT: PanelLayout = {
   panels: [],
@@ -476,6 +555,137 @@ export const useVisualizerStore = create<VisualizerState>()(
     set({ cost: calculateCost(panels, hasSubscription) });
   },
 
+  // ─── Phase 5C — backend autosave wiring ───────────────────────────
+  projectId: null,
+  serverVersion: 1,
+
+  setLoadedProject: (dto) => {
+    // Cancel anything in flight before clobbering local state — otherwise
+    // the freshly-loaded `serverVersion` could be overwritten by a stale
+    // PATCH response that completes after this call.
+    __syncInternals.cancelAll();
+    const scene = get().scene;
+    set({
+      projectId: dto.id,
+      serverVersion: dto.version,
+      perspectiveCorners: dto.perspectiveCorners,
+      // R7: backend wins on load. Replace any local calibration that was
+      // sitting in the store from prior session work.
+      scene: scene
+        ? {
+            ...scene,
+            calibration: dto.calibration,
+            perspectiveAutoDetected: dto.perspectiveAutoDetected,
+            calibrationAutoDetected: dto.calibrationAutoDetected,
+          }
+        : scene,
+    });
+  },
+
+  setPerspectiveCornersAndSync: (corners) => {
+    // Update local state first so the UI is responsive — never block on the
+    // network for visual feedback during a corner drag.
+    get().setPerspectiveCorners(corners);
+    const { projectId } = get();
+    if (!projectId) return; // unsaved scene — local-only edit
+
+    // Coalesce rapid drags into a single PATCH at the trailing edge of the
+    // debounce window (D6). Aborting the previous in-flight request is
+    // belt-and-braces: the server will still process it and bump version,
+    // which the next PATCH will reconcile via 409 → reload.
+    if (_perspectiveSyncTimer) clearTimeout(_perspectiveSyncTimer);
+    _perspectiveSyncCtrl?.abort();
+
+    _perspectiveSyncTimer = setTimeout(async () => {
+      _perspectiveSyncTimer = null;
+      const ctrl = new AbortController();
+      _perspectiveSyncCtrl = ctrl;
+      const { serverVersion } = get();
+      try {
+        const updated = await apiUpdatePerspective(
+          projectId,
+          get().perspectiveCorners,
+          serverVersion,
+          { signal: ctrl.signal },
+        );
+        // Only commit the new version if this controller is still the active
+        // one — otherwise a newer drag has superseded us, do not race.
+        if (_perspectiveSyncCtrl === ctrl) {
+          set({ serverVersion: updated.version });
+          _perspectiveSyncCtrl = null;
+        }
+      } catch (err) {
+        if (_perspectiveSyncCtrl === ctrl) {
+          _perspectiveSyncCtrl = null;
+        }
+        if (err instanceof DegenerateCornersError) {
+          // Intermediate drag flattened the quad. Silent: the next debounce
+          // will resend the user's final position.
+          return;
+        }
+        if (err instanceof StaleVersionError) {
+          // Another tab moved the version forward. Toast the user — they
+          // need to refetch. Don't auto-refetch here, that's the caller's
+          // job (they may have unsaved local work to merge).
+          message.warning(
+            'Проект изменён в другом окне. Обновите страницу, чтобы увидеть свежие данные.',
+          );
+          return;
+        }
+        if ((err as DOMException)?.name === 'AbortError') return;
+        if (import.meta.env.DEV) {
+          console.warn('[setPerspectiveCornersAndSync] PATCH failed:', err);
+        }
+      }
+    }, SYNC_DEBOUNCE_MS);
+  },
+
+  setCalibrationAndSync: (calibration) => {
+    get().setCalibration(calibration);
+    const { projectId } = get();
+    if (!projectId) return;
+
+    if (_calibrationSyncTimer) clearTimeout(_calibrationSyncTimer);
+    _calibrationSyncCtrl?.abort();
+
+    _calibrationSyncTimer = setTimeout(async () => {
+      _calibrationSyncTimer = null;
+      const ctrl = new AbortController();
+      _calibrationSyncCtrl = ctrl;
+      const { serverVersion } = get();
+      try {
+        const updated = await apiUpdateCalibration(
+          projectId,
+          calibration,
+          serverVersion,
+          { signal: ctrl.signal },
+        );
+        if (_calibrationSyncCtrl === ctrl) {
+          set({ serverVersion: updated.version });
+          _calibrationSyncCtrl = null;
+        }
+      } catch (err) {
+        if (_calibrationSyncCtrl === ctrl) {
+          _calibrationSyncCtrl = null;
+        }
+        if (err instanceof StaleVersionError) {
+          message.warning(
+            'Проект изменён в другом окне. Обновите страницу, чтобы увидеть свежие данные.',
+          );
+          return;
+        }
+        if ((err as DOMException)?.name === 'AbortError') return;
+        if (import.meta.env.DEV) {
+          console.warn('[setCalibrationAndSync] PATCH failed:', err);
+        }
+      }
+    }, SYNC_DEBOUNCE_MS);
+  },
+
+  cancelPendingSync: () => {
+    __syncInternals.cancelAll();
+  },
+
   // Persistence (API payload builder — explicit user action)
   getProjectPayload: () => {
     const state = get();
@@ -510,6 +720,10 @@ export const useVisualizerStore = create<VisualizerState>()(
 
   // Reset
   reset: () => {
+    // Drop any pending PATCH so a stale debounce doesn't fire after the
+    // user has wiped the project (would target a now-cleared projectId
+    // and the response would be ignored anyway).
+    __syncInternals.cancelAll();
     try {
       localStorage.removeItem('wow-wall-visualizer');
     } catch {
@@ -531,6 +745,8 @@ export const useVisualizerStore = create<VisualizerState>()(
       calibrationPoints: { start: null, end: null, referenceCm: 200 },
       perspectiveCorners: null,
       wallBrightness: 128,
+      projectId: null,
+      serverVersion: 1,
     });
   },
 }),
