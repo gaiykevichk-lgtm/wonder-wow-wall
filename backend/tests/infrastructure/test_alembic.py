@@ -104,8 +104,10 @@ def test_upgrade_head_creates_all_core_tables(alembic_cfg):
         "visualization_projects",  # 004 — Phase 5A new
     ):
         assert _table_exists(db_path, table), f"{table} should exist after upgrade head"
-    # head revision must equal the latest migration id (currently 005 — Phase 5B).
-    assert _current_revision(db_path) == "005"
+    # head revision must equal the latest migration id (currently 006 — Phase 1 admin).
+    assert _current_revision(db_path) == "006"
+    # 006 adds `role` to users.
+    assert "role" in _column_names(db_path, "users")
 
 
 def test_phase5b_columns_added_by_005(alembic_cfg):
@@ -121,8 +123,10 @@ def test_phase5b_columns_added_by_005(alembic_cfg):
     ):
         assert new_col in cols, f"005 should add column `{new_col}`"
 
-    # Downgrade -1 should drop them (and only them) cleanly.
-    alembic_cmd.downgrade(cfg, "-1")
+    # Downgrade to 004 should drop them (and only them) cleanly. Targeting
+    # by explicit revision rather than `-1` so the assertion survives new
+    # migrations being added on top of 005.
+    alembic_cmd.downgrade(cfg, "004")
     assert _current_revision(db_path) == "004"
     cols_after = _column_names(db_path, "visualization_projects")
     for dropped in (
@@ -136,13 +140,29 @@ def test_phase5b_columns_added_by_005(alembic_cfg):
     assert "calibration_pixels_per_cm" in cols_after
 
 
-def test_round_trip_upgrade_downgrade_upgrade(alembic_cfg):
-    """`upgrade head → downgrade -1 → upgrade head` must succeed without errors.
+def test_phase1_role_column_added_by_006(alembic_cfg):
+    """Migration 006 adds `role` to `users` with a CUSTOMER server_default."""
+    cfg, db_path = alembic_cfg
+    alembic_cmd.upgrade(cfg, "head")
+    assert "role" in _column_names(db_path, "users")
 
-    Verifies that the head migration (currently 005 — Phase 5B) has a
-    working `downgrade()` and re-applies cleanly. The legacy `004` table
-    (`visualization_projects`) survives a `-1` from `head=005` because
-    005 only adds *columns*; the table itself was created in 004.
+    # Downgrade -1 drops the column; `users` itself remains (from 001).
+    alembic_cmd.downgrade(cfg, "-1")
+    assert _current_revision(db_path) == "005"
+    assert _table_exists(db_path, "users")
+    assert "role" not in _column_names(db_path, "users")
+
+
+def test_round_trip_upgrade_downgrade_upgrade(alembic_cfg):
+    """`upgrade head → downgrade to 004 → upgrade head` must succeed without errors.
+
+    Verifies that the Phase 5B migration (005) has a working `downgrade()`
+    and re-applies cleanly after a round-trip. The legacy `004` table
+    (`visualization_projects`) survives the downgrade because 005 only adds
+    *columns*; the table itself was created in 004.
+
+    Target revision is pinned to "004" (not `-1`) so the invariant holds
+    when more migrations are stacked on top of 005.
     """
     cfg, db_path = alembic_cfg
     alembic_cmd.upgrade(cfg, "head")
@@ -150,8 +170,8 @@ def test_round_trip_upgrade_downgrade_upgrade(alembic_cfg):
     cols_at_head = _column_names(db_path, "visualization_projects")
     assert "version" in cols_at_head  # added by 005
 
-    alembic_cmd.downgrade(cfg, "-1")
-    # Rolling back 005 keeps the table (created by 004) but drops 005's columns.
+    alembic_cmd.downgrade(cfg, "004")
+    # Rolling back past 005 keeps the table (created by 004) but drops 005's columns.
     assert _table_exists(db_path, "visualization_projects")
     assert "version" not in _column_names(db_path, "visualization_projects")
     assert _table_exists(db_path, "users")
@@ -183,7 +203,7 @@ def test_full_round_trip_head_base_head(alembic_cfg):
     alembic_cmd.downgrade(cfg, "base")
     assert _current_revision(db_path) is None
     alembic_cmd.upgrade(cfg, "head")
-    assert _current_revision(db_path) == "005"
+    assert _current_revision(db_path) == "006"
     for table in ("users", "designs", "subscriptions", "visualization_projects"):
         assert _table_exists(db_path, table), f"{table} should be re-created at head"
     # Phase 5B columns must be present at head after the full round-trip.

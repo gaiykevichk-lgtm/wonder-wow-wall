@@ -1,6 +1,7 @@
 from app.domain.user.entities import User
+from app.domain.user.exceptions import LastAdminRemovalError, NotAuthorizedError
 from app.domain.user.repositories import UserRepository
-from app.domain.user.value_objects import Email
+from app.domain.user.value_objects import Email, UserRole
 from app.infrastructure.security.jwt import hash_password, verify_password, create_access_token
 
 
@@ -24,7 +25,7 @@ class Register:
             phone=phone,
         )
         user = await self.repo.create(user)
-        token = create_access_token(user.id)
+        token = create_access_token(user.id, user.role.value)
         return {"user": user, "token": token}
 
 
@@ -37,7 +38,7 @@ class Login:
         if not user or not verify_password(password, user.password_hash):
             raise ValueError("Invalid email or password")
 
-        token = create_access_token(user.id)
+        token = create_access_token(user.id, user.role.value)
         return {"user": user, "token": token}
 
 
@@ -108,3 +109,86 @@ class ResetPassword:
         await self.repo.update(user)
         ForgotPassword._tokens.pop(email.lower(), None)
         return {"status": "reset"}
+
+
+# ─── Phase 1: Role management ────────────────────────────────────────
+
+class GrantAdminRole:
+    """Promote a user to ADMIN. `actor_id` is captured for the Phase 9
+    audit decorator; today it is only validated (actor must be admin or
+    the `SYSTEM` bootstrap actor used by the CLI).
+    """
+
+    SYSTEM_ACTOR = "SYSTEM"
+
+    def __init__(self, repo: UserRepository):
+        self.repo = repo
+
+    async def execute(self, actor_id: str, target_user_id: str) -> User:
+        await _ensure_actor_is_admin(self.repo, actor_id)
+
+        target = await self.repo.get_by_id(target_user_id)
+        if target is None:
+            raise ValueError(f"User not found: {target_user_id}")
+
+        target.promote_to_admin()
+        return await self.repo.update(target)
+
+
+class RevokeAdminRole:
+    """Demote an admin back to CUSTOMER. Blocks the operation if the target
+    is the last remaining admin (E1) — raises `LastAdminRemovalError`.
+    """
+
+    SYSTEM_ACTOR = "SYSTEM"
+
+    def __init__(self, repo: UserRepository):
+        self.repo = repo
+
+    async def execute(self, actor_id: str, target_user_id: str) -> User:
+        await _ensure_actor_is_admin(self.repo, actor_id)
+
+        target = await self.repo.get_by_id(target_user_id)
+        if target is None:
+            raise ValueError(f"User not found: {target_user_id}")
+
+        if target.role != UserRole.ADMIN:
+            # Idempotent no-op — consistent with GrantAdminRole for already-ADMIN.
+            return target
+
+        admin_count = await self.repo.count_admins()
+        if admin_count <= 1:
+            raise LastAdminRemovalError(
+                "Cannot demote the last remaining admin — the system would become unmanageable."
+            )
+
+        target.demote_to_customer()
+        return await self.repo.update(target)
+
+
+class RequireAdmin:
+    """Pure check: raises `NotAuthorizedError` if the user is not admin.
+    Used by API dependency (`get_current_admin_id`) and anywhere we need a
+    gate inside a composed use case.
+    """
+
+    def __init__(self, repo: UserRepository):
+        self.repo = repo
+
+    async def execute(self, user_id: str) -> None:
+        user = await self.repo.get_by_id(user_id)
+        if user is None or user.role != UserRole.ADMIN:
+            raise NotAuthorizedError("Admin role required")
+
+
+async def _ensure_actor_is_admin(repo: UserRepository, actor_id: str) -> None:
+    """Internal helper — bootstrap `SYSTEM` actor bypasses the DB check so
+    the CLI (`python -m app.cli grant_admin <email>`) can seed the very
+    first admin before any admin exists. In audit entries the `SYSTEM`
+    actor is recorded verbatim.
+    """
+    if actor_id == GrantAdminRole.SYSTEM_ACTOR:
+        return
+    actor = await repo.get_by_id(actor_id)
+    if actor is None or actor.role != UserRole.ADMIN:
+        raise NotAuthorizedError("Admin role required to manage roles")

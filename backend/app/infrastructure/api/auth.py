@@ -28,6 +28,7 @@ class UserResponse(BaseModel):
     name: str
     email: str
     phone: str
+    role: str
     created_at: str
 
 
@@ -65,7 +66,8 @@ async def register(request: Request, body: RegisterRequest, user_repo=Depends(ge
     return {
         "user": {
             "id": user.id, "name": user.name, "email": user.email,
-            "phone": user.phone, "created_at": user.created_at.isoformat(),
+            "phone": user.phone, "role": user.role.value,
+            "created_at": user.created_at.isoformat(),
         },
         "token": result["token"],
     }
@@ -83,7 +85,8 @@ async def login(request: Request, body: LoginRequest, user_repo=Depends(get_user
     return {
         "user": {
             "id": user.id, "name": user.name, "email": user.email,
-            "phone": user.phone, "created_at": user.created_at.isoformat(),
+            "phone": user.phone, "role": user.role.value,
+            "created_at": user.created_at.isoformat(),
         },
         "token": result["token"],
     }
@@ -97,7 +100,8 @@ async def me(user_id: str = Depends(get_current_user_id), user_repo=Depends(get_
         raise HTTPException(status_code=404, detail="User not found")
     return {
         "id": user.id, "name": user.name, "email": user.email,
-        "phone": user.phone, "created_at": user.created_at.isoformat(),
+        "phone": user.phone, "role": user.role.value,
+        "created_at": user.created_at.isoformat(),
     }
 
 
@@ -109,7 +113,8 @@ async def update_profile(body: UpdateProfileRequest, user_id: str = Depends(get_
         raise HTTPException(status_code=404, detail="User not found")
     return {
         "id": user.id, "name": user.name, "email": user.email,
-        "phone": user.phone, "created_at": user.created_at.isoformat(),
+        "phone": user.phone, "role": user.role.value,
+        "created_at": user.created_at.isoformat(),
     }
 
 

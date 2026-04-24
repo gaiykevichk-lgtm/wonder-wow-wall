@@ -24,6 +24,12 @@ class UserModel(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[str] = mapped_column(String(50), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # Phase 1 — admin panel. `server_default` backfills existing rows on
+    # `alembic upgrade`; `default=` is used by `Base.metadata.create_all()`
+    # in the SQLite test rig (no migrations run there).
+    role: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="CUSTOMER", server_default="CUSTOMER"
+    )
 
     addresses: Mapped[list["UserAddressModel"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     orders: Mapped[list["OrderModel"]] = relationship(back_populates="user")

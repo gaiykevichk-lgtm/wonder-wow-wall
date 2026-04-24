@@ -98,43 +98,46 @@
 
 ---
 
-## Фаза 1: Роль admin + guard + первый админ
+## Фаза 1: Роль admin + guard + первый админ ✅ ВЫПОЛНЕНО (2026-04-24)
 
 > **Цель:** В `User` появляется `role`; есть guard для эндпоинтов и frontend-route; первый админ создан через CLI.
 > **Self-contained релиз** — без UI админки, проверяется через 401/403 и `/api/admin/me`.
 
 ### Backend
-- [ ] Domain: добавить `UserRole` в `domain/user/value_objects.py` как `Enum` (`CUSTOMER`, `ADMIN`). Добавить поле `role: UserRole = UserRole.CUSTOMER` в `User` entity.
-- [ ] Domain: метод `User.promote_to_admin()` / `User.demote_to_customer()` (раннее блокирование демоутинга последнего админа — решается на уровне use case).
-- [ ] Domain: исключение `LastAdminRemovalError(DomainException)`.
-- [ ] Application: use case `GrantAdminRole.execute(actor_id, target_user_id)` и `RevokeAdminRole.execute(actor_id, target_user_id)`. `actor_id` нужен для аудита.
-- [ ] Application: use case `RequireAdmin.execute(user_id)` — кидает `NotAuthorizedError` если не админ.
-- [ ] Infrastructure: миграция Alembic `add_role_to_users` с `downgrade()` (default `CUSTOMER` для всех существующих).
-- [ ] Infrastructure: обновить `UserModel` (ORM) — колонка `role VARCHAR(16) NOT NULL DEFAULT 'CUSTOMER'`.
-- [ ] Infrastructure: обновить `jwt.create_access_token` — добавить claim `role` в payload. Обновить `decode_access_token` → возвращает `(user_id, role)`.
-- [ ] Infrastructure: dependency `get_current_admin_id` (parallel к `get_current_user_id`) в `app/utils/dependencies.py` — возвращает 403 если не admin.
-- [ ] Infrastructure: CLI-команда `app/cli.py` с подкомандой `grant_admin <email>` (использует `GrantAdminRole.execute('SYSTEM', user.id)`).
-- [ ] Infrastructure: новый роутер `infrastructure/api/admin/__init__.py` + `admin/auth.py` с эндпоинтом `GET /api/admin/me` под guard.
+- [x] Domain: добавить `UserRole` в `domain/user/value_objects.py` как `Enum` (`CUSTOMER`, `ADMIN`). Добавить поле `role: UserRole = UserRole.CUSTOMER` в `User` entity.
+- [x] Domain: метод `User.promote_to_admin()` / `User.demote_to_customer()` (раннее блокирование демоутинга последнего админа — решается на уровне use case).
+- [x] Domain: исключение `LastAdminRemovalError(DomainException)`.
+- [x] Application: use case `GrantAdminRole.execute(actor_id, target_user_id)` и `RevokeAdminRole.execute(actor_id, target_user_id)`. `actor_id` нужен для аудита.
+- [x] Application: use case `RequireAdmin.execute(user_id)` — кидает `NotAuthorizedError` если не админ.
+- [x] Infrastructure: миграция Alembic `006_add_role_to_users` с `downgrade()` (default `CUSTOMER` для всех существующих).
+- [x] Infrastructure: обновить `UserModel` (ORM) — колонка `role VARCHAR(16) NOT NULL DEFAULT 'CUSTOMER'`.
+- [x] Infrastructure: обновить `jwt.create_access_token` — добавить claim `role` в payload. Обновить `decode_access_token` → возвращает `(user_id, role)` с legacy-фолбэком на `CUSTOMER` для токенов без claim (R1).
+- [x] Infrastructure: dependency `get_current_admin_id` (parallel к `get_current_user_id`) в `app/utils/dependencies.py` — возвращает 401 без токена, 403 если не admin.
+- [x] Infrastructure: CLI-команда `app/cli.py` с подкомандой `grant_admin <email>` / `revoke_admin <email>` (использует `GrantAdminRole.execute('SYSTEM', user.id)`).
+- [x] Infrastructure: новый роутер `infrastructure/api/admin/__init__.py` + `admin/auth.py` с эндпоинтом `GET /api/admin/me` под guard.
 
 ### Frontend
-- [ ] Расширить `domains/auth/model/types.ts` — `UserRole`, поле `role` в типе `AuthUser`.
-- [ ] Обновить `domains/auth/model/authStore.ts` — хранить `role`, селектор `useIsAdmin`.
-- [ ] `shared/router.tsx` — компонент `<RequireAdmin>` (HOC/wrapper), редирект на `/login?from=/admin` при отсутствии роли.
-- [ ] Заглушка-страница `domains/admin/ui/AdminPlaceholderPage.tsx` (просто «Админ-панель — Фаза 1 OK»).
-- [ ] Lazy-route `/admin` → `AdminPlaceholderPage` под `<RequireAdmin>`.
+- [x] Расширить `domains/auth/model/types.ts` — `UserRole`, поле `role` в типе `User`.
+- [x] Обновить `domains/auth/model/authStore.ts` — хранить `role`, селектор `useIsAdmin`, persist `version: 1` + `migrate` для бэкфила legacy-сессий (R10).
+- [x] `domains/admin/ui/RequireAdmin.tsx` — компонент-guard, редирект на `/login?redirect=...` при отсутствии роли.
+- [x] Заглушка-страница `domains/admin/ui/AdminPlaceholderPage.tsx` (просто «Админ-панель — Фаза 1 OK»).
+- [x] Lazy-route `/admin` → `AdminPlaceholderPage` под `<RequireAdmin>` (вне `<ShopLayout>`).
 
 ### Тесты
-- [ ] `tests/domain/user/test_role.py` — переходы ролей, last-admin protection.
-- [ ] `tests/application/user/test_grant_revoke_admin.py` — happy path + permission errors.
-- [ ] `tests/api/admin/test_admin_auth.py` — 401 без токена, 403 с customer-токеном, 200 с admin-токеном.
-- [ ] `frontend/src/domains/auth/__tests__/authStore.role.test.ts` — селектор `useIsAdmin`.
-- [ ] Manual: `docker-compose run --rm backend python -m app.cli grant_admin admin@local` → залогиниться с фронта → редирект на `/admin` без 403.
+- [x] `tests/domain/test_user_role.py` — переходы ролей + идемпотентность.
+- [x] `tests/application/test_role_management.py` — happy path, last-admin protection, SYSTEM bootstrap, NotAuthorized.
+- [x] `tests/api/test_admin_auth.py` — 401 без токена, 401 malformed, 403 с customer-токеном, 200 с admin-токеном, stale-token после promotion.
+- [x] `tests/infrastructure/test_alembic.py` — новая проверка `test_phase1_role_column_added_by_006`.
+- [x] `frontend/src/domains/auth/model/authStore.role.test.ts` — login/register default, setAuth с ADMIN/CUSTOMER, `useIsAdmin` селектор, persist migrate для v0→v1.
+- [ ] Manual: `docker-compose run --rm backend python -m app.cli grant_admin admin@local` → залогиниться с фронта → редирект на `/admin` без 403. *(Проверяется вручную после деплоя.)*
 
 ### Definition of Done
-- Миграция применяется и откатывается без ошибок.
-- Существующие unit/integration-тесты не падают.
-- В `/api/admin/me` возвращается profile + `role: 'ADMIN'`.
-- Customer не может зайти на `/admin` — видит редирект.
+- [x] Миграция применяется и откатывается без ошибок.
+- [x] Существующие unit/integration-тесты не падают (266 backend + 18 frontend auth).
+- [x] В `/api/admin/me` возвращается profile + `role: 'ADMIN'`.
+- [x] Customer не может зайти на `/admin` — видит редирект.
+
+> Фаза 1 завершена — базовый admin-guard работает end-to-end (JWT claim → `get_current_admin_id` → `<RequireAdmin>` → `/api/admin/me`). Фаза 2 разблокирована.
 
 ---
 

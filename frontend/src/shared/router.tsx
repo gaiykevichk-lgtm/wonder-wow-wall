@@ -3,6 +3,7 @@ import { Suspense, lazy } from 'react';
 import { Spin } from 'antd';
 import { ShopLayout } from './ui/ShopLayout';
 import { RequireAuth } from '../domains/auth/ui/RequireAuth';
+import { RequireAdmin } from '../domains/admin/ui/RequireAdmin';
 
 // ─── Domain: Catalog ────────────────────────────────────────────────────────
 const CatalogPage = lazy(() => import('../domains/catalog/ui/CatalogPage'));
@@ -35,6 +36,9 @@ const PrivacyPolicyPage = lazy(() => import('../domains/content/ui/PrivacyPolicy
 const LoginPage = lazy(() => import('../domains/auth/ui/LoginPage'));
 const RegisterPage = lazy(() => import('../domains/auth/ui/RegisterPage'));
 const ForgotPasswordPage = lazy(() => import('../domains/auth/ui/ForgotPasswordPage'));
+
+// ─── Domain: Admin (Phase 1 placeholder; full layout in Phase 2) ───────────
+const AdminPlaceholderPage = lazy(() => import('../domains/admin/ui/AdminPlaceholderPage'));
 
 // ─── Domain: Account ────────────────────────────────────────────────────────
 const AccountLayout = lazy(() => import('../domains/account/ui/AccountLayout'));
@@ -97,6 +101,17 @@ export function AppRouter() {
             <Route path="subscription" element={<AccountSubscriptionSection />} />
           </Route>
         </Route>
+
+        {/* Admin — own layout (not inside <ShopLayout>). */}
+        <Route
+          path="/admin"
+          element={
+            <RequireAdmin>
+              <AdminPlaceholderPage />
+            </RequireAdmin>
+          }
+        />
+
         <Route path="*" element={<HomePage />} />
       </Routes>
     </Suspense>

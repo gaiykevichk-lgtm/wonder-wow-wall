@@ -107,6 +107,7 @@ def _subscription_to_domain(m: SubscriptionModel) -> Subscription:
 
 
 def _user_to_domain(m: UserModel) -> User:
+    from app.domain.user.value_objects import UserRole
     addresses = [
         UserAddress(
             id=a.id, label=a.label, city=a.city, street=a.street,
@@ -115,9 +116,17 @@ def _user_to_domain(m: UserModel) -> User:
         )
         for a in (m.addresses or [])
     ]
+    # `m.role` comes from the DB as a plain string; tolerate unknown values
+    # (e.g. row manually edited) by falling back to CUSTOMER instead of
+    # crashing the profile endpoint.
+    try:
+        role = UserRole(m.role)
+    except ValueError:
+        role = UserRole.CUSTOMER
     return User(
         id=m.id, email=m.email, password_hash=m.password_hash,
         name=m.name, phone=m.phone, addresses=addresses, created_at=m.created_at,
+        role=role,
     )
 
 
@@ -367,6 +376,7 @@ class SqlUserRepository(UserRepository):
         model = UserModel(
             id=user.id, email=user.email, password_hash=user.password_hash,
             name=user.name, phone=user.phone, created_at=user.created_at,
+            role=user.role.value,
         )
         self._session.add(model)
         for addr in user.addresses:
@@ -403,6 +413,7 @@ class SqlUserRepository(UserRepository):
             model.name = user.name
             model.phone = user.phone
             model.email = user.email
+            model.role = user.role.value
             # Sync addresses: delete all, re-create
             for old_addr in list(model.addresses):
                 await self._session.delete(old_addr)
@@ -416,3 +427,9 @@ class SqlUserRepository(UserRepository):
                 self._session.add(addr_model)
         await self._session.flush()
         return user
+
+    async def count_admins(self) -> int:
+        result = await self._session.execute(
+            select(func.count()).select_from(UserModel).where(UserModel.role == "ADMIN")
+        )
+        return int(result.scalar_one())

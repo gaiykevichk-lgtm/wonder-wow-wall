@@ -6,6 +6,7 @@ export interface ApiUserResponse {
   name: string;
   email: string;
   phone: string;
+  role: 'CUSTOMER' | 'ADMIN';
   created_at: string;
 }
 

@@ -11,6 +11,7 @@ from app.domain.visualizer.exceptions import (
     StaleSceneVersionError,
 )
 from app.infrastructure.api import auth, catalog, orders, subscriptions, projects, contacts, visualizer
+from app.infrastructure.api import admin as admin_api
 from app.infrastructure.api.error_handlers import (
     collinear_corners_handler,
     depth_estimation_handler,
@@ -60,6 +61,7 @@ app.include_router(subscriptions.router, prefix="/api/subscriptions", tags=["sub
 app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
 app.include_router(contacts.router, prefix="/api", tags=["contacts"])
 app.include_router(visualizer.router, prefix="/api/visualizer/projects", tags=["visualizer"])
+app.include_router(admin_api.router, prefix="/api/admin", tags=["admin"])
 
 
 @app.get("/api/health")

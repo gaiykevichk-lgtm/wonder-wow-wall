@@ -153,3 +153,7 @@ class InMemoryUserRepository(UserRepository):
     async def update(self, user):
         self._users = [u if u.id != user.id else user for u in self._users]
         return user
+
+    async def count_admins(self):
+        from app.domain.user.value_objects import UserRole
+        return sum(1 for u in self._users if u.role == UserRole.ADMIN)
