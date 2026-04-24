@@ -7,6 +7,12 @@ from app.application.visualizer.use_cases import (
     UpdateVisualizationProject,
     DeleteVisualizationProject,
 )
+from app.domain.visualizer.exceptions import StaleSceneVersionError
+from app.domain.visualizer.value_objects import (
+    PerspectiveCorners,
+    Point,
+    ScaleCalibration,
+)
 from app.infrastructure.persistence.repositories.visualization_repo import (
     InMemoryVisualizationProjectRepository,
 )
@@ -117,6 +123,76 @@ class TestUpdateVisualizationProject:
         result = await uc.execute(saved.id, "user-1", VisualizationProject(name="Updated"))
         assert result is not None
         assert result.created_at == original_created
+
+
+# ─── Phase 5C — extended coverage for new fields & version passthrough ──
+
+
+class TestSaveVisualizationProjectPhase5CFields:
+    """SaveProject already accepts the full entity, so the additions are
+    transparently persisted. These tests lock that contract: a regression that
+    drops one of the new fields from the round-trip would fail here."""
+
+    @pytest.mark.asyncio
+    async def test_persists_calibration_and_auto_flags(self, repo):
+        cal = ScaleCalibration(method="reference", pixels_per_cm=6.7, wall_width_cm=300)
+        project = VisualizationProject(
+            name="P",
+            calibration=cal,
+            perspective_auto_detected=True,
+            calibration_auto_detected=True,
+        )
+        saved = await SaveVisualizationProject(repo).execute("user-1", project)
+        assert saved.calibration == cal
+        assert saved.perspective_auto_detected is True
+        assert saved.calibration_auto_detected is True
+
+    @pytest.mark.asyncio
+    async def test_persists_perspective_corners_round_trip(self, repo):
+        corners = PerspectiveCorners(
+            top_left=Point(0, 0), top_right=Point(100, 0),
+            bottom_right=Point(100, 100), bottom_left=Point(0, 100),
+        )
+        project = VisualizationProject(name="P", perspective_corners=corners.as_dicts())
+        saved = await SaveVisualizationProject(repo).execute("user-1", project)
+        assert PerspectiveCorners.from_dicts(saved.perspective_corners) == corners
+
+
+class TestUpdateVisualizationProjectVersionPassthrough:
+    """B34 closure — the version field now flows from API → use case → repo."""
+
+    @pytest.mark.asyncio
+    async def test_omitted_version_is_legacy_passthrough(self, repo):
+        # No `version=` arg → use case copies server's current version,
+        # preserving the pre-5C "last write wins" contract. This protects
+        # legacy clients that never send `version`.
+        save = SaveVisualizationProject(repo)
+        saved = await save.execute("user-1", VisualizationProject(name="P"))
+        uc = UpdateVisualizationProject(repo)
+        result = await uc.execute(saved.id, "user-1", VisualizationProject(name="P2"))
+        assert result is not None
+        assert result.version == saved.version + 1  # repo bumped after match
+
+    @pytest.mark.asyncio
+    async def test_explicit_correct_version_succeeds(self, repo):
+        save = SaveVisualizationProject(repo)
+        saved = await save.execute("user-1", VisualizationProject(name="P"))
+        uc = UpdateVisualizationProject(repo)
+        result = await uc.execute(
+            saved.id, "user-1", VisualizationProject(name="P2"), version=1,
+        )
+        assert result is not None
+        assert result.version == 2
+
+    @pytest.mark.asyncio
+    async def test_explicit_stale_version_raises(self, repo):
+        save = SaveVisualizationProject(repo)
+        saved = await save.execute("user-1", VisualizationProject(name="P"))
+        uc = UpdateVisualizationProject(repo)
+        with pytest.raises(StaleSceneVersionError):
+            await uc.execute(
+                saved.id, "user-1", VisualizationProject(name="P2"), version=99,
+            )
 
 
 class TestDeleteVisualizationProject:

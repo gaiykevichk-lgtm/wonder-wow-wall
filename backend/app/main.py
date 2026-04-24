@@ -4,7 +4,15 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
+from app.domain.visualizer.exceptions import (
+    CollinearCornersError,
+    StaleSceneVersionError,
+)
 from app.infrastructure.api import auth, catalog, orders, subscriptions, projects, contacts, visualizer
+from app.infrastructure.api.error_handlers import (
+    collinear_corners_handler,
+    stale_scene_version_handler,
+)
 from app.infrastructure.security.middleware import SecurityHeadersMiddleware
 from app.infrastructure.security.rate_limit import limiter
 
@@ -17,6 +25,11 @@ app = FastAPI(
 # ─── Rate Limiting ──────────────────────────────────────────────────
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# ─── Domain → HTTP exception handlers (Phase 5C) ────────────────────
+# Visualizer bounded context — see infrastructure/api/error_handlers.py.
+app.add_exception_handler(CollinearCornersError, collinear_corners_handler)
+app.add_exception_handler(StaleSceneVersionError, stale_scene_version_handler)
 
 # ─── Security Headers ──────────────────────────────────────────────
 app.add_middleware(SecurityHeadersMiddleware)
