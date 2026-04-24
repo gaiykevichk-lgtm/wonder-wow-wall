@@ -29,7 +29,7 @@ import { CalibrationOverlay } from './CalibrationOverlay';
 import { BeforeAfterSlider } from './BeforeAfterSlider';
 import { OnboardingTooltips } from './OnboardingTooltips';
 import { useSearchParams } from 'react-router-dom';
-import { computeWallBrightness } from '../lib/perspectiveEngine';
+import { computeWallBrightness, createPerspective } from '../lib/perspectiveEngine';
 import type { Point, AccentZone, PerspectiveCorners } from '../model/types';
 
 const { Title, Text } = Typography;
@@ -89,7 +89,11 @@ export default function PhotoEditorPage() {
       try {
         const { dataUrl, width, height } = await processUploadedImage(file);
         const photo = { url: dataUrl, width, height, file };
-        const calibration = { method: 'manual' as const, pixelsPerCm: width / 400 };
+        // 'auto' marks this as a heuristic placeholder — perspective auto-fill
+        // refuses it, and the editor surfaces a banner asking the user to
+        // calibrate. Replaced by 'reference'/'manual' once they apply real
+        // calibration via CalibrationOverlay.
+        const calibration = { method: 'auto' as const, pixelsPerCm: width / 400 };
 
         const setReadyScene = (wallMask: import('../model/types').WallMask, obstacles: import('../model/types').Obstacle[] = []) => {
           store.setScene({
@@ -142,8 +146,15 @@ export default function PhotoEditorPage() {
   // Handle canvas click → place panel (manual mode)
   const handleCanvasClick = useCallback(
     (x: number, y: number) => {
-      const { scene, layout, selectedSizeKey, selectedDesignId, selectedDesignName, selectedDesignImage, selectedColor, selectedColorName } = store;
+      const { scene, layout, selectedSizeKey, selectedDesignId, selectedDesignName, selectedDesignImage, selectedColor, selectedColorName, perspectiveCorners } = store;
       if (!scene?.wallMask || !selectedDesignId || layout.placementMode !== 'manual') return;
+
+      const perspective = perspectiveCorners
+        ? createPerspective(perspectiveCorners, {
+            w: scene.photo.width,
+            h: scene.photo.height,
+          })
+        : null;
 
       const panel = placeSinglePanel(
         scene.wallMask,
@@ -156,6 +167,7 @@ export default function PhotoEditorPage() {
         selectedColor,
         selectedColorName,
         scene.objectMask?.obstacles,
+        perspective,
       );
 
       if (panel) {
@@ -518,6 +530,47 @@ export default function PhotoEditorPage() {
 
           {/* Center: Canvas + Mask toolbar */}
           <div ref={canvasContainerRef} style={{ display: 'flex', flexDirection: 'column', gap: 8, background: isFullscreen ? '#000' : undefined }}>
+            {/* Calibration warning banner — shown when scale is unknown or only
+                an upload-time heuristic, so the user understands panel sizes
+                are approximate and can fix it in one click. */}
+            {(!scene.calibration || scene.calibration.method === 'auto') && (
+              <div
+                data-testid="calibration-banner"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  padding: '10px 14px',
+                  borderRadius: 12,
+                  background: '#FFF8E1',
+                  color: '#6B5500',
+                  font: '400 14px/1.4 Inter, sans-serif',
+                }}
+              >
+                <span>
+                  Размер панелей приблизительный — откалибруйте масштаб для точного результата.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    store.setEditorMode('calibrating');
+                    setEditingMask(false);
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#6B5500',
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                    font: '500 14px/1.4 Inter, sans-serif',
+                    padding: 0,
+                  }}
+                >
+                  Откалибровать
+                </button>
+              </div>
+            )}
             {useKonva ? (
               <KonvaCanvas
                 scene={scene}

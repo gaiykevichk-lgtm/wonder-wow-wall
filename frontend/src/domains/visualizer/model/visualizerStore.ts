@@ -22,8 +22,9 @@ import type {
 } from './types';
 import { message } from 'antd';
 import { calculateCost } from '../lib/costCalculator';
-import { autoFillWall } from '../lib/layoutEngine';
+import { autoFillWall, AutoFillBlockedError } from '../lib/layoutEngine';
 import { createEmptyMask } from '../lib/maskUtils';
+import { createPerspective } from '../lib/perspectiveEngine';
 import { uint8ArrayToBase64, base64ToUint8Array } from '../lib/maskSerialization';
 
 interface VisualizerState {
@@ -185,7 +186,7 @@ export const useVisualizerStore = create<VisualizerState>()(
 
   autoFill: () => {
     const state = get();
-    const { scene, selectedSizeKey, selectedDesignId, selectedDesignName, selectedDesignImage, selectedColor, selectedColorName, layout } = state;
+    const { scene, selectedSizeKey, selectedDesignId, selectedDesignName, selectedDesignImage, selectedColor, selectedColorName, layout, perspectiveCorners } = state;
 
     if (!scene?.wallMask) {
       message.warning('Сначала загрузите фото и дождитесь распознавания стены');
@@ -195,6 +196,15 @@ export const useVisualizerStore = create<VisualizerState>()(
       message.warning('Сначала выберите дизайн панели');
       return;
     }
+
+    // Derive perspective transform from corners + photo bounds (wall-space
+    // is sized to the photo for now; v2 will introduce a separate wallSpace).
+    const perspective = perspectiveCorners
+      ? createPerspective(perspectiveCorners, {
+          w: scene.photo.width,
+          h: scene.photo.height,
+        })
+      : null;
 
     try {
       const panels = autoFillWall({
@@ -208,6 +218,7 @@ export const useVisualizerStore = create<VisualizerState>()(
         colorName: selectedColorName,
         accentZone: layout.accentZone,
         obstacles: scene.objectMask?.obstacles,
+        perspective,
       });
 
       if (panels.length === 0) {
@@ -216,6 +227,12 @@ export const useVisualizerStore = create<VisualizerState>()(
 
       set({ layout: { ...layout, panels } });
     } catch (err) {
+      if (err instanceof AutoFillBlockedError) {
+        message.warning(
+          'Откалибруйте масштаб (две точки на известной длине) перед автозаполнением в режиме перспективы.',
+        );
+        return;
+      }
       console.error('autoFill error:', err);
       message.error('Ошибка при автозаполнении');
     }

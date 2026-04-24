@@ -340,37 +340,53 @@ Phase 1B v1 принимается как warp-замена Phase 1A. Math фо�
 
 > **Внимание:** `panelSizeInPixels()` уже использует `calibration?.pixelsPerCm ?? 5` (`layoutEngine.ts:48`). Часть этой фазы — **аудит и достраивание**, не «с нуля». См. [R2].
 
-- [ ] В `lib/layoutEngine.ts`:
-  - **Не менять сигнатуру `placeSinglePanel`** — она уже принимает `calibration` (строка 215). Проверить, что все вызовы передают её корректно (могут быть `null` сейчас).
-  - В режиме перспективы `wallSpace = { w: panelSize.widthCm * pxPerCm, h: panelSize.heightCm * pxPerCm }` (плоская стена в пикселях).
-  - **`autoFillWall()` в перспективе** — отдельная ветка: итерируемся в wall-space по сетке, для каждой ячейки считаем quad через `transformRect`, проверяем покрытие стены через **проекцию маски в wall-space** (см. [R4], [R5]).
-  - **`canPlacePanel()` в перспективе** — `wallCoverageInRect` не годится для quad. Реализовать `wallCoverageInQuad(mask, quad)` через сэмплинг точек внутри quad (или через rasterizer). См. [R5].
-  - Если калибровки нет и нет fallback — **запретить auto-fill** и показать модал «Откалибруйте масштаб». Magic-number `5 px/cm` оставляем только для preview-эффекта в плоском режиме. См. [E3].
-  - **Удалить `console.log('[autoFill]', ...)`** в строке 161.
-  - **Заменить глобальный `panelIdCounter`** на `crypto.randomUUID()` или `${projectId}-${counter}`. См. [R6].
-- [ ] В `lib/costCalculator.ts`:
-  - `coveredAreaM2` считать через реальные см, а не пиксели.
+- [x] В `lib/layoutEngine.ts`:
+  - [x] **Не менять сигнатуру `placeSinglePanel`** — расширена опциональным `perspective?` параметром (back-compat сохранён, дефолт `null` ⇒ flat-режим как раньше).
+  - [x] В режиме перспективы wall-rect интерпретируется как wall-space, для каждой ячейки `transformRect` строит quad на фото; покрытие стены оценивается через `wallCoverageInQuad`.
+  - [x] **`autoFillWall()` в перспективе** — общая ветка итерации в wall-/photo-space (для текущего MVP `wallSpace` совпадает с photo-bounds, см. v2-defer ниже); coverage/obstacle-checks выполняются через quad.
+  - [x] **`canPlacePanel()` в перспективе** — добавлен опциональный `perspective` параметр; quad-покрытие через `wallCoverageInQuad` (бил-сэмплинг 8×8), obstacle-overlap по AABB quad'а, panel-vs-panel — в wall-space.
+  - [x] Если в режиме перспективы калибровка `null` или `method === 'auto'` — `autoFillWall` бросает `AutoFillBlockedError` (`code: 'no-calibration'`); store ловит и показывает `message.warning(...)`. Magic-number `5 px/cm` остался только для preview в плоском режиме.
+  - [x] **Удалить `console.log('[autoFill]', ...)`** — отсутствует в актуальном коде (был удалён ранее, проверено).
+  - [x] **Заменить глобальный `panelIdCounter`** → `generatePanelId()` через `globalThis.crypto.randomUUID()` (с fallback `panel-${Date.now()}-${random}` для экзотических окружений).
+
+  > **Defer to v2:** в текущей реализации wall-space координат `panel.x/y` равны photo-bounds (т.к. `createPerspective(corners, photoSize)`). Полноценное разделение wall-space ≠ photo-space (отдельный coord-system + inverse-transform клика для `placeSinglePanel`) — отдельная задача, **не** входит в Phase 2. См. JSDoc `placeSinglePanel`.
+
+- [x] В `lib/costCalculator.ts`:
+  - [x] `coveredAreaM2` уже считается через `sizeKeyToAreaM2` (`30x30 → 0.09`, `30x60 → 0.18`, `60x60 → 0.36`). Никаких пиксельных расчётов нет — изменения не требуются.
 
 ### 2.2 Frontend — UI
 
-- [ ] В `PhotoEditorPage.tsx`:
-  - Если калибровка отсутствует — над canvas плашка `Inter 14px/400`, фон `#FFF8E1`, текст `#6B5500`: «Размер панелей приблизительный — откалибруйте масштаб для точного результата». Кнопка-ссылка «Откалибровать» открывает `CalibrationOverlay`.
-- [ ] `CalibrationOverlay.tsx` уже есть — подключить `Apply` к `scene.calibration` через store action `setCalibration(cal: ScaleCalibration)`.
+- [x] В `PhotoEditorPage.tsx`:
+  - [x] При загрузке фото калибровка теперь маркируется `method: 'auto'` (вместо `'manual'`) — сохраняет heuristic preview, но позволяет UI отличить «настоящую» калибровку от placeholder'а.
+  - [x] Над canvas плашка (`data-testid="calibration-banner"`) с заданными цветами и шрифтом, видна когда `!scene.calibration || method === 'auto'`. Кнопка «Откалибровать» переключает `editorMode → 'calibrating'` и открывает `CalibrationOverlay`.
+  - [x] `handleCanvasClick` теперь вычисляет `perspective` из `perspectiveCorners + photo bounds` и пробрасывает в `placeSinglePanel`.
+- [x] `CalibrationOverlay.tsx` `Apply` уже завязан на `applyCalibration()`, который пишет `{ method: 'reference', pixelsPerCm }` — после применения banner исчезает (т.к. method ≠ 'auto').
+- [x] В `visualizerStore.autoFill` пробрасывается `perspective` из `perspectiveCorners`; `AutoFillBlockedError` ловится → `message.warning('Откалибруйте масштаб...')`.
 
 ### 2.3 Backend
 
-- [ ] Без изменений.
+- [x] Без изменений.
 
 ### 2.4 Тесты
 
-- [ ] Расширить `layoutEngine.test.ts`:
-  - Тест: панель 60×60 см при `pixelsPerCm = 5` → `renderWidth === 300`.
-  - Тест fallback: без калибровки — старое поведение, есть warning в store.
-  - Тест `wallCoverageInQuad` — quad полностью внутри маски стены → coverage = 1.0; quad наполовину снаружи → coverage ≈ 0.5.
-  - Тест `autoFillWall` в перспективе: число размещённых панелей > 0, все имеют корректный `wallSpace`.
-  - Тест запрета auto-fill без калибровки → пустой массив + warning.
-- [ ] Расширить `costCalculator.test.ts`:
-  - `coveredAreaM2` считается через реальные см.
+- [x] Расширить `layoutEngine.test.ts`:
+  - [x] `panelSizeInPixels` с calibration уже покрыт (3 теста): 60×60см при `pxPerCm=5` ⇒ `300×300`.
+  - [x] Fallback без калибровки — старый тест («uses default 5 px/cm without calibration»).
+  - [x] `canPlacePanel` с identity-perspective ≡ flat (новый тест в `describe('perspective mode')`).
+  - [x] `autoFillWall` с identity-perspective: количество панелей совпадает с flat-веткой.
+  - [x] `autoFillWall` + perspective + `null` calibration → `AutoFillBlockedError`.
+  - [x] `autoFillWall` + perspective + `method: 'auto'` → `AutoFillBlockedError`.
+  - [x] `autoFillWall` + perspective + `method: 'reference'` → НЕ бросает.
+  - [x] `autoFillWall` без perspective + `method: 'auto'` → разрешено (heuristic для flat-preview).
+  - [x] `generatePanelId()` — 100 вызовов уникальны, префикс `panel-`.
+- [x] Расширить `maskUtils.test.ts`:
+  - [x] `wallCoverageInQuad` — внутри маски ⇒ ≈1.0; вне ⇒ 0; пополам ⇒ ≈0.5; quad за границами фото ⇒ <1 (счёт OOB-сэмплов в знаменатель); невалидный `samplesPerSide` ⇒ 0.
+- [x] Расширить `costCalculator.test.ts`:
+  - [x] `coveredAreaM2` уже покрыт существующим тестом «calculates cost for mixed sizes»: `0.09 + 0.18 + 0.36 = 0.63 м²`. Дополнительные тесты не требуются.
+
+**Регрессия:** `vitest run src/domains/visualizer/` → 17 файлов / 195 тестов зелёные (+13 vs Phase 1B v2). `tsc --noEmit` чисто.
+
+> **Завершение Phase 2:** ✅ Все приоритетные пункты выполнены. Перенесено на v2: разделение wall-space ≠ photo-space с inverse-transform клика для manual-режима в перспективе (см. JSDoc `placeSinglePanel`). Banner и AutoFillBlockedError-loop проверены вручную в браузере.
 
 ---
 

@@ -68,7 +68,15 @@ export type SegmentationStatus =
   | 'error';
 
 export interface ScaleCalibration {
-  method: 'reference' | 'manual';
+  /**
+   * How `pixelsPerCm` was obtained:
+   * - `'reference'` — user clicked two points on a known-cm distance (high trust).
+   * - `'manual'`   — user typed `pixelsPerCm` directly (high trust).
+   * - `'auto'`     — heuristic placeholder set on photo upload (low trust);
+   *                  perspective auto-fill refuses to use this and the UI
+   *                  surfaces a banner asking the user to calibrate.
+   */
+  method: 'reference' | 'manual' | 'auto';
   pixelsPerCm: number;
   wallWidthCm?: number;
   wallHeightCm?: number;

@@ -7,9 +7,12 @@ import {
   snapToGrid,
   autoFillWall,
   placeSinglePanel,
+  generatePanelId,
+  AutoFillBlockedError,
 } from '../lib/layoutEngine';
-import type { Obstacle } from '../model/types';
+import type { Obstacle, PerspectiveCorners } from '../model/types';
 import { createEmptyMask } from '../lib/maskUtils';
+import { createPerspective } from '../lib/perspectiveEngine';
 
 describe('layoutEngine', () => {
   describe('getPanelSizeConfig', () => {
@@ -289,6 +292,132 @@ describe('layoutEngine', () => {
       expect(overlapsObstacle(0, 0, 100, 100, obstacles)).toBe(false);
       // Rect overlaps by 1 pixel
       expect(overlapsObstacle(0, 0, 101, 101, obstacles)).toBe(true);
+    });
+  });
+
+  describe('generatePanelId', () => {
+    it('returns unique ids on repeated calls', () => {
+      const ids = new Set<string>();
+      for (let i = 0; i < 100; i++) ids.add(generatePanelId());
+      expect(ids.size).toBe(100);
+    });
+
+    it('uses panel- prefix', () => {
+      expect(generatePanelId().startsWith('panel-')).toBe(true);
+    });
+  });
+
+  describe('perspective mode', () => {
+    // Identity perspective: corners = photo bounds → wall-space ≡ photo-space.
+    const identityCorners = (w: number, h: number): PerspectiveCorners => [
+      { x: 0, y: 0 },
+      { x: w, y: 0 },
+      { x: w, y: h },
+      { x: 0, y: h },
+    ];
+
+    it('canPlacePanel with identity perspective matches flat behavior', () => {
+      const mask = createEmptyMask(300, 300, 255);
+      const persp = createPerspective(identityCorners(300, 300), { w: 300, h: 300 });
+      // Same call with and without perspective should agree on a clean cell.
+      expect(canPlacePanel(mask, 30, 30, 60, 60, [], undefined, persp)).toBe(true);
+      expect(canPlacePanel(mask, 30, 30, 60, 60, [])).toBe(true);
+    });
+
+    it('autoFillWall with identity perspective fills the same as flat', () => {
+      const mask = createEmptyMask(300, 300, 255);
+      const persp = createPerspective(identityCorners(300, 300), { w: 300, h: 300 });
+      const flat = autoFillWall({
+        mask,
+        sizeKey: '30x30',
+        calibration: { method: 'manual', pixelsPerCm: 1 },
+        designId: 'd1',
+        designName: 'Test',
+        designImage: 'test.jpg',
+        color: '#FFF',
+        colorName: 'White',
+      });
+      const warped = autoFillWall({
+        mask,
+        sizeKey: '30x30',
+        calibration: { method: 'manual', pixelsPerCm: 1 },
+        designId: 'd1',
+        designName: 'Test',
+        designImage: 'test.jpg',
+        color: '#FFF',
+        colorName: 'White',
+        perspective: persp,
+      });
+      expect(warped.length).toBe(flat.length);
+    });
+
+    it('autoFillWall throws AutoFillBlockedError when perspective + no calibration', () => {
+      const mask = createEmptyMask(300, 300, 255);
+      const persp = createPerspective(identityCorners(300, 300), { w: 300, h: 300 });
+      expect(() =>
+        autoFillWall({
+          mask,
+          sizeKey: '30x30',
+          calibration: null,
+          designId: 'd1',
+          designName: 'Test',
+          designImage: 'test.jpg',
+          color: '#FFF',
+          colorName: 'White',
+          perspective: persp,
+        }),
+      ).toThrow(AutoFillBlockedError);
+    });
+
+    it('autoFillWall throws AutoFillBlockedError when perspective + auto calibration', () => {
+      const mask = createEmptyMask(300, 300, 255);
+      const persp = createPerspective(identityCorners(300, 300), { w: 300, h: 300 });
+      expect(() =>
+        autoFillWall({
+          mask,
+          sizeKey: '30x30',
+          calibration: { method: 'auto', pixelsPerCm: 1 },
+          designId: 'd1',
+          designName: 'Test',
+          designImage: 'test.jpg',
+          color: '#FFF',
+          colorName: 'White',
+          perspective: persp,
+        }),
+      ).toThrow(AutoFillBlockedError);
+    });
+
+    it('autoFillWall accepts manual or reference calibration under perspective', () => {
+      const mask = createEmptyMask(300, 300, 255);
+      const persp = createPerspective(identityCorners(300, 300), { w: 300, h: 300 });
+      expect(() =>
+        autoFillWall({
+          mask,
+          sizeKey: '30x30',
+          calibration: { method: 'reference', pixelsPerCm: 1 },
+          designId: 'd1',
+          designName: 'Test',
+          designImage: 'test.jpg',
+          color: '#FFF',
+          colorName: 'White',
+          perspective: persp,
+        }),
+      ).not.toThrow();
+    });
+
+    it('autoFillWall without perspective accepts auto calibration (flat mode)', () => {
+      const mask = createEmptyMask(300, 300, 255);
+      const panels = autoFillWall({
+        mask,
+        sizeKey: '30x30',
+        calibration: { method: 'auto', pixelsPerCm: 1 },
+        designId: 'd1',
+        designName: 'Test',
+        designImage: 'test.jpg',
+        color: '#FFF',
+        colorName: 'White',
+      });
+      expect(panels.length).toBeGreaterThan(0);
     });
   });
 
