@@ -11,6 +11,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useVisualizerStore } from '../model/visualizerStore';
 import { useSubscriptionStore } from '../../subscription/model/subscriptionStore';
 import { useCartStore } from '../../order/model/cartStore';
+import { useAuthStore } from '../../auth/model/authStore';
+import {
+  loadProject,
+  saveProject,
+  StaleVersionError,
+} from '../lib/visualizerApi';
+import { ApiError } from '../../../shared/api/client';
 import { placedPanelsToCartItems } from '../model/adapters';
 import { processUploadedImage } from '../lib/imageProcessing';
 import { applyStrokeToMask, createEmptyMask } from '../lib/maskUtils';
@@ -290,7 +297,10 @@ export default function PhotoEditorPage() {
         { x: w * (1 - inset), y: h * (1 - inset) },
         { x: w * inset, y: h * (1 - inset) },
       ];
-      store.setPerspectiveCorners(corners);
+      // B43 closure — use AndSync so the inset bootstrap PATCHes the backend
+      // when a project is loaded; if `projectId` is null (unsaved scene) the
+      // store no-ops the PATCH and keeps purely-local state.
+      store.setPerspectiveCornersAndSync(corners);
     }
     store.setEditorMode('perspective');
   }, [store]);
@@ -315,17 +325,68 @@ export default function PhotoEditorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store.scene?.wallMask, store.scene?.photo.url]);
 
-  // Save project (API if auth'd, otherwise just confirm localStorage persist)
+  // Save project — POST when no `projectId` is held yet (first save), otherwise
+  // skip: the backend autosync (`*AndSync` actions in the store) keeps the
+  // server in step. Falls back to "local only" when the user is unauthenticated.
+  const isAuth = useAuthStore((s) => s.isAuth);
   const handleSave = useCallback(async () => {
     const payload = store.getProjectPayload();
     if (!payload) {
       message.warning('Нечего сохранять');
       return;
     }
-    // For now, persist middleware handles localStorage auto-save.
-    // When auth is available, this will call the API.
-    message.success('Проект сохранён');
-  }, [store]);
+    if (!isAuth) {
+      // Anonymous: zustand persist middleware already mirrored to localStorage.
+      message.success('Проект сохранён локально');
+      return;
+    }
+    if (store.projectId) {
+      // Already linked to a server row — debounced *AndSync writes keep it
+      // current. Re-pinging POST would create a duplicate. Just acknowledge.
+      message.success('Проект синхронизирован');
+      return;
+    }
+    try {
+      const created = await saveProject(payload);
+      store.setLoadedProject(created);
+      message.success('Проект сохранён на сервере');
+    } catch (err) {
+      if (err instanceof StaleVersionError) {
+        message.warning(
+          'Проект изменён в другом окне. Обновите страницу, чтобы увидеть свежие данные.',
+        );
+        return;
+      }
+      const detail = err instanceof ApiError ? err.detail : 'Не удалось сохранить проект';
+      message.error(detail);
+    }
+  }, [store, isAuth]);
+
+  // B43 closure — deep-link load: `?projectId=…` hydrates the store from the
+  // backend on mount. Runs once per id change. Authenticated only — anonymous
+  // users have nothing to load. Errors are surfaced as a warning toast; the
+  // local persist-middleware state remains intact so the user is never left
+  // with a blank canvas.
+  const projectIdParam = searchParams.get('projectId');
+  useEffect(() => {
+    if (!projectIdParam || !isAuth) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const dto = await loadProject(projectIdParam);
+        if (cancelled) return;
+        store.setLoadedProject(dto);
+      } catch (err) {
+        if (cancelled) return;
+        const detail = err instanceof ApiError ? err.detail : 'Не удалось загрузить проект';
+        message.warning(detail);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectIdParam, isAuth]);
 
   // Export canvas as JPEG
   const handleExport = useCallback(() => {
@@ -734,7 +795,7 @@ export default function PhotoEditorPage() {
                 calibrationPoints={store.calibrationPoints}
                 onCalibrationClick={handleCalibrationClick}
                 perspectiveCorners={store.perspectiveCorners}
-                onPerspectiveCornersChange={store.setPerspectiveCorners}
+                onPerspectiveCornersChange={store.setPerspectiveCornersAndSync}
                 wallBrightness={store.wallBrightness}
               />
             ) : (

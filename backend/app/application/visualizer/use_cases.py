@@ -9,6 +9,7 @@ Phase 5C extensions:
   on every drag of a corner — that path debounces ~1 s on the frontend.
 """
 
+from dataclasses import replace
 from datetime import datetime
 
 from app.domain.visualizer.entities import VisualizationProject
@@ -130,11 +131,21 @@ class UpdatePerspective:
         existing = await self.repo.get_by_id(project_id)
         if not existing or existing.user_id != user_id:
             return None
-        existing.perspective_corners = corners.as_dicts() if corners is not None else None
-        existing.perspective_auto_detected = False
-        existing.updated_at = datetime.utcnow()
-        existing.version = version  # repo compares against its own row
-        return await self.repo.update(existing)
+        # B41 closure — never mutate `existing` before calling repo.update().
+        # InMemoryRepo.get_by_id returns the same dataclass reference it stores,
+        # so writing `existing.version = version` would silently update the
+        # stored row in-place and the repo's optimistic-lock check (compare
+        # stored.version vs incoming.version) would trivially pass against
+        # itself. Copying via dataclasses.replace decouples the entity we hand
+        # to the repo from the row it owns.
+        update = replace(
+            existing,
+            perspective_corners=corners.as_dicts() if corners is not None else None,
+            perspective_auto_detected=False,
+            updated_at=datetime.utcnow(),
+            version=version,  # client-supplied; repo compares against its row
+        )
+        return await self.repo.update(update)
 
 
 class UpdateCalibration:
@@ -159,9 +170,15 @@ class UpdateCalibration:
         existing = await self.repo.get_by_id(project_id)
         if not existing or existing.user_id != user_id:
             return None
-        existing.calibration = calibration
-        existing.calibration_pixels_per_cm = calibration.pixels_per_cm  # legacy mirror
-        existing.calibration_auto_detected = False
-        existing.updated_at = datetime.utcnow()
-        existing.version = version
-        return await self.repo.update(existing)
+        # B41 closure — see UpdatePerspective.execute for rationale. Build a
+        # fresh entity instead of mutating `existing` so the InMemory repo's
+        # optimistic-lock check doesn't compare a stored row against itself.
+        update = replace(
+            existing,
+            calibration=calibration,
+            calibration_pixels_per_cm=calibration.pixels_per_cm,  # legacy mirror
+            calibration_auto_detected=False,
+            updated_at=datetime.utcnow(),
+            version=version,
+        )
+        return await self.repo.update(update)

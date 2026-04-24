@@ -25,4 +25,14 @@ class StaleSceneVersionError(Exception):
     still holding version 6 — tries to PATCH; server raises this so
     the API can return 409 with the current state and the frontend
     can prompt the user to reconcile.
+
+    Carries `client_version` and `server_version` so the API layer can
+    surface them in the 409 body — the frontend uses `server_version` as
+    the next read-marker when it refetches (B45 closure).
     """
+
+    def __init__(self, message: str, client_version: int | None = None,
+                 server_version: int | None = None):
+        super().__init__(message)
+        self.client_version = client_version
+        self.server_version = server_version

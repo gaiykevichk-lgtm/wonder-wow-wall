@@ -29,7 +29,16 @@ async def collinear_corners_handler(request: Request, exc: CollinearCornersError
 
 
 async def stale_scene_version_handler(request: Request, exc: StaleSceneVersionError):
+    # B45 closure — surface `server_version` so the frontend can use it as the
+    # next read-marker without an extra round-trip. Both fields default to
+    # `None` for callers that constructed the exception with the legacy
+    # message-only signature.
     return JSONResponse(
         status_code=409,
-        content={"detail": str(exc), "code": "stale_version"},
+        content={
+            "detail": str(exc),
+            "code": "stale_version",
+            "client_version": exc.client_version,
+            "server_version": exc.server_version,
+        },
     )

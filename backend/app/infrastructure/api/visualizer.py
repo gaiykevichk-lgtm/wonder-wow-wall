@@ -287,7 +287,13 @@ async def get_visualization_project(
     return _entity_to_response(project)
 
 
-@router.put("/{project_id}", response_model=VisualizationProjectResponse)
+@router.put(
+    "/{project_id}",
+    response_model=VisualizationProjectResponse,
+    responses={
+        409: {"description": "Stale version (multi-tab race) — caller must refetch"},
+    },
+)
 async def update_visualization_project(
     project_id: str,
     body: VisualizationProjectUpdate,

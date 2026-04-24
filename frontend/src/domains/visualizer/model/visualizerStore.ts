@@ -565,20 +565,35 @@ export const useVisualizerStore = create<VisualizerState>()(
     // PATCH response that completes after this call.
     __syncInternals.cancelAll();
     const scene = get().scene;
+    // B47 closure — when no scene exists yet (load-before-photo flow, e.g.
+    // deep-linking to a saved project before the photo asset has been
+    // hydrated), build a minimal placeholder scene from the DTO so the
+    // backend-supplied calibration / auto-detected flags are not silently
+    // dropped on the floor. Photo URL/dimensions are filled in when the
+    // user uploads or the photo asset is restored from localStorage.
+    const nextScene: Scene = scene
+      ? {
+          ...scene,
+          calibration: dto.calibration,
+          perspectiveAutoDetected: dto.perspectiveAutoDetected,
+          calibrationAutoDetected: dto.calibrationAutoDetected,
+        }
+      : {
+          photo: { url: '', width: 0, height: 0 },
+          wallMask: null,
+          objectMask: null,
+          calibration: dto.calibration,
+          segmentationStatus: 'idle',
+          perspectiveAutoDetected: dto.perspectiveAutoDetected,
+          calibrationAutoDetected: dto.calibrationAutoDetected,
+        };
     set({
       projectId: dto.id,
       serverVersion: dto.version,
       perspectiveCorners: dto.perspectiveCorners,
       // R7: backend wins on load. Replace any local calibration that was
       // sitting in the store from prior session work.
-      scene: scene
-        ? {
-            ...scene,
-            calibration: dto.calibration,
-            perspectiveAutoDetected: dto.perspectiveAutoDetected,
-            calibrationAutoDetected: dto.calibrationAutoDetected,
-          }
-        : scene,
+      scene: nextScene,
     });
   },
 
@@ -652,11 +667,21 @@ export const useVisualizerStore = create<VisualizerState>()(
       _calibrationSyncTimer = null;
       const ctrl = new AbortController();
       _calibrationSyncCtrl = ctrl;
+      // B49 closure — symmetric with `setPerspectiveCornersAndSync`. Read the
+      // *latest* calibration off the store rather than the closure-captured
+      // arg from the original call: when the user types pixels-per-cm rapidly
+      // we coalesce into the trailing edge of the debounce, and the trailing
+      // edge must reflect the final value the user typed, not the first.
+      const latestCalibration = get().scene?.calibration;
       const { serverVersion } = get();
+      if (!latestCalibration) {
+        _calibrationSyncCtrl = null;
+        return;
+      }
       try {
         const updated = await apiUpdateCalibration(
           projectId,
-          calibration,
+          latestCalibration,
           serverVersion,
           { signal: ctrl.signal },
         );
@@ -690,6 +715,12 @@ export const useVisualizerStore = create<VisualizerState>()(
   getProjectPayload: () => {
     const state = get();
     if (!state.scene) return null;
+    // B46 closure — Phase 5C added typed `calibration`, auto-detected flags
+    // and `version` to the wire DTO. Without them the first POST/PUT silently
+    // drops those fields and the backend reverts the project to legacy
+    // calibration-pixels-per-cm only. Mirrors `VisualizationProjectUpdate`
+    // server schema (snake_case at the wire seam).
+    const cal = state.scene.calibration;
     return {
       name: 'Мой проект',
       photo_url: state.scene.photo.url,
@@ -698,7 +729,7 @@ export const useVisualizerStore = create<VisualizerState>()(
       wall_mask_base64: state.scene.wallMask
         ? uint8ArrayToBase64(state.scene.wallMask.data)
         : '',
-      calibration_pixels_per_cm: state.scene.calibration?.pixelsPerCm ?? 5,
+      calibration_pixels_per_cm: cal?.pixelsPerCm ?? 5,
       panels: state.layout.panels.map((p) => ({
         design_id: p.designId,
         design_name: p.designName,
@@ -715,6 +746,18 @@ export const useVisualizerStore = create<VisualizerState>()(
         ? state.perspectiveCorners.map((c) => ({ x: c.x, y: c.y }))
         : null,
       placement_mode: state.layout.placementMode,
+      // ─── Phase 5C additions ───
+      calibration: cal
+        ? {
+            method: cal.method,
+            pixels_per_cm: cal.pixelsPerCm,
+            wall_width_cm: cal.wallWidthCm ?? null,
+            wall_height_cm: cal.wallHeightCm ?? null,
+          }
+        : null,
+      perspective_auto_detected: state.scene.perspectiveAutoDetected ?? false,
+      calibration_auto_detected: state.scene.calibrationAutoDetected ?? false,
+      version: state.serverVersion,
     };
   },
 

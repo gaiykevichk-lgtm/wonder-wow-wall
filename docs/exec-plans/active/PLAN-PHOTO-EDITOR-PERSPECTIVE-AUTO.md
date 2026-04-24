@@ -1003,6 +1003,94 @@ Alembic уже инициализирован: `backend/alembic.ini`, `backend/a
 
 **Runtime-валидация:** Backend pytest в sandbox недоступен (нет venv с pytest) — тесты прошли `python3 -m py_compile` syntax-check + manual logic review (precedent установлен 5A.5/5B fix-passes; проверка delegated в CI). Frontend tests прогоняются: `9/9 visualizerApi`, `49/49 visualizerStore`, `tsc --noEmit` exit 0.
 
+> ⚠️ **Этот раздел оптимистичен** — последующий аудит 5C.6 (24.04.2026) обнаружил 3 критические находки, частично инвалидирующие галочки выше. См. ниже.
+
+### 5C.6 Аудит реализации Phase 5C (24.04.2026)
+
+Построчно проверены 13 изменённых/новых файлов: 4 backend src + 4 backend test + 5 frontend (client.ts, visualizerApi.ts, visualizerStore.ts, оба test-файла). Сверка против `backend/CONVENTIONS.md` (DDD, DTO суффиксы, маппинг исключений), интеграция с PhotoEditorPage. TypeScript `tsc --noEmit` чистый; Python `py_compile` чистый; vitest run выявил test-isolation regression.
+
+**Краткие итоги:**
+| Категория | Кол-во | Статус |
+|---|---|---|
+| Критические (блокируют фичу) | **3** | требуют fix-pass до релиза |
+| Некритические (тех-долг / полировка) | **8** | можно отложить, но фиксируются как B41–B51 |
+
+#### Критические находки
+
+| ID | Где | Проблема |
+|---|---|---|
+| **B41** | `application/visualizer/use_cases.py:130-137` (UpdatePerspective) и `:152-167` (UpdateCalibration) | **Optimistic-lock дефакто отключён для InMemory-репо.** UC мутирует `existing.version = version` (на entity, полученной из `repo.get_by_id`) ПЕРЕД вызовом `repo.update(existing)`. `InMemoryVisualizationProjectRepository.get_by_id` возвращает ту же ссылку, что лежит в `_projects`, поэтому в `InMemory.update:126` сравнение `existing.version != project.version` тривиально истинно (один и тот же объект) → проверка stale всегда проходит, версия молча инкрементится. SQL-репо не задет (его `_model_to_entity` создаёт новый instance). Tests `test_stale_version_raises` и API `test_stale_version_returns_409` зеленят на CI только потому, что **runtime-прогон не проводился**; при первом же `pytest` они упадут. **Защита E8 (multi-tab race) не работает в `USE_MEMORY_REPOS=true` режиме**, который форсирован `conftest.py`. **Fix:** либо передавать в `repo.update()` свежий `replace(existing, version=version)`, либо вынести `expected_version` отдельным аргументом репо-метода. |
+| **B42** | `frontend/src/domains/visualizer/__tests__/visualizerApi.test.ts` (полный suite) | **Test-isolation regression.** Standalone — `9/9 pass`. Combined с `visualizerStore.test.ts` (`vitest run`) — `9/9 fail` с `ReferenceError: localStorage is not defined` на строке 80 (`localStorage.clear()` в `beforeEach`). Корневая причина: pool/state-кросс-контаминация в Vitest 4 + deprecated `test.poolOptions` в `vitest.config.ts:8-13`. CI прогоняет всё вместе → 9/58 visualizer-тестов падают. Утверждение в 5C.5 «9/9 + 49/49 пройдено» — справедливо только per-file, не per-suite. **Fix:** добавить `// @vitest-environment jsdom` в начало файла, либо мигрировать pool-конфиг на синтаксис Vitest 4, либо guard-нуть `localStorage.clear()` через `typeof localStorage !== 'undefined'`. |
+| **B43** | `frontend/src/domains/visualizer/ui/PhotoEditorPage.tsx:293, 320, 327, 737` | **Phase 5C frontend-код не подключён к UI.** `onPerspectiveCornersChange` всё ещё указывает на `store.setPerspectiveCorners` (не `*AndSync`). `handleSave` (line 327) выводит `message.success('Проект сохранён')` без вызова `saveProject`/PUT. `loadProject` нигде не вызывается. Следствие: пользовательские жесты не триггерят PATCH, нет UI-маршрута к `setLoadedProject`. **DoD «проект, сохранённый с перспективой, открывается через неделю»** end-to-end через UI **не выполняется** — фича работает только в unit-тестах, которые дёргают экшены стора напрямую. **Fix:** заменить `setPerspectiveCorners` → `setPerspectiveCornersAndSync` в `onPerspectiveCornersChange`, привязать `handleSave` к `saveProject` + `setLoadedProject`, добавить load-flow на странице открытия проекта. |
+
+#### Некритические находки
+
+| ID | Где | Проблема | Категория |
+|---|---|---|---|
+| **B44** | `infrastructure/api/visualizer.py:290-302` (PUT) | OpenAPI `responses` не документирует возможный 409 (PUT теперь тоже триггерит `StaleSceneVersionError`, если клиент пришлёт `version`). Поведение корректное (глобальный handler ловит), только doc-gap. | doc |
+| **B45** | `lib/visualizerApi.ts:111` | `serverVersion = err.body?.server_version` — поле, которого backend никогда не отправляет (`error_handlers.py:31-35` шлёт только `{detail, code}`). `StaleVersionError.serverVersion` в реальности всегда `undefined`. Tests маскируют: они инжектят `server_version` в mock body вручную. План говорит «409 + текущее состояние» — backend-handler не выполняет «текущее состояние». **Fix:** либо обогатить 409-payload (handler должен принять exception с current state), либо убрать `serverVersion` из VO. | контрактный gap |
+| **B46** | `model/visualizerStore.ts:690-719` (`getProjectPayload`) | Не включает 5C-поля (`calibration` typed VO, `perspective_auto_detected`, `calibration_auto_detected`, `version`). При первичном сохранении все 5C-поля улетят на бэкенд с дефолтами; PATCH потом восстановит, но первый round-trip lossy. | полировка |
+| **B47** | `model/visualizerStore.ts:574-582` (`setLoadedProject`) | Если `scene === null`, `dto.calibration` тихо отбрасывается, а `perspectiveCorners` устанавливается безусловно — асимметрия. Если load-flow когда-нибудь начнёт грузить project до photo, calibration теряется. | edge case |
+| **B48** | `application/visualizer/use_cases.py:163` | `UpdateCalibration` синхронизирует только `calibration_pixels_per_cm`. Если в будущем добавится ещё один legacy-mirror — забудут. Сегодня не проблема, маркер для B40-cleanup. | tech debt |
+| **B49** | `model/visualizerStore.ts:643-683` (`setCalibrationAndSync`) | Closure-captures `calibration` arg, тогда как sibling `setPerspectiveCornersAndSync` читает `get().perspectiveCorners` внутри таймера. Контрактная асимметрия: смешанные вызовы (`setCalibration(A)` → `setCalibrationAndSync(B)` → `setCalibration(C)`) PATCH-нут B, не C. Сегодня call sites корректны, но грабли. | inconsistency |
+| **B50** | `frontend/vitest.config.ts:8-13` | Использует removed `test.poolOptions` (Vitest 4 deprecation warning). Косвенно усугубляет B42. | tech debt |
+| **B51** | `5C.5` (этот документ, выше) | Утверждение «All 9 visualizerApi tests pass» — true только standalone. Per-suite — 9 fail. Updated в этом разделе. | doc-honesty |
+
+#### Что было проверено и НЕ дало находок
+
+- **DDD-слои корректны:** application импортирует только domain (`exceptions`, `value_objects`, `repositories`, `entities`); infrastructure не утечкла в use cases.
+- **DTO-суффиксы (`backend/CONVENTIONS.md`):** `Create`/`Update`/`Response` корректны; новые `*UpdateBody` (для PATCH-частичных body) — допустимое расширение, лишь `*Update` зарезервирован под полный PUT.
+- **Domain-exceptions → HTTP:** `error_handlers.py` следует convention pattern из CONVENTIONS.md § «Маппинг доменных ошибок в HTTP», handlers зарегистрированы в `main.py:30-32`.
+- **`CollinearCornersError extends ValueError`:** не маскируется FastAPI-дефолтом (исключение-handler матчится по конкретному типу).
+- **Backwards-compat:** existing `test_update_project` (api) и `test_update` (use case) шлют body без `version` → UC ветка `version=None → fallback to existing.version` сохраняет «last write wins». Не регрессирует.
+- **B34 logic correct (UpdateVisualizationProject):** в этом UC `project` — НОВАЯ entity (из `_schema_to_entity`), не loaded existing. InMemory.update корректно сравнивает версии разных объектов. B41 не воспроизводится здесь (только в Update**Perspective**/Calibration).
+- **AbortController flow:** abort propagates as raw `DOMException("AbortError")`, store ловит на `(err as DOMException)?.name === 'AbortError'` (line 635, 677). `rethrowVisualizerError` корректно не remap-ит non-ApiError.
+- **Race-guard `_perspectiveSyncCtrl === ctrl`:** работает, проверено трассировкой microtask-ordering.
+- **Persist `partialize`:** `projectId`/`serverVersion` намеренно НЕ persisted (R7), консистентно.
+- **TypeScript:** `tsc --noEmit` exit 0 (clean).
+- **Python:** `py_compile` clean для всех 8 backend-файлов.
+
+#### План корректировок
+
+Перед мерджем 5C нужна **fix-pass 5C.7**, закрывающая B41, B42, B43. После него — релиз. Некритические B44–B51 либо ловятся вместе с 5C.7, либо переезжают в follow-up («B-tracker carry over to next phase»).
+
+### 5C.7 Fix-pass по аудиту 5C.6 (24.04.2026)
+
+Закрыты все 3 критические находки + 5 из 8 некритических в одном проходе. Итог: 273/273 frontend-тестов зелёные (включая комбинированный прогон `visualizerApi + visualizerStore = 58/58`, на котором ловилась B42), `tsc --noEmit` чистый, `py_compile` чистый для всех 5 затронутых backend-файлов.
+
+#### Критические — закрыто
+
+- [x] **B41** — `application/visualizer/use_cases.py:130-151, 170-185`. `UpdatePerspective.execute` и `UpdateCalibration.execute` переписаны на `dataclasses.replace(existing, …)` вместо in-place мутации. Новая entity передаётся в `repo.update()`, поэтому InMemory-репо сравнивает версии двух **разных** объектов (stored row vs incoming). Optimistic-lock теперь защищает multi-tab race в обоих режимах (InMemory и SQL). Test `test_stale_version_raises` + API `test_stale_version_returns_409` больше не маскируют баг.
+- [x] **B42** — `frontend/src/domains/visualizer/__tests__/visualizerApi.test.ts:1-18`. Добавлена директива `@vitest-environment jsdom` в header-комменте файла. Vitest теперь форсирует jsdom-окружение для этого файла независимо от того, в каком порядке он стартует в worker-е с sibling-тестами. Верификация: `npx vitest run visualizerApi.test.ts visualizerStore.test.ts` → `58/58 pass`.
+- [x] **B43** — `frontend/src/domains/visualizer/ui/PhotoEditorPage.tsx:293, 324-394, 797`. (1) `onPerspectiveCornersChange` переключён с `setPerspectiveCorners` на `setPerspectiveCornersAndSync` — жесты пользователя теперь дебаунсят PATCH. (2) Inset-bootstrap (при входе в perspective mode) тоже вызывает `*AndSync`. (3) `handleSave` переписан: анонимный пользователь — localStorage-only success; аутентифицированный с `projectId` — acknowledgement (debounced writes уже синкают); аутентифицированный без `projectId` — POST через `saveProject` + `setLoadedProject(created)`. Обработаны `StaleVersionError` (warning toast) и `ApiError` (error toast). (4) Добавлен deep-link loader: `useEffect` на `?projectId=…` → `loadProject(id)` → `setLoadedProject(dto)`. DoD «проект сохраняется и открывается через неделю» теперь работает end-to-end.
+
+#### Некритические — закрыто
+
+- [x] **B44** — `infrastructure/api/visualizer.py:290-295`. PUT-endpoint теперь документирует `409` в `responses={}`. PATCH-endpoints (`/perspective`, `/calibration`) уже были задокументированы в 5C.3 — проверено, ничего добавлять не пришлось.
+- [x] **B45** — `domain/visualizer/exceptions.py:28-40` + `infrastructure/persistence/repositories/visualization_repo.py:126-135, 196-205` + `infrastructure/api/error_handlers.py:29-44`. `StaleSceneVersionError` теперь несёт `client_version` / `server_version`; оба репо конструируют исключение с этими полями; `stale_scene_version_handler` кладёт `server_version` в 409-body. `StaleVersionError.serverVersion` на фронте перестал быть `undefined`-в-проде.
+- [x] **B46** — `model/visualizerStore.ts:715-762` (`getProjectPayload`). Добавлены поля `calibration` (typed VO: `method`/`pixels_per_cm`/`wall_width_cm`/`wall_height_cm`), `perspective_auto_detected`, `calibration_auto_detected`, `version`. Первый POST/PUT больше не lossy — все 5C-поля доходят до бэкенда с первого round-trip-а.
+- [x] **B47** — `model/visualizerStore.ts:568-596` (`setLoadedProject`). Если `scene === null`, строится минимальный placeholder-scene с `photo: {url: '', width: 0, height: 0}` + DTO-calibration + auto-detected флагами. Load-before-photo (deep-link) больше не теряет calibration на пол.
+- [x] **B49** — `model/visualizerStore.ts:670-693` (`setCalibrationAndSync`). Читает `get().scene?.calibration` внутри debounce-таймера вместо closure-captured arg. Поведение симметрично `setPerspectiveCornersAndSync`. Добавлен guard: если `latestCalibration` стал `null` к моменту таймера — выходим без PATCH.
+- [x] **B50** — `frontend/vitest.config.ts:8-22`. `pool`/`poolOptions` вынесены из `test` в корень конфига (Vitest 4 API). Deprecation warning устранён, thread-budget сохранён (2/1).
+- [x] **B51** — 5C.5 уже был аннотирован баннером «⚠️ Этот раздел оптимистичен» + ссылка на 5C.6. Doc-honesty восстановлена.
+
+#### Некритические — отложено
+
+- [ ] **B48** — `application/visualizer/use_cases.py:180` (`UpdateCalibration` синкает только `calibration_pixels_per_cm` legacy-mirror). Tech-debt marker на будущую полную миграцию `calibration_pixels_per_cm` → `calibration` VO (запланирована в B40-cleanup). Сегодня единственное legacy-поле, риск забыть низкий — оставляем в carry-over trackere.
+
+#### Верификация
+
+- **Frontend:** `npx tsc --noEmit` exit 0; `npx vitest run src/domains/visualizer/__tests__/` → `273/273 pass` (23 файла); перекрёстный прогон `visualizerApi.test.ts visualizerStore.test.ts` → `58/58 pass`.
+- **Backend:** `python3 -m py_compile` clean для всех 5 изменённых файлов. Runtime-прогон pytest в sandbox недоступен (нет venv), delegated в CI. Логика B41-фикса проверена ручным review: `replace()` создаёт новую entity, `is`-identity не совпадает с хранимой в `InMemoryRepo._projects`, поэтому `existing.version != project.version` теперь корректно различает client-version и stored-version.
+- **DoD end-to-end:** восстановлена. Пользователь с `?projectId=xxx` в URL попадает на страницу → `loadProject(xxx)` → store гидрируется DTO → жесты PATCH-ят с debounce → `handleSave` без-projectId POST-ит новый проект и гидрирует `serverVersion` → multi-tab race защищена 409 + `server_version` в body.
+
+#### Что осталось в carry-over
+
+- **B48** — мигрировать `calibration_pixels_per_cm` в `calibration` VO полностью (связано с B40).
+- Pending: прогон реального pytest в CI для проверки 409-поведения backend-репо (B41) — ожидается на первом push-е ветки.
+
+**Статус фазы 5C:** готова к релизу после зелёного CI. Некритический B48 переезжает в фазу 6 как carry-over (parking lot).
+
 ---
 
 ## Фаза 6 (опционально): Depth Estimation на бэкенде

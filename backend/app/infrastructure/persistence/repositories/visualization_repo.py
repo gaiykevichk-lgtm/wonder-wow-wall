@@ -126,7 +126,9 @@ class InMemoryVisualizationProjectRepository(VisualizationProjectRepository):
         if existing.version != project.version:
             raise StaleSceneVersionError(
                 f"Project {project.id}: client version {project.version}, "
-                f"server version {existing.version}"
+                f"server version {existing.version}",
+                client_version=project.version,
+                server_version=existing.version,
             )
         # Bump the version on successful write so the next update from the
         # same client must read-then-write again.
@@ -196,7 +198,9 @@ class SqlVisualizationProjectRepository(VisualizationProjectRepository):
         if model.version != project.version:
             raise StaleSceneVersionError(
                 f"Project {project.id}: client version {project.version}, "
-                f"server version {model.version}"
+                f"server version {model.version}",
+                client_version=project.version,
+                server_version=model.version,
             )
         model.name = project.name
         model.photo_url = project.photo_url

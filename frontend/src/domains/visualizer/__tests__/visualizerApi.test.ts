@@ -8,6 +8,14 @@
  *  - `422 + code:degenerate_corners` → `DegenerateCornersError`
  *  - generic 4xx without code → bare `ApiError`
  *  - AbortSignal threads through to fetch
+ *
+ * @vitest-environment jsdom
+ *
+ * B42 closure — vitest reuses a worker across files in the same suite. The
+ * sibling `visualizerStore.test.ts` doesn't need `localStorage`, so without an
+ * explicit env directive here the worker may pick up the `node` default and
+ * the `localStorage.clear()` in `beforeEach` throws ReferenceError. The
+ * directive forces jsdom for this file regardless of sibling order.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';

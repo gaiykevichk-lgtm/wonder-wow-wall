@@ -8,13 +8,15 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
-    pool: 'threads',
-    poolOptions: {
-      threads: {
-        maxThreads: 2,
-        minThreads: 1,
-      },
-    },
     testTimeout: 30000,
+  },
+  // B50 — Vitest 4 moved `poolOptions` out of `test`. Keeping the same
+  // bounded thread budget (sandbox has limited RAM) just under the new key.
+  pool: 'threads',
+  poolOptions: {
+    threads: {
+      maxThreads: 2,
+      minThreads: 1,
+    },
   },
 });
