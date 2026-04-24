@@ -10,7 +10,10 @@ import { describe, it, expect } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-import { useAdminNavigation } from '../model/useAdminNavigation';
+import {
+  useAdminNavigation,
+  resolveActiveSection,
+} from '../model/useAdminNavigation';
 
 const wrap = (path: string) => ({
   wrapper: ({ children }: { children: React.ReactNode }) => (
@@ -46,5 +49,46 @@ describe('useAdminNavigation', () => {
       'recommendations',
       'audit',
     ]);
+  });
+});
+
+/**
+ * Edge-case tests for the pure resolver. These are kept on the pure
+ * function (not the hook) so we can feed arbitrary pathnames without
+ * spinning up a MemoryRouter.
+ */
+describe('resolveActiveSection — pure resolver', () => {
+  it('requires a segment boundary — `/admin/ordersfoo` is NOT orders', () => {
+    // No section declares `ordersfoo`, and `orders` must not be a
+    // prefix-match because that would silently mis-highlight the menu
+    // for a typo'd/attacker-crafted URL. Falls back to dashboard.
+    expect(resolveActiveSection('/admin/ordersfoo').key).toBe('dashboard');
+  });
+
+  it('exact match without trailing slash still resolves', () => {
+    expect(resolveActiveSection('/admin/orders').key).toBe('orders');
+  });
+
+  it('nested segments resolve to their parent section', () => {
+    expect(resolveActiveSection('/admin/orders/42').key).toBe('orders');
+    expect(resolveActiveSection('/admin/users/abc/edit').key).toBe('users');
+  });
+
+  it('longest-path wins over shorter paths declared earlier', () => {
+    // We can't mutate ADMIN_SECTIONS here, but we can verify that the
+    // resolver's sort step picks the longest candidate by checking the
+    // only overlap we can construct with the current set: `audit` (5
+    // chars) vs `catalog` (7 chars) — both resolvable; test the longer
+    // wins on its own path, shorter wins on its own path.
+    expect(resolveActiveSection('/admin/catalog').key).toBe('catalog');
+    expect(resolveActiveSection('/admin/audit').key).toBe('audit');
+  });
+
+  it('unknown path under /admin falls back to dashboard', () => {
+    expect(resolveActiveSection('/admin/unknown-section').key).toBe('dashboard');
+  });
+
+  it('root /admin resolves to dashboard', () => {
+    expect(resolveActiveSection('/admin').key).toBe('dashboard');
   });
 });

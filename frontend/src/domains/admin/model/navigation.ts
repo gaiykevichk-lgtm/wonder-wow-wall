@@ -3,9 +3,9 @@
  *
  * Kept in `model/` (not `ui/`) so future bits of admin infra (breadcrumbs,
  * audit-log filters) can enumerate sections without pulling in React/AntD.
- * The matching icons live in `ui/adminNavigationIcons.tsx` because JSX
- * belongs in `.tsx` and would drag `@ant-design/icons` into every import
- * of this module.
+ * Icons are defined next to the menu markup in `ui/AdminLayout.tsx`
+ * (keyed by `AdminSectionKey`) — keeping JSX out of this module so any
+ * non-UI consumer can import it without pulling `@ant-design/icons`.
  */
 
 export type AdminSectionKey =
