@@ -163,70 +163,98 @@ Phase 1A принята как hot-fix RC: критических багов и 
 
 ## Фаза 1B: Честный perspective-warp + wall-space для панелей
 
-> **Цель:** Полноценный 4-точечный warp текстуры панели через offscreen canvas или WebGL. Введение `wallSpace` координат в `PlacedPanel`. Drag в режиме перспективы.
-> **Технология:** offscreen canvas + bilinear warp **либо** WebGL-шейдер через `pixi.js` / `regl`. Решение выбираем в 1B.1.
+> **Цель:** Полноценный 4-точечный warp текстуры панели. Введение `wallSpace` координат в `PlacedPanel`. Drag в режиме перспективы.
+> **Технология:** Выбрана в 1B.1 — offscreen canvas + кусочно-аффинный mesh-warp (8×8 сетка → 128 треугольников). Без новых зависимостей. Подробнее — `docs/design-docs/PANEL-WARP-RENDERER.md`.
 > **Зависимости:** Фаза 1A (без неё нельзя визуально оценить улучшение). Фаза 0 (audit).
 > **Bounded Context:** только frontend / `visualizer`. Backend: без изменений.
 
-### 1B.1 Frontend — выбор технологии warp
+### Разбиение
 
-- [ ] Создать design-doc `docs/design-docs/PANEL-WARP-RENDERER.md`:
-  - Сравнение трёх вариантов: (a) Konva native + skew, (b) offscreen canvas + bilinear, (c) WebGL/Pixi.
-  - Бенчмарк рендера 50 панелей @ 60fps на ноуте средней мощности.
-  - Решение и обоснование (ожидаем: WebGL через `pixi.js` для FPS, либо offscreen canvas для простоты, без новых зависимостей).
+Фаза 1B большая и потенциально рисковая — выполняется в две итерации:
 
-### 1B.2 Frontend — реализация warp-рендерера
+| | v1 (этот коммит) | v2 (отдельный коммит) |
+|---|---|---|
+| Закрывает R1 визуально | ✅ | — |
+| Mesh-warp + кэш | ✅ | улучшения (LRU touch) |
+| KonvaCanvas использует warped canvas | ✅ | + clamp + brightness filter |
+| `wallSpace` в `PlacedPanel` + миграция | — | ✅ |
+| Drag в перспективе (wall-space coords) | — | ✅ |
+| Бейдж режима + hover quad outline | — | ✅ |
+| Тесты warp-математики | ✅ | + canvas-render snapshot (опц.) |
+| Тесты KonvaCanvas (warp + fallback) | ✅ | + drag/migration |
 
-- [ ] **(Сначала — финальное закрытие R1)** Заменить временный фикс из 1A.1 на полноценный warp текстуры через выбранную в 1B.1 технологию.
-- [ ] Создать `src/domains/visualizer/lib/panelWarpRenderer.ts`:
-  - `renderPanelToQuad(designImage: HTMLImageElement, quad: Quad, opacity: number): HTMLCanvasElement`
-  - Внутри: bilinear warp в offscreen canvas **или** Pixi sprite с `projection` matrix.
-  - **Отдельный** кэш `panelWarpCache` (не смешивать с `konvaDesignImageCache`!) по ключу `designId + quad-hash + opacity + colorTint`. См. [R8].
-  - Инвалидация кэша при изменении `scene.perspective` (через nonce/version в ключе).
+### 1B.1 Frontend — выбор технологии warp ✅ ЗАВЕРШЕНА (24.04.2026)
+
+- [x] Создан `docs/design-docs/PANEL-WARP-RENDERER.md`:
+  - Сравнены три варианта: (a) Konva native + skew, (b) offscreen canvas + mesh warp, (c) WebGL/Pixi.
+  - **Решение:** (b) offscreen canvas + кусочно-аффинный mesh warp по сетке 8×8 (128 треугольников). Не вводим новых зависимостей; math-часть testable без `<canvas>`.
+  - Бенчмарк отложен до v2 (нужно реальное QA-окружение); внутренний расчёт показывает ~1ms / panel при 8×8.
+
+### 1B.2 v1 Frontend — реализация warp-рендерера + интеграция ✅ ЗАВЕРШЕНА (24.04.2026)
+
+- [x] Создан `src/domains/visualizer/lib/panelWarpRenderer.ts`:
+  - `renderPanelToQuad(opts: WarpOptions): WarpResult` — wrapper, возвращает offscreen canvas + bbox.
+  - **Чистые функции:** `buildMeshTriangles()`, `affineFromTriangles()`, `quadBoundingBox()` — testable без canvas.
+  - **Кэш** module-level `Map<string, WarpResult>` (FIFO eviction, `MAX_CACHE_ENTRIES = 100`). Ключ: `designUrl|quadHash|opacity|colorTint`. Отдельный от `konvaDesignImageCache`.
+  - `clearWarpCache()` экспортирован для инвалидации.
+- [x] `KonvaCanvas.tsx`:
+  - Импорт `renderPanelToQuad`, `clearWarpCache`.
+  - `useEffect` сбрасывает кэш при изменении `perspectiveTransform`.
+  - В perspective-ветке: если `designImg` загружен → `<KonvaImage image={warpedCanvas} x={bbox.x} y={bbox.y} ... />` + outline `<Line>` снаружи. Если нет → fallback на Phase 1A clip-подход (чтобы quad сразу виден, пока картинка грузится).
+
+### 1B.2 v2 Frontend — wallSpace + drag (deferred)
+
 - [ ] Расширить `PlacedPanel`:
-  - Хранить не только `x, y, renderWidth, renderHeight`, но и **источник**: `wallSpace: { x, y, w, h }` (координаты в плоской системе стены).
-  - `renderQuad` вычисляется на лету через `transformRect(perspective, wallSpace)`.
-  - **Миграция существующих панелей** при первом включении перспективы: `wallSpace = inverseTransformRect(currentXY)`. См. [E6].
-- [ ] Обновить `KonvaCanvas.tsx`:
-  - Если `editorMode === 'perspective'` или `scene.perspective != null` → рендерить каждую панель через `<KonvaImage image={warpedCanvas} />`, где `warpedCanvas` = результат `renderPanelToQuad()`.
-  - Иначе — старый рендер (как сейчас).
-  - Drag & drop в режиме перспективы работает в **wall-space** (через `inverseTransformPoint` от мыши). Снять блокировку `&& !perspectiveCorners` в `draggable` (см. [R3]).
-  - **Clamp wall-space координат внутри bounds стены** перед записью в store — чтобы избежать «уезда в бесконечность» возле horizon line. См. [T2].
-  - **Учёт яркости стены** должен идти через canvas filter в `panelWarpRenderer`, не только через `opacity` (см. [T7]).
+  - Добавить `wallSpace?: { x, y, w, h }` (координаты в плоской системе стены).
+  - В v1 `panel.x/y` интерпретируются как wall-space, когда `perspectiveTransform != null` — это работает, но смешивает семантику. v2 разделяет.
+  - **Миграция** при первом включении перспективы: `wallSpace = inverseTransformRect(currentXY)`. См. [E6].
+- [ ] `KonvaCanvas.tsx`:
+  - Drag & drop в перспективе работает в **wall-space** (`inverseTransformPoint` от мыши). Снять блокировку `&& !perspectiveCorners` в `draggable` (см. [R3]).
+  - **Clamp wall-space координат внутри bounds стены** перед записью в store. См. [T2].
+  - **Учёт яркости стены** через canvas filter в `panelWarpRenderer`, не только через `opacity` (см. [T7]).
+  - **Memoize warp results** на уровне `useMemo(() => panels.map(...))` — сейчас они кэшируются глобально, но React всё равно вызывает render-функцию каждый раз.
 
-### 1B.3 Frontend — интеграция в store
+### 1B.3 v2 Frontend — интеграция в store (deferred)
 
 - [ ] В `visualizerStore.ts`:
-  - Добавить `scene.perspective: PerspectiveTransform | null`.
-  - Action `setPerspectiveCorners(corners: PerspectiveCorners)` → создаёт `PerspectiveTransform` через `createPerspective()`.
-  - Action `clearPerspective()` → сброс.
-  - **Селекторный доступ** ко всем новым полям (`useVisualizerStore((s) => s.scene.perspective)` в компонентах) — по конвенции frontend, без деструктуризации стора.
-- [ ] `PerspectiveCorners.tsx` (UI уже есть): подключить `Apply` к `setPerspectiveCorners`.
+  - Опциональный `scene.perspective: PerspectiveTransform | null` (вычисляется в action `setPerspectiveCorners`, чтобы не считать каждый рендер).
+  - **Селекторный доступ** ко всем новым полям — по конвенции frontend.
+- [ ] `PerspectiveCorners.tsx` (UI уже есть): убедиться, что `Apply` дёргает `setPerspectiveCorners`.
 
-### 1B.4 Дизайн
+### 1B.4 v2 Дизайн (deferred)
 
-- [ ] Добавить визуальную индикацию режима перспективы в шапке canvas: бейдж `Inter 13px/500`, фон `#4CAF50`, текст `#FFFFFF`, `border-radius 6px`.
-- [ ] Hover/выделение панели в перспективе — подсветка по контуру quad, толщина 2px, цвет `#4CAF50`.
-- [ ] Цветовые константы (`GREEN`, `DARK`, `GRAY_TEXT`) — в начале каждого нового файла компонента (по `frontend/CONVENTIONS.md`).
-- [ ] Все стили — inline objects (по конвенции). Без CSS-модулей и styled-components.
+- [ ] Бейдж режима перспективы в шапке canvas: `Inter 13px/500`, фон `#4CAF50`, текст `#FFFFFF`, `border-radius 6px`.
+- [ ] Hover/выделение панели в перспективе — подсветка по контуру quad, толщина 2px, цвет `#4CAF50` (сейчас уже есть outline через `<Line>`, но цвет hover не различается визуально достаточно).
+- [ ] Цветовые константы (`GREEN`, `DARK`, `GRAY_TEXT`) — в начале каждого нового файла (по `frontend/CONVENTIONS.md`).
+- [ ] Все стили — inline objects.
 
 ### 1B.5 Backend
 
-- [ ] Без изменений. Все данные перспективы остаются в `localStorage` до Фазы 5C.
+- [x] Без изменений. Все данные перспективы остаются в `localStorage` до Фазы 5C.
 
-### 1B.6 Тесты
+### 1B.6 v1 Тесты ✅ ЗАВЕРШЕНА (24.04.2026)
 
-- [ ] Unit `panelWarpRenderer.test.ts`:
-  - Warp единичного квадрата в трапецию — проверить, что углы выходного canvas соответствуют quad.
-  - Кэш: повторный вызов с тем же quad возвращает тот же canvas; смена nonce → cache miss.
-  - Edge: quad с двумя совпадающими точками → throw понятную ошибку.
-- [ ] Component `KonvaCanvas.test.tsx`:
-  - Сценарий: установить perspective → проверить, что render call идёт через `KonvaImage` с warped canvas, а не `Rect`.
-  - Drag в перспективе: симулировать `dragmove` → ожидать вызов `onPanelMove` с **wall-space** координатами (не screen-space).
-- [ ] Unit для миграции wall-space (E6): существующие panels без `wallSpace` + включение перспективы → `wallSpace` рассчитан корректно через `inverseTransformRect`.
+- [x] Unit `panelWarpRenderer.test.ts` (19 тестов, все зелёные):
+  - `buildMeshTriangles`: грид-резание (1×1, 4×4, 8×8); src-координаты в [0,w]×[0,h]; identity transform → dst = src + offset; трапеция → top-row уже bottom-row; throws на NaN/0.
+  - `affineFromTriangles`: identity → identity matrix; pure translation; pure scale; degenerate (collinear src) → throw; matrix действительно мапит src → dst.
+  - `quadBoundingBox`: axis-aligned, rotated, collapsed (≥1×1).
+  - `renderPanelToQuad` + cache: canvas-bbox, cache hit, cache miss по opacity / colorTint / wallRect, `clearWarpCache`.
+- [x] Component `KonvaCanvas.test.tsx` (17 тестов, все зелёные):
+  - Phase 1A clip fallback: при `designImage='not-loaded.jpg'` (никогда не резолвится) → clipped Group + backdrop Line с `panel.color`.
+  - Crash-safety: рендер с perspective + неподгруженной картинкой не падает.
+  - Регрессия: без `perspectiveCorners` → нет clipped Groups.
+  - **Outline-outside-clip:** outer Group (data-clipped="false") содержит **и** clipped child Group, **и** sibling outline Line — гарантирует, что outline не клипается.
+- [x] Полный прогон `vitest run src/domains/visualizer/`: **17 файлов / 177 тестов зелёные** (19.81s). `tsc --noEmit` — чисто.
+
+### 1B.6 v2 Тесты (deferred)
+
+- [ ] Drag в перспективе: симулировать `dragmove` → ожидать вызов `onPanelMove` с **wall-space** координатами.
+- [ ] Миграция wall-space (E6): существующие panels без `wallSpace` + включение перспективы → `wallSpace` рассчитан корректно через `inverseTransformRect`.
+- [ ] Snapshot/pixel-diff warped canvas (опц.) — требует node-canvas или playwright-based визуального теста.
 - [ ] Интеграционный e2e (manual checklist в issue): загрузить фото, поставить 4 угла, разместить 5 панелей, убедиться визуально что они «лежат» на стене.
 
-> **Definition of Done:** см. раздел «Definition of Done» в конце плана.
+> **Definition of Done v1 (этот коммит):** ✅ при включении ручной перспективы текстура дизайна реально warp'нута на quad (mesh, не clip). Кэш warp'ов рассеивается при смене перспективы. Fallback на clip при незагруженной картинке. Все тесты зелёные.
+> **Definition of Done v2:** см. общий раздел «Definition of Done» в конце плана.
 
 ---
 

@@ -275,8 +275,8 @@ describe('KonvaCanvas', () => {
     expect(container.style.borderRadius).toBe('12px');
   });
 
-  // ─── R1 hot-fix: perspective rendering shows design texture, not just colored quad ───
-  describe('perspective rendering (R1 hot-fix)', () => {
+  // ─── Perspective rendering: Phase 1A clip fallback + Phase 1B mesh warp ───
+  describe('perspective rendering', () => {
     const corners: PerspectiveCorners = [
       { x: 50, y: 50 },
       { x: 350, y: 60 },
@@ -284,25 +284,25 @@ describe('KonvaCanvas', () => {
       { x: 60, y: 240 },
     ];
 
-    it('uses clipFunc Group for panels when perspective corners are set', () => {
-      const panel = createTestPanel();
+    it('Phase 1A fallback: uses clipFunc Group when design image is not yet loaded', () => {
+      // designImage: 'not-loaded.jpg' is never resolved by the async loader,
+      // so panelImages stays empty and the renderer falls back to clip path.
+      const panel = createTestPanel({ designImage: 'not-loaded.jpg' });
       render(
         <KonvaCanvas {...defaultProps} panels={[panel]} perspectiveCorners={corners} />,
       );
       const groups = screen.getAllByTestId('konva-group');
       const clipped = groups.filter((g) => g.getAttribute('data-clipped') === 'true');
-      // At least one clipped Group per panel = the new R1-fix code path
       expect(clipped.length).toBeGreaterThanOrEqual(1);
     });
 
-    it('renders backdrop Line with panel color in perspective branch', () => {
-      const panel = createTestPanel({ color: '#FF0000' });
+    it('Phase 1A fallback: renders backdrop Line with panel.color when image not loaded', () => {
+      const panel = createTestPanel({ color: '#FF0000', designImage: 'not-loaded.jpg' });
       render(
         <KonvaCanvas {...defaultProps} panels={[panel]} perspectiveCorners={corners} />,
       );
       const lines = screen.getAllByTestId('konva-line');
       const colorLines = lines.filter((l) => l.getAttribute('data-fill') === '#FF0000');
-      // backdrop fill Line must exist
       expect(colorLines.length).toBeGreaterThanOrEqual(1);
     });
 
@@ -319,9 +319,31 @@ describe('KonvaCanvas', () => {
       const panel = createTestPanel();
       render(<KonvaCanvas {...defaultProps} panels={[panel]} />);
       const groups = screen.getAllByTestId('konva-group');
-      // No panel Group should be clipped when perspective is disabled
       const clippedPanelGroups = groups.filter((g) => g.getAttribute('data-clipped') === 'true');
       expect(clippedPanelGroups.length).toBe(0);
+    });
+
+    it('regression: outline Line is drawn outside the clip Group (not inside)', () => {
+      // Find the outline Line (one with stroke in fallback) — its DOM parent
+      // must NOT be a clipped Group, so the outline isn't clipped.
+      const panel = createTestPanel({ designImage: 'not-loaded.jpg' });
+      render(
+        <KonvaCanvas {...defaultProps} panels={[panel]} perspectiveCorners={corners} />,
+      );
+      const groups = screen.getAllByTestId('konva-group');
+      // The outer per-panel Group is unclipped; it contains a clipped child
+      // and a sibling outline Line. So at least one unclipped Group must
+      // exist that contains both a clipped Group and a Line as direct children.
+      const outerWithClipChildAndLine = groups.filter((g) => {
+        if (g.getAttribute('data-clipped') !== 'false') return false;
+        const children = Array.from(g.children);
+        const hasClippedChild = children.some(
+          (c) => c.getAttribute('data-testid') === 'konva-group' && c.getAttribute('data-clipped') === 'true',
+        );
+        const hasLineChild = children.some((c) => c.getAttribute('data-testid') === 'konva-line');
+        return hasClippedChild && hasLineChild;
+      });
+      expect(outerWithClipChildAndLine.length).toBeGreaterThanOrEqual(1);
     });
   });
 });

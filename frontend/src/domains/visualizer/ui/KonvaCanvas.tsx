@@ -6,6 +6,7 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import type { Scene, PlacedPanel, MaskTool, Point, AccentZone, PlacementMode, EditorMode, CalibrationPoints, PerspectiveCorners as PerspectiveCornersType } from '../model/types';
 import { wallMaskToImageData } from '../lib/maskUtils';
 import { createPerspective, transformRect, quadToFlatPoints, computeBrightnessAdjustment } from '../lib/perspectiveEngine';
+import { renderPanelToQuad, clearWarpCache } from '../lib/panelWarpRenderer';
 import { PerspectiveCorners } from './PerspectiveCorners';
 
 /** Cache of loaded design texture images keyed by URL. */
@@ -429,6 +430,12 @@ export function KonvaCanvas({
     });
   }, [perspectiveCorners, scene.photo.width, scene.photo.height]);
 
+  // Drop the warp cache whenever perspective corners change — old warps were
+  // computed against the previous quad and would leak memory otherwise.
+  useEffect(() => {
+    clearWarpCache();
+  }, [perspectiveTransform]);
+
   const brightnessAdj = useMemo(
     () => computeBrightnessAdjustment(wallBrightness),
     [wallBrightness],
@@ -551,10 +558,10 @@ export function KonvaCanvas({
               },
             };
 
-            // With perspective: clip a rect-rendered design by the quad shape.
-            // Phase 1A hot-fix: design texture is now visible inside the quad
-            // (previously only solid-color fill was rendered — see PERSPECTIVE-AUDIT R1).
-            // Full perspective warp will land in Phase 1B.
+            // With perspective: render a true mesh-warped texture onto the quad
+            // when the design image is loaded; fall back to the Phase 1A clip
+            // approach when it isn't (so users still see the colored quad
+            // immediately, before async image load completes).
             if (perspectiveTransform) {
               const quad = transformRect(perspectiveTransform, {
                 x: panel.x,
@@ -564,6 +571,49 @@ export function KonvaCanvas({
               });
               const flatPts = quadToFlatPoints(quad);
               const designImg = panel.designImage ? panelImages.get(panel.designImage) : null;
+
+              if (designImg) {
+                // Phase 1B: real perspective warp via offscreen canvas.
+                const { canvas: warpedCanvas, bbox } = renderPanelToQuad({
+                  designUrl: panel.designImage,
+                  designImage: designImg,
+                  perspective: perspectiveTransform,
+                  wallRect: {
+                    x: panel.x,
+                    y: panel.y,
+                    width: panel.renderWidth,
+                    height: panel.renderHeight,
+                  },
+                  opacity: 0.85 + brightnessAdj,
+                  colorTint: panel.color,
+                });
+                return (
+                  <Group key={panel.id}>
+                    <KonvaImage
+                      image={warpedCanvas}
+                      x={bbox.x}
+                      y={bbox.y}
+                      width={bbox.width}
+                      height={bbox.height}
+                      {...panelHandlers}
+                    />
+                    {/* Outline + shadow drawn over the warp for crisp edges. */}
+                    <Line
+                      points={flatPts}
+                      closed
+                      stroke={strokeColor}
+                      strokeWidth={strokeW}
+                      shadowColor={shadowCol}
+                      shadowBlur={shadowB}
+                      shadowOffsetY={shadowOY}
+                      listening={false}
+                    />
+                  </Group>
+                );
+              }
+
+              // Fallback: image not loaded yet — use Phase 1A clip approach
+              // so the quad is still visually present while loading.
               const quadClipFunc = (ctx: Konva.Context) => {
                 ctx.beginPath();
                 ctx.moveTo(quad[0].x, quad[0].y);
@@ -574,28 +624,15 @@ export function KonvaCanvas({
               };
               return (
                 <Group key={panel.id}>
-                  {/* Design + color tint, clipped by quad */}
                   <Group clipFunc={quadClipFunc}>
-                    {designImg && (
-                      <KonvaImage
-                        image={designImg}
-                        x={panel.x}
-                        y={panel.y}
-                        width={panel.renderWidth}
-                        height={panel.renderHeight}
-                        opacity={0.85 + brightnessAdj}
-                        listening={false}
-                      />
-                    )}
                     <Line
                       points={flatPts}
                       closed
                       fill={panel.color || '#CCCCCC'}
-                      opacity={designImg ? 0.25 : 0.85 + brightnessAdj}
+                      opacity={0.85 + brightnessAdj}
                       {...panelHandlers}
                     />
                   </Group>
-                  {/* Outline + shadow rendered outside the clip so quad edges stay crisp */}
                   <Line
                     points={flatPts}
                     closed
