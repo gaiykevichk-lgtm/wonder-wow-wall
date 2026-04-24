@@ -897,6 +897,24 @@ Alembic уже инициализирован: `backend/alembic.ini`, `backend/a
 
 Регрессий не обнаружено: `test_visualizer_use_cases.py` (4 теста на UpdateVisualizationProject) проанализирован вручную — все проходят с новым optimistic-lock (entity v=1 vs row v=1).
 
+#### 5B.4.1 Fix-pass (2026-04-24)
+
+| ID | Status | Действие |
+| --- | --- | --- |
+| **B30** | ✅ closed | `models.py`: `from sqlalchemy import ... false`; обе булевы колонки `VisualizationProjectModel` теперь используют `server_default=false()` — байт-в-байт совпадает с migration 005 (`sa.false()`). |
+| **B31** | ✅ closed | `value_objects.py`: `_VALID_CALIBRATION_METHODS = get_args(CalibrationMethod)` — runtime-tuple теперь выводится из `Literal`, добавление нового метода требует правки одного места. |
+| **B32** | ✅ closed | `ScaleCalibration.from_dict` pre-validate-loop по `("method", "pixels_per_cm")` → `ValueError("...missing required key 'X'...")` вместо raw `KeyError`. Покрыто `test_from_dict_missing_required_key_raises_value_error`. |
+| **B33** | ✅ closed | `InMemoryVisualizationProjectRepository.update`: при `existing is None` → `raise ValueError(...)` (симметрично SQL repo). Проверено grep'ом всех call-sites — `application/visualizer/use_cases.py:49` всегда делает `get_by_id` перед `update`, поэтому усиление контракта безопасно. |
+| **B34** | ⏸ deferred 5C | Use case scope; покрывается в 5C.1 при изменении сигнатуры `UpdateVisualizationProject.execute`. |
+| **B35** | ✅ closed | Удалён неиспользуемый `import sqlalchemy as sa` из `tests/infrastructure/test_visualizer_repo.py`. |
+| **B36** | ✅ closed | Module-docstring `test_alembic.py` переписан: явная "Coverage at a glance" секция покрывает 5A baseline + 5B-колонки. |
+| **B37** | ✅ closed | Добавлен `test_round_trip_dict_with_no_optional_fields` — `to_dict → from_dict` для `ScaleCalibration` без `wall_width_cm/wall_height_cm`. |
+| **B38** | ✅ closed | Добавлен `TestCalibrationMapper` (`_calibration_to_json(None) is None` + happy-path) в `tests/infrastructure/test_visualizer_repo.py`. |
+| **B39** | ⏸ deferred 5C | snake/camel конверсия делается в API DTO-слое (5C.2). |
+| **B40** | ⏸ deferred 5C | `PerspectiveCorners` VO в persistence pipeline вводится в 5C при апдейте mappers под новый wire-format. |
+
+**Итог fix-pass:** 8/8 не-критических закрыто; 3 tech-debt-айтема корректно отложены до 5C, где их естественное место. Все модифицированные файлы проходят `python3 -m py_compile`.
+
 ---
 
 ## Фаза 5C: Backend API + Frontend sync

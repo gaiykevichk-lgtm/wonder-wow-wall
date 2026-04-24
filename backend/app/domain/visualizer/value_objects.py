@@ -13,7 +13,7 @@ hashable for deduplication.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, get_args
 
 from .exceptions import CollinearCornersError
 
@@ -21,6 +21,9 @@ from .exceptions import CollinearCornersError
 # invalid methods a static-typecheck error, and a runtime guard in __post_init__
 # to catch dynamic input (API payloads, repo loads).
 CalibrationMethod = Literal["reference", "manual", "auto"]
+# Single source of truth for the allowed methods — runtime check derives from
+# the Literal so adding a new variant doesn't require updating two places (B31).
+_VALID_CALIBRATION_METHODS = get_args(CalibrationMethod)
 
 # Below this quad-area-in-pixels² the corners are treated as collinear.
 # Real wall photos produce quads with area > 10⁵ px² (e.g. a 1000×1000 image
@@ -57,7 +60,7 @@ class ScaleCalibration:
     wall_height_cm: float | None = None
 
     def __post_init__(self) -> None:
-        if self.method not in ("reference", "manual", "auto"):
+        if self.method not in _VALID_CALIBRATION_METHODS:
             raise ValueError(f"Unknown calibration method: {self.method!r}")
         if self.pixels_per_cm <= 0:
             raise ValueError(
@@ -82,6 +85,13 @@ class ScaleCalibration:
 
     @classmethod
     def from_dict(cls, raw: dict) -> ScaleCalibration:
+        # Surface a clear ValueError for missing required keys instead of a raw
+        # KeyError — corrupt persistence rows give a useful traceback (B32).
+        for key in ("method", "pixels_per_cm"):
+            if key not in raw:
+                raise ValueError(
+                    f"ScaleCalibration.from_dict missing required key {key!r}; got {sorted(raw.keys())!r}"
+                )
         return cls(
             method=raw["method"],
             pixels_per_cm=float(raw["pixels_per_cm"]),

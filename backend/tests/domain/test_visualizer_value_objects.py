@@ -74,6 +74,25 @@ class TestScaleCalibration:
         assert cal.wall_width_cm is None
         assert cal.wall_height_cm is None
 
+    def test_round_trip_dict_with_no_optional_fields(self):
+        # B37 closure: the no-optional path must survive `to_dict → from_dict`
+        # losslessly. Both wall dims are serialized as `None` and rehydrate
+        # to `None` (not 0.0 — `float(None)` would explode and that's how the
+        # bug would surface if the optional-handling were wrong).
+        cal = ScaleCalibration(method="manual", pixels_per_cm=5.0)
+        round_tripped = ScaleCalibration.from_dict(cal.to_dict())
+        assert round_tripped == cal
+        assert round_tripped.wall_width_cm is None
+        assert round_tripped.wall_height_cm is None
+
+    def test_from_dict_missing_required_key_raises_value_error(self):
+        # B32 closure: missing required key → clean ValueError naming the key,
+        # not a raw KeyError that hides the cause when a corrupt row loads.
+        with pytest.raises(ValueError, match="missing required key 'method'"):
+            ScaleCalibration.from_dict({"pixels_per_cm": 5.0})
+        with pytest.raises(ValueError, match="missing required key 'pixels_per_cm'"):
+            ScaleCalibration.from_dict({"method": "manual"})
+
 
 # ─── PerspectiveCorners ──────────────────────────────────────────────
 

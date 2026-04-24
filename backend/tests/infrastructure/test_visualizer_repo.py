@@ -24,7 +24,6 @@ pytest.importorskip("sqlalchemy")
 pytest.importorskip("aiosqlite")
 pytest_asyncio = pytest.importorskip("pytest_asyncio")  # noqa: F841
 
-import sqlalchemy as sa  # noqa: E402
 from sqlalchemy.ext.asyncio import (  # noqa: E402
     AsyncSession,
     async_sessionmaker,
@@ -42,7 +41,35 @@ from app.infrastructure.persistence.models import UserModel  # noqa: E402
 from app.infrastructure.persistence.repositories.visualization_repo import (  # noqa: E402
     InMemoryVisualizationProjectRepository,
     SqlVisualizationProjectRepository,
+    _calibration_to_json,
 )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Mapper helpers — pure-function unit coverage (no DB, no async)
+# ═══════════════════════════════════════════════════════════════════════
+
+class TestCalibrationMapper:
+    """B38 closure: a `None` calibration must serialize to `None` (not `{}`).
+
+    Persisting `{}` would re-hydrate as `ScaleCalibration.from_dict({...})`
+    and explode on the missing-required-key guard added for B32. Locking the
+    contract here keeps the round-trip with `_model_to_entity`'s
+    `if m.calibration` guard honest.
+    """
+
+    def test_none_calibration_serializes_to_none(self):
+        assert _calibration_to_json(None) is None
+
+    def test_real_calibration_serializes_to_dict(self):
+        cal = ScaleCalibration(method="reference", pixels_per_cm=4.0)
+        out = _calibration_to_json(cal)
+        assert out == {
+            "method": "reference",
+            "pixels_per_cm": 4.0,
+            "wall_width_cm": None,
+            "wall_height_cm": None,
+        }
 
 
 # ═══════════════════════════════════════════════════════════════════════

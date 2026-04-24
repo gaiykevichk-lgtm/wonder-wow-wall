@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import String, Integer, Float, Boolean, DateTime, Text, ForeignKey, JSON
+from sqlalchemy import String, Integer, Float, Boolean, DateTime, Text, ForeignKey, JSON, false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -195,11 +195,13 @@ class VisualizationProjectModel(Base):
     # "wall_width_cm?", "wall_height_cm?"}`). NULL until 5C frontend writes it.
     calibration: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=None)
     # Provenance flags — drive frontend banners.
+    # `sa.false()` (not `"0"`) — matches migration 005's `server_default=sa.false()`
+    # and renders as `FALSE` on PG, `0` on SQLite. B30 closure.
     perspective_auto_detected: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, server_default="0"
+        Boolean, nullable=False, default=False, server_default=false()
     )
     calibration_auto_detected: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, server_default="0"
+        Boolean, nullable=False, default=False, server_default=false()
     )
     # Optimistic-lock counter — see `SqlVisualizationProjectRepository.update`.
     version: Mapped[int] = mapped_column(

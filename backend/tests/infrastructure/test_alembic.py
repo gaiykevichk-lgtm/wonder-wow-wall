@@ -1,4 +1,4 @@
-"""Phase 5A smoke-tests for Alembic migrations.
+"""Alembic smoke-tests for the migration chain (Phase 5A baseline + 5B columns).
 
 Strategy
 ────────
@@ -9,6 +9,12 @@ still runs on postgres + asyncpg (see `app.config.settings.DATABASE_URL`).
 The pg-only DDL in migration 001 (`CREATE SEQUENCE`) is guarded by a
 dialect check so this round-trip succeeds on SQLite. Everything else is
 portable.
+
+Coverage at a glance:
+- Phase 5A: full upgrade head, `head → base → head`, downgrade-to-base.
+- Phase 5B: migration 005 adds `calibration`, `*_auto_detected`, `version`
+  columns to `visualization_projects`; downgrade -1 drops them but keeps
+  the table (created by 004).
 
 The three explicit dependencies (`alembic`, `sqlalchemy`, `aiosqlite`) are
 declared in `requirements.txt`; if they aren't installed in the current

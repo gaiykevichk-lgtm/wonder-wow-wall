@@ -113,18 +113,24 @@ class InMemoryVisualizationProjectRepository(VisualizationProjectRepository):
         return project
 
     async def update(self, project: VisualizationProject) -> VisualizationProject:
+        # Symmetric with SQL repo: missing project → ValueError, never silent
+        # upsert. Pre-5B InMemory.update upserted; B33 closes that divergence
+        # so application/API code can rely on the same contract regardless
+        # of which backend is wired up.
+        existing = self._projects.get(project.id)
+        if existing is None:
+            raise ValueError(f"VisualizationProject {project.id} not found")
         # Optimistic lock: the inbound entity carries the version the client
         # last read. If the stored row has moved on, raise — the caller
         # (use-case → API) maps this to 409 Conflict + current state.
-        existing = self._projects.get(project.id)
-        if existing is not None and existing.version != project.version:
+        if existing.version != project.version:
             raise StaleSceneVersionError(
                 f"Project {project.id}: client version {project.version}, "
                 f"server version {existing.version}"
             )
         # Bump the version on successful write so the next update from the
         # same client must read-then-write again.
-        project.version = (existing.version if existing else project.version) + 1
+        project.version = existing.version + 1
         self._projects[project.id] = project
         return project
 
