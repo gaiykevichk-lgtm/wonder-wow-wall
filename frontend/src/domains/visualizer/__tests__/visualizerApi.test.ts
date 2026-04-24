@@ -21,8 +21,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ApiError } from '../../../shared/api/client';
 import {
+  AutoPerspectiveFailedError,
   DegenerateCornersError,
   StaleVersionError,
+  apiAutoDetectPerspectiveInline,
   saveProject,
   updateCalibration,
   updatePerspective,
@@ -221,5 +223,77 @@ describe('updateCalibration error variants', () => {
     await expect(updateCalibration('proj-1', cal, 7)).rejects.toBeInstanceOf(
       StaleVersionError,
     );
+  });
+});
+
+describe('apiAutoDetectPerspectiveInline', () => {
+  const inlineInput = {
+    photoUrl: 'data:image/png;base64,AAAA',
+    photoWidth: 64,
+    photoHeight: 64,
+    wallMaskBase64: 'mask-base64',
+  };
+
+  const wireCorners = [
+    { x: 0, y: 0 }, { x: 63, y: 0 }, { x: 63, y: 63 }, { x: 0, y: 63 },
+  ];
+
+  it('serialises body as snake_case and parses corners + bbox', async () => {
+    mockFetch.mockResolvedValue(
+      okResponse(200, {
+        corners: wireCorners,
+        confidence: 0.95,
+        bbox_pixels: { width: 63, height: 63 },
+      }),
+    );
+    const result = await apiAutoDetectPerspectiveInline(inlineInput);
+    expect(result.corners).toHaveLength(4);
+    expect(result.confidence).toBe(0.95);
+    expect(result.bboxPixels).toEqual({ width: 63, height: 63 });
+
+    // Body must use snake_case keys — the backend Pydantic model won't
+    // accept photoUrl/wallMaskBase64.
+    const call = mockFetch.mock.calls.at(-1)!;
+    const body = JSON.parse(call[1].body as string);
+    expect(body.photo_url).toBe('data:image/png;base64,AAAA');
+    expect(body.wall_mask_base64).toBe('mask-base64');
+  });
+
+  it('maps 422 + plane_fit_failed to AutoPerspectiveFailedError', async () => {
+    mockFetch.mockResolvedValue(
+      errorResponse(422, {
+        detail: 'RANSAC did not converge',
+        code: 'plane_fit_failed',
+      }),
+    );
+    let caught: unknown;
+    await apiAutoDetectPerspectiveInline(inlineInput).catch((e) => {
+      caught = e;
+    });
+    expect(caught).toBeInstanceOf(AutoPerspectiveFailedError);
+    expect((caught as AutoPerspectiveFailedError).kind).toBe('plane_fit_failed');
+  });
+
+  it('maps 503 + depth_unavailable to AutoPerspectiveFailedError', async () => {
+    mockFetch.mockResolvedValue(
+      errorResponse(503, {
+        detail: 'Depth backend unreachable',
+        code: 'depth_unavailable',
+      }),
+    );
+    let caught: unknown;
+    await apiAutoDetectPerspectiveInline(inlineInput).catch((e) => {
+      caught = e;
+    });
+    expect(caught).toBeInstanceOf(AutoPerspectiveFailedError);
+    expect((caught as AutoPerspectiveFailedError).kind).toBe('depth_unavailable');
+  });
+
+  it('defaults bbox_pixels to zeros when backend omits the field', async () => {
+    mockFetch.mockResolvedValue(
+      okResponse(200, { corners: wireCorners, confidence: 0.8 }),
+    );
+    const result = await apiAutoDetectPerspectiveInline(inlineInput);
+    expect(result.bboxPixels).toEqual({ width: 0, height: 0 });
   });
 });

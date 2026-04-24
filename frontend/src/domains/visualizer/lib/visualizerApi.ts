@@ -277,6 +277,16 @@ export async function updateCalibration(
 export interface AutoPerspectiveResult {
   corners: PerspectiveCorners;
   confidence: number;
+  /**
+   * Detected wall bounding-box width/height in *photo pixels*. The store uses
+   * this to seed `ScaleCalibration.pixelsPerCm` when the user hasn't
+   * calibrated yet, so auto-fill panels land at a plausible scale instead of
+   * at whatever default `pixels_per_cm` the empty project was created with.
+   *
+   * Defaults to `{ width: 0, height: 0 }` so the optional shape can be safely
+   * consumed without a null-check — callers ignore a zero dimension.
+   */
+  bboxPixels: { width: number; height: number };
 }
 
 /**
@@ -317,40 +327,96 @@ export interface AutoDetectPerspectiveOptions {
  *   - anything else → passes the original `ApiError` through so higher-level
  *     code can retry transport errors independently.
  */
+interface WireAutoPerspectiveResponse {
+  corners: WirePoint[];
+  confidence: number;
+  bbox_pixels?: { width: number; height: number };
+}
+
+function autoPerspectiveFromWire(
+  wire: WireAutoPerspectiveResponse,
+): AutoPerspectiveResult {
+  const corners = cornersFromWire(wire.corners);
+  if (!corners) {
+    throw new AutoPerspectiveFailedError(
+      'Server returned non-4 corner set',
+      'unknown',
+    );
+  }
+  return {
+    corners,
+    confidence: wire.confidence,
+    bboxPixels: {
+      width: wire.bbox_pixels?.width ?? 0,
+      height: wire.bbox_pixels?.height ?? 0,
+    },
+  };
+}
+
+function mapAutoPerspectiveError(err: unknown): unknown {
+  if (err instanceof ApiError) {
+    const code = err.body?.code as string | undefined;
+    if (err.status === 422 && code === 'plane_fit_failed') {
+      return new AutoPerspectiveFailedError(err.detail, 'plane_fit_failed');
+    }
+    if (err.status === 503 && code === 'depth_unavailable') {
+      return new AutoPerspectiveFailedError(err.detail, 'depth_unavailable');
+    }
+  }
+  return err;
+}
+
 export async function apiAutoDetectPerspective(
   projectId: string,
   options: AutoDetectPerspectiveOptions = {},
 ): Promise<AutoPerspectiveResult> {
-  interface WireResponse {
-    corners: WirePoint[];
-    confidence: number;
-  }
   try {
-    const wire = await api.post<WireResponse>(
+    const wire = await api.post<WireAutoPerspectiveResponse>(
       `/visualizer/projects/${projectId}/auto-perspective`,
       {},
       { signal: options.signal },
     );
-    const corners = cornersFromWire(wire.corners);
-    if (!corners) {
-      // Server contract guarantees 4 points on 200, but keep the runtime
-      // guard so a regression surfaces as a typed error instead of `null`.
-      throw new AutoPerspectiveFailedError(
-        'Server returned non-4 corner set',
-        'unknown',
-      );
-    }
-    return { corners, confidence: wire.confidence };
+    return autoPerspectiveFromWire(wire);
   } catch (err) {
-    if (err instanceof ApiError) {
-      const code = err.body?.code as string | undefined;
-      if (err.status === 422 && code === 'plane_fit_failed') {
-        throw new AutoPerspectiveFailedError(err.detail, 'plane_fit_failed');
-      }
-      if (err.status === 503 && code === 'depth_unavailable') {
-        throw new AutoPerspectiveFailedError(err.detail, 'depth_unavailable');
-      }
-    }
-    throw err;
+    throw mapAutoPerspectiveError(err);
+  }
+}
+
+/**
+ * Inline variant — runs the same depth+RANSAC pipeline on a photo/mask
+ * supplied directly in the request body. Use this *immediately after upload*,
+ * before the project has been persisted. The backend accepts the same shape
+ * that would have been saved, minus the project envelope.
+ *
+ * Why: keeping the project-bound variant required the store to do a round-trip
+ * save before auto-detection could run, which (a) adds a second of latency
+ * and (b) writes a "draft" project the user may abandon. The inline variant
+ * is the default fast path; project-bound is retained for scripts/debug.
+ */
+export interface InlineAutoPerspectiveInput {
+  photoUrl: string;
+  photoWidth: number;
+  photoHeight: number;
+  wallMaskBase64: string;
+}
+
+export async function apiAutoDetectPerspectiveInline(
+  input: InlineAutoPerspectiveInput,
+  options: AutoDetectPerspectiveOptions = {},
+): Promise<AutoPerspectiveResult> {
+  try {
+    const wire = await api.post<WireAutoPerspectiveResponse>(
+      '/visualizer/projects/auto-perspective',
+      {
+        photo_url: input.photoUrl,
+        photo_width: input.photoWidth,
+        photo_height: input.photoHeight,
+        wall_mask_base64: input.wallMaskBase64,
+      },
+      { signal: options.signal },
+    );
+    return autoPerspectiveFromWire(wire);
+  } catch (err) {
+    throw mapAutoPerspectiveError(err);
   }
 }

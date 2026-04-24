@@ -34,10 +34,12 @@ import {
 import type { ReferenceDetector } from '../lib/referenceDetector';
 import {
   apiAutoDetectPerspective,
+  apiAutoDetectPerspectiveInline,
   DegenerateCornersError,
   StaleVersionError,
   updateCalibration as apiUpdateCalibration,
   updatePerspective as apiUpdatePerspective,
+  type AutoPerspectiveResult,
   type VisualizationProjectDTO,
 } from '../lib/visualizerApi';
 
@@ -510,23 +512,65 @@ export const useVisualizerStore = create<VisualizerState>()(
       scene: { ...scene, segmentationStatus: 'detecting-perspective' },
     });
 
-    // Phase 6 — two-stage detection. Track result out-of-band so both stages
-    // share the same commit block; avoids duplicating `stillCurrent()` checks.
+    // Two-stage detection. Backend depth+RANSAC is the primary path — it is
+    // a) more robust on textureless walls (where HoughLinesP finds nothing),
+    // b) runs server-side so the client never pays the 11 MB opencv.js
+    //    download, and c) returns a wall bbox in photo pixels that lets us
+    //    auto-seed the calibration (otherwise the panel auto-fill step
+    //    produces garbage-sized tiles).
+    // OpenCV LSD remains as an offline/cache fallback when the backend is
+    // unreachable. Track result out-of-band so both stages share the same
+    // commit block; avoids duplicating `stillCurrent()` checks.
+    let resolvedResult: AutoPerspectiveResult | null = null;
     let resolvedCorners: PerspectiveCorners | null = null;
 
-    // Hard overall ceiling on how long we let auto-perspective run. Each
-    // internal stage has its own timeout (opencv load: 5 s, backend: network)
-    // but a shared cap protects the UI against any pathological hang —
-    // synchronous opencv work, a never-settling promise, a slow backend
-    // stalling past its transport timeout. Without this, the
-    // "Определяем углы стены…" spinner would stay on screen indefinitely,
-    // which is what the user reported. Manual corners remain available.
+    // Hard overall ceiling on how long we let auto-perspective run. The
+    // backend has its own transport timeout inside `api`; this cap protects
+    // the UI from pathological hangs (offline mode, a stuck opencv.js load,
+    // a never-settling promise). Without it, the "Определяем углы стены…"
+    // spinner could stay on screen indefinitely — which was the bug users
+    // reported. 15 s is long enough for a cold backend cold-start on
+    // mid-tier hardware + one MiDaS inference but short enough that manual
+    // corners become available quickly on a bad connection.
     const OVERALL_TIMEOUT_MS = 15_000;
 
+    // Serialise the mask once — reused in both stages and in the optional
+    // backend-inline call. Serialising inside `runStages` would duplicate it
+    // and require a ~200 ms alloc for every retry.
+    const wallMaskBase64 = uint8ArrayToBase64(wallMask.data);
+
     const runStages = async (): Promise<void> => {
-      // ─── Stage 1: client-side (OpenCV LSD → vanishing-point) ───
-      // Fast path when it works. Silent failure modes (stub not wired, WASM
-      // blocked, low confidence on low-edge scenes) fall through to Stage 2.
+      // ─── Stage 1: backend depth + RANSAC ───
+      // Prefer the inline variant so it works *before* the project has been
+      // persisted (the common case right after upload). If the caller passes
+      // a `backendProjectId`, the legacy project-bound endpoint is used
+      // instead — mainly for server-side scripts that already have a saved
+      // project; both return the same shape.
+      if (stillCurrent()) {
+        try {
+          const result = options?.backendProjectId
+            ? await apiAutoDetectPerspective(options.backendProjectId)
+            : await apiAutoDetectPerspectiveInline({
+                photoUrl: scene.photo.url,
+                photoWidth: scene.photo.width,
+                photoHeight: scene.photo.height,
+                wallMaskBase64,
+              });
+          if (!stillCurrent()) return;
+          resolvedResult = result;
+          resolvedCorners = result.corners;
+          return; // backend won — skip OpenCV.
+        } catch (err) {
+          if (import.meta.env.DEV) {
+            console.warn('[runAutoPerspective] backend depth failed:', err);
+          }
+        }
+      }
+
+      // ─── Stage 2: client-side (OpenCV LSD → vanishing-point) fallback ───
+      // Reached when the backend is unreachable or returned plane_fit_failed
+      // (empty mask, degenerate geometry). OpenCV still needs to load; this
+      // is the slow path and the one most likely to hit the OVERALL_TIMEOUT.
       try {
         const lines = await provider({
           imageUrl: scene.photo.url,
@@ -534,26 +578,15 @@ export const useVisualizerStore = create<VisualizerState>()(
           photoSize,
         });
         if (!stillCurrent()) return;
-        const result = detectFromLines({ lines, mask: wallMask, photoSize });
-        if (result.ok) {
-          resolvedCorners = result.corners;
+        const vpResult = detectFromLines({ lines, mask: wallMask, photoSize });
+        if (vpResult.ok) {
+          resolvedCorners = vpResult.corners;
+          // No bbox hint from VP detector — skip the auto-calibration step
+          // in the commit block by leaving `resolvedResult` null.
         }
       } catch (err) {
         if (import.meta.env.DEV) {
           console.warn('[runAutoPerspective] LSD provider failed:', err);
-        }
-      }
-
-      // ─── Stage 2: backend depth fallback ───
-      if (resolvedCorners === null && options?.backendProjectId && stillCurrent()) {
-        try {
-          const { corners } = await apiAutoDetectPerspective(options.backendProjectId);
-          if (!stillCurrent()) return;
-          resolvedCorners = corners;
-        } catch (err) {
-          if (import.meta.env.DEV) {
-            console.warn('[runAutoPerspective] backend fallback failed:', err);
-          }
         }
       }
     };
@@ -585,12 +618,37 @@ export const useVisualizerStore = create<VisualizerState>()(
       const current = stillCurrent();
       if (current && current.segmentationStatus === 'detecting-perspective') {
         if (resolvedCorners !== null) {
+          // Seed a *placeholder* calibration from the detected wall width
+          // when the user has none yet — `method: 'auto'` is the lowest
+          // trust tier and `layoutEngine.isTrustedCalibration` refuses it,
+          // so auto-fill stays blocked until the user runs the two-point
+          // calibration tool. The benefit is that UI surfaces (e.g. the
+          // "calibration required" banner, the scale indicator) have a
+          // numeric value to show instead of "—", and a single-click
+          // calibrate action can start from a plausible seed.
+          //
+          // Rationale for 300 cm default: typical living-room walls span
+          // 2.5–4 m; 3 m is a safe midpoint. The value is never used for
+          // panel placement (see contract in ScaleCalibration.method).
+          const bbox = resolvedResult?.bboxPixels;
+          const shouldSeed = !current.calibration && !!bbox && bbox.width > 0;
+          const seedCalibration = shouldSeed
+            ? {
+                method: 'auto' as const,
+                pixelsPerCm: bbox.width / 300,
+                wallWidthCm: 300,
+              }
+            : null;
           set({
             perspectiveCorners: resolvedCorners,
             scene: {
               ...current,
               segmentationStatus: 'ready',
               perspectiveAutoDetected: true,
+              calibration: seedCalibration ?? current.calibration,
+              calibrationAutoDetected: shouldSeed
+                ? true
+                : current.calibrationAutoDetected,
             },
           });
         } else {

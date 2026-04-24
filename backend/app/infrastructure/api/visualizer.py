@@ -417,10 +417,40 @@ class AutoPerspectiveResponse(BaseModel):
     decide whether to silently apply or surface an "is this right?" banner.
     For the v1 plane fitter we expose the inlier ratio directly; future
     versions may blend in edge-quality or mask-size signals.
+
+    `bbox_pixels` are the detected wall width/height in photo pixels — the
+    frontend uses this to seed `ScaleCalibration.pixels_per_cm` when the user
+    has not calibrated manually (assume a plausible default wall size). This
+    unblocks the auto-fill panel layout step without forcing the calibration
+    dialog on every upload.
     """
 
     corners: list[PointDTO]
     confidence: float = Field(ge=0.0, le=1.0)
+    bbox_pixels: dict[str, float] = Field(
+        default_factory=lambda: {"width": 0.0, "height": 0.0},
+        description="Wall bounding-box width/height in photo pixels.",
+    )
+
+
+class AutoPerspectiveInlineBody(BaseModel):
+    """Body for `POST /auto-perspective` (project-less variant).
+
+    Used when the photo has been uploaded client-side but not yet persisted as
+    a project (the common case right after `reader.readAsDataURL`). The
+    frontend sends the same payload fields it would have persisted, and we run
+    the depth+RANSAC pipeline without touching the repository.
+
+    Why a separate endpoint: the `/{project_id}/auto-perspective` variant is
+    still useful for debugging / server-side scripts that already have a saved
+    project. We keep both rather than overload the path with an Optional
+    project_id, which would muddy routing and auth semantics.
+    """
+
+    photo_url: str = Field(min_length=1, max_length=20_000_000)
+    photo_width: int = Field(gt=0)
+    photo_height: int = Field(gt=0)
+    wall_mask_base64: str = Field(min_length=1, max_length=10_000_000)
 
 
 def _decode_data_url(photo_url: str) -> bytes:
@@ -486,6 +516,128 @@ def _resize_mask_nearest(
     return out
 
 
+async def _run_auto_perspective(
+    *,
+    photo_url: str,
+    photo_width: int,
+    photo_height: int,
+    wall_mask_base64: str,
+    depth_estimator: DepthEstimator,
+) -> dict:
+    """Shared core for both project-bound and inline auto-perspective.
+
+    Returns a dict matching `AutoPerspectiveResponse`. Raises `HTTPException`
+    (422) on malformed input, `PlaneFittingError` (→422 via handler) when
+    RANSAC does not converge, and `DepthEstimationError` (→503) when the
+    depth backend is unavailable.
+    """
+    if photo_width <= 0 or photo_height <= 0:
+        raise HTTPException(status_code=422, detail="Project has no photo dimensions")
+    if not wall_mask_base64:
+        raise HTTPException(
+            status_code=422, detail="Project has no wall mask; draw/segment first"
+        )
+
+    image_bytes = _decode_data_url(photo_url)
+
+    try:
+        mask_bytes = base64.b64decode(wall_mask_base64, validate=False)
+    except (binascii.Error, ValueError) as e:
+        raise HTTPException(status_code=422, detail=f"Cannot decode mask: {e}") from e
+    expected_len = photo_width * photo_height
+    if len(mask_bytes) != expected_len:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Wall mask length {len(mask_bytes)} does not match "
+                f"photo_width*photo_height={expected_len}"
+            ),
+        )
+    photo_mask = [b != 0 for b in mask_bytes]
+
+    depth = await depth_estimator.estimate(image_bytes)
+
+    depth_mask = _resize_mask_nearest(
+        photo_mask,
+        photo_width,
+        photo_height,
+        depth.width,
+        depth.height,
+    )
+    fitter = PlaneFittingService()
+    corners_depth = fitter.fit(depth, depth_mask)
+
+    sx = photo_width / depth.width
+    sy = photo_height / depth.height
+    pts = [
+        {"x": corners_depth.top_left.x * sx, "y": corners_depth.top_left.y * sy},
+        {"x": corners_depth.top_right.x * sx, "y": corners_depth.top_right.y * sy},
+        {"x": corners_depth.bottom_right.x * sx, "y": corners_depth.bottom_right.y * sy},
+        {"x": corners_depth.bottom_left.x * sx, "y": corners_depth.bottom_left.y * sy},
+    ]
+
+    # Confidence: fraction of mask pixels enclosed in the inlier BBox.
+    enclosed = 0
+    total_mask_px = sum(1 for px in depth_mask if px)
+    if total_mask_px > 0:
+        x_min = corners_depth.top_left.x
+        x_max = corners_depth.top_right.x
+        y_min = corners_depth.top_left.y
+        y_max = corners_depth.bottom_left.y
+        for y in range(depth.height):
+            row_off = y * depth.width
+            if y < y_min or y > y_max:
+                continue
+            for x in range(depth.width):
+                if depth_mask[row_off + x] and x_min <= x <= x_max:
+                    enclosed += 1
+        confidence = min(1.0, max(0.0, enclosed / total_mask_px))
+    else:
+        confidence = 0.0
+
+    bbox_width_px = (corners_depth.top_right.x - corners_depth.top_left.x) * sx
+    bbox_height_px = (corners_depth.bottom_left.y - corners_depth.top_left.y) * sy
+
+    return {
+        "corners": pts,
+        "confidence": confidence,
+        "bbox_pixels": {"width": bbox_width_px, "height": bbox_height_px},
+    }
+
+
+@router.post(
+    "/auto-perspective",
+    response_model=AutoPerspectiveResponse,
+    summary="Depth-based auto-perspective (inline — no project required)",
+    responses={
+        422: {
+            "description": "Plane fit failed (`code: plane_fit_failed`) or "
+            "malformed photo/mask payload"
+        },
+        503: {"description": "Depth backend unavailable (`code: depth_unavailable`)"},
+    },
+)
+async def auto_perspective_inline(
+    body: AutoPerspectiveInlineBody,
+    user_id: str = Depends(get_current_user_id),
+    depth_estimator: DepthEstimator = Depends(get_depth_estimator),
+):
+    """Run depth + RANSAC plane fit on a photo/mask supplied directly in the
+    request body — for the case where the user has just uploaded a photo and
+    there is no persisted project yet.
+
+    `user_id` dependency enforces auth; there is no ownership check because
+    the payload itself is the authority (user sends what they want analysed).
+    """
+    return await _run_auto_perspective(
+        photo_url=body.photo_url,
+        photo_width=body.photo_width,
+        photo_height=body.photo_height,
+        wall_mask_base64=body.wall_mask_base64,
+        depth_estimator=depth_estimator,
+    )
+
+
 @router.post(
     "/{project_id}/auto-perspective",
     response_model=AutoPerspectiveResponse,
@@ -526,96 +678,17 @@ async def auto_perspective(
     already have matched dims (e.g., internal scripts that probe the
     estimator first).
     """
-    # ─── 1. Ownership + payload sanity ──────────────────────────────
+    # Ownership check is the only thing unique to the project-bound variant;
+    # the rest is shared with the inline endpoint.
     uc_get = GetVisualizationProject(repo)
     project = await uc_get.execute(project_id, user_id)
     if not project:
         raise HTTPException(status_code=404, detail="Visualization project not found")
-    if not project.wall_mask_base64:
-        raise HTTPException(
-            status_code=422, detail="Project has no wall mask; draw/segment first"
-        )
-    if project.photo_width <= 0 or project.photo_height <= 0:
-        raise HTTPException(status_code=422, detail="Project has no photo dimensions")
 
-    # ─── 2. Decode photo → bytes, mask → list[bool] at photo size ───
-    image_bytes = _decode_data_url(project.photo_url)
-
-    try:
-        mask_bytes = base64.b64decode(project.wall_mask_base64, validate=False)
-    except (binascii.Error, ValueError) as e:
-        raise HTTPException(status_code=422, detail=f"Cannot decode mask: {e}") from e
-    expected_len = project.photo_width * project.photo_height
-    if len(mask_bytes) != expected_len:
-        raise HTTPException(
-            status_code=422,
-            detail=(
-                f"Wall mask length {len(mask_bytes)} does not match "
-                f"photo_width*photo_height={expected_len}"
-            ),
-        )
-    photo_mask = [b != 0 for b in mask_bytes]
-
-    # ─── 3. Depth estimation — the provider controls output size ───
-    # `DepthEstimator.estimate` raises `DepthEstimationError` on failure,
-    # which the global handler maps to 503. We don't swallow it here.
-    depth = await depth_estimator.estimate(image_bytes)
-
-    # ─── 4. Resize mask to depth dims and fit plane ────────────────
-    depth_mask = _resize_mask_nearest(
-        photo_mask,
-        project.photo_width,
-        project.photo_height,
-        depth.width,
-        depth.height,
+    return await _run_auto_perspective(
+        photo_url=project.photo_url,
+        photo_width=project.photo_width,
+        photo_height=project.photo_height,
+        wall_mask_base64=project.wall_mask_base64,
+        depth_estimator=depth_estimator,
     )
-    # `PlaneFittingService` is deliberately instantiated per-request: it is
-    # stateless except for a RNG the default of which seeds to 42 for
-    # deterministic RANSAC. The cost is a few tuple/list allocations — far
-    # cheaper than holding shared state that would leak test randomness
-    # across requests.
-    fitter = PlaneFittingService()
-    try:
-        corners_depth = fitter.fit(depth, depth_mask)
-    except PlaneFittingError:
-        # Surface via the registered handler → 422 + `code: plane_fit_failed`.
-        raise
-
-    # ─── 5. Scale corners back to photo coordinates ────────────────
-    sx = project.photo_width / depth.width
-    sy = project.photo_height / depth.height
-    pts = [
-        {"x": corners_depth.top_left.x * sx, "y": corners_depth.top_left.y * sy},
-        {"x": corners_depth.top_right.x * sx, "y": corners_depth.top_right.y * sy},
-        {"x": corners_depth.bottom_right.x * sx, "y": corners_depth.bottom_right.y * sy},
-        {"x": corners_depth.bottom_left.x * sx, "y": corners_depth.bottom_left.y * sy},
-    ]
-
-    # Confidence: inliers/total from the plane fitter. The VO doesn't carry it
-    # today, so we re-count how many mask pixels the final BBox encloses as a
-    # cheap proxy (fraction of depth-map mask that falls inside the returned
-    # quad). For axis-aligned BBoxes this is exact; future quad projections
-    # would need a proper point-in-quad test. Kept here (not in the domain)
-    # because it's a transport-level reporting concern.
-    enclosed = 0
-    total_mask_px = sum(1 for px in depth_mask if px)
-    if total_mask_px > 0:
-        x_min = corners_depth.top_left.x
-        x_max = corners_depth.top_right.x
-        y_min = corners_depth.top_left.y
-        y_max = corners_depth.bottom_left.y
-        for y in range(depth.height):
-            row_off = y * depth.width
-            if y < y_min or y > y_max:
-                continue
-            for x in range(depth.width):
-                if depth_mask[row_off + x] and x_min <= x <= x_max:
-                    enclosed += 1
-        confidence = min(1.0, max(0.0, enclosed / total_mask_px))
-    else:
-        confidence = 0.0
-
-    return {
-        "corners": pts,
-        "confidence": confidence,
-    }

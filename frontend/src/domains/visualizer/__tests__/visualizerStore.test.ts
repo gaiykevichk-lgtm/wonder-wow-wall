@@ -392,6 +392,19 @@ describe('visualizerStore', () => {
       expect(useVisualizerStore.getState().scene!.perspectiveAutoDetected).toBe(false);
     });
 
+    /**
+     * Helper: after invoking runAutoPerspective, the store first awaits the
+     * backend depth call (Stage 1). In the test environment there is no
+     * real server → fetch rejects synchronously, but the rejection lands in
+     * microtasks. Tests that need to interact with Stage 2 (the OpenCV
+     * provider) must flush enough microtasks for the backend catch to
+     * unwind and the provider to be invoked. A small setTimeout(0) flushes
+     * both microtask AND task queue, which covers every intermediate
+     * async boundary (await api.post, await mapError, etc.) in one call.
+     */
+    const flushToStage2 = () =>
+      new Promise<void>((res) => setTimeout(res, 0));
+
     it('transitions through detecting-perspective status while running', async () => {
       setupReadyScene();
       const observed: string[] = [];
@@ -406,6 +419,8 @@ describe('visualizerStore', () => {
         );
       const promise = useVisualizerStore.getState().runAutoPerspective(slowProvider);
       observed.push(useVisualizerStore.getState().scene!.segmentationStatus);
+      // Stage 1 backend fetch must fail and unwind before the provider runs.
+      await flushToStage2();
       resolveLines(await successfulProvider());
       await promise;
       observed.push(useVisualizerStore.getState().scene!.segmentationStatus);
@@ -428,6 +443,8 @@ describe('visualizerStore', () => {
         calibration: { method: 'manual', pixelsPerCm: 5 },
         segmentationStatus: 'ready',
       });
+      // Stage 1 backend fetch must fail and unwind before the provider runs.
+      await flushToStage2();
       // Now resolve the stale provider with valid lines that *would* succeed.
       resolveLines(await successfulProvider());
       await promise;

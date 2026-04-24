@@ -213,6 +213,22 @@ class TestAutoPerspectiveErrors:
         assert body["code"] == "depth_unavailable"
 
     @pytest.mark.asyncio
+    async def test_returns_bbox_pixels(self, client):
+        """Response must include bbox_pixels so the frontend can seed a
+        placeholder calibration from the detected wall width."""
+        token = await _register(client)
+        pid = await _create_project(client, token, photo_w=64, photo_h=64)
+        resp = await client.post(
+            f"/api/visualizer/projects/{pid}/auto-perspective",
+            headers=_auth(token),
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert "bbox_pixels" in body
+        assert body["bbox_pixels"]["width"] > 0
+        assert body["bbox_pixels"]["height"] > 0
+
+    @pytest.mark.asyncio
     async def test_depth_dims_mismatch_surfaces_plane_fit_error(self, client):
         """Sanity: the API layer resizes the mask to the estimator's output
         dims. If a custom estimator returns an oddly-sized depth map, the
@@ -233,3 +249,85 @@ class TestAutoPerspectiveErrors:
         # Corners still in photo coords, not depth coords.
         xs = [c["x"] for c in resp.json()["corners"]]
         assert max(xs) > 32.0  # > the 32-px depth-map width
+
+
+# ─── Inline variant (no project_id) ────────────────────────────────────
+
+
+class TestAutoPerspectiveInline:
+    """Inline endpoint runs the same pipeline but accepts photo/mask in the
+    request body. Used by the frontend immediately after photo upload, before
+    any project has been persisted."""
+
+    @pytest.mark.asyncio
+    async def test_inline_happy_path(self, client):
+        token = await _register(client)
+        body = {
+            "photo_url": _DATA_URL,
+            "photo_width": 64,
+            "photo_height": 64,
+            "wall_mask_base64": _make_mask(64, 64, True),
+        }
+        resp = await client.post(
+            "/api/visualizer/projects/auto-perspective",
+            json=body,
+            headers=_auth(token),
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert len(data["corners"]) == 4
+        assert data["confidence"] > 0.9
+        assert data["bbox_pixels"]["width"] > 0
+
+    @pytest.mark.asyncio
+    async def test_inline_requires_auth(self, client):
+        body = {
+            "photo_url": _DATA_URL,
+            "photo_width": 64,
+            "photo_height": 64,
+            "wall_mask_base64": _make_mask(64, 64, True),
+        }
+        # No Authorization header.
+        resp = await client.post(
+            "/api/visualizer/projects/auto-perspective", json=body
+        )
+        assert resp.status_code in (401, 403)
+
+    @pytest.mark.asyncio
+    async def test_inline_invalid_mask_size_returns_422(self, client):
+        token = await _register(client)
+        # Mask declared 64×64 but we send bytes for 32×32 — API layer rejects.
+        body = {
+            "photo_url": _DATA_URL,
+            "photo_width": 64,
+            "photo_height": 64,
+            "wall_mask_base64": _make_mask(32, 32, True),
+        }
+        resp = await client.post(
+            "/api/visualizer/projects/auto-perspective",
+            json=body,
+            headers=_auth(token),
+        )
+        assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_inline_depth_unavailable_returns_503(self, client):
+        class FailingEstimator(DepthEstimator):
+            async def estimate(self, image_bytes: bytes) -> DepthMap:
+                raise DepthEstimationError("inference backend unreachable")
+
+        app.dependency_overrides[get_depth_estimator] = lambda: FailingEstimator()
+        token = await _register(client)
+        body = {
+            "photo_url": _DATA_URL,
+            "photo_width": 64,
+            "photo_height": 64,
+            "wall_mask_base64": _make_mask(64, 64, True),
+        }
+        resp = await client.post(
+            "/api/visualizer/projects/auto-perspective",
+            json=body,
+            headers=_auth(token),
+        )
+        assert resp.status_code == 503
+        assert resp.json()["code"] == "depth_unavailable"
