@@ -795,47 +795,58 @@ Alembic уже инициализирован: `backend/alembic.ini`, `backend/a
 > **Зависимости:** Фаза 5A.
 > **Атомарность:** релиз-кандидат: схема готова, но фронт ещё не использует.
 
-### 5B.1 Backend — Domain Layer
+### 5B.1 Backend — Domain Layer ✅
 
 > **Важно**: НЕ сохранять `referenceCandidates` (runtime-результат ML-детекции), сохранять только финальную `calibration`, выбранную пользователем. См. [D2].
 
-- [ ] В `backend/app/domain/visualizer/entities.py`:
-  - Расширить `@dataclass Scene`: поля `perspective_corners: PerspectiveCorners | None`, `calibration: ScaleCalibration | None`, `perspective_auto_detected: bool`, `calibration_auto_detected: bool`, `version: int = 1`.
-- [ ] В `backend/app/domain/visualizer/value_objects.py`:
-  - `@dataclass(frozen=True) class ScaleCalibration` (поля mirror frontend type).
-  - `@dataclass(frozen=True) class PerspectiveCorners` (4 точки в типобезопасном виде).
-  - Метод `__post_init__` валидирует: ровно 4 точки + не коллинеарны (площадь quad > epsilon).
-- [ ] В `backend/app/domain/visualizer/exceptions.py`:
-  - `class CollinearCornersError(Exception)` — для невалидной перспективы.
-  - `class StaleSceneVersionError(Exception)` — для multi-tab race (E8).
+- [x] В `backend/app/domain/visualizer/entities.py`:
+  - Расширил `VisualizationProject` (агрегат, не `Scene` — `Scene` это фронт-концепт): добавлены поля `calibration: ScaleCalibration | None = None`, `perspective_auto_detected: bool = False`, `calibration_auto_detected: bool = False`, `version: int = 1`.
+  - **Backwards-compat**: legacy `calibration_pixels_per_cm: float = 5.0` и `perspective_corners: list[dict] | None` оставлены, чтобы Phase 5C мигрировал API без падения промежуточных деплоев.
+  - Добавлена инвариант `version >= 1` в `__post_init__`.
+- [x] В `backend/app/domain/visualizer/value_objects.py`:
+  - `@dataclass(frozen=True) Point(x: float, y: float)`.
+  - `@dataclass(frozen=True) ScaleCalibration(method: Literal['reference','manual','auto'], pixels_per_cm: float, wall_width_cm: float | None, wall_height_cm: float | None)` — с `__post_init__` проверкой method/positive ppc/positive wall dims; методы `to_dict()` и `from_dict()`.
+  - `@dataclass(frozen=True) PerspectiveCorners(top_left, top_right, bottom_right, bottom_left: Point)` — `__post_init__` через shoelace-формулу проверяет area > 1.0px²; методы `as_list()`, `as_dicts()`, `from_dicts()` (с coercion строковых координат).
+- [x] В `backend/app/domain/visualizer/exceptions.py`:
+  - `CollinearCornersError(ValueError)` — для невалидной перспективы (наследник `ValueError` чтобы существующие `try/except ValueError` в VO-валидации продолжали работать).
+  - `StaleSceneVersionError(Exception)` — для multi-tab race (E8); фаза 5C мапит → 409 Conflict.
 
-### 5B.2 Backend — Infrastructure (persistence)
+### 5B.2 Backend — Infrastructure (persistence) ✅
 
-> **Pre-check** (см. Фаза 5A): миграционная инфра должна быть готова.
+> **Pre-check** (см. Фаза 5A): миграционная инфра готова. ✅
 
-- [ ] `infrastructure/persistence/models.py`:
-  - Расширить `VisualizationProjectModel`: колонки `perspective_corners JSONB`, `calibration JSONB`, `perspective_auto_detected BOOL DEFAULT FALSE`, `calibration_auto_detected BOOL DEFAULT FALSE`, `version INT DEFAULT 1`.
-- [ ] `infrastructure/persistence/repositories/visualizer_repo.py`:
-  - Обновить маппинг `_to_entity` / `_to_model` для новых полей.
-  - При `save()` — инкремент `version` + проверка прежнего значения (для оптимистичной блокировки). При несовпадении → `raise StaleSceneVersionError`.
-- [ ] Alembic миграция:
-  - Файл: `alembic/versions/{timestamp}_add_perspective_calibration_to_scenes.py`.
-  - `upgrade()` + **обязательно** `downgrade()` (по `backend/CONVENTIONS.md`).
-  - Описательное имя: `add_perspective_calibration_to_scenes`.
+- [x] `infrastructure/persistence/models.py`:
+  - Расширил `VisualizationProjectModel` колонками: `calibration: Mapped[dict | None] = JSON nullable=True`, `perspective_auto_detected: Mapped[bool] = Boolean nullable=False default=False server_default="0"`, `calibration_auto_detected: ...`, `version: Mapped[int] = Integer nullable=False default=1 server_default="1"`. Существующие `perspective_corners JSON` и `calibration_pixels_per_cm Float` сохранены.
+  - JSON (не JSONB) — консистентно с 004; будущая миграция может перейти на JSONB на postgres для индексированных запросов (нет read-pattern в 5B, который этого требует).
+- [x] `infrastructure/persistence/repositories/visualization_repo.py`:
+  - Обновлён `_model_to_entity`: парсит `m.calibration` через `ScaleCalibration.from_dict` если present, иначе `None` (legacy-rows ↔ Phase 5C).
+  - Добавлен `_calibration_to_json` helper.
+  - `InMemory.update()` и `Sql.update()` реализуют **optimistic-lock**: `if existing.version != project.version → raise StaleSceneVersionError(...)`, затем `version = existing.version + 1`. `save()` оставлен как есть (для net-new агрегатов конфликт версий бессмысленен).
+  - Existing application-level update tests продолжают работать: они делают одиночный update с `version=1` против только что сохранённой entity (тоже `version=1`) → equality, bump → 2.
+- [x] Alembic миграция `alembic/versions/005_add_perspective_calibration_to_scenes.py`:
+  - Описательное имя ✅, `upgrade()` + `downgrade()` ✅.
+  - `server_default=sa.false()` / `"1"` для bool/int — гарантирует что existing prod-rows бэкфиллятся без отдельного UPDATE.
+  - `downgrade()` сбрасывает 4 колонки в обратном порядке; работает на SQLite ≥ 3.35 нативно (env.py держит `render_as_batch=True`).
 
-### 5B.3 Backend — тесты
+### 5B.3 Backend — тесты ✅
 
-- [ ] `tests/domain/test_visualizer.py`:
-  - `test_perspective_corners_validates_collinearity` — degenerate quad → `CollinearCornersError`.
-  - `test_scale_calibration_immutable` — попытка mutation замороженного value object.
-  - `test_scene_version_default_one`.
-- [ ] `tests/infrastructure/test_visualizer_repo.py`:
-  - Round-trip persist Scene с perspective_corners, calibration → load → equal.
-  - `save()` с устаревшим `version` → `StaleSceneVersionError`.
-- [ ] `tests/infrastructure/test_alembic_visualizer_migration.py`:
-  - `upgrade head` → `downgrade -1` → `upgrade head` (без data loss для сторонних таблиц).
+- [x] `tests/domain/test_visualizer_value_objects.py` (новый, ~130 строк):
+  - `Point` immutability/equality.
+  - `ScaleCalibration`: создание, immutability (`FrozenInstanceError`), parametrized accept/reject известных методов, parametrized rejection не-positive ppc/wall dims, `to_dict`/`from_dict` round-trip, `from_dict` без optional полей.
+  - `PerspectiveCorners`: создание, immutability, **2 теста коллинеарности** (all-same-point + horizontal line) → `CollinearCornersError`, `as_dicts` round-trip, `from_dicts(None) → None`, `from_dicts` отвергает wrong length, `from_dicts` coerces строки в float.
+- [x] `tests/domain/test_visualization_project.py` (extended): добавлены `test_phase5b_defaults`, `test_accepts_typed_calibration`, `test_rejects_version_below_one`.
+- [x] `tests/infrastructure/test_visualizer_repo.py` (новый, ~155 строк):
+  - **InMemory**: `test_save_then_update_increments_version`, `test_update_with_stale_version_raises` — multi-tab сценарий.
+  - **SQL** (через aiosqlite + Base.metadata.create_all, чтобы независимо от alembic-теста проверить serialize-cycle): `test_round_trip_preserves_phase5b_fields` (calibration VO, оба auto-detected флага, version все survive JSON-round-trip), `test_sql_update_stale_version_raises`, `test_legacy_row_without_calibration_loads_as_none` (rows из pre-5C → `entity.calibration is None` без NPE).
+  - Все SQL-тесты под `pytest.importorskip("sqlalchemy"/"aiosqlite"/"pytest_asyncio")` чтобы collection-friendly в стриппнутых сандбоксах.
+- [x] `tests/infrastructure/test_alembic.py` (extended):
+  - Новый `test_phase5b_columns_added_by_005` — проверяет что upgrade head создаёт `calibration`, `perspective_auto_detected`, `calibration_auto_detected`, `version`; downgrade -1 их дропает (но table остаётся, т.к. она от 004).
+  - Существующий `test_round_trip_upgrade_downgrade_upgrade` обновлён под новую head=005 (раньше падал на `assert not _table_exists("visualization_projects")` после `-1`, теперь сравнивает наличие колонки `version`).
+  - `test_full_round_trip_head_base_head` обновлён: `assert _current_revision == "005"` + проверка что `version` колонка появляется на head.
 
-> **Definition of Done:** домен и persistence готовы; API и frontend пока используют старый flow (без новых полей).
+> **Definition of Done:** домен и persistence готовы; API и frontend пока используют старый flow (без новых полей). ✅
+> **Что НЕ сделано в этой фазе (по дизайну, для 5C):** API DTOs (`VisualizationProjectCreate/Update/Response`) не расширены типизированными VOs — они продолжают принимать `calibration_pixels_per_cm: float` и `perspective_corners: list[PointSchema]`. Use case `UpdateVisualizationProject` не передаёт `version` через границу — клиент пока не сообщает свой known version. Это всё переезжает в Phase 5C, который добавит `PATCH /perspective`, `PATCH /calibration`, и обработку 409/422.
+> **Sandbox limitation (как в 5A):** test execution делегирован CI; локально проверено только `python3 -m py_compile` для всех новых/изменённых файлов.
 
 ---
 

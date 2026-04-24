@@ -1,5 +1,6 @@
 import pytest
 from app.domain.visualizer.entities import VisualizationProject, PlacedPanelData
+from app.domain.visualizer.value_objects import ScaleCalibration
 
 
 class TestPlacedPanelData:
@@ -64,5 +65,25 @@ class TestVisualizationProject:
         assert project.perspective_corners is None
         assert project.placement_mode == "manual"
         assert project.wall_mask_base64 == ""
+
+    # ─── Phase 5B field defaults & invariants ────────────────────────
+
+    def test_phase5b_defaults(self):
+        project = VisualizationProject(name="Test")
+        assert project.calibration is None
+        assert project.perspective_auto_detected is False
+        assert project.calibration_auto_detected is False
+        assert project.version == 1
+
+    def test_accepts_typed_calibration(self):
+        cal = ScaleCalibration(method="manual", pixels_per_cm=4.2)
+        project = VisualizationProject(name="Test", calibration=cal)
+        assert project.calibration is cal
+
+    def test_rejects_version_below_one(self):
+        with pytest.raises(ValueError, match="version"):
+            VisualizationProject(name="Test", version=0)
+        with pytest.raises(ValueError, match="version"):
+            VisualizationProject(name="Test", version=-5)
 
 

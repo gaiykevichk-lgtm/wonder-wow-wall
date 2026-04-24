@@ -190,5 +190,20 @@ class VisualizationProjectModel(Base):
     placement_mode: Mapped[str] = mapped_column(String(20), default="manual")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # ─── Phase 5B additions (migration 005) ──────────────────────────
+    # Typed calibration VO serialized as JSON (`{"method", "pixels_per_cm",
+    # "wall_width_cm?", "wall_height_cm?"}`). NULL until 5C frontend writes it.
+    calibration: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=None)
+    # Provenance flags — drive frontend banners.
+    perspective_auto_detected: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )
+    calibration_auto_detected: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )
+    # Optimistic-lock counter — see `SqlVisualizationProjectRepository.update`.
+    version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default="1"
+    )
 
     user: Mapped["UserModel"] = relationship(back_populates="visualization_projects")

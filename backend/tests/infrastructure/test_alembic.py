@@ -65,6 +65,16 @@ def _table_exists(db_path: Path, name: str) -> bool:
         con.close()
 
 
+def _column_names(db_path: Path, table: str) -> set[str]:
+    """Return the set of column names on `table` (SQLite PRAGMA)."""
+    con = sqlite3.connect(db_path)
+    try:
+        cur = con.execute(f"PRAGMA table_info({table})")
+        return {row[1] for row in cur.fetchall()}
+    finally:
+        con.close()
+
+
 def _current_revision(db_path: Path) -> str | None:
     """Read the head revision recorded by Alembic in `alembic_version`."""
     con = sqlite3.connect(db_path)
@@ -88,29 +98,60 @@ def test_upgrade_head_creates_all_core_tables(alembic_cfg):
         "visualization_projects",  # 004 — Phase 5A new
     ):
         assert _table_exists(db_path, table), f"{table} should exist after upgrade head"
-    # B27: head revision must equal the latest migration id.
+    # head revision must equal the latest migration id (currently 005 — Phase 5B).
+    assert _current_revision(db_path) == "005"
+
+
+def test_phase5b_columns_added_by_005(alembic_cfg):
+    """Migration 005 adds typed perspective/calibration + version columns."""
+    cfg, db_path = alembic_cfg
+    alembic_cmd.upgrade(cfg, "head")
+    cols = _column_names(db_path, "visualization_projects")
+    for new_col in (
+        "calibration",
+        "perspective_auto_detected",
+        "calibration_auto_detected",
+        "version",
+    ):
+        assert new_col in cols, f"005 should add column `{new_col}`"
+
+    # Downgrade -1 should drop them (and only them) cleanly.
+    alembic_cmd.downgrade(cfg, "-1")
     assert _current_revision(db_path) == "004"
+    cols_after = _column_names(db_path, "visualization_projects")
+    for dropped in (
+        "calibration",
+        "perspective_auto_detected",
+        "calibration_auto_detected",
+        "version",
+    ):
+        assert dropped not in cols_after, f"005 downgrade should drop `{dropped}`"
+    # 004's table is still here.
+    assert "calibration_pixels_per_cm" in cols_after
 
 
 def test_round_trip_upgrade_downgrade_upgrade(alembic_cfg):
     """`upgrade head → downgrade -1 → upgrade head` must succeed without errors.
 
-    Verifies that *every* migration in the chain has a working `downgrade()`
-    and is idempotent under re-apply — the standard alembic smoke contract.
+    Verifies that the head migration (currently 005 — Phase 5B) has a
+    working `downgrade()` and re-applies cleanly. The legacy `004` table
+    (`visualization_projects`) survives a `-1` from `head=005` because
+    005 only adds *columns*; the table itself was created in 004.
     """
     cfg, db_path = alembic_cfg
     alembic_cmd.upgrade(cfg, "head")
     assert _table_exists(db_path, "visualization_projects")
+    cols_at_head = _column_names(db_path, "visualization_projects")
+    assert "version" in cols_at_head  # added by 005
 
     alembic_cmd.downgrade(cfg, "-1")
-    # After rolling back the head migration (004), visualization_projects
-    # must be gone — proves the downgrade actually ran on this DB.
-    assert not _table_exists(db_path, "visualization_projects")
-    # Older tables are still there.
+    # Rolling back 005 keeps the table (created by 004) but drops 005's columns.
+    assert _table_exists(db_path, "visualization_projects")
+    assert "version" not in _column_names(db_path, "visualization_projects")
     assert _table_exists(db_path, "users")
 
     alembic_cmd.upgrade(cfg, "head")
-    assert _table_exists(db_path, "visualization_projects")
+    assert "version" in _column_names(db_path, "visualization_projects")
 
 
 def test_downgrade_to_base_drops_everything(alembic_cfg):
@@ -136,6 +177,8 @@ def test_full_round_trip_head_base_head(alembic_cfg):
     alembic_cmd.downgrade(cfg, "base")
     assert _current_revision(db_path) is None
     alembic_cmd.upgrade(cfg, "head")
-    assert _current_revision(db_path) == "004"
+    assert _current_revision(db_path) == "005"
     for table in ("users", "designs", "subscriptions", "visualization_projects"):
         assert _table_exists(db_path, table), f"{table} should be re-created at head"
+    # Phase 5B columns must be present at head after the full round-trip.
+    assert "version" in _column_names(db_path, "visualization_projects")
