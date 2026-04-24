@@ -265,3 +265,92 @@ export async function updateCalibration(
     throw mapVisualizerError(err);
   }
 }
+
+// ─── Phase 6 — depth-based auto-perspective fallback ────────────────
+
+/**
+ * Returned by `apiAutoDetectPerspective` on success. `corners` are in
+ * photo-pixel coords (server-side rescaled from the depth-map grid), so
+ * they can be handed straight to `updatePerspective`/`setPerspectiveCorners`
+ * with no further transformation.
+ */
+export interface AutoPerspectiveResult {
+  corners: PerspectiveCorners;
+  confidence: number;
+}
+
+/**
+ * Thrown when the backend reports a well-formed request but the depth-based
+ * fitter couldn't produce a plane. Caller should fall back to manual mode
+ * (same UX as when OpenCV LSD returns low confidence).
+ *
+ * Kept distinct from `DegenerateCornersError` because that class carries a
+ * different domain meaning (the user's *own* 4-corner input was flat) and
+ * UI should message differently — "We couldn't detect your wall" vs "Those
+ * four points form a flat quadrilateral."
+ */
+export class AutoPerspectiveFailedError extends Error {
+  readonly kind: 'plane_fit_failed' | 'depth_unavailable' | 'unknown';
+  constructor(detail: string, kind: AutoPerspectiveFailedError['kind']) {
+    super(detail);
+    this.name = 'AutoPerspectiveFailedError';
+    this.kind = kind;
+  }
+}
+
+export interface AutoDetectPerspectiveOptions {
+  signal?: AbortSignal;
+}
+
+/**
+ * Ask the backend to run depth → RANSAC plane fit on the stored photo/mask
+ * and return perspective corners. Thin wrapper around the HTTP contract —
+ * the server owns the algorithm choice (stub, MiDaS, future providers).
+ *
+ * The call requires the project to already exist server-side *with* a saved
+ * photo + wall mask; the store is responsible for persisting those (via the
+ * normal save path) before invoking this.
+ *
+ * Error mapping:
+ *   - 422 + `plane_fit_failed` → `AutoPerspectiveFailedError('…', 'plane_fit_failed')`
+ *   - 503 + `depth_unavailable` → `AutoPerspectiveFailedError('…', 'depth_unavailable')`
+ *   - anything else → passes the original `ApiError` through so higher-level
+ *     code can retry transport errors independently.
+ */
+export async function apiAutoDetectPerspective(
+  projectId: string,
+  options: AutoDetectPerspectiveOptions = {},
+): Promise<AutoPerspectiveResult> {
+  interface WireResponse {
+    corners: WirePoint[];
+    confidence: number;
+  }
+  try {
+    const wire = await api.post<WireResponse>(
+      `/visualizer/projects/${projectId}/auto-perspective`,
+      {},
+      { signal: options.signal },
+    );
+    const corners = cornersFromWire(wire.corners);
+    if (!corners) {
+      // Server contract guarantees 4 points on 200, but keep the runtime
+      // guard so a regression surfaces as a typed error instead of `null`.
+      throw new AutoPerspectiveFailedError(
+        'Server returned non-4 corner set',
+        'unknown',
+      );
+    }
+    return { corners, confidence: wire.confidence };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      const code = err.body?.code as string | undefined;
+      if (err.status === 422 && code === 'plane_fit_failed') {
+        throw new AutoPerspectiveFailedError(err.detail, 'plane_fit_failed');
+      }
+      if (err.status === 503 && code === 'depth_unavailable') {
+        throw new AutoPerspectiveFailedError(err.detail, 'depth_unavailable');
+      }
+    }
+    throw err;
+  }
+}

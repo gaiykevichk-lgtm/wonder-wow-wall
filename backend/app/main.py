@@ -6,11 +6,15 @@ from slowapi.errors import RateLimitExceeded
 from app.config import settings
 from app.domain.visualizer.exceptions import (
     CollinearCornersError,
+    DepthEstimationError,
+    PlaneFittingError,
     StaleSceneVersionError,
 )
 from app.infrastructure.api import auth, catalog, orders, subscriptions, projects, contacts, visualizer
 from app.infrastructure.api.error_handlers import (
     collinear_corners_handler,
+    depth_estimation_handler,
+    plane_fitting_handler,
     stale_scene_version_handler,
 )
 from app.infrastructure.security.middleware import SecurityHeadersMiddleware
@@ -30,6 +34,11 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Visualizer bounded context — see infrastructure/api/error_handlers.py.
 app.add_exception_handler(CollinearCornersError, collinear_corners_handler)
 app.add_exception_handler(StaleSceneVersionError, stale_scene_version_handler)
+# Phase 6 — depth-based auto-perspective failure modes. Both map to codes
+# that the frontend's fallback chain branches on to decide between "silently
+# retry/fallback" and "surface a banner".
+app.add_exception_handler(DepthEstimationError, depth_estimation_handler)
+app.add_exception_handler(PlaneFittingError, plane_fitting_handler)
 
 # ─── Security Headers ──────────────────────────────────────────────
 app.add_middleware(SecurityHeadersMiddleware)

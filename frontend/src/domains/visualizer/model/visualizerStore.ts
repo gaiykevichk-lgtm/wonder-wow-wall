@@ -33,6 +33,7 @@ import {
 } from '../lib/scaleEstimator';
 import type { ReferenceDetector } from '../lib/referenceDetector';
 import {
+  apiAutoDetectPerspective,
   DegenerateCornersError,
   StaleVersionError,
   updateCalibration as apiUpdateCalibration,
@@ -89,8 +90,19 @@ interface VisualizerState {
    * `perspectiveCorners` and `scene.perspectiveAutoDetected`. Failures
    * (low confidence, multi-plane, OpenCV adapter unavailable) are silent —
    * the user can still set corners manually.
+   *
+   * Phase 6 — `options.backendProjectId` enables the depth-based backend
+   * fallback: if the primary (client-side) provider throws or returns a
+   * low-confidence result, the store calls
+   * `POST /api/visualizer/projects/{id}/auto-perspective`. The backend
+   * requires the project to already be persisted with a photo + wall mask,
+   * so callers should pass the id only AFTER the first save round-trip.
+   * Omit the option to skip the fallback (e.g., tests, offline mode).
    */
-  runAutoPerspective: (provider: LineProvider) => Promise<void>;
+  runAutoPerspective: (
+    provider: LineProvider,
+    options?: { backendProjectId?: string },
+  ) => Promise<void>;
   /**
    * Run reference-object detection (Phase 4). Stores the result in
    * `scene.referenceCandidates`. Failures (model unavailable, network) are
@@ -476,7 +488,7 @@ export const useVisualizerStore = create<VisualizerState>()(
       scene: scene ? { ...scene, perspectiveAutoDetected: false } : scene,
     });
   },
-  runAutoPerspective: async (provider) => {
+  runAutoPerspective: async (provider, options) => {
     const scene = get().scene;
     if (!scene?.wallMask) return;
     // Snapshot identity of the scene we kicked off detection for. After every
@@ -493,41 +505,69 @@ export const useVisualizerStore = create<VisualizerState>()(
     set({
       scene: { ...scene, segmentationStatus: 'detecting-perspective' },
     });
+
+    // Phase 6 — two-stage detection. Track result out-of-band so both stages
+    // share the same commit block; avoids duplicating `stillCurrent()` checks.
+    let resolvedCorners: PerspectiveCorners | null = null;
+
+    // ─── Stage 1: client-side (OpenCV LSD → vanishing-point) ───
+    // Fast path when it works. Silent failure modes (stub not wired, WASM
+    // blocked, low confidence on low-edge scenes) fall through to Stage 2.
     try {
       const lines = await provider({
         imageUrl: scene.photo.url,
         mask: scene.wallMask,
         photoSize,
       });
-      const current = stillCurrent();
-      if (!current) return;
+      if (!stillCurrent()) return;
       const result = detectFromLines({ lines, mask: scene.wallMask, photoSize });
       if (result.ok) {
-        set({
-          perspectiveCorners: result.corners,
-          scene: {
-            ...current,
-            segmentationStatus: 'ready',
-            perspectiveAutoDetected: true,
-          },
-        });
-      } else {
-        set({
-          scene: { ...current, segmentationStatus: 'ready' },
-        });
+        resolvedCorners = result.corners;
       }
     } catch (err) {
-      // Adapter unavailable / OpenCV not installed / WASM blocked.
-      // Don't surface to the user — manual perspective is always available.
-      // Only log in dev: in prod the stub adapter throws on every call by
-      // design, and we don't want the noise in browser consoles.
+      // Only log in dev: the stub adapter throws on every call by design
+      // until Phase 3.1c lands, and we don't want the noise in prod consoles.
       if (import.meta.env.DEV) {
-        console.warn('[runAutoPerspective] provider failed:', err);
+        console.warn('[runAutoPerspective] LSD provider failed:', err);
       }
-      const current = stillCurrent();
-      if (current) {
-        set({ scene: { ...current, segmentationStatus: 'ready' } });
+    }
+
+    // ─── Stage 2: backend depth fallback ───
+    // Runs when Stage 1 produced nothing AND the caller supplied a persisted
+    // project id. The endpoint is stateful (reads project.photo_url +
+    // wall_mask_base64), so we can't call it before the project is saved.
+    // Also skip if the user swapped photos while Stage 1 was running.
+    if (resolvedCorners === null && options?.backendProjectId) {
+      if (stillCurrent()) {
+        try {
+          const { corners } = await apiAutoDetectPerspective(options.backendProjectId);
+          if (!stillCurrent()) return;
+          resolvedCorners = corners;
+        } catch (err) {
+          // `AutoPerspectiveFailedError` (plane_fit_failed / depth_unavailable)
+          // or any transport error — fall through to manual. The user always
+          // has the four draggable handles on the canvas.
+          if (import.meta.env.DEV) {
+            console.warn('[runAutoPerspective] backend fallback failed:', err);
+          }
+        }
       }
+    }
+
+    // ─── Commit ───
+    const current = stillCurrent();
+    if (!current) return;
+    if (resolvedCorners !== null) {
+      set({
+        perspectiveCorners: resolvedCorners,
+        scene: {
+          ...current,
+          segmentationStatus: 'ready',
+          perspectiveAutoDetected: true,
+        },
+      });
+    } else {
+      set({ scene: { ...current, segmentationStatus: 'ready' } });
     }
   },
   runAutoReferenceDetection: async (detector) => {

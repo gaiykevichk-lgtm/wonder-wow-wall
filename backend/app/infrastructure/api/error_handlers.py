@@ -17,6 +17,8 @@ from fastapi.responses import JSONResponse
 
 from app.domain.visualizer.exceptions import (
     CollinearCornersError,
+    DepthEstimationError,
+    PlaneFittingError,
     StaleSceneVersionError,
 )
 
@@ -41,4 +43,35 @@ async def stale_scene_version_handler(request: Request, exc: StaleSceneVersionEr
             "client_version": exc.client_version,
             "server_version": exc.server_version,
         },
+    )
+
+
+# ─── Phase 6 — depth-based auto-perspective ──────────────────────────
+# Both failure modes fall back to the client's existing manual-perspective
+# flow, so the frontend branches on `code` to decide messaging rather than
+# being forced into a hard error state.
+
+
+async def depth_estimation_handler(request: Request, exc: DepthEstimationError):
+    """Depth model unavailable / inference error → 503.
+
+    The request was fine; the ML backend is the blocker. 503 tells the
+    frontend this may be transient — retry or fall back to manual.
+    """
+    return JSONResponse(
+        status_code=503,
+        content={"detail": str(exc), "code": "depth_unavailable"},
+    )
+
+
+async def plane_fitting_handler(request: Request, exc: PlaneFittingError):
+    """RANSAC couldn't find a dominant plane → 422.
+
+    Well-formed request, but the algorithm couldn't produce corners on this
+    image (e.g. textureless wall, mask too small). Caller falls back to
+    manual 4-corner drag.
+    """
+    return JSONResponse(
+        status_code=422,
+        content={"detail": str(exc), "code": "plane_fit_failed"},
     )

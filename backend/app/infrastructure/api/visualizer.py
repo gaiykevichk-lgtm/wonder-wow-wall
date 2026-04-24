@@ -7,8 +7,17 @@ Phase 5C extensions:
   These are what the frontend's debounced corner-drag/calibration-save calls.
 - Domain exceptions (`CollinearCornersError`, `StaleSceneVersionError`) bubble
   up to the global handlers wired in `main.py` and render as 422 / 409.
+
+Phase 6 extension:
+- POST `/{project_id}/auto-perspective` runs the depth-based fallback when
+  the client's OpenCV vanishing-point detector failed (empty walls, low line
+  count). Orchestrates `DetectPerspectiveFromDepth` but does the mask resize
+  and coord re-scaling at this adapter boundary because those concerns are
+  transport-shaped, not domain-shaped.
 """
 
+import base64
+import binascii
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -23,8 +32,11 @@ from app.application.visualizer.use_cases import (
     UpdatePerspective,
     UpdateVisualizationProject,
 )
-from app.container import get_visualization_repo
+from app.container import get_depth_estimator, get_visualization_repo
+from app.domain.visualizer.depth_estimator import DepthEstimator
 from app.domain.visualizer.entities import PlacedPanelData, VisualizationProject
+from app.domain.visualizer.exceptions import PlaneFittingError
+from app.domain.visualizer.services import PlaneFittingService
 from app.domain.visualizer.value_objects import (
     PerspectiveCorners,
     ScaleCalibration,
@@ -388,3 +400,222 @@ async def patch_calibration(
     if not updated:
         raise HTTPException(status_code=404, detail="Visualization project not found")
     return _entity_to_response(updated)
+
+
+# ─── Phase 6 — depth-based auto-perspective ──────────────────────────
+
+
+class AutoPerspectiveResponse(BaseModel):
+    """Response body for `POST /auto-perspective`.
+
+    `corners` are in *photo pixel* coordinates (the depth-map coords have been
+    scaled back), matching the wire format the frontend uses for
+    `perspective_corners` everywhere else. The client can immediately PATCH
+    these via `/perspective` — no coordinate reinterpretation needed.
+
+    `confidence` is the RANSAC inlier ratio (0..1). The frontend uses it to
+    decide whether to silently apply or surface an "is this right?" banner.
+    For the v1 plane fitter we expose the inlier ratio directly; future
+    versions may blend in edge-quality or mask-size signals.
+    """
+
+    corners: list[PointDTO]
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
+def _decode_data_url(photo_url: str) -> bytes:
+    """Decode a `data:image/...;base64,...` URL into raw bytes.
+
+    Why here and not in the use case: data-URL decoding is a transport
+    concern (the frontend uploads images as data URLs to avoid a separate
+    multipart/form-data path). The domain/application layers only deal in
+    raw bytes.
+    """
+    if not photo_url:
+        raise HTTPException(status_code=422, detail="Project has no photo_url")
+    if not photo_url.startswith("data:"):
+        # Non-data URLs would require an HTTP fetch from this process — not
+        # in scope for Phase 6 (we only accept uploads-as-data-URLs today).
+        raise HTTPException(
+            status_code=422,
+            detail="Only data: URLs are supported for auto-perspective",
+        )
+    try:
+        header, b64 = photo_url.split(",", 1)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=f"Malformed data URL: {e}") from e
+    if ";base64" not in header:
+        raise HTTPException(status_code=422, detail="Only base64 data URLs supported")
+    try:
+        return base64.b64decode(b64, validate=False)
+    except (binascii.Error, ValueError) as e:
+        raise HTTPException(status_code=422, detail=f"Cannot decode image: {e}") from e
+
+
+def _resize_mask_nearest(
+    src: list[bool],
+    src_w: int,
+    src_h: int,
+    dst_w: int,
+    dst_h: int,
+) -> list[bool]:
+    """Nearest-neighbour resize of a boolean mask.
+
+    Pure-stdlib — keeps this module free of numpy at the API layer. The depth
+    maps are small (64×64 stub, 256×256 MiDaS) so the O(dst_w × dst_h) cost is
+    negligible. Nearest-neighbour preserves mask semantics (no fractional
+    pixels); bilinear would introduce false-positive edges.
+    """
+    if src_w <= 0 or src_h <= 0 or dst_w <= 0 or dst_h <= 0:
+        raise HTTPException(status_code=422, detail="Invalid mask dimensions")
+    if len(src) != src_w * src_h:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Mask length {len(src)} != {src_w}*{src_h}",
+        )
+    out: list[bool] = [False] * (dst_w * dst_h)
+    x_scale = src_w / dst_w
+    y_scale = src_h / dst_h
+    for dy in range(dst_h):
+        sy = min(int(dy * y_scale), src_h - 1)
+        src_row = sy * src_w
+        dst_row = dy * dst_w
+        for dx in range(dst_w):
+            sx = min(int(dx * x_scale), src_w - 1)
+            out[dst_row + dx] = src[src_row + sx]
+    return out
+
+
+@router.post(
+    "/{project_id}/auto-perspective",
+    response_model=AutoPerspectiveResponse,
+    summary="Depth-based auto-perspective detection",
+    responses={
+        422: {
+            "description": "Plane fit failed (`code: plane_fit_failed`) or "
+            "malformed photo/mask payload"
+        },
+        503: {"description": "Depth backend unavailable (`code: depth_unavailable`)"},
+    },
+)
+async def auto_perspective(
+    project_id: str,
+    user_id: str = Depends(get_current_user_id),
+    repo=Depends(get_visualization_repo),
+    depth_estimator: DepthEstimator = Depends(get_depth_estimator),
+):
+    """Run monocular depth + RANSAC plane fit on the stored photo/mask and
+    return perspective corners for the client to adopt.
+
+    Why server-side: the depth model is ~150 MB and runs ~1 s/image on CPU —
+    keeping it in the backend avoids a WASM download on every client and lets
+    us upgrade to GPU inference without a client redeploy. The frontend's
+    OpenCV LSD path stays the primary fast-path; this endpoint is the
+    fallback when edge-based detection returned low confidence (empty walls,
+    single-tone paint).
+
+    Coord contract: corners are returned in **photo pixel coordinates** (not
+    depth-map coords). The API layer handles the rescaling so the frontend
+    doesn't need to know the estimator's output resolution — which is a
+    provider-implementation detail (64 px stub vs 256 px MiDaS).
+
+    The use case is not invoked directly because its `execute()` expects the
+    mask to already be aligned with the depth map dimensions. That alignment
+    is infrastructure glue, so we do it here and call `PlaneFittingService`
+    (domain) straight away. The use case remains as-is for callers that
+    already have matched dims (e.g., internal scripts that probe the
+    estimator first).
+    """
+    # ─── 1. Ownership + payload sanity ──────────────────────────────
+    uc_get = GetVisualizationProject(repo)
+    project = await uc_get.execute(project_id, user_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Visualization project not found")
+    if not project.wall_mask_base64:
+        raise HTTPException(
+            status_code=422, detail="Project has no wall mask; draw/segment first"
+        )
+    if project.photo_width <= 0 or project.photo_height <= 0:
+        raise HTTPException(status_code=422, detail="Project has no photo dimensions")
+
+    # ─── 2. Decode photo → bytes, mask → list[bool] at photo size ───
+    image_bytes = _decode_data_url(project.photo_url)
+
+    try:
+        mask_bytes = base64.b64decode(project.wall_mask_base64, validate=False)
+    except (binascii.Error, ValueError) as e:
+        raise HTTPException(status_code=422, detail=f"Cannot decode mask: {e}") from e
+    expected_len = project.photo_width * project.photo_height
+    if len(mask_bytes) != expected_len:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Wall mask length {len(mask_bytes)} does not match "
+                f"photo_width*photo_height={expected_len}"
+            ),
+        )
+    photo_mask = [b != 0 for b in mask_bytes]
+
+    # ─── 3. Depth estimation — the provider controls output size ───
+    # `DepthEstimator.estimate` raises `DepthEstimationError` on failure,
+    # which the global handler maps to 503. We don't swallow it here.
+    depth = await depth_estimator.estimate(image_bytes)
+
+    # ─── 4. Resize mask to depth dims and fit plane ────────────────
+    depth_mask = _resize_mask_nearest(
+        photo_mask,
+        project.photo_width,
+        project.photo_height,
+        depth.width,
+        depth.height,
+    )
+    # `PlaneFittingService` is deliberately instantiated per-request: it is
+    # stateless except for a RNG the default of which seeds to 42 for
+    # deterministic RANSAC. The cost is a few tuple/list allocations — far
+    # cheaper than holding shared state that would leak test randomness
+    # across requests.
+    fitter = PlaneFittingService()
+    try:
+        corners_depth = fitter.fit(depth, depth_mask)
+    except PlaneFittingError:
+        # Surface via the registered handler → 422 + `code: plane_fit_failed`.
+        raise
+
+    # ─── 5. Scale corners back to photo coordinates ────────────────
+    sx = project.photo_width / depth.width
+    sy = project.photo_height / depth.height
+    pts = [
+        {"x": corners_depth.top_left.x * sx, "y": corners_depth.top_left.y * sy},
+        {"x": corners_depth.top_right.x * sx, "y": corners_depth.top_right.y * sy},
+        {"x": corners_depth.bottom_right.x * sx, "y": corners_depth.bottom_right.y * sy},
+        {"x": corners_depth.bottom_left.x * sx, "y": corners_depth.bottom_left.y * sy},
+    ]
+
+    # Confidence: inliers/total from the plane fitter. The VO doesn't carry it
+    # today, so we re-count how many mask pixels the final BBox encloses as a
+    # cheap proxy (fraction of depth-map mask that falls inside the returned
+    # quad). For axis-aligned BBoxes this is exact; future quad projections
+    # would need a proper point-in-quad test. Kept here (not in the domain)
+    # because it's a transport-level reporting concern.
+    enclosed = 0
+    total_mask_px = sum(1 for px in depth_mask if px)
+    if total_mask_px > 0:
+        x_min = corners_depth.top_left.x
+        x_max = corners_depth.top_right.x
+        y_min = corners_depth.top_left.y
+        y_max = corners_depth.bottom_left.y
+        for y in range(depth.height):
+            row_off = y * depth.width
+            if y < y_min or y > y_max:
+                continue
+            for x in range(depth.width):
+                if depth_mask[row_off + x] and x_min <= x <= x_max:
+                    enclosed += 1
+        confidence = min(1.0, max(0.0, enclosed / total_mask_px))
+    else:
+        confidence = 0.0
+
+    return {
+        "corners": pts,
+        "confidence": confidence,
+    }

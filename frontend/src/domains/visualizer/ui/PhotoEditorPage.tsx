@@ -153,12 +153,15 @@ export default function PhotoEditorPage() {
             message.success(`Стена распознана!${obstacleMsg} Разместите панели.`);
 
             // Phase 3: kick off vanishing-point auto-detection in the
-            // background. Currently the OpenCV adapter is a stub that
-            // throws — runAutoPerspective swallows the error and just
-            // flips status back to 'ready'. The plumbing is in place so
-            // wiring real OpenCV LSD only requires implementing the
-            // adapter; no other call sites change.
-            void store.runAutoPerspective(opencvLsdProvider);
+            // background. The primary path runs OpenCV.js LSD + vanishing
+            // points client-side (Phase 3.1c). If that returns nothing and
+            // the project is already persisted, the store falls back to the
+            // backend's depth-based endpoint (Phase 6). `backendProjectId`
+            // is intentionally left off on unsaved scenes — the fallback is
+            // stateful and needs photo + mask on the server already.
+            void store.runAutoPerspective(opencvLsdProvider, {
+              backendProjectId: store.projectId ?? undefined,
+            });
 
             // Phase 4: kick off reference-object detection in parallel with
             // perspective. ONNX adapter is currently a stub that throws —

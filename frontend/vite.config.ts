@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  cacheDir: '/tmp/vite-cache',
+  cacheDir: process.env.VITE_CACHE_DIR || '/tmp/vite-cache',
   server: {
     host: '0.0.0.0',
     port: 3000,
