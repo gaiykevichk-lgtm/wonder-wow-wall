@@ -1093,6 +1093,103 @@ Alembic уже инициализирован: `backend/alembic.ini`, `backend/a
 
 ---
 
+## Cross-phase аудит (24.04.2026)
+
+> **Метод:** независимая повторная проверка кода фаз 1A → 5C + ядра фазы 6 (без доверия к встроенным self-audit-разделам выше). Line-by-line на всех заявленных файлах, сверка с `frontend/CONVENTIONS.md`, `backend/CONVENTIONS.md`, `docs/product-specs/PHOTO-WALL-EDITOR.md`. Два параллельных агента (frontend + backend). Плюс ручная верификация ключевых находок.
+
+### Что именно проверено
+
+**Frontend (23 файла в `src/domains/visualizer/`):**
+- `lib/panelWarpRenderer.ts` (377 LOC) — math-pipeline, FIFO cache, encodeURIComponent для ключей.
+- `ui/KonvaCanvas.tsx` (~823 LOC) — warp-ветка (565-622), fallback clip-ветка (614-647), hit-testing через `<Line fill="rgba(0,0,0,0)">`.
+- `lib/layoutEngine.ts` — `AutoFillBlockedError`, `isTrustedCalibration`, `generatePanelId()`, `canPlacePanel`/`autoFillWall` perspective-ветви.
+- `lib/maskUtils.ts` — `wallCoverageInQuad` (OOB в знаменателе, bilinear 8×8).
+- `lib/vanishingPointDetector.ts` + `lib/cvWorkerHost.ts` + `lib/opencvLsdAdapter.ts` (stub).
+- `lib/scaleEstimator.ts` (REFERENCE_CATALOG × 5, perspective projection) + `lib/referenceDetector.ts` (stub).
+- `lib/visualizerApi.ts` (StaleVersionError/DegenerateCornersError) + `shared/api/client.ts` (ApiError.body, RequestInitExtras).
+- `model/visualizerStore.ts` (849 LOC) — все sync-actions, race-guard, cancelAll, setLoadedProject hydration.
+- `model/types.ts`, `model/adapters.ts`.
+- `ui/PhotoEditorPage.tsx` (1068 LOC), `ui/CalibrationOverlay.tsx`.
+- Все 23 test-файла: счётчики, реальный функционал (не смок).
+- `vitest.config.ts` (B50 pool at root).
+
+**Backend:**
+- `domain/visualizer/entities.py`, `value_objects.py` (Point, ScaleCalibration, PerspectiveCorners, DepthMap), `exceptions.py` (+ StaleSceneVersionError с client/server_version), `depth_estimator.py` (ABC без `I`), `services.py` (PlaneFittingService).
+- `application/visualizer/use_cases.py` — `UpdatePerspective`/`UpdateCalibration` (B41 replace), `UpdateVisualizationProject(version=None)` (B34), `DetectPerspectiveFromDepth`.
+- `infrastructure/persistence/models.py` (server_default=false, CASCADE, index), `repositories/visualization_repo.py` (optimistic-lock, _calibration_to_json), `infrastructure/api/visualizer.py` (PATCH endpoints, PUT 409 docs), `infrastructure/api/error_handlers.py` (server_version в body), `infrastructure/ml/depth_estimators.py` (C9 linear gradient, N5 tuple).
+- `alembic/env.py`, `versions/001…005…`.
+- `container.py`, `config.py`, `main.py` (handler registration).
+- Все затронутые test-файлы.
+
+Подтверждённые фиксы из self-audit (найдены в коде на местах): **B30, B31, B32, B33, B34, B35, B37, B38, B41, B44, B45, C9, N1, N3, N4, N5, N6, N11, N12, N13**, + thread-safety (asyncio.Lock/threading.Lock). B41 проверен вручную: `use_cases.py:144-150, 179-186` действительно использует `dataclasses.replace(existing, …)` — оптимистик-лок в InMemory-репо работает, потому что `replace` создаёт НОВЫЙ объект, и `self._projects[id]` продолжает указывать на старую entity.
+
+### Критические находки (блокируют интеграцию Phase 5C DoD)
+
+| # | Файл:строка | Проблема | Почему критично |
+|---|---|---|---|
+| **X1** | `frontend/src/domains/visualizer/model/visualizerStore.ts:384-401` (`applyCalibration`) и `:493-521` (`applyReferenceCandidate`); `ui/PhotoEditorPage.tsx:848, 861` (вызовы) | **Ручная калибровка и выбор авто-кандидата НЕ синкаются на бэкенд.** Оба экшена пишут `scene.calibration` через прямой `set({...})` без debounce/PATCH. `setCalibrationAndSync` существует (строка 658) и даже тестируется (`visualizerStore.test.ts:758-777`), но **не имеет ни одного production-call-site**. | Phase 5C DoD: «Сохранённый проект восстанавливает перспективу **и** калибровку». Для пользователя с `projectId != null`, любая `two-point` калибровка или клик по авто-кандидату останется только локально до тех пор, пока не случайно не сработает перспектива-drag (который идёт через `*AndSync`). Половина 5C-контракта не достигается через UI. |
+
+### Некритические находки (технический долг)
+
+| # | Файл:строка | Проблема | Приоритет |
+|---|---|---|---|
+| X2 | `frontend/ui/PhotoEditorPage.tsx:48` | Полная деструктуризация стора `const store = useVisualizerStore();` нарушает `frontend/CONVENTIONS.md` (селекторный Zustand). Каждое изменение стора триггерит ре-рендер страницы. **Pre-existing**, не введено планом, но продолжает жить. | medium |
+| X3 | `frontend/lib/panelWarpRenderer.ts:233-240` | Cache-key не включает `gridSize`. Сегодня ни один caller его не варьирует — коллизий нет, но при добавлении knob (1B.v2) баг проявится немедленно. | low |
+| X4 | `frontend/lib/panelWarpRenderer.ts:316-333` | `try/catch {}` вокруг per-triangle drawImage глушит все ошибки (включая баги в `affineFromTriangles`). N12 фикс закрыл degenerate-wallRect, но локальные regression в mesh остаются незаметными. | low |
+| X5 | `frontend/model/visualizerStore.ts:354` | `console.error('autoFill error:', err)` в catch не обёрнут в `import.meta.env.DEV` в отличие от других логов ниже (e.g. `:652`, `:704`). | low |
+| X6 | `frontend/ui/KonvaCanvas.tsx:627-634` | `quadClipFunc` (fallback-ветка) по-прежнему создаётся в render-loop (A1/K-1). **Осознанно отложено** в Phase 1B v2; фиксация. | low (deferred) |
+| X7 | `frontend/ui/KonvaCanvas.tsx:679, 709` | Drag отключён в перспективе (`draggable={… && !perspectiveCorners}`). **Осознанно отложено** в Phase 1B v2 (drag в wall-space). | low (deferred) |
+| X8 | `frontend/lib/vanishingPointDetector.ts:243-256` (pickHorizontalVerticalBins) | Двойная сортировка вместо single-min-by-distance — корректно, но путает при чтении. | trivial |
+| X9 | `frontend/__tests__/visualizerStore.test.ts` | **Нет теста, что `applyCalibration` / `applyReferenceCandidate` триггерят PATCH.** Именно отсутствие этого теста позволило X1 пройти аудит 5C.6/5C.7 незамеченным. | medium |
+| X10 | `frontend/__tests__/visualizerStore.test.ts` | Нет теста на независимость per-kind AbortController: одновременный drag углов + калибровка, убедиться что abort перспективы не гасит inflight калибровку и наоборот. Claim `_perspectiveSyncCtrl === ctrl` / `_calibrationSyncCtrl === ctrl` не закрыт на уровне интеграции. | low |
+| X11 | `backend/tests/api/test_visualizer_perspective_api.py:160-176, 256-273` | Оба `test_stale_version_returns_409` проверяют только `body["code"] == "stale_version"`, **но не ассертят** `server_version` в body. B45 фикс (добавление `server_version` в 409-payload) не покрыт тестом. | medium |
+| X12 | `backend/domain/visualizer/services.py:118` | `PlaneFittingService._rng = random.Random(rng_seed)` — stateful service, нарушает `backend/CONVENTIONS.md` § "Domain Services — stateless". Осознанная уступка для детерминизма тестов, документирована в docstring (`:83-87`). Non-blocking. | trivial (accepted) |
+| X13 | `backend/infrastructure/api/visualizer.py:57` (`CalibrationSchema`) и `PointSchema` | Shared DTOs без суффикса `*Update`/`*Response`. `backend/CONVENTIONS.md` предписывает суффиксы-по-роли. Прагматичный re-use; все остальные Pydantic-схемы (`VisualizationProjectUpdate`, `VisualizationProjectResponse`, `PerspectiveCornersUpdateBody`, `CalibrationUpdateBody`) — соответствуют. | low |
+| X14 | `frontend/model/visualizerStore.ts:835` | Последний `any` в продовом коде (`onRehydrateStorage: (state: any)`) с eslint-disable. Может стать `ReturnType<typeof useVisualizerStore.getState>`. Non-blocking. | trivial |
+| X15 | `frontend/lib/visualizerApi.ts:107-119` (`rethrowVisualizerError`) | Return-type `never`, но последняя строка делает `throw err` (не `throw new Error`). Корректно во runtime, слегка awkward статически. | trivial |
+
+### Регрессии
+
+Не обнаружено. Проверено:
+
+- **Flat layout-path** (не-perspective): `canPlacePanel` / `autoFillWall` / `panelSizeInPixels` / drag — тесты `layoutEngine.test.ts` (34 теста) покрывают; плоская ветка не задета.
+- **Ручная калибровка**: `applyCalibration` по-прежнему корректно пишет `method:'reference'` + сбрасывает `calibrationAutoDetected`. **Только** sync на бэкенд сломан (X1).
+- **Pre-5C backend contract**: PUT `/projects/{id}` без поля `version` → `UpdateVisualizationProject.execute(version=None)` → `project.version = existing.version` → `InMemoryRepo.update` сравнивает equal values → бампит → возвращает. Проверено: `test_visualizer.py::test_update_project` продолжает зелениться.
+- **Shared in-memory repo singleton (`_mem_visualization_repo`)**: каждый тест создаёт уникального пользователя (UUID-email) → ID-коллизий нет. **Pre-existing** архитектурный долг, не введённый Phase 5.
+- **Persist/rehydrate**: `partialize` сохраняет `calibrationAutoDetected` / `perspectiveAutoDetected` / `calibration` VO, но **не** `projectId` / `serverVersion` / `referenceCandidates` (runtime-only). Консистентно с R7.
+- **Phase 6 openitems** (C1/C2/C6/C7/C8): не обнаружены в коде — соответствует плановому «не сделано». Не регрессия.
+
+### План корректировок
+
+- **X1** — единственный blocking item. Решение: либо (a) вызывать `setCalibrationAndSync(estimated.calibration)` внутри `applyCalibration` / `applyReferenceCandidate` **после** локального `set`, либо (b) вынести PATCH-логику в общую функцию и дёргать из обеих мест. Предложение: (a) — минимальное изменение.
+- **X9** — добавить unit-тест: мокнуть `visualizerApi.updateCalibration`, вызвать `applyCalibration`, прокрутить таймеры, ассертить `updateCalibration` вызван с корректными аргументами.
+- **X11** — расширить оба `test_stale_version_returns_409` ассертами `body["server_version"] == stored_version` и `body["client_version"] == 1`.
+- X2, X3, X4, X5, X8, X10, X12-X15 — `carry-over` в фазу 6 / отдельный cleanup-PR. Ничего не блокирует.
+
+### Вывод
+
+- Из ~30 фиксов self-audit (B1-B51 + N1-N15 + C9) **все** находятся в коде на заявленных местах. Self-audit честный, за исключением пропуска X1.
+- **1 критический gap**: ручная калибровка не синкается (X1). Завершает Phase 5C на ~85% DoD вместо 100%.
+- **~14 некритических items** — в основном тестовые пробелы и pre-existing долг.
+- **Регрессий нет.** Все существующие тесты остаются валидными. Pre-5C API-контракт через PUT без version работает.
+
+**Статус фаз после cross-audit:**
+
+| Фаза | Статус | Корректировка |
+|---|---|---|
+| 0 | ✅ ЗАВЕРШЕНА | — |
+| 1A | ✅ ЗАВЕРШЕНА | — |
+| 1B v1 + 1B.8 fix-pass | ✅ ЗАВЕРШЕНА | 1B v2 остаётся отложенной как и планировалось |
+| 2 + 2.1 | ✅ ЗАВЕРШЕНА | — |
+| 3 + 3.7.1 | ✅ ЯДРО ЗАВЕРШЕНО | 3.1c (боевой OpenCV) остаётся отложенным |
+| 4 + fix-pass | ✅ ЯДРО ЗАВЕРШЕНО | 4.1c / 4.2a остаются отложенными |
+| 5A + fix-pass | ✅ ЗАВЕРШЕНА | — |
+| 5B + 5B.4.1 | ✅ ЗАВЕРШЕНА | — |
+| **5C + 5C.7** | ⚠️ **85% — см. X1** | Требуется fix-pass **5C.8** для закрытия X1 перед объявлением «релиз-готова». Остальное по-прежнему зелёное. |
+| 6 (частично) | Ядро ✅, HTTP/тесты ⏸ | Без изменений — C1/C2/C6/C7/C8 остаются плановым scope |
+
+---
+
 ## Фаза 6 (опционально): Depth Estimation на бэкенде
 
 > **Цель:** Для случаев, когда vanishing-point detection дал низкий confidence (пустые однотонные стены), использовать ML-модель оценки глубины.
