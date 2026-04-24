@@ -1,6 +1,6 @@
 /**
  * Panel Warp Renderer — rasterise a flat panel design onto a perspective quad
- * using a kuso-affine mesh warp on an offscreen <canvas>.
+ * using a piecewise-affine mesh warp on an offscreen <canvas>.
  *
  * See docs/design-docs/PANEL-WARP-RENDERER.md for the design rationale.
  *
@@ -52,6 +52,13 @@ export interface WarpOptions {
   colorTint?: string;
   /** Mesh subdivision (NxN cells). Default 8 → 128 triangles. */
   gridSize?: number;
+  /**
+   * Optional pre-computed destination quad (the four wallRect corners passed
+   * through `perspective`). When the caller already has this — e.g.
+   * `KonvaCanvas` derives it from `transformRect` to draw the outline — pass
+   * it here to avoid four redundant `transformPoint` calls inside the renderer.
+   */
+  dstQuad?: Quad;
 }
 
 export interface WarpResult {
@@ -227,7 +234,9 @@ function buildCacheKey(opts: WarpOptions, dstQuad: Quad): string {
   const quadHash = dstQuad
     .map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`)
     .join('_');
-  return `${opts.designUrl}|${quadHash}|${opts.opacity.toFixed(3)}|${opts.colorTint || ''}`;
+  // encodeURIComponent the URL so a stray `|` in the URL can't collide with
+  // the field separator (e.g. data URIs or querystrings containing pipes).
+  return `${encodeURIComponent(opts.designUrl)}|${quadHash}|${opts.opacity.toFixed(3)}|${opts.colorTint || ''}`;
 }
 
 /** Drop all cached warps. Call when perspective corners change. */
@@ -252,8 +261,27 @@ export function renderPanelToQuad(opts: WarpOptions): WarpResult {
   const { designImage, perspective, wallRect, opacity, colorTint } = opts;
   const gridSize = opts.gridSize ?? 8;
 
-  // Compute destination quad to derive bbox + cache key
-  const dstQuad: Quad = [
+  // B8: degenerate wallRect → return an empty 1×1 canvas at the rect origin
+  // rather than running the mesh loop (which would produce zero-area triangles
+  // and trigger the catch path 128 times).
+  if (
+    !Number.isFinite(wallRect.width) ||
+    !Number.isFinite(wallRect.height) ||
+    wallRect.width <= 0 ||
+    wallRect.height <= 0
+  ) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1;
+    canvas.height = 1;
+    return {
+      canvas,
+      bbox: { x: Math.floor(wallRect.x), y: Math.floor(wallRect.y), width: 1, height: 1 },
+    };
+  }
+
+  // Destination quad: prefer caller-supplied to avoid recomputing the same
+  // four perspective projections KonvaCanvas just did via `transformRect`.
+  const dstQuad: Quad = opts.dstQuad ?? [
     transformPoint(perspective, { x: wallRect.x, y: wallRect.y }),
     transformPoint(perspective, { x: wallRect.x + wallRect.width, y: wallRect.y }),
     transformPoint(perspective, {
@@ -282,21 +310,6 @@ export function renderPanelToQuad(opts: WarpOptions): WarpResult {
   ctx.imageSmoothingQuality = 'high';
   ctx.globalAlpha = opacity;
 
-  // Color tint backdrop (drawn under the texture, semi-transparent so the
-  // texture remains visible on top — matches Phase 1A semantics).
-  if (colorTint) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(dstQuad[0].x - bbox.x, dstQuad[0].y - bbox.y);
-    ctx.lineTo(dstQuad[1].x - bbox.x, dstQuad[1].y - bbox.y);
-    ctx.lineTo(dstQuad[2].x - bbox.x, dstQuad[2].y - bbox.y);
-    ctx.lineTo(dstQuad[3].x - bbox.x, dstQuad[3].y - bbox.y);
-    ctx.closePath();
-    ctx.fillStyle = colorTint;
-    ctx.fill();
-    ctx.restore();
-  }
-
   // Mesh warp: triangulate, draw each triangle via clip + setTransform + drawImage.
   const triangles = buildMeshTriangles(perspective, wallRect, gridSize);
   for (const t of triangles) {
@@ -318,6 +331,23 @@ export function renderPanelToQuad(opts: WarpOptions): WarpResult {
       // Degenerate triangle (e.g. quad collapsed to a line near horizon).
       // Skip it silently — the rest of the mesh will still render.
     }
+  }
+
+  // B1: Color tint overlay drawn AFTER the image at α=0.25 — matches Phase 1A
+  // semantics (Rect over KonvaImage with opacity={0.25}). Drawing under with
+  // opacity=0.85 produced ~13% tint contribution; on top with 0.25 produces
+  // ~25%, which is what the design system expects.
+  if (colorTint) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 0.25;
+    ctx.beginPath();
+    ctx.moveTo(dstQuad[0].x - bbox.x, dstQuad[0].y - bbox.y);
+    ctx.lineTo(dstQuad[1].x - bbox.x, dstQuad[1].y - bbox.y);
+    ctx.lineTo(dstQuad[2].x - bbox.x, dstQuad[2].y - bbox.y);
+    ctx.lineTo(dstQuad[3].x - bbox.x, dstQuad[3].y - bbox.y);
+    ctx.closePath();
+    ctx.fillStyle = colorTint;
+    ctx.fill();
   }
 
   const result: WarpResult = { canvas, bbox };

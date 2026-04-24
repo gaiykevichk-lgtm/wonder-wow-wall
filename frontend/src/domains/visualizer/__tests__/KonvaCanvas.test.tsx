@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { KonvaCanvas } from '../ui/KonvaCanvas';
 import { createEmptyMask } from '../lib/maskUtils';
 import type { Scene, PlacedPanel, PerspectiveCorners } from '../model/types';
@@ -107,17 +107,34 @@ if (typeof globalThis.ImageData === 'undefined') {
   };
 }
 
-// Mock canvas getContext for maskToCanvas
+// Mock canvas getContext for maskToCanvas + panelWarpRenderer.
+// jsdom returns null from getContext('2d'); we need a full stub so that both
+// the simple mask path and the perspective warp path execute without throwing.
 const origCreateElement = document.createElement.bind(document);
 vi.spyOn(document, 'createElement').mockImplementation((tag: string, options?: ElementCreationOptions) => {
   const el = origCreateElement(tag, options);
   if (tag === 'canvas') {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (el as any).getContext = () => ({
+      // mask path
       putImageData: vi.fn(),
       getImageData: vi.fn(() => new ImageData(1, 1)),
-      drawImage: vi.fn(),
       clearRect: vi.fn(),
+      // warp path
+      save: vi.fn(),
+      restore: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      closePath: vi.fn(),
+      clip: vi.fn(),
+      fill: vi.fn(),
+      setTransform: vi.fn(),
+      drawImage: vi.fn(),
+      imageSmoothingEnabled: true,
+      imageSmoothingQuality: 'high',
+      globalAlpha: 1,
+      fillStyle: '',
     });
   }
   return el;
@@ -321,6 +338,74 @@ describe('KonvaCanvas', () => {
       const groups = screen.getAllByTestId('konva-group');
       const clippedPanelGroups = groups.filter((g) => g.getAttribute('data-clipped') === 'true');
       expect(clippedPanelGroups.length).toBe(0);
+    });
+
+    it('Phase 1B warp branch: KonvaImage is non-interactive and outline Line carries the hit area (B2)', async () => {
+      // Patch window.Image so the design loader resolves synchronously,
+      // forcing the component down the warp branch instead of the fallback.
+      // We use a unique URL so the module-level konvaDesignImageCache doesn't
+      // bleed into other tests.
+      const RealImage = window.Image;
+      class SyncLoadingImage {
+        crossOrigin = '';
+        onload: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        width = 100;
+        height = 100;
+        private _src = '';
+        get src(): string { return this._src; }
+        set src(v: string) {
+          this._src = v;
+          // Defer one microtask so the assignment finishes before the handler
+          // fires (mirrors browser behaviour and lets React's effect complete).
+          Promise.resolve().then(() => { this.onload?.(); });
+        }
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).Image = SyncLoadingImage;
+
+      try {
+        const panel = createTestPanel({ designImage: 'b6-warp-branch.jpg', color: '#FF0000' });
+        render(
+          <KonvaCanvas {...defaultProps} panels={[panel]} perspectiveCorners={corners} />,
+        );
+
+        // After the design image loads + re-render, the warp branch should be
+        // active. It marks the outline Line with a transparent fill so Konva's
+        // hit-testing follows the quad outline (not a rectangular bbox).
+        await waitFor(() => {
+          const lines = screen.getAllByTestId('konva-line');
+          const transparentHitLines = lines.filter(
+            (l) => l.getAttribute('data-fill') === 'rgba(0,0,0,0)',
+          );
+          expect(transparentHitLines.length).toBeGreaterThanOrEqual(1);
+        });
+
+        // Warp branch never goes through clipFunc (that's the fallback path).
+        // The warp branch's outer Group has data-clipped="false" and contains
+        // a KonvaImage (warped canvas) + a Line — not a clipped child Group.
+        const groups = screen.getAllByTestId('konva-group');
+        const warpOuter = groups.filter((g) => {
+          if (g.getAttribute('data-clipped') !== 'false') return false;
+          const children = Array.from(g.children);
+          const hasImage = children.some(
+            (c) => c.getAttribute('data-testid') === 'konva-image',
+          );
+          const hasLine = children.some(
+            (c) => c.getAttribute('data-testid') === 'konva-line',
+          );
+          const hasClippedGroup = children.some(
+            (c) =>
+              c.getAttribute('data-testid') === 'konva-group' &&
+              c.getAttribute('data-clipped') === 'true',
+          );
+          return hasImage && hasLine && !hasClippedGroup;
+        });
+        expect(warpOuter.length).toBeGreaterThanOrEqual(1);
+      } finally {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (window as any).Image = RealImage;
+      }
     });
 
     it('regression: outline Line is drawn outside the clip Group (not inside)', () => {

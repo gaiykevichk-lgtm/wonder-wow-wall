@@ -343,4 +343,63 @@ describe('panelWarpRenderer / renderPanelToQuad + cache', () => {
     clearWarpCache();
     expect(getWarpCacheSize()).toBe(0);
   });
+
+  it('FIFO-evicts oldest entry once MAX_CACHE_ENTRIES (=100) is exceeded', () => {
+    // Insert 100 distinct entries (vary opacity to bypass the dedup cache).
+    for (let i = 0; i < 100; i++) {
+      renderPanelToQuad({ ...baseOpts, opacity: 0.1 + i * 0.001 });
+    }
+    expect(getWarpCacheSize()).toBe(100);
+
+    // The 101st entry must evict the oldest, leaving the size at the cap.
+    renderPanelToQuad({ ...baseOpts, opacity: 0.999 });
+    expect(getWarpCacheSize()).toBe(100);
+
+    // Re-rendering the OLDEST opacity should now be a cache miss
+    // (it was evicted), bumping size back to ceiling rather than past it.
+    renderPanelToQuad({ ...baseOpts, opacity: 0.1 });
+    expect(getWarpCacheSize()).toBe(100);
+  });
+
+  it('honours caller-supplied dstQuad (B5 dedup path)', () => {
+    // If `dstQuad` is honoured, the bbox derived from it must drive canvas size.
+    const customQuad: Quad = [
+      { x: 0, y: 0 },
+      { x: 200, y: 0 },
+      { x: 200, y: 100 },
+      { x: 0, y: 100 },
+    ];
+    const result = renderPanelToQuad({ ...baseOpts, dstQuad: customQuad });
+    expect(result.bbox.width).toBe(200);
+    expect(result.bbox.height).toBe(100);
+    expect(result.bbox.x).toBe(0);
+    expect(result.bbox.y).toBe(0);
+  });
+
+  it('zero-dim wallRect → returns 1×1 canvas without throwing (B8)', () => {
+    const result = renderPanelToQuad({
+      ...baseOpts,
+      wallRect: { x: 10, y: 10, width: 0, height: 50 },
+    });
+    expect(result.canvas.width).toBe(1);
+    expect(result.canvas.height).toBe(1);
+    expect(result.bbox.x).toBe(10);
+    expect(result.bbox.y).toBe(10);
+
+    const result2 = renderPanelToQuad({
+      ...baseOpts,
+      wallRect: { x: 10, y: 10, width: 50, height: -5 },
+    });
+    expect(result2.canvas.width).toBe(1);
+  });
+
+  it('cache key is robust to designUrl containing the field-separator | (B3)', () => {
+    const url1 = 'a|b.jpg';
+    const url2 = 'a%7Cb.jpg'; // pre-encoded form: distinct entry, not a collision
+    renderPanelToQuad({ ...baseOpts, designUrl: url1 });
+    renderPanelToQuad({ ...baseOpts, designUrl: url2 });
+    // Both should occupy distinct cache slots — the encoding must not lose
+    // information that lets two different URLs collapse to the same key.
+    expect(getWarpCacheSize()).toBe(2);
+  });
 });

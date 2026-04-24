@@ -305,6 +305,28 @@ Phase 1B v1 принимается как warp-замена Phase 1A. Math фо�
 
 > **Аудит:** ✅ пройден 24.04.2026 — критических проблем нет, перечислен 11-пунктовый тех.долг (B1–B11), приоритет на B1/B2/B6 в v2.
 
+### 1B.8 Закрытие тех.долга после аудита ✅ ЗАВЕРШЕНА (24.04.2026)
+
+> **Цель:** Закрыть приоритетные пункты тех.долга B1–B11 из аудита 1B.7 без ожидания v2 wallSpace, чтобы текущая v1 не несла визуальную регрессию (B1) и регрессию hit-testing (B2).
+>
+> **Метод:** точечные правки в `panelWarpRenderer.ts` и `KonvaCanvas.tsx`; новые юнит-/component-тесты; прогон `vitest run src/domains/visualizer/` и `tsc --noEmit`.
+
+| # | Решение | Файл / стр. |
+|---|---------|-------------|
+| **B1** ✅ | Color tint вынесен **после** mesh-цикла, рисуется через `setTransform(1,0,0,1,0,0)` + `globalAlpha = 0.25` поверх warp-изображения. Восстановлена Phase 1A-семантика (~25% вклад тинта вместо ~13%). | `panelWarpRenderer.ts` (renderer body) |
+| **B2** ✅ | `<KonvaImage image={warpedCanvas} listening={false}>`; outline `<Line points={flatPts} closed fill="rgba(0,0,0,0)" {...panelHandlers}>` несёт hit-area по форме quad. Клик-тест Konva работает по filled-полигону, не по bbox. | `KonvaCanvas.tsx` warp branch |
+| **B3** ✅ | `encodeURIComponent(opts.designUrl)` в `buildCacheKey` — символ `\|` в URL больше не может коллидировать с разделителем полей. | `panelWarpRenderer.ts:buildCacheKey` |
+| **B5** ✅ | В `WarpOptions` добавлено опциональное поле `dstQuad?: Quad`. KonvaCanvas передаёт уже посчитанный через `transformRect` quad — экономия 4 `transformPoint` на вызов. | `panelWarpRenderer.ts` (WarpOptions + renderer), `KonvaCanvas.tsx` warp branch |
+| **B6** ✅ | Новый тест в `KonvaCanvas.test.tsx` мокает `window.Image` так, что `onload` срабатывает в следующем микротаске; ассертит появление `<konva-line>` с `data-fill="rgba(0,0,0,0)"` (warp branch hit-area) и отсутствие clipFunc-Group. | `__tests__/KonvaCanvas.test.tsx` |
+| **B7** ✅ | Тест на FIFO-эвикцию: вставляем 100 уникальных записей (через варьирование `opacity`), затем 101-ю — размер кэша остаётся 100. Дополнительный тест на повторную вставку самой старой записи, чтобы убедиться что она была вытеснена. | `__tests__/panelWarpRenderer.test.ts` |
+| **B8** ✅ | Early-return на degenerate `wallRect` (`width <= 0 \|\| height <= 0` или non-finite) — возвращается 1×1 пустой canvas без прогона mesh-цикла. Покрыто тестом. | `panelWarpRenderer.ts:renderPanelToQuad` |
+| **B11** ✅ | JSDoc-заголовок «kuso-affine» → «piecewise-affine». | `panelWarpRenderer.ts:1-3` |
+| **B4**, **B9**, **B10** | Не фиксим — стоимость нулевая (B4 — лишний пустой clear, B9 — кэш закрывает per-render вызов, B10 — fresh canvas, leak'а нет). Зафиксировано как осознанное решение. | — |
+
+**Регрессия:** `vitest run src/domains/visualizer/` → 17 файлов / 182 теста зелёные (+5 vs v1 due to B6+B7 + B5/B8/B3). `tsc --noEmit` чисто.
+
+> **Завершение:** ✅ закрыты 8/11 пунктов (все приоритетные medium и большая часть low). Оставшиеся B4/B9/B10 — без действий. Phase 1B v1 теперь визуально и поведенчески эквивалентна Phase 1A для случаев без перспективы и корректнее для случаев с перспективой.
+
 ---
 
 ## Фаза 2: Связка калибровки масштаба с раскладкой

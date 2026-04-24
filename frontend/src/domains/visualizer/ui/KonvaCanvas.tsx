@@ -574,6 +574,8 @@ export function KonvaCanvas({
 
               if (designImg) {
                 // Phase 1B: real perspective warp via offscreen canvas.
+                // Pass `dstQuad` so the renderer reuses the projection we just
+                // computed via `transformRect` instead of doing it again.
                 const { canvas: warpedCanvas, bbox } = renderPanelToQuad({
                   designUrl: panel.designImage,
                   designImage: designImg,
@@ -586,27 +588,35 @@ export function KonvaCanvas({
                   },
                   opacity: 0.85 + brightnessAdj,
                   colorTint: panel.color,
+                  dstQuad: quad,
                 });
                 return (
                   <Group key={panel.id}>
+                    {/* The warped canvas itself is non-interactive — its
+                        bounding box would give a rectangular hit area that
+                        extends far beyond the visible quad in steep
+                        perspective. The outline Line below carries the hit
+                        area instead, since it follows the quad shape. */}
                     <KonvaImage
                       image={warpedCanvas}
                       x={bbox.x}
                       y={bbox.y}
                       width={bbox.width}
                       height={bbox.height}
-                      {...panelHandlers}
+                      listening={false}
                     />
-                    {/* Outline + shadow drawn over the warp for crisp edges. */}
+                    {/* Outline + shadow drawn over the warp for crisp edges,
+                        also serves as the quad-shaped hit area. */}
                     <Line
                       points={flatPts}
                       closed
+                      fill="rgba(0,0,0,0)"
                       stroke={strokeColor}
                       strokeWidth={strokeW}
                       shadowColor={shadowCol}
                       shadowBlur={shadowB}
                       shadowOffsetY={shadowOY}
-                      listening={false}
+                      {...panelHandlers}
                     />
                   </Group>
                 );
