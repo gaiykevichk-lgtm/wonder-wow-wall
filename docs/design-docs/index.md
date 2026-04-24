@@ -6,6 +6,7 @@
 
 | Документ | Область | Статус |
 |----------|---------|--------|
+| [ADMIN-PANEL-AUDIT.md](./ADMIN-PANEL-AUDIT.md) | Admin panel · аудит Фазы 0 | approved |
 | [AUTO-PERSPECTIVE-FALLBACK-STRATEGY.md](./AUTO-PERSPECTIVE-FALLBACK-STRATEGY.md) | Визуализатор · auto-perspective pipeline + fallbacks | draft |
 | [DEPTH-ESTIMATION-INFRA.md](./DEPTH-ESTIMATION-INFRA.md) | Backend · depth estimator + RANSAC | approved |
 | [DESIGN-SYSTEM.md](./DESIGN-SYSTEM.md) | UI · дизайн-система | approved |

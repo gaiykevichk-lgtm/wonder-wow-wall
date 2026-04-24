@@ -74,22 +74,27 @@
 
 ---
 
-## Фаза 0: Аудит и подготовка
+## Фаза 0: Аудит и подготовка ✅ ВЫПОЛНЕНО (2026-04-24)
 
 > **Цель:** Зафиксировать текущее состояние и закрыть открытые вопросы. Не пишем код.
-> **Результат:** Короткий отчёт `docs/design-docs/ADMIN-PANEL-AUDIT.md`.
+> **Результат:** [docs/design-docs/ADMIN-PANEL-AUDIT.md](../../design-docs/ADMIN-PANEL-AUDIT.md)
 
 ### Чек-лист аудита
-- [ ] Прочитать `backend/app/domain/subscription/{entities,value_objects}.py` — выяснить, тарифы это сущность или хардкод. От этого зависит Фаза 6B.
-- [ ] Прочитать `backend/app/seed_data.py` и `backend/app/container.py` — выяснить, какие репозитории сейчас in-memory, какие — Postgres. Если in-memory → Фаза 1 удлиняется на миграцию.
-- [ ] Проверить наличие Alembic в `backend/`: `alembic.ini`, `migrations/versions/`. От этого зависит формат всех новых миграций (1, 4, 6, 7).
-- [ ] Прочитать `frontend/src/shared/router.tsx` — увидеть текущие маршруты, понять, как встроить `/admin/*` lazy-routes.
-- [ ] Прочитать `frontend/src/domains/auth/` — понять существующий store (Zustand) и как добавить туда `role`.
-- [ ] Прочитать `nginx/nginx.conf` — понять, как раздаются статические файлы; куда монтировать `/uploads/` для MVP-файлсторейджа.
-- [ ] Проверить, какие API уже агрегируют данные (есть ли `GET /api/orders/me`, `GET /api/catalog/popular`) — переиспользуемая логика для дашборда.
-- [ ] Зафиксировать первого админа: «как назначить» (seed-fixture / CLI-команда / ручной SQL). Решение: CLI-команда `python -m app.cli grant_admin <email>`.
+- [x] Прочитать `backend/app/domain/subscription/{entities,value_objects}.py` — тарифы **хардкод** (`SUBSCRIPTION_PLANS` module-level). Фаза 8 получает миграцию+seed.
+- [x] Прочитать `backend/app/seed_data.py` и `backend/app/container.py` — **in-memory И Sql репо уже реализованы**, флаг `USE_MEMORY_REPOS`. Фаза 1 не удлиняется.
+- [x] Проверить наличие Alembic — **присутствует**, `alembic.ini` + `alembic/env.py` + 5 миграций (001–005).
+- [x] Прочитать `frontend/src/shared/router.tsx` — все роуты внутри `<ShopLayout>`, есть `<RequireAuth>`. **Уточнение Фазы 2:** `/admin/*` — вне `<ShopLayout>`.
+- [x] Прочитать `frontend/src/domains/auth/` — Zustand + `persist` (ключ `wow-wall-auth`). Нет `role`. **Новый риск R10:** нужна миграция persist-слайса.
+- [x] Прочитать `nginx/nginx.conf` — нет `/uploads/`; `client_max_body_size 10M` **ниже** лимита Фазы 6 (20M).
+- [x] Проверить агрегирующие API — **нет**. Фаза 3 строит с нуля.
+- [x] Зафиксировать первого админа — **CLI** `python -m app.cli grant_admin <email>`; модуль `app/cli.py` не существует, создаётся в Фазе 1.
 
-> Аудит — обязателен. Без него Фаза 1 либо длиннее (если нет Alembic), либо ломает существующее (если auth-store не Zustand).
+**Ключевые решения аудита:**
+- **OQ9 закрыт:** вводим sync event-bus в Фазе 7A (cost +0.3 дня vs +0.5 дня рефактора в 10).
+- **R10 (новый):** версионирование `persist`-слайса authStore в Фазе 1.
+- Трудозатраты — не изменились (47.5 дней).
+
+> Аудит выполнен, Фаза 1 разблокирована.
 
 ---
 
