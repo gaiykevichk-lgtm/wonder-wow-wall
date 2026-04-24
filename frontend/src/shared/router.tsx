@@ -37,8 +37,16 @@ const LoginPage = lazy(() => import('../domains/auth/ui/LoginPage'));
 const RegisterPage = lazy(() => import('../domains/auth/ui/RegisterPage'));
 const ForgotPasswordPage = lazy(() => import('../domains/auth/ui/ForgotPasswordPage'));
 
-// ─── Domain: Admin (Phase 1 placeholder; full layout in Phase 2) ───────────
-const AdminPlaceholderPage = lazy(() => import('../domains/admin/ui/AdminPlaceholderPage'));
+// ─── Domain: Admin (Phase 2 layout + section placeholders) ─────────────────
+const AdminLayout = lazy(() => import('../domains/admin/ui/AdminLayout'));
+const AdminDashboardPage = lazy(() => import('../domains/admin/ui/AdminDashboardPage'));
+const AdminOrdersPage = lazy(() => import('../domains/admin/ui/AdminOrdersPage'));
+const AdminUsersPage = lazy(() => import('../domains/admin/ui/AdminUsersPage'));
+const AdminCatalogPage = lazy(() => import('../domains/admin/ui/AdminCatalogPage'));
+const AdminShopPage = lazy(() => import('../domains/admin/ui/AdminShopPage'));
+const AdminUploadPage = lazy(() => import('../domains/admin/ui/AdminUploadPage'));
+const AdminRecommendationsPage = lazy(() => import('../domains/admin/ui/AdminRecommendationsPage'));
+const AdminAuditPage = lazy(() => import('../domains/admin/ui/AdminAuditPage'));
 
 // ─── Domain: Account ────────────────────────────────────────────────────────
 const AccountLayout = lazy(() => import('../domains/account/ui/AccountLayout'));
@@ -102,15 +110,25 @@ export function AppRouter() {
           </Route>
         </Route>
 
-        {/* Admin — own layout (not inside <ShopLayout>). */}
+        {/* Admin — own layout (not inside <ShopLayout>). `<RequireAdmin>`
+            wraps the layout; nested routes render inside <Outlet>. */}
         <Route
           path="/admin"
           element={
             <RequireAdmin>
-              <AdminPlaceholderPage />
+              <AdminLayout />
             </RequireAdmin>
           }
-        />
+        >
+          <Route index element={<AdminDashboardPage />} />
+          <Route path="orders" element={<AdminOrdersPage />} />
+          <Route path="users" element={<AdminUsersPage />} />
+          <Route path="catalog" element={<AdminCatalogPage />} />
+          <Route path="shop" element={<AdminShopPage />} />
+          <Route path="upload" element={<AdminUploadPage />} />
+          <Route path="recommendations" element={<AdminRecommendationsPage />} />
+          <Route path="audit" element={<AdminAuditPage />} />
+        </Route>
 
         <Route path="*" element={<HomePage />} />
       </Routes>

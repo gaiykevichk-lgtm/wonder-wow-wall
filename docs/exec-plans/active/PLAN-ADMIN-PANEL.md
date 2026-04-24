@@ -183,7 +183,7 @@
 
 ---
 
-## Фаза 2: Базовый layout админки + навигация
+## Фаза 2: Базовый layout админки + навигация ✅ ВЫПОЛНЕНО (2026-04-24)
 
 > **Цель:** Каркас `/admin` с боковым меню и пустыми страницами-разделами. Каждый раздел — отдельный route. Это «UI shell» для всех последующих фаз.
 
@@ -191,22 +191,27 @@
 - (нет изменений)
 
 ### Frontend
-- [ ] `domains/admin/ui/AdminLayout.tsx` — `<Layout>` с `<Sider>` (Ant Design), боковое меню разделов: Дашборд / Заказы / Пользователи / Каталог / Магазин / Загрузка / Рекомендации / Аудит.
-- [ ] Цветовые константы Design System в файле компонента (DARK / GREEN / GRAY_TEXT / FONT) — по [`frontend/CONVENTIONS.md`](../../../frontend/CONVENTIONS.md).
-- [ ] Заглушки страниц: `AdminDashboardPage`, `AdminOrdersPage`, `AdminUsersPage`, `AdminCatalogPage`, `AdminShopPage`, `AdminUploadPage`, `AdminRecommendationsPage`, `AdminAuditPage` — каждая в `domains/admin/ui/`.
-- [ ] Все маршруты `/admin/*` через `<RequireAdmin>` (общий wrapper в `router.tsx`).
-- [ ] Hook `useAdminNavigation()` — только активный раздел; без бизнес-логики.
-- [ ] Mobile: при `max-width: 768px` сайдбар сворачивается в `<Drawer>` (по конвенциям — через `<style>` блок media query).
-- [ ] Топ-бар: имя текущего админа, кнопка «Выйти» (вызов `authStore.logout`).
+- [x] `domains/admin/ui/AdminLayout.tsx` — `<Layout>` с `<Sider>` (Ant Design), боковое меню разделов: Дашборд / Заказы / Пользователи / Каталог / Магазин / Загрузка / Рекомендации / Аудит.
+- [x] Цветовые константы Design System в файле компонента (DARK / GREEN / GRAY_TEXT / FONT) — по [`frontend/CONVENTIONS.md`](../../../frontend/CONVENTIONS.md).
+- [x] Заглушки страниц: `AdminDashboardPage`, `AdminOrdersPage`, `AdminUsersPage`, `AdminCatalogPage`, `AdminShopPage`, `AdminUploadPage`, `AdminRecommendationsPage`, `AdminAuditPage` — каждая в `domains/admin/ui/` (используют общий `AdminSectionPlaceholder`).
+- [x] Все маршруты `/admin/*` через `<RequireAdmin>` (общий wrapper в `router.tsx`).
+- [x] Hook `useAdminNavigation()` — только активный раздел; без бизнес-логики. Longest-prefix-wins резолвер, чтобы `/admin/users/abc` подсвечивал «users», а не «dashboard».
+- [x] Навигационные константы вынесены в `domains/admin/model/navigation.ts` (single source of truth, без JSX).
+- [x] Mobile: при `max-width: 768px` сайдбар сворачивается в `<Drawer>` (по конвенциям — через `<style>` блок media query).
+- [x] Топ-бар: имя текущего админа, кнопка «Выйти» (вызов `authStore.logout`).
 
 ### Тесты
-- [ ] `frontend/src/domains/admin/__tests__/AdminLayout.test.tsx` — рендер меню, активный раздел, выход.
+- [x] `frontend/src/domains/admin/__tests__/AdminLayout.test.tsx` — рендер меню (8 секций), index-роут, nested-роут, header-имя+email, logout → `/`.
+- [x] `frontend/src/domains/admin/__tests__/useAdminNavigation.test.tsx` — дефолт на `/admin`, резолв по первому сегменту, longest-prefix-wins для nested-роутов, порядок секций.
+- [x] Все тесты зелёные (9/9), `tsc --noEmit` без ошибок.
 - [ ] Manual: пройти по всем 8 разделам, проверить URL и активный пункт меню.
 
 ### Definition of Done
 - Все 8 разделов открываются, маршрут отражается в URL.
 - На мобильном сайдбар работает как drawer.
 - Customer на любую `/admin/*` страницу → редирект на `/login`.
+
+> Фаза 2 завершена — UI shell админки готов. Все последующие фазы (3–10) наполняют отдельные секции. Фаза 3 разблокирована.
 
 ---
 
