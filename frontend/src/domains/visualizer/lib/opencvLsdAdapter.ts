@@ -110,9 +110,16 @@ interface CvMat {
 
 let cvPromise: Promise<CvNamespace> | null = null;
 
+// Hard ceiling on how long we wait for the opencv.js Emscripten runtime to
+// become usable. The bundle is ~11 MB; on a cold cache + slow network + the
+// runtime's async init it can take a while. Anything beyond this and we
+// surrender to the fallback chain — a stuck "detecting…" indicator is worse
+// than a quiet manual mode.
+const OPENCV_LOAD_TIMEOUT_MS = 5_000;
+
 async function loadOpenCV(): Promise<CvNamespace> {
   if (cvPromise) return cvPromise;
-  cvPromise = (async () => {
+  const raw = (async () => {
     let mod: unknown;
     try {
       // UMD module — default export under ESM interop is the `cv` namespace.
@@ -130,10 +137,11 @@ async function loadOpenCV(): Promise<CvNamespace> {
     if (typeof cv.getBuildInformation === 'function') {
       return cv;
     }
-    // Wait for the async asm.js/WASM runtime to initialise. Emscripten fires
-    // `onRuntimeInitialized` exactly once; we resolve on the next tick in
-    // case it already fired before we attached the handler (race that shows
-    // up with the browser's module cache in HMR).
+    // Wait for the async asm.js runtime to initialise. Emscripten fires
+    // `onRuntimeInitialized` exactly once, but when the UMD is loaded via
+    // Vite's ESM interop the handler occasionally never fires (the module
+    // runs its init before our handler is attached). Poll as a belt +
+    // braces check so we don't hang indefinitely.
     await new Promise<void>((resolve) => {
       if (typeof cv.getBuildInformation === 'function') {
         resolve();
@@ -147,9 +155,33 @@ async function loadOpenCV(): Promise<CvNamespace> {
           resolve();
         }
       };
+      // Poll fallback: tick every 50 ms and resolve when the runtime looks
+      // alive. Paired with the outer `Promise.race` timeout below so a
+      // never-initialising module still surrenders in bounded time.
+      const pollId = setInterval(() => {
+        if (typeof cv.getBuildInformation === 'function') {
+          clearInterval(pollId);
+          resolve();
+        }
+      }, 50);
     });
     return cv;
   })();
+
+  cvPromise = Promise.race<CvNamespace>([
+    raw,
+    new Promise<CvNamespace>((_, reject) => {
+      setTimeout(
+        () =>
+          reject(
+            new OpencvNotInstalledError(
+              `OpenCV runtime did not initialise within ${OPENCV_LOAD_TIMEOUT_MS} ms`,
+            ),
+          ),
+        OPENCV_LOAD_TIMEOUT_MS,
+      );
+    }),
+  ]);
   // If the first attempt throws we want the next call to *retry* (e.g., the
   // network blip is transient), so clear the cache on failure.
   return cvPromise.catch((err) => {

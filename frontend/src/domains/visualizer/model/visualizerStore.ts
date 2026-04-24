@@ -498,6 +498,10 @@ export const useVisualizerStore = create<VisualizerState>()(
     // sufficient discriminant because `setScene` always mints a new PhotoAsset.
     const startedFor = scene.photo.url;
     const photoSize = { width: scene.photo.width, height: scene.photo.height };
+    // Capture wallMask in a local const so the closure keeps the non-null
+    // narrowing across the `await` boundaries below (TS widens property
+    // access after await even when the holder is const).
+    const wallMask = scene.wallMask;
     const stillCurrent = (): Scene | null => {
       const s = get().scene;
       return s && s.photo.url === startedFor ? s : null;
@@ -510,64 +514,89 @@ export const useVisualizerStore = create<VisualizerState>()(
     // share the same commit block; avoids duplicating `stillCurrent()` checks.
     let resolvedCorners: PerspectiveCorners | null = null;
 
-    // ─── Stage 1: client-side (OpenCV LSD → vanishing-point) ───
-    // Fast path when it works. Silent failure modes (stub not wired, WASM
-    // blocked, low confidence on low-edge scenes) fall through to Stage 2.
-    try {
-      const lines = await provider({
-        imageUrl: scene.photo.url,
-        mask: scene.wallMask,
-        photoSize,
-      });
-      if (!stillCurrent()) return;
-      const result = detectFromLines({ lines, mask: scene.wallMask, photoSize });
-      if (result.ok) {
-        resolvedCorners = result.corners;
-      }
-    } catch (err) {
-      // Only log in dev: the stub adapter throws on every call by design
-      // until Phase 3.1c lands, and we don't want the noise in prod consoles.
-      if (import.meta.env.DEV) {
-        console.warn('[runAutoPerspective] LSD provider failed:', err);
-      }
-    }
+    // Hard overall ceiling on how long we let auto-perspective run. Each
+    // internal stage has its own timeout (opencv load: 5 s, backend: network)
+    // but a shared cap protects the UI against any pathological hang —
+    // synchronous opencv work, a never-settling promise, a slow backend
+    // stalling past its transport timeout. Without this, the
+    // "Определяем углы стены…" spinner would stay on screen indefinitely,
+    // which is what the user reported. Manual corners remain available.
+    const OVERALL_TIMEOUT_MS = 15_000;
 
-    // ─── Stage 2: backend depth fallback ───
-    // Runs when Stage 1 produced nothing AND the caller supplied a persisted
-    // project id. The endpoint is stateful (reads project.photo_url +
-    // wall_mask_base64), so we can't call it before the project is saved.
-    // Also skip if the user swapped photos while Stage 1 was running.
-    if (resolvedCorners === null && options?.backendProjectId) {
-      if (stillCurrent()) {
+    const runStages = async (): Promise<void> => {
+      // ─── Stage 1: client-side (OpenCV LSD → vanishing-point) ───
+      // Fast path when it works. Silent failure modes (stub not wired, WASM
+      // blocked, low confidence on low-edge scenes) fall through to Stage 2.
+      try {
+        const lines = await provider({
+          imageUrl: scene.photo.url,
+          mask: wallMask,
+          photoSize,
+        });
+        if (!stillCurrent()) return;
+        const result = detectFromLines({ lines, mask: wallMask, photoSize });
+        if (result.ok) {
+          resolvedCorners = result.corners;
+        }
+      } catch (err) {
+        if (import.meta.env.DEV) {
+          console.warn('[runAutoPerspective] LSD provider failed:', err);
+        }
+      }
+
+      // ─── Stage 2: backend depth fallback ───
+      if (resolvedCorners === null && options?.backendProjectId && stillCurrent()) {
         try {
           const { corners } = await apiAutoDetectPerspective(options.backendProjectId);
           if (!stillCurrent()) return;
           resolvedCorners = corners;
         } catch (err) {
-          // `AutoPerspectiveFailedError` (plane_fit_failed / depth_unavailable)
-          // or any transport error — fall through to manual. The user always
-          // has the four draggable handles on the canvas.
           if (import.meta.env.DEV) {
             console.warn('[runAutoPerspective] backend fallback failed:', err);
           }
         }
       }
-    }
+    };
 
-    // ─── Commit ───
-    const current = stillCurrent();
-    if (!current) return;
-    if (resolvedCorners !== null) {
-      set({
-        perspectiveCorners: resolvedCorners,
-        scene: {
-          ...current,
-          segmentationStatus: 'ready',
-          perspectiveAutoDetected: true,
-        },
-      });
-    } else {
-      set({ scene: { ...current, segmentationStatus: 'ready' } });
+    try {
+      await Promise.race([
+        runStages(),
+        new Promise<void>((resolve) =>
+          setTimeout(() => {
+            if (import.meta.env.DEV) {
+              console.warn(
+                '[runAutoPerspective] timed out after',
+                OVERALL_TIMEOUT_MS,
+                'ms — falling back to manual corners',
+              );
+            }
+            resolve();
+          }, OVERALL_TIMEOUT_MS),
+        ),
+      ]);
+    } finally {
+      // ─── Commit ───
+      // Always runs — guarantees the 'detecting-perspective' spinner never
+      // survives the function returning, regardless of timeout / thrown
+      // error / early return from a stillCurrent() check. We only write
+      // when the scene is still ours AND still in the detecting state, so
+      // a concurrent photo swap (which resets status via setScene) is not
+      // clobbered.
+      const current = stillCurrent();
+      if (current && current.segmentationStatus === 'detecting-perspective') {
+        if (resolvedCorners !== null) {
+          set({
+            perspectiveCorners: resolvedCorners,
+            scene: {
+              ...current,
+              segmentationStatus: 'ready',
+              perspectiveAutoDetected: true,
+            },
+          });
+        } else {
+          set({ scene: { ...current, segmentationStatus: 'ready' } });
+        }
+      }
     }
   },
   runAutoReferenceDetection: async (detector) => {
