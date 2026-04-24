@@ -222,7 +222,11 @@ export const useVisualizerStore = create<VisualizerState>()(
       });
 
       if (panels.length === 0) {
+        // Don't wipe existing panels just because auto-fill found no new
+        // spots (e.g. all cells covered by obstacles or below the coverage
+        // threshold). The user explicitly clears via Clear All.
         message.info('Не удалось разместить панели — недостаточно места на стене');
+        return;
       }
 
       set({ layout: { ...layout, panels } });

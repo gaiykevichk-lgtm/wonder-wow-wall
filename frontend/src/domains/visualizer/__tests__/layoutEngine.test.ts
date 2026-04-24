@@ -405,6 +405,59 @@ describe('layoutEngine', () => {
       ).not.toThrow();
     });
 
+    it('autoFillWall with trapezoidal perspective rejects cells whose quad falls off-mask', () => {
+      // Trapezoid whose TOP edge extends OFF the photo on both sides:
+      // wall-cells in the top wall-row project to photo-space quads that
+      // straddle x<0 / x>=mask.width, lowering wall-coverage below the 0.7
+      // threshold. Bottom rows stay fully inside.
+      const mask = createEmptyMask(300, 300, 255);
+      const trapezoidCorners: PerspectiveCorners = [
+        { x: -50, y: 0 },    // TL — sticks out left
+        { x: 350, y: 0 },    // TR — sticks out right
+        { x: 300, y: 300 },  // BR
+        { x: 0, y: 300 },    // BL
+      ];
+      const persp = createPerspective(trapezoidCorners, { w: 300, h: 300 });
+
+      const flat = autoFillWall({
+        mask,
+        sizeKey: '30x30',
+        calibration: { method: 'manual', pixelsPerCm: 1 },
+        designId: 'd1',
+        designName: 'Test',
+        designImage: 'test.jpg',
+        color: '#FFF',
+        colorName: 'White',
+      });
+      const warped = autoFillWall({
+        mask,
+        sizeKey: '30x30',
+        calibration: { method: 'manual', pixelsPerCm: 1 },
+        designId: 'd1',
+        designName: 'Test',
+        designImage: 'test.jpg',
+        color: '#FFF',
+        colorName: 'White',
+        perspective: persp,
+      });
+
+      // Flat baseline = 100 panels (10×10 grid on a fully-white 300×300 mask).
+      expect(flat.length).toBe(100);
+
+      // Some cells (top wall-row at least) lose coverage to OOB samples and
+      // get rejected — strictly fewer than flat.
+      expect(warped.length).toBeGreaterThan(0);
+      expect(warped.length).toBeLessThan(flat.length);
+
+      // Every placed panel should have valid wall-space coords inside mask.
+      for (const p of warped) {
+        expect(p.x).toBeGreaterThanOrEqual(0);
+        expect(p.y).toBeGreaterThanOrEqual(0);
+        expect(p.x + p.renderWidth).toBeLessThanOrEqual(300);
+        expect(p.y + p.renderHeight).toBeLessThanOrEqual(300);
+      }
+    });
+
     it('autoFillWall without perspective accepts auto calibration (flat mode)', () => {
       const mask = createEmptyMask(300, 300, 255);
       const panels = autoFillWall({

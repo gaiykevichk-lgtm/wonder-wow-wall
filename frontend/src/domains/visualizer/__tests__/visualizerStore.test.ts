@@ -1,7 +1,24 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useVisualizerStore } from '../model/visualizerStore';
 import { createEmptyMask } from '../lib/maskUtils';
-import type { Scene, PlacedPanel } from '../model/types';
+import type { Scene, PlacedPanel, PerspectiveCorners } from '../model/types';
+
+// antd's `message` is a singleton with side effects (DOM mounting). Mock it
+// so we can assert the autoFill catch-handler emits the right notification.
+vi.mock('antd', async () => {
+  const actual = await vi.importActual<typeof import('antd')>('antd');
+  return {
+    ...actual,
+    message: {
+      success: vi.fn(),
+      info: vi.fn(),
+      warning: vi.fn(),
+      error: vi.fn(),
+    },
+  };
+});
+
+import { message } from 'antd';
 
 function makeScene(): Scene {
   return {
@@ -32,6 +49,10 @@ function makePanel(id: string): PlacedPanel {
 describe('visualizerStore', () => {
   beforeEach(() => {
     useVisualizerStore.getState().reset();
+    vi.mocked(message.warning).mockClear();
+    vi.mocked(message.info).mockClear();
+    vi.mocked(message.error).mockClear();
+    vi.mocked(message.success).mockClear();
   });
 
   describe('scene management', () => {
@@ -166,6 +187,121 @@ describe('visualizerStore', () => {
       const cost = useVisualizerStore.getState().cost;
       expect(cost.totalPanels).toBe(1);
       expect(cost.totalCost).toBeGreaterThan(0);
+    });
+  });
+
+  describe('autoFill', () => {
+    const corners: PerspectiveCorners = [
+      { x: 0, y: 0 },
+      { x: 500, y: 0 },
+      { x: 500, y: 500 },
+      { x: 0, y: 500 },
+    ];
+
+    function setupReadyScene(calibrationMethod: 'auto' | 'manual' | null = 'manual') {
+      const scene: Scene = {
+        photo: { url: 'test.jpg', width: 500, height: 500 },
+        wallMask: createEmptyMask(500, 500, 255),
+        objectMask: { obstacles: [] },
+        calibration: calibrationMethod ? { method: calibrationMethod, pixelsPerCm: 5 } : null,
+        segmentationStatus: 'ready',
+      };
+      useVisualizerStore.getState().setScene(scene);
+      useVisualizerStore.getState().setSelectedDesign('d1', 'Design 1', 'img.jpg');
+    }
+
+    it('warns and bails when no scene', () => {
+      useVisualizerStore.getState().autoFill();
+      expect(message.warning).toHaveBeenCalledWith(expect.stringContaining('фото'));
+    });
+
+    it('warns and bails when no design selected', () => {
+      const scene: Scene = {
+        photo: { url: 'test.jpg', width: 500, height: 500 },
+        wallMask: createEmptyMask(500, 500, 255),
+        objectMask: { obstacles: [] },
+        calibration: { method: 'manual', pixelsPerCm: 5 },
+        segmentationStatus: 'ready',
+      };
+      useVisualizerStore.getState().setScene(scene);
+      useVisualizerStore.getState().autoFill();
+      expect(message.warning).toHaveBeenCalledWith(expect.stringContaining('дизайн'));
+    });
+
+    it('fills panels in flat mode (no perspective)', () => {
+      setupReadyScene('manual');
+      useVisualizerStore.getState().autoFill();
+      const panels = useVisualizerStore.getState().layout.panels;
+      expect(panels.length).toBeGreaterThan(0);
+      expect(message.warning).not.toHaveBeenCalled();
+    });
+
+    it('warns when perspective + auto calibration (AutoFillBlockedError)', () => {
+      setupReadyScene('auto');
+      useVisualizerStore.getState().setPerspectiveCorners(corners);
+      const panelsBefore = useVisualizerStore.getState().layout.panels;
+
+      useVisualizerStore.getState().autoFill();
+
+      expect(message.warning).toHaveBeenCalledWith(
+        expect.stringContaining('Откалибруйте масштаб'),
+      );
+      // Existing panels should NOT be wiped on the blocked path.
+      expect(useVisualizerStore.getState().layout.panels).toBe(panelsBefore);
+    });
+
+    it('warns when perspective + null calibration (AutoFillBlockedError)', () => {
+      setupReadyScene(null);
+      useVisualizerStore.getState().setPerspectiveCorners(corners);
+
+      useVisualizerStore.getState().autoFill();
+
+      expect(message.warning).toHaveBeenCalledWith(
+        expect.stringContaining('Откалибруйте масштаб'),
+      );
+    });
+
+    it('does not wipe existing panels when no new spots fit (empty result)', () => {
+      // Set up a scene where the wall mask is FULLY EMPTY (no wall pixels)
+      // — autoFill will return 0 panels. Pre-existing panels in the layout
+      // must be preserved.
+      const scene: Scene = {
+        photo: { url: 'test.jpg', width: 500, height: 500 },
+        wallMask: createEmptyMask(500, 500, 0), // empty mask → 0 cells admitted
+        objectMask: { obstacles: [] },
+        calibration: { method: 'manual', pixelsPerCm: 5 },
+        segmentationStatus: 'ready',
+      };
+      useVisualizerStore.getState().setScene(scene);
+      useVisualizerStore.getState().setSelectedDesign('d1', 'Design 1', 'img.jpg');
+
+      const existing = makePanel('keep-me');
+      useVisualizerStore.getState().addPanel(existing);
+      expect(useVisualizerStore.getState().layout.panels).toHaveLength(1);
+
+      useVisualizerStore.getState().autoFill();
+
+      expect(message.info).toHaveBeenCalledWith(
+        expect.stringContaining('недостаточно места'),
+      );
+      // Pre-existing panel must survive.
+      const after = useVisualizerStore.getState().layout.panels;
+      expect(after).toHaveLength(1);
+      expect(after[0]!.id).toBe('keep-me');
+    });
+
+    it('proceeds when perspective + manual calibration', () => {
+      setupReadyScene('manual');
+      useVisualizerStore.getState().setPerspectiveCorners(corners);
+
+      useVisualizerStore.getState().autoFill();
+
+      // Should NOT warn about calibration; should populate panels.
+      const calibrationWarn = vi.mocked(message.warning).mock.calls.find((c) =>
+        String(c[0]).includes('Откалибруйте'),
+      );
+      expect(calibrationWarn).toBeUndefined();
+      expect(useVisualizerStore.getState().layout.panels.length).toBeGreaterThan(0);
     });
   });
 
