@@ -686,6 +686,107 @@
 - [x] Файлы > лимита отклоняются: API делает раннюю проверку `file.size` (Content-Length) до чтения тела; пост-фактум ещё раз проверяется фактически прочитанная длина (защита от лживого заголовка). См. `media.py:upload_media`.
 - [x] Удалённый из `MediaAsset` файл удаляется и из volume — `DeleteMedia` сначала row, потом файл; smoke подтвердил `os.path.exists` == False после DELETE.
 
+### Аудит 2026-04-25 — follow-up (line-by-line)
+
+**Что прочитано построчно (16 файлов фазы + 6 точек врезки):**
+
+Backend:
+- `app/domain/media/entities.py` (43 строки), `value_objects.py` (112), `exceptions.py` (52), `services.py` (74), `repositories.py` (30)
+- `app/application/media/use_cases.py` (213)
+- `app/infrastructure/storage/local.py` (86)
+- `app/infrastructure/api/admin/media.py` (196)
+- `app/infrastructure/api/error_handlers.py` — 4 новых handler-а (`media_too_large`/`_invalid_mime`/`_invalid_dimensions`/`_corrupt`, строки 161–199)
+- `app/infrastructure/persistence/models.py:260-293` (`MediaAssetModel`)
+- `app/infrastructure/persistence/repositories/sql.py:614-673` (`SqlMediaAssetRepository`, `_media_to_domain`)
+- `app/infrastructure/persistence/repositories/memory.py:249-280` (`InMemoryMediaAssetRepository`)
+- `alembic/versions/010_create_media_assets.py` (58 строк)
+- `app/main.py` (4 регистрации handler-ов, строки 19-24, 32-35, 77-80)
+- `app/container.py` (singleton `_mem_media_repo`, `get_media_repo`, `get_file_storage` + `reset_file_storage_singleton`, строки 21, 57, 71, 90, 105, 180-235)
+- `app/config.py:21-32` (`MEDIA_STORAGE_ROOT` / `MEDIA_URL_PREFIX`)
+- `app/infrastructure/api/admin/__init__.py:14, 23` (sub-router include)
+- `nginx/nginx.conf` — `client_max_body_size 20M`, `location /uploads/` alias, immutable cache, `autoindex off`
+- `docker-compose.yml` — `uploads` volume (rw для backend, ro для nginx), env-переменные
+
+Frontend:
+- `frontend/src/domains/admin/lib/uploadFile.ts` (183 строки)
+- `frontend/src/shared/ui/AdminFileUpload.tsx` (198 строк)
+
+Тесты (фактическое прохождение, прогнал лично):
+- `tests/domain/media/test_constraints.py` — 10/10 ✅
+- `tests/application/media/test_upload_media.py` — 13/13 ✅
+- `tests/api/admin/test_media_upload.py` — 15/15 ✅
+- `tests/infrastructure/test_alembic.py` — 6/6 ✅ (включая round-trip head→base→head с `media_assets` + двух его индексов)
+- `frontend/src/domains/admin/__tests__/uploadFile.test.ts` — 14/14 ✅
+
+**Регрессионный прогон:**
+- Backend full-suite (без alembic-исключения): **463/463 passed** (44.8s).
+- Backend alembic-suite отдельно: **6/6 passed** (1.1s) — без флейка от Phase 4B/5 (alembic запускается на временном SQLite).
+- Frontend admin-suite: **105/105 passed** (10 файлов).
+
+**Бизнес-логика — что проверено вручную:**
+- Порядок валидации в `UploadMedia.execute` (`use_cases.py:86-178`): empty→global cap→per-purpose cap→declared MIME→Pillow `verify()` + re-open→format whitelist→dimensions→`storage.save`→`repo.create`. Все ветки покрыты тестами; критичный инвариант «storage.save не вызывается на rejected» закреплён в `TestTooLarge.test_per_purpose_cap_rejects_design_preview` (assertion `storage.saved == []`).
+- Порядок удаления в `DeleteMedia.execute` (`use_cases.py:192-201`): `repo.get_by_id` → `repo.delete` → `storage.delete`. Соответствует module docstring («row first, then file» — обратный порядок оставил бы dangling references).
+- URL round-trip (`storage.url_for(asset.path) == response.url`): `TestUploadHappy.test_url_round_trip_through_storage_adapter`.
+- 4 различных HTTP-кода (413/415/422-corrupt/422-dimensions) проверены каждый отдельным test-методом и каждый assertit `code` поле в envelope.
+- Defence-in-depth: UNIQUE(path) на уровне DB-схемы продублирован коллизионным `if any(...)` в `InMemoryMediaAssetRepository.create` (memory.py:269) — поведение SQL и memory эквивалентно.
+- Soft-FK на `uploaded_by` (без `ForeignKey()`) — осознанно, для сохранения audit-истории; задокументировано в `MediaAssetModel` docstring и совпадает с решением `OrderNoteModel.author_id`.
+- Sanitisation `_safe_original_name` (`use_cases.py:204-212`) — `os.path.basename` + truncate 255; покрыто `TestHappyPath.test_original_name_path_components_stripped`.
+
+**Соответствие конвенциям:**
+- Domain → Application → Infrastructure границы соблюдены: `FileStorage` ABC в `domain/media/services.py`, реализация в `infrastructure/storage/local.py`, use case импортирует только domain; единственный `from PIL import` лежит в use case (комментарий явно объясняет зачем — domain должен оставаться infra-free).
+- Sub-router pattern (Phase 1 review): новый `media.router` подключён одной строкой в `admin/__init__.py:23`, `main.py` не тронут.
+- Глобальный `{detail, code}` envelope для всех 4 ошибок (`error_handlers.py:168-199`) — frontend ветвится по `code`, не по `detail`-строке.
+- Singleton-pattern для `_file_storage` (`container.py:194-235`) — тот же double-checked-lock что и `_depth_estimator`; есть `reset_file_storage_singleton()` test-helper, тесты пользуются им.
+- Frontend `UploadError` использует plain field declarations (не constructor-property shorthand) — это требование `tsconfig.app.json` `erasableSyntaxOnly`, специально упомянуто в комментарии.
+
+**Регрессионный риск — отдельно проверено:**
+- Existing flake `test_alembic.py` (postgres :5432) Phase 4B/5 — у меня лично прошёл зелёным, потому что `test_alembic.py` использует SQLite-tempfile (см. fixture `db_path` + `alembic_cfg`), не postgres. Преекзистенный fail упоминается в Phase 3/4B audit как окружение-зависимый, к Phase 6 не относится.
+- Изменения в `error_handlers.py`, `main.py`, `container.py` (`_get_sql_repo_classes` dict), `admin/__init__.py` — additive, не трогают существующие маршруты. 463 existing test зелёные.
+
+#### Критические проблемы
+**Нет.** Все DoD-пункты выполнены, end-to-end smoke зелёный, все 38 backend + 14 frontend тестов фазы проходят, 6 alembic-тестов с round-trip 010 проходят, 463 backend + 105 frontend регрессионных тестов проходят.
+
+#### Некритичные замечания / тех-долг
+
+1. **`AdminFileUpload.tsx:99-105` — мёртвый `useEffect` с `AbortController`.** Контроллер создаётся, но ни в один `uploadFile()`-вызов не передаётся (`customRequest` строит запрос без `signal`). На unmount `controller.abort()` вызывается, но слушателей нет — no-op. Симптом для пользователя: если админ закроет страницу в момент загрузки 10MB файла, XHR продолжит работу до завершения, и `setState({percent: null})` стрельнёт в unmounted компонент (React 18 — warning, не crash). **Фикс:** либо удалить эффект, либо реально хранить controller в `useRef` и пробросить `signal` в `uploadFile`. Закрывается до Phase 7A (там `AdminFileUpload` начнёт использоваться по-настоящему).
+2. **Нет компонентного теста для `AdminFileUpload.tsx`.** Plan checklist (line 681) перечисляет только `uploadFile.test.ts`. Не покрыто: `beforeUpload` size/mime pre-filter (lines 107-120), `ERROR_LABELS` mapping (42-49), `state.percent`/`disabled` поведение, customRequest happy/error пути. Добавить smoke-тест в Phase 7A одновременно с первым потребителем.
+3. **Нет теста для API-layer pre-reject** (`media.py:146-150` — ветка `file.size > GLOBAL_MAX_SIZE_BYTES` ДО `use_case.execute`). Use-case-уровень покрыт `TestTooLarge.test_global_cap_takes_precedence_over_purpose`, но именно ранний возврат из API не отбит отдельным тестом. Низкий приоритет — пути ведут к одному handler-у.
+4. **`TestAuthGuard` для `GET /constraints`** проверяет только 401 (no token), но не 403 (customer token). Upload/Delete покрывают 403. Добавить парный `test_constraints_requires_admin_role` для симметрии.
+5. **`uploaded_at: datetime.utcnow()`** (`entities.py:42`, `models.py:293`) — deprecation warning Python 3.12+. Project-wide tech-debt (отмечен ещё в Phase 3 audit), не Phase 6 specific.
+6. **Прямой доступ к `_mem_media_repo._assets`** в `tests/api/admin/test_media_upload.py:60, 63` (`.clear()`). Очередная точка лазя в private поле InMemory-репо — закрывается общей задачей #7 из Phase 4A audit (публичный `clear()`/seed-helper для всех InMemory* реализаций).
+7. **Комментарий `media.py:139-145`** говорит «Cheap pre-reject before reading the body». Уточнение: Starlette уже буферизовала multipart в SpooledTemporaryFile к моменту входа в handler; ранний raise экономит CPU на use-case-валидации, но не bandwidth на HTTP-уровне. Косметика.
+8. **`LocalFileStorage.delete` (`local.py:75-78`)** ловит только `FileNotFoundError`. Контракт ABC обещает идемпотентность только для отсутствующего файла; permission denied / OSError должен пробрасываться. Риск низкий (root-owned storage в проде), но по букве контракта стоит сузить except или явно задокументировать «swallow all OSError».
+9. **`AdminFileUpload` и `uploadFile` пока никем не импортируются** (Grep: только сам компонент + тест). Это намеренный orphan-релиз (см. цель фазы — «Self-contained», Phase 7A/7B заблокированы Фазой 6 и станут потребителями). При обзоре Phase 7A проверить, что компонент действительно подключился — иначе риск повторения паттерна Phase 5 (orphan `usersAdminApi.ts`).
+
+### Файлы, добавленные/изменённые в Фазе 6 (для archeology)
+
+Добавлены:
+- `app/domain/media/{__init__.py, entities.py, value_objects.py, exceptions.py, services.py, repositories.py}` (6 файлов)
+- `app/application/media/{__init__.py, use_cases.py}` (2)
+- `app/infrastructure/storage/{__init__.py, local.py}` (2)
+- `app/infrastructure/api/admin/media.py` (1)
+- `alembic/versions/010_create_media_assets.py` (1)
+- `tests/domain/media/{__init__.py, test_constraints.py}` (2)
+- `tests/application/media/{__init__.py, test_upload_media.py}` (2)
+- `tests/api/admin/test_media_upload.py` (1)
+- `frontend/src/domains/admin/lib/uploadFile.ts` (1)
+- `frontend/src/shared/ui/AdminFileUpload.tsx` (1)
+- `frontend/src/domains/admin/__tests__/uploadFile.test.ts` (1)
+- `docs/design-docs/FILE-STORAGE-ROADMAP.md` (1, проиндексирован в `index.md:13`)
+
+Изменены:
+- `app/main.py` (4 импорта exceptions + 4 импорта handler + 4 `add_exception_handler`)
+- `app/infrastructure/api/admin/__init__.py` (+1 import, +1 include_router)
+- `app/infrastructure/api/error_handlers.py` (+4 handler-а, lines 161-199)
+- `app/infrastructure/persistence/models.py` (+`MediaAssetModel`, lines 260-293)
+- `app/infrastructure/persistence/repositories/sql.py` (+`SqlMediaAssetRepository` + `_media_to_domain`)
+- `app/infrastructure/persistence/repositories/memory.py` (+`InMemoryMediaAssetRepository`)
+- `app/container.py` (+memory singleton + `get_media_repo` + `get_file_storage` + reset helper)
+- `app/config.py` (+2 settings)
+- `tests/infrastructure/test_alembic.py` (head=010 pin + media_assets + индексы в round-trip)
+- `nginx/nginx.conf` (+`client_max_body_size 20M`, +`location /uploads/`)
+- `docker-compose.yml` (+`uploads` volume на 2-х сервисах, +ENV)
+
 ---
 
 ## Фаза 7A: Управление каталогом — категории и дизайны
