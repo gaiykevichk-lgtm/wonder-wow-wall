@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from app.domain.order.entities import Order, OrderItem
+from app.domain.order.filters import OrderFilters
 from app.domain.order.repositories import OrderRepository
 from app.domain.order.value_objects import Address
 from app.domain.order.services import calculate_wall_cost
@@ -56,3 +57,29 @@ class GetOrderDetails:
 class CalculateWallCost:
     async def execute(self, panels: list[dict], has_subscription: bool = False) -> dict:
         return calculate_wall_cost(panels, has_subscription)
+
+
+class ListOrdersAdmin:
+    """Phase 4A — admin paginated order list.
+
+    Pure pass-through to the repository. Authorisation (admin role) is
+    enforced at the API layer by `get_current_admin_id`, so this use case
+    has no dependency on the user repository or actor identity. Keeping
+    it minimal mirrors the pattern in `GetDashboardSnapshot`.
+    """
+
+    MAX_PAGE_SIZE = 200
+
+    def __init__(self, repo: OrderRepository):
+        self.repo = repo
+
+    async def execute(
+        self, filters: OrderFilters, page: int = 1, size: int = 50,
+    ) -> tuple[list[Order], int]:
+        if page < 1:
+            raise ValueError(f"page must be >= 1, got {page}")
+        if size < 1 or size > self.MAX_PAGE_SIZE:
+            raise ValueError(
+                f"size must be in 1..{self.MAX_PAGE_SIZE}, got {size}"
+            )
+        return await self.repo.find_paginated(filters, page=page, size=size)

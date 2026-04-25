@@ -35,9 +35,14 @@ from app.infrastructure.persistence.repositories.analytics_repo import (
 _mem_design_repo = InMemoryDesignRepository(SEED_DESIGNS)
 _mem_category_repo = InMemoryCategoryRepository(SEED_CATEGORIES)
 _mem_review_repo = InMemoryReviewRepository()
-_mem_order_repo = InMemoryOrderRepository()
 _mem_subscription_repo = InMemorySubscriptionRepository()
 _mem_user_repo = InMemoryUserRepository()
+# Phase 4A — order repo joins users for admin search-by-email/name. The
+# lambda defers user-list resolution so test seeding remains visible to
+# the same singleton (analytics uses the same trick).
+_mem_order_repo = InMemoryOrderRepository(
+    users_source=lambda: _mem_user_repo._users,
+)
 _mem_project_repo = InMemoryProjectRepository()
 _mem_visualization_repo = InMemoryVisualizationProjectRepository()
 # Phase 3 — analytics is a READ-ONLY projection over orders + users; it

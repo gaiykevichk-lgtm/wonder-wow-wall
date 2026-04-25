@@ -4,11 +4,13 @@ These will be replaced by SQLAlchemy implementations when connected to PostgreSQ
 """
 
 from datetime import datetime
+from typing import Callable
 from uuid import uuid4
 
 from app.domain.catalog.entities import Design, Category, DesignReview
 from app.domain.catalog.repositories import DesignRepository, CategoryRepository, ReviewRepository
 from app.domain.order.entities import Order
+from app.domain.order.filters import OrderFilters
 from app.domain.order.repositories import OrderRepository
 from app.domain.subscription.entities import Subscription
 from app.domain.subscription.repositories import SubscriptionRepository
@@ -89,9 +91,15 @@ class InMemoryReviewRepository(ReviewRepository):
 # ─── Order ───────────────────────────────────────────────────────────
 
 class InMemoryOrderRepository(OrderRepository):
-    def __init__(self):
+    def __init__(self, users_source: Callable[[], list[User]] | None = None):
         self._orders: list[Order] = []
         self._counter = 0
+        # Optional callback returning the live user list. Used ONLY by
+        # `find_paginated` when the admin searches by email/name — the
+        # SQL repo achieves the same via a JOIN. Keeping it optional means
+        # existing constructions (`InMemoryOrderRepository()`) keep working
+        # and customer-facing methods stay free of user-repo coupling.
+        self._users_source = users_source
 
     async def create(self, order):
         self._orders.append(order)
@@ -112,6 +120,36 @@ class InMemoryOrderRepository(OrderRepository):
     async def generate_order_number(self):
         self._counter += 1
         return f"WW-{datetime.utcnow().year}-{self._counter:03d}"
+
+    async def find_paginated(self, filters: OrderFilters, page: int = 1, size: int = 50):
+        result = list(self._orders)
+        if filters.status is not None:
+            result = [o for o in result if o.status == filters.status]
+        if filters.user_id is not None:
+            result = [o for o in result if o.user_id == filters.user_id]
+        if filters.date_from is not None:
+            result = [o for o in result if o.created_at >= filters.date_from]
+        if filters.date_to is not None:
+            result = [o for o in result if o.created_at < filters.date_to]
+        if filters.search is not None:
+            q = filters.search.lower()
+            matching_user_ids: set[str] = set()
+            if self._users_source is not None:
+                for u in self._users_source():
+                    if q in u.email.lower() or q in u.name.lower():
+                        matching_user_ids.add(u.id)
+            result = [
+                o for o in result
+                if q in o.number.lower() or o.user_id in matching_user_ids
+            ]
+        # Stable newest-first ordering — the SQL repo uses the same
+        # `ORDER BY created_at DESC`. Equality of `created_at` falls back
+        # to insertion order via Python's stable sort, which is fine for
+        # tests since fakes typically use distinct timestamps.
+        result.sort(key=lambda o: o.created_at, reverse=True)
+        total = len(result)
+        offset = (page - 1) * size
+        return result[offset:offset + size], total
 
 
 # ─── Subscription ────────────────────────────────────────────────────

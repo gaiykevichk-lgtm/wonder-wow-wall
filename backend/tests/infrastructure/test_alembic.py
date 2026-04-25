@@ -81,6 +81,18 @@ def _column_names(db_path: Path, table: str) -> set[str]:
         con.close()
 
 
+def _index_exists(db_path: Path, name: str) -> bool:
+    """Return True if the named index exists in SQLite's sqlite_master."""
+    con = sqlite3.connect(db_path)
+    try:
+        cur = con.execute(
+            "SELECT name FROM sqlite_master WHERE type='index' AND name=?", (name,)
+        )
+        return cur.fetchone() is not None
+    finally:
+        con.close()
+
+
 def _current_revision(db_path: Path) -> str | None:
     """Read the head revision recorded by Alembic in `alembic_version`."""
     con = sqlite3.connect(db_path)
@@ -104,10 +116,14 @@ def test_upgrade_head_creates_all_core_tables(alembic_cfg):
         "visualization_projects",  # 004 — Phase 5A new
     ):
         assert _table_exists(db_path, table), f"{table} should exist after upgrade head"
-    # head revision must equal the latest migration id (currently 006 — Phase 1 admin).
-    assert _current_revision(db_path) == "006"
+    # head revision must equal the latest migration id (currently 007 — Phase 4A indexes).
+    assert _current_revision(db_path) == "007"
     # 006 adds `role` to users.
     assert "role" in _column_names(db_path, "users")
+    # 007 adds order list filter indexes.
+    assert _index_exists(db_path, "idx_orders_status")
+    assert _index_exists(db_path, "idx_orders_created_at")
+    assert _index_exists(db_path, "idx_orders_user_id")
 
 
 def test_phase5b_columns_added_by_005(alembic_cfg):
@@ -146,8 +162,10 @@ def test_phase1_role_column_added_by_006(alembic_cfg):
     alembic_cmd.upgrade(cfg, "head")
     assert "role" in _column_names(db_path, "users")
 
-    # Downgrade -1 drops the column; `users` itself remains (from 001).
-    alembic_cmd.downgrade(cfg, "-1")
+    # Downgrade past 006 drops the column; `users` itself remains (from 001).
+    # Pinned to "005" instead of `-1` so the assertion survives new
+    # migrations being stacked on top of 006 (e.g. 007 — Phase 4A indexes).
+    alembic_cmd.downgrade(cfg, "005")
     assert _current_revision(db_path) == "005"
     assert _table_exists(db_path, "users")
     assert "role" not in _column_names(db_path, "users")
@@ -203,8 +221,10 @@ def test_full_round_trip_head_base_head(alembic_cfg):
     alembic_cmd.downgrade(cfg, "base")
     assert _current_revision(db_path) is None
     alembic_cmd.upgrade(cfg, "head")
-    assert _current_revision(db_path) == "006"
+    assert _current_revision(db_path) == "007"
     for table in ("users", "designs", "subscriptions", "visualization_projects"):
         assert _table_exists(db_path, table), f"{table} should be re-created at head"
     # Phase 5B columns must be present at head after the full round-trip.
     assert "version" in _column_names(db_path, "visualization_projects")
+    # Phase 4A indexes also restored.
+    assert _index_exists(db_path, "idx_orders_status")

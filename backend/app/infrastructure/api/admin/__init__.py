@@ -11,7 +11,9 @@ from fastapi import APIRouter
 
 from . import auth as _auth
 from . import dashboard as _dashboard
+from . import orders as _orders
 
 router = APIRouter()
 router.include_router(_auth.router, prefix="", tags=["admin"])
 router.include_router(_dashboard.router, prefix="", tags=["admin-analytics"])
+router.include_router(_orders.router, prefix="", tags=["admin-orders"])

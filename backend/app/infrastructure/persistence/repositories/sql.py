@@ -12,6 +12,7 @@ from app.domain.catalog.entities import Design, Category, DesignReview
 from app.domain.catalog.repositories import DesignRepository, CategoryRepository, ReviewRepository
 from app.domain.catalog.value_objects import Color
 from app.domain.order.entities import Order, OrderItem
+from app.domain.order.filters import OrderFilters
 from app.domain.order.repositories import OrderRepository
 from app.domain.order.value_objects import OrderStatus, Address
 from app.domain.subscription.entities import Subscription
@@ -327,6 +328,61 @@ class SqlOrderRepository(OrderRepository):
         result = await self._session.execute(text("SELECT nextval('order_number_seq')"))
         seq = result.scalar()
         return f"WOW-{seq:06d}"
+
+    async def find_paginated(
+        self, filters: OrderFilters, page: int = 1, size: int = 50,
+    ) -> tuple[list[Order], int]:
+        # Build the WHERE clause once, applied to both items and count
+        # queries to keep them in sync.
+        conditions = []
+        if filters.status is not None:
+            conditions.append(OrderModel.status == filters.status.value)
+        if filters.user_id is not None:
+            conditions.append(OrderModel.user_id == filters.user_id)
+        if filters.date_from is not None:
+            conditions.append(OrderModel.created_at >= filters.date_from)
+        if filters.date_to is not None:
+            conditions.append(OrderModel.created_at < filters.date_to)
+
+        items_query = (
+            select(OrderModel)
+            .options(selectinload(OrderModel.items))
+        )
+        count_query = select(func.count()).select_from(OrderModel)
+
+        # Search joins users so the admin can locate orders by either the
+        # printed order number ("WOW-000123") or the customer's email/name.
+        # Both queries must apply the same join+predicate; otherwise total
+        # would count more rows than the items page returns.
+        if filters.search is not None:
+            pattern = f"%{filters.search.lower()}%"
+            items_query = items_query.join(
+                UserModel, UserModel.id == OrderModel.user_id, isouter=True
+            )
+            count_query = count_query.join(
+                UserModel, UserModel.id == OrderModel.user_id, isouter=True
+            )
+            search_predicate = or_(
+                func.lower(OrderModel.number).like(pattern),
+                func.lower(UserModel.email).like(pattern),
+                func.lower(UserModel.name).like(pattern),
+            )
+            conditions.append(search_predicate)
+
+        for c in conditions:
+            items_query = items_query.where(c)
+            count_query = count_query.where(c)
+
+        # Sort + paginate. `created_at DESC` matches the contract on
+        # `OrderRepository.find_paginated`.
+        offset = (page - 1) * size
+        items_query = items_query.order_by(desc(OrderModel.created_at)).offset(offset).limit(size)
+
+        items_result = await self._session.execute(items_query)
+        rows = items_result.scalars().unique().all()
+        count_result = await self._session.execute(count_query)
+        total = int(count_result.scalar() or 0)
+        return [_order_to_domain(row) for row in rows], total
 
 
 class SqlSubscriptionRepository(SubscriptionRepository):

@@ -361,33 +361,43 @@
 
 ---
 
-## Фаза 4A: Заказы — список и фильтры
+## Фаза 4A: Заказы — список и фильтры ✅ РЕАЛИЗОВАНО (2026-04-25)
 
 > **Цель:** Просмотр всех заказов с фильтрами/пагинацией/поиском.
 
 ### Backend
-- [ ] Domain: расширить `OrderRepository` методом `find_paginated(filters: OrderFilters, page: int, size: int) -> tuple[list[Order], int]`. `OrderFilters` — VO с полями `status?`, `user_id?`, `date_from?`, `date_to?`, `search?` (по номеру/email).
-- [ ] Application: use case `ListOrdersAdmin.execute(filters, page, size)`.
-- [ ] Infrastructure: реализация `SqlOrderRepository.find_paginated` с индексами. **Миграция: добавить индексы** `idx_orders_status`, `idx_orders_created_at`, `idx_orders_user_id` (если ещё нет).
-- [ ] Infrastructure: эндпоинт `GET /api/admin/orders?status=&from=&to=&search=&page=&size=` → `OrdersListResponse { items, total, page, size }`.
+- [x] Domain: `OrderFilters` VO (`backend/app/domain/order/filters.py`) — frozen dataclass со полями `status?`, `user_id?`, `date_from?`, `date_to?`, `search?`. Нормализует blank search → None, валидирует `date_from < date_to` (half-open `[from, to)`). Исключение `InvalidOrderFilterError`.
+- [x] Domain: `OrderRepository.find_paginated(filters, page, size)` (`backend/app/domain/order/repositories.py`).
+- [x] Application: `ListOrdersAdmin.execute(filters, page, size)` (`backend/app/application/order/use_cases.py`). Валидирует `1 <= page` и `1 <= size <= 200`.
+- [x] Infrastructure SQL: `SqlOrderRepository.find_paginated` с JOIN на `users` для поиска по `email`/`name` (`backend/app/infrastructure/persistence/repositories/sql.py`).
+- [x] Infrastructure InMemory: `InMemoryOrderRepository.find_paginated` + опциональный `users_source` callback для in-memory джойна по email/name (`backend/app/infrastructure/persistence/repositories/memory.py`). Контейнер прокидывает users-источник.
+- [x] Infrastructure миграция: `007_add_order_indexes.py` — `idx_orders_status`, `idx_orders_created_at`, `idx_orders_user_id` с `if_not_exists` (idempotent on SQLite test rig + Postgres prod). `downgrade()` симметричный.
+- [x] Infrastructure API: `GET /api/admin/orders?status=&from=&to=&search=&user_id=&page=&size=` → `OrdersListResponse` (`backend/app/infrastructure/api/admin/orders.py`). `Literal` валидация status, `ge=1, le=200` пагинация, `InvalidOrderFilterError → 422`. Подключён в `admin/__init__.py`.
 
 ### Frontend
-- [ ] `domains/admin/model/ordersAdminStore.ts` — фильтры, пагинация.
-- [ ] `domains/admin/api/ordersAdminApi.ts`.
-- [ ] `domains/admin/ui/AdminOrdersPage.tsx` — Ant Design `<Table>` со столбцами: №, Дата, Клиент, Сумма, Статус, Действия. `<Tag>` цветом по статусу.
-- [ ] Фильтры в шапке: `<Select>` статус, `<DatePicker.RangePicker>`, `<Input.Search>`.
-- [ ] Пагинация — встроенная в Ant Design Table; persist `page/size/filters` в URL search params.
-- [ ] Клик по строке → переход на `/admin/orders/:id` (заглушка, реализация в 4B).
+- [x] `domains/admin/api/ordersAdminApi.ts` — wire-types + `useOrdersAdminList(query)` с `placeholderData: keepPreviousData` для бесшовной пагинации.
+- [x] `domains/admin/model/ordersAdminStore.ts` — pure-helper модуль (без Zustand): URL — единственный source of truth. `queryFromSearchParams`, `searchParamsFromQuery`, `applyFilterPatch` (сбрасывает `page=1` при смене фильтра). `STATUS_OPTIONS` — единый словарь label_ru.
+- [x] `domains/admin/ui/AdminOrdersPage.tsx` — AntD `<Table>` (№, Дата, Клиент, Адрес, Позиций, Сумма, Статус), `<Tag>` цветом по статусу (placed=default, confirmed=blue, in_progress=orange, delivered=green, installed=success).
+- [x] Фильтры: `<Select>` статус с allowClear, `<RangePicker>` (день+1 для конверсии в half-open `[from, to)`), `<Input.Search>` по номеру/email/имени, кнопка «Сбросить» при активных фильтрах.
+- [x] Пагинация: AntD Table `pagination` управляется через URL; `pageSizeOptions: [25, 50, 100, 200]`, `showTotal`. Click на строке → `navigate(/admin/orders/:id)` (заглушка для 4B).
 
 ### Тесты
-- [ ] `tests/domain/order/test_order_filters.py` — построение `OrderFilters`.
-- [ ] `tests/application/order/test_list_orders_admin.py` — фильтрация, пагинация, права.
-- [ ] `tests/api/admin/test_orders_list.py` — 200 + контракт ответа.
-- [ ] `frontend/src/domains/admin/__tests__/ordersAdminStore.test.ts` — URL ↔ store sync.
+- [x] `backend/tests/domain/order/test_order_filters.py` — 9 тестов: defaults, status passthrough, search-trim, blank → None, half-open валидация, value equality для cache-key.
+- [x] `backend/tests/application/order/test_list_orders_admin.py` — 13 тестов: page/size validation, фильтрация по каждой оси, AND-композиция, сортировка newest-first, пагинация (full/partial/empty page).
+- [x] `backend/tests/api/admin/test_orders_list.py` — 9 тестов: 401, 403, 422 (status/size/inverted-window), 200 happy-path с проверкой контракта `OrderListItemResponse`, фильтр-нарративов status/page/size.
+- [x] `backend/tests/infrastructure/test_alembic.py` — обновлён до head=007 + проверка наличия трёх индексов; downgrade-цель в `test_phase1_role_column_added_by_006` фиксирована на "005" (вместо `-1`) для устойчивости к новым миграциям сверху.
+- [x] `frontend/src/domains/admin/__tests__/ordersAdminStore.test.ts` — 11 тестов: defaults, парсинг каждой оси, отказ от unknown статуса, fallback page/size, blank search → null, omit-defaults в URL, round-trip identity, applyFilterPatch (page reset + immutability), STATUS_OPTIONS = backend enum.
 
 ### Definition of Done
-- 1000 фейковых заказов отдаются страницей по 50 за <300мс.
-- Фильтры и пагинация переживают F5 (через URL).
+- ✅ Фильтры и пагинация переживают F5 — URL источник истины, round-trip identity тестом зафиксирован.
+- ⚠️ Бенчмарк "1000 заказов <300мс" **не запущен в этой фазе** — индексы добавлены и используются (`status`, `created_at`, `user_id`), нагрузочный тест отложен в backlog как perf-тест (см. tech-debt #1 ниже). На in-memory рантайме (тестовая среда) бенчмарк бессмысленен; нужна нагрузочная фикстура с PostgreSQL — запланирована к Phase 4B audit.
+
+### Замечания / tech-debt 4A
+1. **Perf-тест 1000 заказов не реализован** — DoD требует <300мс на странице 50 из 1000. Добавить `tests/perf/test_orders_list_perf.py` с PostgreSQL-фикстурой и сидом 1000 заказов через `SqlOrderRepository`. **Owner:** до закрытия Phase 4B.
+2. **Дублирование `STATUS_LABELS` в двух местах** — `STATUS_OPTIONS` в `ordersAdminStore.ts` и `STATUS_LABELS` в `AdminDashboardPage.tsx` несут одинаковый словарь. План на Phase 4B (когда появится `AdminOrderDetailPage`) — вынести в `frontend/src/domains/order/model/statusLabels.ts` как single source.
+3. **Контейнер: новая зависимость `_mem_user_repo` в конструкторе `_mem_order_repo`** — порядок инициализации в `container.py` теперь матерь имеет значение (user_repo создаётся раньше). Это ОК (lambda отложенный resolve), но при будущей реорганизации стоит держать в голове.
+4. **AdminOrdersPage не покрыт component-тестом** — store тесты доказывают URL↔state контракт, но визуальное отображение колонок/тегов не проверено. Добавить smoke-тест в Phase 4B (вместе с тестом `AdminOrderDetailPage`).
+5. **`datetime.utcnow()` в фильтре** — в `_make_order` тестовых фикстур используется UTC-naive datetime; при переходе на timezone-aware (см. Phase 3 backlog) это может треснуть. Закрывается общим переходом в Phase 4B.
 
 ---
 
