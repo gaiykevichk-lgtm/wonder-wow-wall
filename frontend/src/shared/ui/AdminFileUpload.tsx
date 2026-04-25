@@ -22,7 +22,7 @@
  *   raw error is surfaced to `onError` for callers that want to render
  *   inline form errors.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Upload, message, Progress } from 'antd';
 import type { UploadProps } from 'antd';
 import { InboxOutlined } from '@ant-design/icons';
@@ -93,15 +93,18 @@ export function AdminFileUpload({
   // gates).
   const acceptAttr = allowedMimes?.join(',') ?? 'image/*';
 
-  // Cleanup: if the component unmounts mid-upload, abort the request to
-  // free up the connection and prevent a stale `onUploaded` callback
-  // from firing into an unmounted parent.
+  // Cleanup: if the component unmounts mid-upload, abort the in-flight
+  // XHR so the connection is released and a stale `onUploaded` callback
+  // can't fire into an unmounted parent. The controller is created per
+  // upload in `customRequest` and parked here via a ref — `useEffect`
+  // alone would lose access to the live controller because uploads
+  // start AFTER mount.
+  const abortRef = useRef<AbortController | null>(null);
   useEffect(() => {
-    const controller = new AbortController();
-    // We park the controller on a ref-like closure via the
-    // `customRequest` below; for simple cases the unmount path covers
-    // most lifecycle bugs.
-    return () => controller.abort();
+    return () => {
+      abortRef.current?.abort();
+      abortRef.current = null;
+    };
   }, []);
 
   const beforeUpload: UploadProps['beforeUpload'] = (file) => {
@@ -128,9 +131,16 @@ export function AdminFileUpload({
     const realFile = file as File;
     setState({ percent: 0, filename: realFile.name });
 
+    // Park a fresh controller on the ref so the unmount cleanup can
+    // abort *this* upload (not a stale one from a previous render).
+    const controller = new AbortController();
+    abortRef.current?.abort(); // cancel any prior in-flight upload
+    abortRef.current = controller;
+
     uploadFile({
       file: realFile,
       purpose,
+      signal: controller.signal,
       onProgress: (fraction) => {
         const pct = Math.round(fraction * 100);
         setState({ percent: pct, filename: realFile.name });
@@ -141,11 +151,13 @@ export function AdminFileUpload({
       },
     })
       .then((asset) => {
+        if (abortRef.current === controller) abortRef.current = null;
         setState({ percent: null, filename: null });
         onSuccess?.(asset, new XMLHttpRequest());
         onUploaded?.(asset);
       })
       .catch((err: unknown) => {
+        if (abortRef.current === controller) abortRef.current = null;
         setState({ percent: null, filename: null });
         if (err instanceof UploadError) {
           // Silent for user-initiated aborts; toast for everything else.

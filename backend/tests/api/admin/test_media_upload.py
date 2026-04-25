@@ -132,6 +132,18 @@ class TestAuthGuard:
         assert resp.status_code == 401
 
     @pytest.mark.asyncio
+    async def test_constraints_requires_admin_role(self, client, storage_root):
+        # Symmetry with upload/delete: a customer-token must NOT be able
+        # to read media constraints (they leak per-purpose limits which
+        # are admin-internal — public UI doesn't need them).
+        token = await _customer_token(client)
+        resp = await client.get(
+            "/api/admin/media/constraints",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 403
+
+    @pytest.mark.asyncio
     async def test_upload_requires_admin_role(self, client, storage_root):
         token = await _customer_token(client)
         resp = await client.post(

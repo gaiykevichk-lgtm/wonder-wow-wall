@@ -748,15 +748,28 @@ Frontend:
 
 #### Некритичные замечания / тех-долг
 
-1. **`AdminFileUpload.tsx:99-105` — мёртвый `useEffect` с `AbortController`.** Контроллер создаётся, но ни в один `uploadFile()`-вызов не передаётся (`customRequest` строит запрос без `signal`). На unmount `controller.abort()` вызывается, но слушателей нет — no-op. Симптом для пользователя: если админ закроет страницу в момент загрузки 10MB файла, XHR продолжит работу до завершения, и `setState({percent: null})` стрельнёт в unmounted компонент (React 18 — warning, не crash). **Фикс:** либо удалить эффект, либо реально хранить controller в `useRef` и пробросить `signal` в `uploadFile`. Закрывается до Phase 7A (там `AdminFileUpload` начнёт использоваться по-настоящему).
-2. **Нет компонентного теста для `AdminFileUpload.tsx`.** Plan checklist (line 681) перечисляет только `uploadFile.test.ts`. Не покрыто: `beforeUpload` size/mime pre-filter (lines 107-120), `ERROR_LABELS` mapping (42-49), `state.percent`/`disabled` поведение, customRequest happy/error пути. Добавить smoke-тест в Phase 7A одновременно с первым потребителем.
+1. ~~**`AdminFileUpload.tsx:99-105` — мёртвый `useEffect` с `AbortController`.**~~ ✅ **Исправлено 2026-04-25, follow-up 2:** введён `abortRef = useRef<AbortController|null>(null)`. `customRequest` создаёт fresh controller на каждую загрузку, паркует на `abortRef`, передаёт `controller.signal` в `uploadFile()`. На unmount `useEffect`-cleanup вызывает `abortRef.current?.abort()` — теперь реально отменяет in-flight XHR. На new upload предыдущий controller также аборится (защита от двойного клика). По завершении (success/error) — `abortRef` чистится, если контроллер всё ещё текущий. Покрытие через `uploadFile.test.ts:abort` уже есть на helper-уровне; компонентный smoke остаётся за Phase 7A (см. п.2).
+2. **Нет компонентного теста для `AdminFileUpload.tsx`.** Plan checklist (line 681) перечисляет только `uploadFile.test.ts`. Не покрыто: `beforeUpload` size/mime pre-filter (lines 107-120), `ERROR_LABELS` mapping (42-49), `state.percent`/`disabled` поведение, customRequest happy/error пути, новый abort-on-unmount контракт. Добавить smoke-тест в Phase 7A одновременно с первым потребителем.
 3. **Нет теста для API-layer pre-reject** (`media.py:146-150` — ветка `file.size > GLOBAL_MAX_SIZE_BYTES` ДО `use_case.execute`). Use-case-уровень покрыт `TestTooLarge.test_global_cap_takes_precedence_over_purpose`, но именно ранний возврат из API не отбит отдельным тестом. Низкий приоритет — пути ведут к одному handler-у.
-4. **`TestAuthGuard` для `GET /constraints`** проверяет только 401 (no token), но не 403 (customer token). Upload/Delete покрывают 403. Добавить парный `test_constraints_requires_admin_role` для симметрии.
+4. ~~**`TestAuthGuard` для `GET /constraints`** проверяет только 401 (no token), но не 403 (customer token).~~ ✅ **Исправлено 2026-04-25, follow-up 2:** добавлен `test_constraints_requires_admin_role` в `test_media_upload.py:TestAuthGuard` — customer-токен → 403. Теперь все три admin-эндпоинта (constraints/upload/delete) покрыты симметрично 401/403. Тестовый счёт: 15→16/16.
 5. **`uploaded_at: datetime.utcnow()`** (`entities.py:42`, `models.py:293`) — deprecation warning Python 3.12+. Project-wide tech-debt (отмечен ещё в Phase 3 audit), не Phase 6 specific.
 6. **Прямой доступ к `_mem_media_repo._assets`** в `tests/api/admin/test_media_upload.py:60, 63` (`.clear()`). Очередная точка лазя в private поле InMemory-репо — закрывается общей задачей #7 из Phase 4A audit (публичный `clear()`/seed-helper для всех InMemory* реализаций).
 7. **Комментарий `media.py:139-145`** говорит «Cheap pre-reject before reading the body». Уточнение: Starlette уже буферизовала multipart в SpooledTemporaryFile к моменту входа в handler; ранний raise экономит CPU на use-case-валидации, но не bandwidth на HTTP-уровне. Косметика.
-8. **`LocalFileStorage.delete` (`local.py:75-78`)** ловит только `FileNotFoundError`. Контракт ABC обещает идемпотентность только для отсутствующего файла; permission denied / OSError должен пробрасываться. Риск низкий (root-owned storage в проде), но по букве контракта стоит сузить except или явно задокументировать «swallow all OSError».
+8. ~~**`LocalFileStorage.delete` (`local.py:75-78`)** ловит только `FileNotFoundError`.~~ ✅ **Исправлено 2026-04-25, follow-up 2:** контракт ABC явно зафиксирован комментарием в коде — идемпотентность гарантируется ТОЛЬКО для «file not present», все остальные `OSError` (permission denied, EIO, EBUSY, родительский dir исчез) пробрасываются. Поведение не менялось (except был узким), формализована намерение, чтобы будущий рефактор не размыл контракт «blanket `except OSError`».
 9. **`AdminFileUpload` и `uploadFile` пока никем не импортируются** (Grep: только сам компонент + тест). Это намеренный orphan-релиз (см. цель фазы — «Self-contained», Phase 7A/7B заблокированы Фазой 6 и станут потребителями). При обзоре Phase 7A проверить, что компонент действительно подключился — иначе риск повторения паттерна Phase 5 (orphan `usersAdminApi.ts`).
+
+#### Применённые фиксы (2026-04-25, follow-up 2)
+
+| # | Файл | Что изменилось |
+|---|------|----------------|
+| N1 | `frontend/src/shared/ui/AdminFileUpload.tsx` | `abortRef = useRef<AbortController\|null>(null)` + fresh controller на каждый upload + `signal` пробрасывается в `uploadFile()` + cleanup на unmount + cleanup ref после resolve/reject. Мёртвый `useEffect` снят, abort-on-unmount теперь работает. |
+| N4 | `backend/tests/api/admin/test_media_upload.py:TestAuthGuard` | +`test_constraints_requires_admin_role` (customer-токен → 403). 16/16 passed. |
+| N8 | `backend/app/infrastructure/storage/local.py:delete` | Комментарий явно фиксирует контракт: idempotent ТОЛЬКО для отсутствующего файла, всё остальное (`PermissionError`/`OSError`) пробрасывается. Поведение не менялось — формализовано намерение. |
+
+**Регрессионная проверка после фиксов:**
+- Backend: `tests/api/admin/test_media_upload.py` — **16/16 зелёные** (было 15).
+- Frontend: `src/domains/admin/__tests__/uploadFile.test.ts` — **14/14 зелёные** (no regression на helper-контракте).
+- TypeScript: `tsc --noEmit` в `AdminFileUpload.tsx`/`uploadFile.ts` — без новых ошибок (pre-existing TS-warning'и в visualizer/api/client — не фаза 6).
 
 ### Файлы, добавленные/изменённые в Фазе 6 (для archeology)
 

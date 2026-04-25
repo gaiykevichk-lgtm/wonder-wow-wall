@@ -71,7 +71,11 @@ class LocalFileStorage(FileStorage):
 
     async def delete(self, path: str) -> None:
         abs_path = os.path.join(self._root, path)
-        # Idempotent — the use case retries; missing file is success.
+        # Per the `FileStorage` ABC contract, idempotency is guaranteed
+        # ONLY for "file not present" — every other OSError (permission
+        # denied, EIO, EBUSY, parent dir gone) is propagated so the
+        # caller can decide whether to retry / page on-call. We do not
+        # `except OSError` blanket-swallow.
         try:
             os.remove(abs_path)
         except FileNotFoundError:

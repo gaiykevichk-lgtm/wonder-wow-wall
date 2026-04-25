@@ -14,7 +14,7 @@ need to be larger than panel-photos; design previews are small thumbnails.
 Keeping the table here (in the domain) means the same numbers are visible to
 the use case and the admin UI without crossing a layer boundary.
 """
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 
 
