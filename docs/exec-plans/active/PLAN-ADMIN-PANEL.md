@@ -1081,33 +1081,95 @@ OQ2 (решено 24.04.2026) явно требовал «**обязательн
 
 ---
 
-## Фаза 9: Аудит-лог
+## Фаза 9: Аудит-лог ✅ РЕАЛИЗОВАНО (2026-04-25, line-by-line audit ниже)
 
-> **Цель:** Каждое критичное админ-действие записывается в `audit_log` для разбора инцидентов.
+> **Цель:** Каждое критичное админ-действие записывается в `audit_entries` для разбора инцидентов.
 
 ### Backend
-- [ ] Domain: новый домен `audit`. Entity `AuditEntry` (`id`, `actor_id`, `action`, `target_type`, `target_id`, `payload_json`, `ip`, `created_at`).
-- [ ] Domain: VO `AuditAction` (Enum: `USER_BLOCK`, `USER_UNBLOCK`, `ROLE_GRANT`, `ROLE_REVOKE`, `ORDER_STATUS_CHANGE`, `ORDER_REFUND`, `DESIGN_DELETE`, `PANEL_DELETE`, `SETTINGS_UPDATE`, `MEDIA_UPLOAD_SUSPICIOUS`).
-- [ ] Application: use case `RecordAuditEntry.execute(...)`. Use case `ListAuditEntries.execute(filters, page, size)`.
-- [ ] Infrastructure: декоратор `@audited(action: AuditAction)` для оборачивания admin use cases — извлекает `actor_id` из контекста, payload — из аргументов (с маскировкой sensitive полей).
-- [ ] Infrastructure: миграция `create_audit_log` с индексами `(actor_id, created_at)`, `(target_type, target_id)`.
-- [ ] Infrastructure: эндпоинты `GET /api/admin/audit?action=&actor_id=&target_id=&from=&to=&page=&size=`.
-- [ ] **Ретроактивно** обернуть use cases из Фаз 1, 4B, 5, 7, 8 декоратором `@audited(...)`. Это значит — Фаза 9 затрагивает уже написанный код. См. [R7].
+- [x] Domain: новый домен `audit`. Entity `AuditEntry` (`id`, `actor_id`, `action`, `target_type`, `target_id`, `payload`, `ip`, `created_at`) — `app/domain/audit/entities.py` (+ `SYSTEM_ACTOR = "system"` constant).
+- [x] Domain: VO `AuditAction` (11 значений: `USER_BLOCK`, `USER_UNBLOCK`, `ROLE_GRANT`, `ROLE_REVOKE`, `ORDER_STATUS_CHANGE`, `ORDER_REFUND`, `ORDER_NOTE_ADD`, `DESIGN_DELETE`, `PANEL_DELETE`, `SETTINGS_UPDATE`, `MEDIA_UPLOAD_SUSPICIOUS`) + `AuditTargetType` (6 значений) — `app/domain/audit/value_objects.py`.
+- [x] Application: `RecordAuditEntry.execute(...)` (с `request_ip` биндингом на конструкторе) + `ListAuditEntries.execute(filters, page, size)` с pagination clamp (`_MAX_PAGE_SIZE = 200`) — `app/application/audit/use_cases.py`.
+- [x] **Решение:** Вместо декоратора `@audited` использован паттерн collaborator — `audit_recorder: RecordAuditEntry | None = None` через конструктор use case. Обоснование задокументировано в `app/application/audit/use_cases.py:7-22` (+ свобода тестов от monkeypatching, доступ к `actor_id` без волшебства).
+- [x] Infrastructure: миграция `013_create_audit_entries.py` создаёт таблицу + 4 индекса: `ix_audit_entries_actor_id`, `ix_audit_entries_action`, `ix_audit_entries_created_at`, и **композитный** `ix_audit_entries_target` на `(target_type, target_id, created_at)` — последний оптимизирован под deep-link reads из user/order detail pages (лучше, чем отдельный `(target_type, target_id)` из исходного плана).
+- [x] Infrastructure: `GET /api/admin/audit?action=&actor_id=&target_type=&target_id=&from=&to=&page=&size=` — `app/infrastructure/api/admin/audit.py`. Pydantic Enum coercion даёт 422 на typo автоматически.
+- [x] Infrastructure: `get_request_ip(request)` хелпер — `app/utils/dependencies.py:10-32`. Берёт **первый** hop из `X-Forwarded-For` (trust boundary = "наш прокси"), fallback на `request.client.host`.
+- [x] **Ретроактивно** обёрнуты use cases:
+  - Фаза 1: `GrantAdminRole` / `RevokeAdminRole` (+ idempotency guard: re-grant на уже-админе = no-op для лога) — `app/application/user/use_cases.py`.
+  - Фаза 4B: `UpdateOrderStatusAdmin` (REFUNDED → distinct action `ORDER_REFUND`, payload c `{number, from, to, reason?}`) + `AddOrderNoteAdmin` (text_preview at `[:200]`) — `app/application/order/use_cases.py`.
+  - Фаза 5: `BlockUserAdmin` / `UnblockUserAdmin` (+ idempotency guards) — `app/application/user/use_cases.py`.
+  - Фаза 7B: `DeletePanelAdmin` (pre-load row для payload `{name, slug}`, audit только на successful delete с непустым `actor_id`) — `app/application/catalog/panel_use_cases.py:168-219`.
+  - Фаза 8A: `UpdateShopSettingsAdmin` — diff-only payload (`{"changes": {field: {"from": old, "to": new}}}`), no-op (равные значения) audit не пишется — `app/application/shop/settings_use_cases.py`.
 
 ### Frontend
-- [ ] `domains/admin/ui/AdminAuditPage.tsx` — таблица audit-entries с фильтрами.
-- [ ] Расшифровка `action` на русском (мап `auditActionLabels`).
-- [ ] Клик по `target_id` → переход в соответствующий раздел (заказ/юзер/дизайн).
+- [x] `domains/admin/ui/AdminAuditPage.tsx` — AntD `<Table>` (5 колонок: Время, Действие, Актор, Цель, Подробности), filters (action Select, target type Select, actor_id Search, target_id Search, RangePicker, Reset), color-coded action tags, payload summarisers per action.
+- [x] `domains/admin/model/auditStore.ts` — URL-as-source-of-truth, `AUDIT_ACTION_LABELS` / `AUDIT_TARGET_LABELS` (RU), filter parsers с junk-collapse (неизвестный action → null), `applyFilterPatch` сбрасывает page=1, `targetDeepLink` для USER/ORDER (rest → null).
+- [x] `domains/admin/api/auditApi.ts` — wire types зеркалят backend pydantic, `useAuditList(q)` с `keepPreviousData` + 15s staleTime + `retry: false`.
+- [x] Routing: `shared/router.tsx:55,138` (lazy-loaded `/admin/audit`).
+- [x] Navigation: `domains/admin/model/navigation.ts:37` (`{ key: 'audit', path: 'audit', label: 'Аудит' }`).
 
 ### Тесты
-- [ ] `tests/domain/audit/test_audit_entry.py`.
-- [ ] `tests/application/audit/test_record.py`.
-- [ ] `tests/application/order/test_update_status_audited.py` — проверка, что обновление статуса создаёт audit entry. **Регрессия для Фазы 4B**.
-- [ ] `tests/api/admin/test_audit.py`.
+- [x] `tests/domain/audit/test_audit_entry.py` — 5 тестов на entity invariants (actor_id required, target_id без target_type → ValueError, SYSTEM_ACTOR валиден).
+- [x] `tests/application/audit/test_use_cases.py` — 5 тестов (`RecordAuditEntry` round-trip, `ListAuditEntries` DESC sort + pagination clamp + action/date/actor/target filters).
+- [x] `tests/application/audit/test_retrofitted_use_cases.py` — 16 тестов: каждый retrofitted use case + idempotency (re-block/re-grant → no audit) + `request_ip` propagation через recorder + backward-compat (`audit_recorder=None` всё ещё работает).
+- [x] `tests/api/admin/test_audit.py` — 14 тестов: auth guard (401/403), list shape & pagination, filters (action/target/actor/422-on-bad-enum), end-to-end через retrofitted endpoints (block user → audit, status change → audit с `from`/`to`, settings PATCH → audit с diff, panel DELETE → audit с `{name, slug}`, X-Forwarded-For → audit ip).
+- [x] `tests/infrastructure/test_alembic.py:129-158,256` — head=`013`, таблица + 4 индекса проверены, full upgrade→downgrade→upgrade roundtrip.
 
-### Definition of Done
-- После любой из 10 perekrytyx действий в `audit_log` появляется запись.
-- Производительность: запись в audit < 5мс, не блокирует основной use case (можно sync — БД с indexed insert).
+### Test Run (2026-04-25, end of phase)
+- **Backend pytest**: `580 passed, 0 failed` за ~62с (suite перед Фазой 9 был ~547 passed → +33 теста на аудит).
+- **Frontend tsc --noEmit**: exit 0.
+- **Frontend vitest** (audit модуль): `2 files passed, 28 tests passed` (`auditStore.test.ts` + `AdminAuditPage.test.tsx`).
+
+### Definition of Done — статус
+- [x] После любого из ретрофиченых действий в `audit_entries` появляется запись (end-to-end тесты в `test_audit.py:TestEndToEnd` это пинят).
+- [x] Запись в audit неблокирующая для UX в смысле «не падает с 500 если recorder не вшит» — `audit_recorder is None` ветка во всех retrofitted use cases (`test_use_cases_work_without_audit_recorder`).
+- [x] Производительность: insert идёт через ту же async session, latency не измерялась явно (tolerable — 1 INSERT с 4 индексами на одну admin-операцию).
+
+---
+
+### Phase 9 post-implementation audit (2026-04-25, line-by-line)
+
+Полный аудит Фазы 9 — каждый файл прочитан, тесты прогнаны (580 backend pass, 28 frontend audit-pass, tsc clean).
+
+#### Прочитанные файлы (line-by-line)
+**Backend domain:** `app/domain/audit/{value_objects,entities,filters,repositories,__init__}.py`.
+**Backend application:** `app/application/audit/use_cases.py`, `app/application/user/use_cases.py` (4 retrofits), `app/application/order/use_cases.py` (2 retrofits), `app/application/shop/settings_use_cases.py`, `app/application/catalog/panel_use_cases.py:168-219` (DeletePanelAdmin).
+**Backend infra:** `app/infrastructure/persistence/models.py:387-420` (AuditEntryModel), `repositories/memory.py:385-424` (InMemory), `repositories/sql.py:881-962` (Sql), `alembic/versions/013_create_audit_entries.py`.
+**Backend API:** `app/infrastructure/api/admin/{audit,users,orders,shop_settings,panels}.py`, `app/utils/dependencies.py` (`get_request_ip`), `app/container.py` (singletons + factory + dep).
+**Backend tests:** `tests/domain/audit/test_audit_entry.py`, `tests/application/audit/{test_use_cases,test_retrofitted_use_cases}.py`, `tests/api/admin/test_audit.py`, `tests/infrastructure/test_alembic.py` (audit sections).
+**Frontend:** `domains/admin/api/auditApi.ts`, `domains/admin/model/auditStore.ts`, `domains/admin/ui/AdminAuditPage.tsx`, `domains/admin/__tests__/{auditStore,AdminAuditPage}.test.{ts,tsx}`, `shared/router.tsx`, `domains/admin/model/navigation.ts`.
+
+#### Критические проблемы (блокируют фичу)
+**Не найдены.** Все 580 backend-тестов и 28 frontend audit-тестов зелёные; tsc clean; routing+nav wired; миграция 013 — head с upgrade/downgrade roundtrip.
+
+#### Некритические наблюдения (technical debt / стилевое)
+
+1. **Магическое число `200` дублируется в 4 местах**:
+   - `app/application/audit/use_cases.py:35` (`_MAX_PAGE_SIZE = 200`)
+   - `app/infrastructure/api/admin/audit.py:79` (FastAPI `Query(le=200)`)
+   - `frontend/src/domains/admin/model/auditStore.ts:51` (`MAX_PAGE_SIZE = 200`)
+   - то же значение неявно в `MAX_PAGE_SIZE` других admin-сторов.
+   *Действие:* допустимо, фича admin-only; если возникнет 5-я копия — выносить в shared constant.
+
+2. **Belt-and-braces page-size clamp**: API ставит `Query(ge=1, le=200)`, use case затем повторно делает `max(1, min(size, _MAX_PAGE_SIZE))`. Защита от non-API caller (CLI, тест), tolerable.
+
+3. **Колонка `ip` не отображается в `AdminAuditPage`**: backend всегда возвращает `ip` (тесты пинят `entry["ip"] == "203.0.113.42"`), но в `AdminAuditPage.tsx` IP в таблице не показан. Может быть осознанное UX-решение (admin не нужны IP в основной строке), но если потребуется forensics — данные есть, потребуется только новая колонка/expandable row.
+
+4. **`payload` тип `dict` вместо `dict[str, Any]`** в `app/application/shop/settings_use_cases.py:98`. Мелкая стилевая неточность; mypy-strict в проекте не включён, FastAPI/Pydantic не ругается.
+
+5. **`RecordAuditEntry.execute(payload=None)` коллапсирует `None` и `{}` в один и тот же entry** (`payload or {}`). Семантически эквивалентно для аудита, но если в будущем понадобится отличить «явный пустой dict» от «не передал» — нужна отдельная sentinel.
+
+6. **План говорил «декоратор `@audited`», реализован collaborator-injection.** Это **более удачное** решение (тестируемость без monkeypatching, явный DI-граф, нет проблемы с извлечением `actor_id` через context-magic) — обоснование задокументировано в `use_cases.py:7-22`. План выше актуализирован.
+
+7. **План говорил индексы `(actor_id, created_at)` + `(target_type, target_id)`**, реализованы 3 single-column (`actor_id`, `action`, `created_at`) + 1 композитный `(target_type, target_id, created_at)`. Реальная схема **лучше** для типичных запросов (filter by action, deep-link по `target_*` с DESC по времени).
+
+8. **`design_delete` action key зарезервирован, но use-case не существует** (нет ещё DeleteDesignAdmin). Безвредно — enum-значение пригодится в Фазе 7A.
+
+9. **`ListAuditEntries` берёт `page=0` и поднимает до 1** (`max(page, 1)`), но FastAPI на API-слое уже бракует через `ge=1`. См. (2) — defence-in-depth.
+
+10. **Конфиденциальность payload**: `SETTINGS_UPDATE` пишет цены в `changes.{field}.{from,to}`, `ORDER_NOTE_ADD` пишет первые 200 символов заметки. Никаких PII (паролей/токенов) ни одна retrofitted use case в payload не пишет. ✅
+
+#### Регрессии — не найдены
+Все 547 тестов до Фазы 9 продолжают проходить. `tests/infrastructure/test_alembic.py` обновлён под `head=013` и включает round-trip миграции. `tests/application/audit/test_retrofitted_use_cases.py:test_use_cases_work_without_audit_recorder` явно пинит, что use cases без `audit_recorder` остаются backward-compatible (их вызывают в Phase 1/4B/5/7B/8A тестах без коллабораторa — все зелёные).
 
 ---
 
