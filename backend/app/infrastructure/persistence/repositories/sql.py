@@ -73,7 +73,12 @@ def _design_to_domain(m: DesignModel) -> Design:
         id=m.id, name=m.name, slug=m.slug, category_id=m.category_id,
         style=m.style, image=m.image, description=m.description, price=m.price,
         colors=colors, rating=m.rating, reviews_count=m.reviews_count,
-        is_new=m.is_new, is_popular=m.is_popular, created_at=m.created_at,
+        is_new=m.is_new, is_popular=m.is_popular,
+        # Phase 7A — `getattr` shields tests that build a fake `DesignModel`
+        # without the column (e.g., a hand-rolled stub) from `AttributeError`.
+        # Production rows always have it (NOT NULL with `server_default=true()`).
+        is_published=bool(getattr(m, "is_published", True)),
+        created_at=m.created_at,
     )
 
 
@@ -185,6 +190,7 @@ class SqlDesignRepository(DesignRepository):
         self, category_id: str | None = None, search: str | None = None,
         sort_by: str = "name", offset: int = 0, limit: int = 20,
         *, color: str | None = None, style: str | None = None, is_new: bool | None = None,
+        is_published: bool | None = True,
     ) -> tuple[list[Design], int]:
         query = select(DesignModel)
         count_query = select(func.count()).select_from(DesignModel)
@@ -220,6 +226,13 @@ class SqlDesignRepository(DesignRepository):
             query = query.where(DesignModel.is_new == is_new)
             count_query = count_query.where(DesignModel.is_new == is_new)
 
+        # Phase 7A — public catalog passes `True`; admin passes `None` to
+        # see everything. Idiomatic `.is_(True)` matches both Postgres and
+        # SQLite (where booleans are stored as 0/1).
+        if is_published is not None:
+            query = query.where(DesignModel.is_published.is_(is_published))
+            count_query = count_query.where(DesignModel.is_published.is_(is_published))
+
         sort_map = {
             "name": asc(DesignModel.name),
             "price_asc": asc(DesignModel.price),
@@ -253,15 +266,55 @@ class SqlDesignRepository(DesignRepository):
     async def update(self, design: Design) -> Design:
         model = await self._session.get(DesignModel, design.id)
         if model:
+            # Phase 7A — admin patch must be able to mutate every field
+            # (not just the review-derived rating/reviews_count from the
+            # original review-add code path). Keeping the assignment list
+            # exhaustive is cheaper than splitting two repo methods.
             model.name = design.name
             model.slug = design.slug
+            model.category_id = design.category_id
+            model.style = design.style
+            model.image = design.image
+            model.description = design.description
+            model.price = design.price
             model.rating = design.rating
             model.reviews_count = design.reviews_count
             model.is_new = design.is_new
             model.is_popular = design.is_popular
+            model.is_published = design.is_published
             model.colors = [{"hex": c.hex, "name": c.name} for c in design.colors]
         await self._session.flush()
         return design
+
+    async def create(self, design: Design) -> Design:
+        model = DesignModel(
+            id=design.id,
+            name=design.name,
+            slug=design.slug,
+            category_id=design.category_id,
+            style=design.style,
+            image=design.image,
+            description=design.description,
+            price=design.price,
+            colors=[{"hex": c.hex, "name": c.name} for c in design.colors],
+            rating=design.rating,
+            reviews_count=design.reviews_count,
+            is_new=design.is_new,
+            is_popular=design.is_popular,
+            is_published=design.is_published,
+            created_at=design.created_at,
+        )
+        self._session.add(model)
+        await self._session.flush()
+        return design
+
+    async def delete(self, design_id: str) -> bool:
+        row = await self._session.get(DesignModel, design_id)
+        if row is None:
+            return False
+        await self._session.delete(row)
+        await self._session.flush()
+        return True
 
 
 class SqlCategoryRepository(CategoryRepository):
@@ -279,6 +332,55 @@ class SqlCategoryRepository(CategoryRepository):
         )
         row = result.scalar_one_or_none()
         return _category_to_domain(row) if row else None
+
+    async def get_by_slug(self, slug: str) -> Category | None:
+        result = await self._session.execute(
+            select(CategoryModel).where(CategoryModel.slug == slug)
+        )
+        row = result.scalar_one_or_none()
+        return _category_to_domain(row) if row else None
+
+    async def create(self, category: Category) -> Category:
+        model = CategoryModel(
+            id=category.id,
+            name=category.name,
+            slug=category.slug,
+            image=category.image,
+            count=category.count,
+        )
+        self._session.add(model)
+        await self._session.flush()
+        return category
+
+    async def update(self, category: Category) -> Category:
+        row = await self._session.get(CategoryModel, category.id)
+        if row is None:
+            raise LookupError(f"Category {category.id} not found")
+        row.name = category.name
+        row.slug = category.slug
+        row.image = category.image
+        row.count = category.count
+        await self._session.flush()
+        return category
+
+    async def delete(self, category_id: str) -> bool:
+        row = await self._session.get(CategoryModel, category_id)
+        if row is None:
+            return False
+        await self._session.delete(row)
+        await self._session.flush()
+        return True
+
+    async def count_designs(self, category_id: str) -> int:
+        # Pure count query — avoids materialising the full design list
+        # just to take its length. Mirrors the SQL the admin list view
+        # would do anyway when rendering the «N дизайнов» column.
+        result = await self._session.execute(
+            select(func.count())
+            .select_from(DesignModel)
+            .where(DesignModel.category_id == category_id)
+        )
+        return int(result.scalar_one())
 
 
 class SqlReviewRepository(ReviewRepository):

@@ -91,6 +91,14 @@ class DesignModel(Base):
     reviews_count: Mapped[int] = mapped_column(Integer, default=0)
     is_new: Mapped[bool] = mapped_column(Boolean, default=False)
     is_popular: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Phase 7A — admin-controlled soft-hide. `default=True` covers the
+    # `Base.metadata.create_all()` test rig; `server_default=true()`
+    # backfills production rows on `alembic upgrade` so the NOT NULL
+    # constraint is satisfied. Same pattern as `PanelModel.is_active`
+    # (Phase 7B) and `UserModel.is_blocked` (Phase 5).
+    is_published: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=true()
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     category: Mapped["CategoryModel"] = relationship(back_populates="designs")

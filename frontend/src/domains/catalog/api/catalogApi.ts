@@ -14,7 +14,53 @@ export const catalogKeys = {
   // refetching from scratch.
   recommendations: (sourceType: 'design' | 'panel', sourceId: string) =>
     ['recommendations', sourceType, sourceId] as const,
+  // Phase 7B — public panel SKU catalogue. Constructor + visualizer
+  // consume this. One key for the full active catalogue (we expect a
+  // dozen rows, not paginated UX).
+  panels: () => ['panels'] as const,
 };
+
+// ─── Phase 7B — public panel SKU catalogue ────────────────────────────────
+
+export interface ApiPublicPanel {
+  id: string;
+  name: string;
+  slug: string;
+  width_mm: number;
+  height_mm: number;
+  size_label: string;
+  base_price: number;
+  description: string;
+  photo_path: string;
+  is_active: boolean;
+}
+
+export interface ApiPublicPanelListResponse {
+  items: ApiPublicPanel[];
+  total: number;
+}
+
+/**
+ * `GET /api/panels` — active panels only (backend hard-codes
+ * `include_inactive=False`). Used by the constructor and visualizer to
+ * replace the old hard-coded `PANEL_SIZES` / `BASE_PANEL_PRICES`
+ * constants. `staleTime: 5min` because admins edit panels rarely; the
+ * old constants were effectively immutable, the new API source needs
+ * just enough freshness to pick up an admin change without becoming a
+ * per-render request.
+ *
+ * `retry: false` so a transient backend failure falls through to the
+ * caller's constants-based fallback without retry-storming.
+ */
+export function usePanels() {
+  return useQuery({
+    queryKey: catalogKeys.panels(),
+    queryFn: () =>
+      api.get<ApiPublicPanelListResponse>('/panels?limit=100'),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+}
 
 // ─── Phase 10 — public recommendations ────────────────────────────────────
 

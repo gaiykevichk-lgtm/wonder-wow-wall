@@ -22,6 +22,13 @@ from app.domain.media.exceptions import (
     MediaInvalidMimeError,
     MediaTooLargeError,
 )
+from app.domain.catalog.catalog_exceptions import (
+    CategoryInUseError,
+    CategoryNotFoundError,
+    CategorySlugConflictError,
+    DesignNotFoundError,
+    DesignSlugConflictError,
+)
 from app.domain.catalog.panel_exceptions import (
     PanelNotFoundError,
     PanelSlugConflictError,
@@ -36,8 +43,13 @@ from app.domain.catalog.recommendation import (
 from app.infrastructure.api import auth, catalog, orders, shop, subscriptions, projects, contacts, visualizer
 from app.infrastructure.api import admin as admin_api
 from app.infrastructure.api.error_handlers import (
+    category_in_use_handler,
+    category_not_found_handler,
+    category_slug_conflict_handler,
     collinear_corners_handler,
     depth_estimation_handler,
+    design_not_found_handler,
+    design_slug_conflict_handler,
     duplicate_recommendation_target_handler,
     invalid_order_transition_handler,
     last_admin_removal_handler,
@@ -99,6 +111,13 @@ app.add_exception_handler(MediaCorruptError, media_corrupt_handler)
 # Phase 7B — admin panel CRUD: 404 on unknown id, 409 on slug conflict.
 app.add_exception_handler(PanelNotFoundError, panel_not_found_handler)
 app.add_exception_handler(PanelSlugConflictError, panel_slug_conflict_handler)
+# Phase 7A — admin catalog CRUD: 404 on unknown id, 409 on slug conflict
+# or category-in-use guard refusal.
+app.add_exception_handler(DesignNotFoundError, design_not_found_handler)
+app.add_exception_handler(DesignSlugConflictError, design_slug_conflict_handler)
+app.add_exception_handler(CategoryNotFoundError, category_not_found_handler)
+app.add_exception_handler(CategorySlugConflictError, category_slug_conflict_handler)
+app.add_exception_handler(CategoryInUseError, category_in_use_handler)
 # Phase 10 — admin recommendations: split between 422 (semantic invariants
 # the editor surfaces inline) and 404 (missing rows the admin can refresh).
 app.add_exception_handler(SelfRecommendationError, self_recommendation_handler)

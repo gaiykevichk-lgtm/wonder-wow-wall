@@ -17,9 +17,10 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { products } from '../../catalog/model/data';
-import { PANEL_SIZES, BASE_PANEL_PRICES, DESIGN_OVERLAY_PRICE } from '../../../shared/config/constants';
+import { DESIGN_OVERLAY_PRICE } from '../../../shared/config/constants';
 import { useSubscriptionStore } from '../../subscription/model/subscriptionStore';
 import { useCartStore } from '../../order/model/cartStore';
+import { useEffectivePanelPrices } from '../model/useEffectivePanelPrices';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -92,9 +93,13 @@ const INTERIOR_PRESETS: InteriorPreset[] = products.flatMap((product) =>
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function getPanelPrice(sizeKey: string): number {
+// Phase 7B — accepts the live price map (API-fed, constants fallback)
+// instead of reaching into the module-level constant directly. Top-level
+// because cellsOverlap and friends sit alongside it and the page composes
+// them; keeping it as a pure helper avoids a hook-in-a-hook tangle.
+function getPanelPrice(sizeKey: string, prices: Record<string, number>): number {
   const baseKey = sizeKey === '30x30' ? '300x300' : sizeKey === '30x60' ? '300x600' : '600x600';
-  return (BASE_PANEL_PRICES[baseKey] || 0) + DESIGN_OVERLAY_PRICE;
+  return (prices[baseKey] || 0) + DESIGN_OVERLAY_PRICE;
 }
 
 function cellsOverlap(
@@ -150,6 +155,10 @@ export default function ConstructorPage() {
   const hasSub = useSubscriptionStore((s) => s.hasSubscription);
   const activePlan = useSubscriptionStore((s) => s.getActivePlan);
   const openSubModal = useSubscriptionStore((s) => s.openModal);
+  // Phase 7B — live panel prices from /api/panels (constants fallback if
+  // the request hasn't resolved or returns nothing). Drives every
+  // cost-summary computation below.
+  const { prices: panelPrices } = useEffectivePanelPrices();
 
   const selectedDesign = products.find((p) => p.id === selectedDesignId) || products[0];
   const selectedColor = selectedDesign.colors[selectedColorIdx] || selectedDesign.colors[0];
@@ -174,7 +183,7 @@ export default function ConstructorPage() {
 
     for (const p of placedPanels) {
       const baseKey = p.sizeMm === '30×30 см' ? '300x300' : p.sizeMm === '30×60 см' ? '300x600' : '600x600';
-      totalBase += BASE_PANEL_PRICES[baseKey] || 0;
+      totalBase += panelPrices[baseKey] || 0;
       totalOverlay += isSubscriber ? 0 : DESIGN_OVERLAY_PRICE;
     }
 
@@ -187,7 +196,7 @@ export default function ConstructorPage() {
     const wallArea = (wallWidthMm * wallHeightMm) / 1_000_000;
 
     return { panelCount, totalBase, totalOverlay, total: totalBase + totalOverlay, totalArea, wallArea };
-  }, [placedPanels, wallWidthMm, wallHeightMm, isSubscriber]);
+  }, [placedPanels, wallWidthMm, wallHeightMm, isSubscriber, panelPrices]);
 
   // ─── Grid occupancy ────────────────────────────────────────────────────────
 
@@ -344,7 +353,7 @@ export default function ConstructorPage() {
 
     groups.forEach(({ panel, count }) => {
       const sizeKey = panel.sizeMm === '30×30 см' ? '300x300' : panel.sizeMm === '30×60 см' ? '300x600' : '600x600';
-      const unitPrice = (BASE_PANEL_PRICES[sizeKey] || 0) + DESIGN_OVERLAY_PRICE;
+      const unitPrice = (panelPrices[sizeKey] || 0) + DESIGN_OVERLAY_PRICE;
       const w = panel.widthCells * CELL_SIZE_MM;
       const h = panel.heightCells * CELL_SIZE_MM;
       const areaPerPanel = (w * h) / 1_000_000;
@@ -363,7 +372,7 @@ export default function ConstructorPage() {
     });
 
     message.success('Проект добавлен в корзину');
-  }, [placedPanels, addItem]);
+  }, [placedPanels, addItem, panelPrices]);
 
   // ─── Drag & drop ───────────────────────────────────────────────────────────
 
@@ -873,7 +882,7 @@ export default function ConstructorPage() {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', color: GRAY, marginBottom: 3 }}>
                 <span>Панель ({selectedSize.label}):</span>
-                <span>{BASE_PANEL_PRICES[`${selectedSize.widthMm}x${selectedSize.heightMm}`]?.toLocaleString('ru-RU')} ₽</span>
+                <span>{panelPrices[`${selectedSize.widthMm}x${selectedSize.heightMm}`]?.toLocaleString('ru-RU')} ₽</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', color: GRAY, marginBottom: 3 }}>
                 <span>Накладка (дизайн):</span>
@@ -881,7 +890,7 @@ export default function ConstructorPage() {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, color: DARK, borderTop: '1px solid rgba(0,0,0,0.04)', paddingTop: 4, marginTop: 2 }}>
                 <span>Итого за 1 шт:</span>
-                <span>{getPanelPrice(selectedSizeKey).toLocaleString('ru-RU')} ₽</span>
+                <span>{getPanelPrice(selectedSizeKey, panelPrices).toLocaleString('ru-RU')} ₽</span>
               </div>
             </div>
 

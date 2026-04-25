@@ -38,7 +38,13 @@ from app.infrastructure.persistence.repositories.analytics_repo import (
 # ─── In-Memory Singletons (used when USE_MEMORY_REPOS=true or for tests) ──
 
 _mem_design_repo = InMemoryDesignRepository(SEED_DESIGNS)
-_mem_category_repo = InMemoryCategoryRepository(SEED_CATEGORIES)
+# Phase 7A — `count_designs` lambda lets the singleton see live writes
+# from `_mem_design_repo` (admin creates/deletes designs in tests),
+# mirroring the `users_source` callback on `_mem_order_repo`.
+_mem_category_repo = InMemoryCategoryRepository(
+    SEED_CATEGORIES,
+    designs_source=lambda: _mem_design_repo._designs,
+)
 _mem_review_repo = InMemoryReviewRepository()
 _mem_subscription_repo = InMemorySubscriptionRepository()
 _mem_user_repo = InMemoryUserRepository()

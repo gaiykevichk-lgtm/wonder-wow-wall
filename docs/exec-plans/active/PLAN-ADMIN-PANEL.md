@@ -853,11 +853,11 @@ Frontend:
 
 ---
 
-## Фаза 7B: Загрузка панелей (физических SKU)
+## Фаза 7B: Загрузка панелей (физических SKU) ✅ РЕАЛИЗОВАНО (2026-04-25)
 
 > **Цель:** Сейчас «панель» — это только размер из `constants.ts`. Превратить в полноценный товар с фото, описанием, базовой ценой.
 >
-> **Статус:** ✅ Backend готов (2026-04-25). Frontend — pending.
+> **Статус:** ✅ Реализовано полностью (2026-04-25). Backend + Frontend + миграция конструктора + тесты.
 
 ### Backend ✅
 - [x] Domain: новый агрегат `Panel` (`backend/app/domain/catalog/panel.py`): `id`, `name`, `slug`, `size: PanelSize` (VO), `base_price: int`, `description`, `photo_path`, `is_active: bool`, `created_at`. Invariants в `__post_init__`: цена ≥ 0, dimensions > 0.
@@ -870,21 +870,23 @@ Frontend:
 - [x] Infrastructure: container wiring (`get_panel_repo` + singleton `_mem_panel_repo`).
 - [x] Infrastructure: `app/infrastructure/api/admin/panels.py` — `GET /api/admin/panels`, `GET /…/{id}`, `POST`, `PATCH`, `DELETE`. Подключено в `admin/__init__.py`. Public `GET /api/panels` — расширил `app/infrastructure/api/catalog.py`.
 - [x] Infrastructure: error handlers — `PanelNotFoundError → 404 + code:"panel_not_found"`, `PanelSlugConflictError → 409 + code:"panel_slug_conflict"`. Зарегистрированы в `main.py`.
-- [ ] Постепенный отказ от `frontend/src/shared/config/constants.ts` (PANEL_SIZES, BASE_PANEL_PRICES) — фронт начинает их получать из API. **Бек-совместимость:** на время миграции константы остаются как fallback. *(Фронт-задача, отложена.)*
+- [x] Постепенный отказ от `frontend/src/shared/config/constants.ts` (PANEL_SIZES, BASE_PANEL_PRICES) — конструктор получает цены из API через `useEffectivePanelPrices` (`frontend/src/domains/constructor/model/useEffectivePanelPrices.ts`); константы остаются fallback на время миграции (см. ниже).
 
-### Frontend
-- [ ] `domains/admin/ui/AdminUploadPage.tsx` — список панелей + кнопка «Добавить панель».
-- [ ] Модалка панели: name, размер (width/height InputNumber), key (auto-gen), цена, описание (Textarea), upload фото через `AdminFileUpload`.
-- [ ] Toggle активности.
-- [ ] **Конструктор:** `domains/constructor/` обновить, чтобы получать панели из API (через TanStack Query), не из `constants.ts`. Совместимость fallback на 1 релиз.
+### Frontend ✅
+- [x] `domains/admin/ui/AdminUploadPage.tsx` — список панелей + кнопка «Добавить панель», фильтры (статус, поиск по name/slug), URL-source-of-truth (см. `domains/admin/model/panelsAdminStore.ts`).
+- [x] Drawer-форма панели: name, slug (auto-gen из name через `slugify`, ручная правка останавливает auto-fill), width/height InputNumber, size_label, base_price, description (TextArea), upload фото через `AdminFileUpload` с `purpose=PANEL_PHOTO`. Inline-ошибка `panel_slug_conflict` показывается рядом с полем slug; `panel_not_found` — toast.
+- [x] Inline `<Switch>` toggle активности через `useUpdatePanel`. Delete — `<Popconfirm>`.
+- [x] **Конструктор:** `useEffectivePanelPrices` (`domains/constructor/model/useEffectivePanelPrices.ts`) тянет цены из `usePanels()` (catalog API). При пустом ответе/ошибке/`undefined` — fallback на `BASE_PANEL_PRICES` (`fromApi: false`). API-ключи `<width_mm>x<height_mm>` совпадают со словарём констант — точечная замена без рефактора. Подключено в `ConstructorPage.tsx:161`.
 
-### Тесты ✅ (backend)
+### Тесты ✅
 - [x] `tests/domain/test_panel.py` — invariants Panel (4 теста).
 - [x] `tests/application/test_panel_use_cases.py` — все 6 use cases (15 тестов: happy/conflict/404/PATCH-semantics).
 - [x] `tests/api/admin/test_panels.py` — auth gates (3) + Create (4) + List (1) + Detail (2) + Update (4) + Delete (2) = 16 тестов.
 - [x] `tests/api/test_panels_public.py` — публичный листинг + защита от утечки inactive (4 теста).
 - [x] `tests/infrastructure/test_alembic.py` — pin head=011, проверка `panels` таблицы и индексов в round-trip.
-- [ ] `frontend/src/domains/constructor/__tests__/usePanels.test.ts` — fallback на константы при ошибке API. *(Фронт-задача.)*
+- [x] `frontend/src/domains/admin/__tests__/panelsAdminStore.test.ts` — URL round-trip, page-reset на смене фильтров, slugify (Cyrillic→ASCII), MAX_PAGE_SIZE pin.
+- [x] `frontend/src/domains/admin/__tests__/AdminUploadPage.test.tsx` — рендер списка, открытие drawer'а на «+ Добавить панель», вызов `useUpdatePanel` через inline Switch.
+- [x] `frontend/src/domains/constructor/__tests__/useEffectivePanelPrices.test.ts` — fallback на `BASE_PANEL_PRICES` при `data: undefined` / пустом списке; API-overrides поверх констант; партиал-миграция (отсутствующие в API размеры остаются из констант); ключевание `<width_mm>x<height_mm>`.
 
 ### Backend regression
 - ✅ **511 passed** (509 после Phase 7B + 2 регресс-теста за audit-cleanup), +41 новых тестов от Phase 7B.

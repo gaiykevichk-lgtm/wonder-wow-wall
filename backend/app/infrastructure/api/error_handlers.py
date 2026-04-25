@@ -33,6 +33,13 @@ from app.domain.media.exceptions import (
     MediaInvalidMimeError,
     MediaTooLargeError,
 )
+from app.domain.catalog.catalog_exceptions import (
+    CategoryInUseError,
+    CategoryNotFoundError,
+    CategorySlugConflictError,
+    DesignNotFoundError,
+    DesignSlugConflictError,
+)
 from app.domain.catalog.panel_exceptions import (
     PanelNotFoundError,
     PanelSlugConflictError,
@@ -240,6 +247,58 @@ async def panel_slug_conflict_handler(
     return JSONResponse(
         status_code=409,
         content={"detail": str(exc), "code": "panel_slug_conflict"},
+    )
+
+
+# ─── Phase 7A — admin catalog (categories + designs) ─────────────────
+# Three error families, mirrors of the Panel handlers above:
+# 404 for unknown id, 409 for slug conflict, 409 for in-use guard.
+
+
+async def design_not_found_handler(request: Request, exc: DesignNotFoundError):
+    return JSONResponse(
+        status_code=404,
+        content={"detail": str(exc), "code": "design_not_found"},
+    )
+
+
+async def design_slug_conflict_handler(
+    request: Request, exc: DesignSlugConflictError,
+):
+    return JSONResponse(
+        status_code=409,
+        content={"detail": str(exc), "code": "design_slug_conflict"},
+    )
+
+
+async def category_not_found_handler(
+    request: Request, exc: CategoryNotFoundError,
+):
+    return JSONResponse(
+        status_code=404,
+        content={"detail": str(exc), "code": "category_not_found"},
+    )
+
+
+async def category_slug_conflict_handler(
+    request: Request, exc: CategorySlugConflictError,
+):
+    return JSONResponse(
+        status_code=409,
+        content={"detail": str(exc), "code": "category_slug_conflict"},
+    )
+
+
+async def category_in_use_handler(request: Request, exc: CategoryInUseError):
+    """Refusal to delete a category with attached designs → 409.
+
+    Distinct `code` from `category_slug_conflict` so the admin UI can
+    render the precise message ("В категории есть N дизайнов") and
+    suggest moving them first.
+    """
+    return JSONResponse(
+        status_code=409,
+        content={"detail": str(exc), "code": "category_in_use"},
     )
 
 

@@ -11,9 +11,15 @@ class ListDesigns:
         sort_by: str = "name", offset: int = 0, limit: int = 20,
         *, color: str | None = None, style: str | None = None, is_new: bool | None = None,
     ) -> tuple[list[Design], int]:
+        # Phase 7A — public catalog must see only published designs. The
+        # repository's `is_published=True` default would already filter
+        # this if the admin path didn't exist; we pass it explicitly so
+        # a future API caller cannot accidentally widen the scope by
+        # routing through `ListDesigns`.
         return await self.repo.list_designs(
             category_id, search, sort_by, offset, limit,
             color=color, style=style, is_new=is_new,
+            is_published=True,
         )
 
 

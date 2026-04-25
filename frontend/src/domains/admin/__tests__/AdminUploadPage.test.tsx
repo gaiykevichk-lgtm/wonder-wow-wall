@@ -1,0 +1,185 @@
+/**
+ * Phase 7B — `<AdminUploadPage>` (panels SKU) smoke tests.
+ *
+ * Mirrors the strategy of `AdminUsersPage.test.tsx`: mock the data
+ * hooks so the SUT renders synchronously, then assert:
+ *   * column contract (every list-item field appears),
+ *   * the «+ Добавить панель» button opens the create drawer,
+ *   * the inline `<Switch>` calls the update mutation.
+ *
+ * AdminFileUpload is mocked away — its own behaviour is covered by
+ * `uploadFile.test.ts`; here it would just bring in unrelated XHR setup.
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+import type {
+  ApiPanel,
+  ApiPanelListResponse,
+} from '../api/panelsAdminApi';
+
+// ─── Mocks ─────────────────────────────────────────────────────────────
+
+const mockUseList = vi.fn();
+const mockCreateMutate = vi.fn();
+const mockUpdateMutate = vi.fn();
+const mockDeleteMutate = vi.fn();
+
+vi.mock('../api/panelsAdminApi', async () => {
+  const actual = await vi.importActual<typeof import('../api/panelsAdminApi')>(
+    '../api/panelsAdminApi',
+  );
+  return {
+    ...actual,
+    usePanelsAdminList: (q: unknown) => mockUseList(q),
+    useCreatePanel: () => ({
+      mutate: mockCreateMutate,
+      isPending: false,
+      variables: undefined,
+    }),
+    useUpdatePanel: () => ({
+      mutate: mockUpdateMutate,
+      isPending: false,
+      variables: undefined,
+    }),
+    useDeletePanel: () => ({
+      mutate: mockDeleteMutate,
+      isPending: false,
+      variables: undefined,
+    }),
+  };
+});
+
+// AdminFileUpload pulls in XHR-dependent code; stub it to a marker div
+// so we can assert it renders inside the drawer without bringing the
+// whole upload pipeline along.
+vi.mock('../../../shared/ui/AdminFileUpload', () => ({
+  AdminFileUpload: () => <div data-testid="admin-file-upload" />,
+}));
+
+import AdminUploadPage from '../ui/AdminUploadPage';
+
+// ─── Helpers ───────────────────────────────────────────────────────────
+
+function makePanel(over: Partial<ApiPanel> = {}): ApiPanel {
+  return {
+    id: 'p-1',
+    name: 'Панель 30×30',
+    slug: 'panel-30x30',
+    width_mm: 300,
+    height_mm: 300,
+    size_label: '30×30 см',
+    base_price: 890,
+    description: '',
+    photo_path: '',
+    is_active: true,
+    created_at: '2026-04-25T10:00:00Z',
+    ...over,
+  };
+}
+
+function renderPage(items: ApiPanel[]) {
+  const response: ApiPanelListResponse = {
+    items,
+    total: items.length,
+    offset: 0,
+    limit: 50,
+  };
+  mockUseList.mockReturnValue({
+    data: response,
+    isFetching: false,
+    error: null,
+  });
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={['/admin/upload']}>
+        <AdminUploadPage />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
+beforeEach(() => {
+  mockUseList.mockReset();
+  mockCreateMutate.mockReset();
+  mockUpdateMutate.mockReset();
+  mockDeleteMutate.mockReset();
+});
+
+// ─── Tests ─────────────────────────────────────────────────────────────
+
+describe('<AdminUploadPage>', () => {
+  it('renders the page title', () => {
+    renderPage([]);
+    expect(screen.getByRole('heading', { name: 'Панели' })).toBeInTheDocument();
+  });
+
+  it('renders one row per panel with all contract fields visible', () => {
+    renderPage([
+      makePanel(),
+      makePanel({
+        id: 'p-2',
+        name: 'Панель 60×60',
+        slug: 'panel-60x60',
+        width_mm: 600,
+        height_mm: 600,
+        size_label: '60×60 см',
+        base_price: 2490,
+        is_active: false,
+      }),
+    ]);
+    expect(screen.getByText('Панель 30×30')).toBeInTheDocument();
+    expect(screen.getByText('Панель 60×60')).toBeInTheDocument();
+    expect(screen.getByText('panel-30x30')).toBeInTheDocument();
+    expect(screen.getByText('panel-60x60')).toBeInTheDocument();
+    expect(screen.getByText('30×30 см')).toBeInTheDocument();
+    expect(screen.getByText('60×60 см')).toBeInTheDocument();
+    expect(screen.getByText('890 ₽')).toBeInTheDocument();
+    expect(screen.getByText('2 490 ₽')).toBeInTheDocument();
+  });
+
+  it('renders the empty-state for a zero-row response', () => {
+    renderPage([]);
+    expect(
+      screen.getByText((_, el) =>
+        el?.classList.contains('ant-empty-description') ?? false,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('opens the create drawer on «Добавить панель»', () => {
+    renderPage([]);
+    fireEvent.click(screen.getByRole('button', { name: /Добавить панель/i }));
+    expect(screen.getByText('Новая панель')).toBeInTheDocument();
+    expect(screen.getByLabelText('Название')).toBeInTheDocument();
+    expect(screen.getByLabelText('Slug')).toBeInTheDocument();
+    expect(screen.getByLabelText('Базовая цена (₽)')).toBeInTheDocument();
+    expect(screen.getByTestId('admin-file-upload')).toBeInTheDocument();
+  });
+
+  it('toggling the inline Switch fires useUpdatePanel with is_active patch', () => {
+    renderPage([makePanel()]);
+    // The Switch is the only checkbox role rendered in the table row.
+    const sw = screen.getByRole('switch');
+    expect(sw).toBeInTheDocument();
+    fireEvent.click(sw);
+    expect(mockUpdateMutate).toHaveBeenCalledTimes(1);
+    expect(mockUpdateMutate.mock.calls[0][0]).toEqual({
+      panelId: 'p-1',
+      body: { is_active: false },
+    });
+  });
+
+  it('opens the edit drawer pre-filled when the edit button is clicked', () => {
+    renderPage([makePanel({ name: 'Уникальное Имя 42' })]);
+    // The edit button is rendered with aria-label="Редактировать".
+    const editBtn = screen.getByRole('button', { name: 'Редактировать' });
+    fireEvent.click(editBtn);
+    expect(screen.getByText('Редактировать панель')).toBeInTheDocument();
+    // Form should be pre-populated with the panel's name.
+    expect(screen.getByDisplayValue('Уникальное Имя 42')).toBeInTheDocument();
+  });
+});

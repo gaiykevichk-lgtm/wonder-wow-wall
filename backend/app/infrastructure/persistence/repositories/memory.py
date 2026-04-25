@@ -44,9 +44,15 @@ class InMemoryDesignRepository(DesignRepository):
 
     async def list_designs(
         self, category_id=None, search=None, sort_by="name", offset=0, limit=20,
-        *, color=None, style=None, is_new=None,
+        *, color=None, style=None, is_new=None, is_published=True,
     ):
         result = list(self._designs)
+        # Phase 7A — public catalog passes `is_published=True`; admin
+        # passes `None` to see everything. Filter is applied first so
+        # subsequent count/sort work on the visible-set, mirroring the
+        # SQL repo's `WHERE is_published = ?` clause.
+        if is_published is not None:
+            result = [d for d in result if d.is_published == is_published]
         if category_id:
             result = [d for d in result if d.category_id == category_id]
         if search:
@@ -79,16 +85,73 @@ class InMemoryDesignRepository(DesignRepository):
         self._designs = [d if d.id != design.id else design for d in self._designs]
         return design
 
+    async def create(self, design):
+        # Defence-in-depth — match the SQL `UNIQUE(slug)` so a test
+        # passing in-memory cannot surprise postgres. Same pattern as
+        # `InMemoryPanelRepository.create` (Phase 7B).
+        if any(d.slug == design.slug for d in self._designs):
+            raise ValueError(f"Design.slug collision: {design.slug}")
+        self._designs.append(design)
+        return design
+
+    async def delete(self, design_id):
+        before = len(self._designs)
+        self._designs = [d for d in self._designs if d.id != design_id]
+        return len(self._designs) != before
+
 
 class InMemoryCategoryRepository(CategoryRepository):
-    def __init__(self, categories: list[Category] | None = None):
+    def __init__(
+        self,
+        categories: list[Category] | None = None,
+        # Optional callback returning the live design list for
+        # `count_designs` — mirrors the `users_source` trick on
+        # `InMemoryOrderRepository`. Allows the singleton container
+        # to wire counts without coupling the repo to another repo.
+        designs_source: Callable[[], list[Design]] | None = None,
+    ):
         self._categories: list[Category] = categories or []
+        self._designs_source = designs_source
 
     async def list_all(self):
         return list(self._categories)
 
     async def get_by_id(self, category_id):
         return next((c for c in self._categories if c.id == category_id), None)
+
+    async def get_by_slug(self, slug):
+        return next((c for c in self._categories if c.slug == slug), None)
+
+    async def create(self, category):
+        if any(c.slug == category.slug for c in self._categories):
+            raise ValueError(f"Category.slug collision: {category.slug}")
+        self._categories.append(category)
+        return category
+
+    async def update(self, category):
+        for i, c in enumerate(self._categories):
+            if c.id == category.id:
+                if any(
+                    other.slug == category.slug and other.id != category.id
+                    for other in self._categories
+                ):
+                    raise ValueError(f"Category.slug collision: {category.slug}")
+                self._categories[i] = category
+                return category
+        raise LookupError(f"Category {category.id} not found")
+
+    async def delete(self, category_id):
+        before = len(self._categories)
+        self._categories = [c for c in self._categories if c.id != category_id]
+        return len(self._categories) != before
+
+    async def count_designs(self, category_id):
+        # If a designs_source was wired in, use the live list. Otherwise
+        # fall back to 0 — tests that don't care about cascade-guard
+        # behaviour shouldn't be forced to seed designs.
+        if self._designs_source is None:
+            return 0
+        return sum(1 for d in self._designs_source() if d.category_id == category_id)
 
 
 class InMemoryReviewRepository(ReviewRepository):

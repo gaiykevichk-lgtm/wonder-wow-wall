@@ -16,6 +16,11 @@ class DesignRepository(ABC):
         self, category_id: str | None = None, search: str | None = None,
         sort_by: str = "name", offset: int = 0, limit: int = 20,
         *, color: str | None = None, style: str | None = None, is_new: bool | None = None,
+        # Phase 7A — admin-controlled visibility filter.
+        # `True`  → only published rows (the public catalog default).
+        # `False` → only unpublished rows (rare; admin "scheduled" view).
+        # `None`  → both (the admin list).
+        is_published: bool | None = True,
     ) -> tuple[list[Design], int]:
         ...
 
@@ -31,6 +36,15 @@ class DesignRepository(ABC):
     async def update(self, design: Design) -> Design:
         ...
 
+    # ─── Phase 7A — admin CRUD ────────────────────────────────────
+    @abstractmethod
+    async def create(self, design: Design) -> Design:
+        ...
+
+    @abstractmethod
+    async def delete(self, design_id: str) -> bool:
+        ...
+
 
 class CategoryRepository(ABC):
     @abstractmethod
@@ -39,6 +53,31 @@ class CategoryRepository(ABC):
 
     @abstractmethod
     async def get_by_id(self, category_id: str) -> Category | None:
+        ...
+
+    @abstractmethod
+    async def get_by_slug(self, slug: str) -> Category | None:
+        ...
+
+    # ─── Phase 7A — admin CRUD ────────────────────────────────────
+    @abstractmethod
+    async def create(self, category: Category) -> Category:
+        ...
+
+    @abstractmethod
+    async def update(self, category: Category) -> Category:
+        ...
+
+    @abstractmethod
+    async def delete(self, category_id: str) -> bool:
+        ...
+
+    @abstractmethod
+    async def count_designs(self, category_id: str) -> int:
+        """Phase 7A — used by `DeleteCategoryAdmin` to refuse deletion
+        of a category that still has designs attached, and by the admin
+        list view to render the «N дизайнов» column without an N+1 over
+        the `DesignRepository`."""
         ...
 
 
