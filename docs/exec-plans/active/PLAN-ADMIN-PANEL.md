@@ -889,6 +889,38 @@ Frontend:
 ### Backend regression
 - ✅ 509 passed (было 470 после Фазы 6 + 7A пропущена), +39 новых тестов от Phase 7B.
 
+### Audit findings (2026-04-25)
+> Детальный line-by-line обзор всех файлов фазы. **0 критических**, 6 пунктов техдолга.
+
+**Проверено:**
+- Domain: `panel.py`, `panel_exceptions.py`, `repositories.py` (Panel ABC).
+- Application: `panel_use_cases.py` (6 use cases).
+- Infrastructure: `memory.py` (Panel-секция 285–347), `sql.py` (Panel-секция 680–802 + mapper), `alembic/versions/011_create_panels.py`, `admin/panels.py`, `catalog.py` (public endpoint), `error_handlers.py` (200–236), `main.py`, `container.py`, `admin/__init__.py`.
+- Тесты: `tests/domain/test_panel.py`, `tests/application/test_panel_use_cases.py`, `tests/api/admin/test_panels.py`, `tests/api/test_panels_public.py`, `tests/infrastructure/test_alembic.py`.
+- Конвенции: `CONVENTIONS.md` 430–550 (DTO naming, HTTP-коды).
+- Cross-grep `*Request` vs `*Create` по всему коду.
+- Smoke-тест `from app.main import app`.
+
+**Подтверждено корректным:**
+- DDD-слои не текут (нет import'ов infrastructure из domain).
+- Error envelope `{detail, code}` совпадает с Phase 5/6.
+- PATCH-семантика (`None` vs `""`) совпадает с users.py / orders.py.
+- Defence-in-depth slug uniqueness: pre-check в InMemory + SQL UNIQUE constraint.
+- Public listing хардкодит `include_inactive=False` на use-case-уровне (тест `test_include_inactive_query_string_ignored` доказывает отсутствие утечки).
+- Alembic round-trip head ↔ base ↔ head чистый, baseline SKU восстанавливаются.
+- `PanelSize` VO композируется в обоих направлениях (`_panel_to_domain` и Panel→PanelModel).
+- Все exception handlers зарегистрированы в `main.py`, orphan'ов нет.
+- Lazy-импорт `SqlPanelRepository` в container — циркулярных импортов нет.
+- Alembic 011 повторяет паттерн 010 (UniqueConstraint + `if_not_exists=True` + `server_default` для портируемости).
+
+**Технический долг (не блокирует фичу):**
+1. `infrastructure/api/admin/panels.py:212` — N+1 в PATCH-эндпоинте: `GetPanelAdmin` грузит панель, затем `UpdatePanelAdmin.execute()` снова делает `get_by_id`. Два хита БД на один PATCH с size-полями. Решение: убрать предварительный `GetPanelAdmin` и переложить композицию `PanelSize` внутрь use case.
+2. `infrastructure/api/admin/panels.py:244` — Inline-импорт `from fastapi.responses import JSONResponse` внутри `delete_panel_admin`. Поднять наверх.
+3. `infrastructure/api/admin/panels.py:86,105` — DTO названы `CreatePanelRequest`/`UpdatePanelRequest`. CONVENTIONS.md предписывает `*Create`/`*Update`, но в коде доминирует суффикс `*Request` (RegisterRequest, LoginRequest, AddReviewRequest, ContactRequest). Решение: либо переименовать ради конвенции, либо обновить CONVENTIONS.md под фактику.
+4. `infrastructure/persistence/repositories/sql.py:701` — Лишний `bool(m.is_active)` cast, SQLAlchemy уже возвращает native bool. Косметика.
+5. `app/container.py:76` — Backward-compat alias `panel_repo = _mem_panel_repo` не используется (Phase 7B новая, legacy-вызовов нет). Удалить.
+6. `infrastructure/api/admin/panels.py` (delete-ветка) — Возвращает локальный `JSONResponse(404)` вместо `raise PanelNotFoundError`. Технически работает (явный `status_code` overrides декоратор), но дублирует логику глобального handler'а. Тот же trade-off, что и в `DeleteMedia` Phase 6.
+
 ### Definition of Done
 - В админке создаётся панель → доступна в конструкторе.
 - Конструктор не падает при пустой БД (fallback на дефолтные).
