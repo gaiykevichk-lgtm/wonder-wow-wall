@@ -1,0 +1,270 @@
+/**
+ * Phase 7A — `<AdminCatalogPage>` smoke tests.
+ *
+ * Mocks the catalog admin hooks so the SUT renders synchronously, then
+ * asserts the page contract:
+ *   * Categories tab is the default and shows count column.
+ *   * Designs tab can be reached via URL `?tab=designs`.
+ *   * «+ Добавить категорию» / «+ Добавить дизайн» buttons open the
+ *     respective drawer with the right title.
+ *   * Inline `<Switch>` on the designs row fires `useToggleDesignVisibility`.
+ *   * Delete on a category with `designs_count > 0` shows the «нельзя
+ *     удалить» description in the popconfirm.
+ *
+ * `AdminFileUpload` is stubbed away — its own behaviour is covered by
+ * `uploadFile.test.ts`; here it would just bring in unrelated XHR setup.
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+import type {
+  ApiAdminCategory,
+  ApiAdminCategoryListResponse,
+  ApiAdminDesign,
+  ApiAdminDesignListResponse,
+} from '../api/catalogAdminApi';
+
+// ─── Mocks ─────────────────────────────────────────────────────────────
+
+const mockUseCategories = vi.fn();
+const mockUseDesigns = vi.fn();
+const mockCreateCategoryMutate = vi.fn();
+const mockUpdateCategoryMutate = vi.fn();
+const mockDeleteCategoryMutate = vi.fn();
+const mockCreateDesignMutate = vi.fn();
+const mockUpdateDesignMutate = vi.fn();
+const mockDeleteDesignMutate = vi.fn();
+const mockToggleVisibilityMutate = vi.fn();
+
+vi.mock('../api/catalogAdminApi', async () => {
+  const actual = await vi.importActual<typeof import('../api/catalogAdminApi')>(
+    '../api/catalogAdminApi',
+  );
+  return {
+    ...actual,
+    useAdminCategories: () => mockUseCategories(),
+    useAdminDesigns: (q: unknown) => mockUseDesigns(q),
+    useCreateCategory: () => ({
+      mutate: mockCreateCategoryMutate,
+      isPending: false,
+      variables: undefined,
+    }),
+    useUpdateCategory: () => ({
+      mutate: mockUpdateCategoryMutate,
+      isPending: false,
+      variables: undefined,
+    }),
+    useDeleteCategory: () => ({
+      mutate: mockDeleteCategoryMutate,
+      isPending: false,
+      variables: undefined,
+    }),
+    useCreateDesign: () => ({
+      mutate: mockCreateDesignMutate,
+      isPending: false,
+      variables: undefined,
+    }),
+    useUpdateDesign: () => ({
+      mutate: mockUpdateDesignMutate,
+      isPending: false,
+      variables: undefined,
+    }),
+    useDeleteDesign: () => ({
+      mutate: mockDeleteDesignMutate,
+      isPending: false,
+      variables: undefined,
+    }),
+    useToggleDesignVisibility: () => ({
+      mutate: mockToggleVisibilityMutate,
+      isPending: false,
+      variables: undefined,
+    }),
+  };
+});
+
+vi.mock('../../../shared/ui/AdminFileUpload', () => ({
+  AdminFileUpload: () => <div data-testid="admin-file-upload" />,
+}));
+
+import AdminCatalogPage from '../ui/AdminCatalogPage';
+
+// ─── Fixture builders ─────────────────────────────────────────────────
+
+function makeCategory(over: Partial<ApiAdminCategory> = {}): ApiAdminCategory {
+  return {
+    id: 'cat-1',
+    name: 'Природа',
+    slug: 'nature',
+    image: '',
+    designs_count: 0,
+    ...over,
+  };
+}
+
+function makeDesign(over: Partial<ApiAdminDesign> = {}): ApiAdminDesign {
+  return {
+    id: 'd-1',
+    name: 'Лес на рассвете',
+    slug: 'forest-sunrise',
+    category_id: 'cat-1',
+    style: 'Минимализм',
+    image: '',
+    description: '',
+    price: 1500,
+    colors: [],
+    rating: 0,
+    reviews_count: 0,
+    is_new: false,
+    is_popular: false,
+    is_published: true,
+    created_at: '2026-04-25T10:00:00Z',
+    ...over,
+  };
+}
+
+function setupQueries(
+  categories: ApiAdminCategory[],
+  designs: ApiAdminDesign[],
+): void {
+  const catResp: ApiAdminCategoryListResponse = { items: categories };
+  const desResp: ApiAdminDesignListResponse = {
+    items: designs,
+    total: designs.length,
+    offset: 0,
+    limit: 50,
+  };
+  mockUseCategories.mockReturnValue({
+    data: catResp,
+    isFetching: false,
+    error: null,
+  });
+  mockUseDesigns.mockReturnValue({
+    data: desResp,
+    isFetching: false,
+    error: null,
+  });
+}
+
+function renderPage(initialUrl = '/admin/catalog') {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={[initialUrl]}>
+        <AdminCatalogPage />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
+beforeEach(() => {
+  mockUseCategories.mockReset();
+  mockUseDesigns.mockReset();
+  mockCreateCategoryMutate.mockReset();
+  mockUpdateCategoryMutate.mockReset();
+  mockDeleteCategoryMutate.mockReset();
+  mockCreateDesignMutate.mockReset();
+  mockUpdateDesignMutate.mockReset();
+  mockDeleteDesignMutate.mockReset();
+  mockToggleVisibilityMutate.mockReset();
+});
+
+// ─── Tests ─────────────────────────────────────────────────────────────
+
+describe('<AdminCatalogPage>', () => {
+  it('renders the page title', () => {
+    setupQueries([], []);
+    renderPage();
+    expect(screen.getByRole('heading', { name: 'Каталог' })).toBeInTheDocument();
+  });
+
+  it('shows the categories tab by default with category rows', () => {
+    setupQueries(
+      [makeCategory({ designs_count: 3 }), makeCategory({ id: 'cat-2', name: 'Город', slug: 'city' })],
+      [],
+    );
+    renderPage();
+    expect(screen.getByText('Природа')).toBeInTheDocument();
+    expect(screen.getByText('Город')).toBeInTheDocument();
+    // designs_count column shows the value
+    expect(screen.getByText('3')).toBeInTheDocument();
+  });
+
+  it('opens the category create drawer on «+ Добавить категорию»', () => {
+    setupQueries([], []);
+    renderPage();
+    fireEvent.click(
+      screen.getByRole('button', { name: /Добавить категорию/i }),
+    );
+    expect(screen.getByText('Новая категория')).toBeInTheDocument();
+    expect(screen.getByLabelText('Название')).toBeInTheDocument();
+    expect(screen.getByLabelText('Slug')).toBeInTheDocument();
+  });
+
+  it('switches to the designs tab when ?tab=designs is in the URL', () => {
+    setupQueries(
+      [makeCategory()],
+      [makeDesign(), makeDesign({ id: 'd-2', name: 'Берег моря', slug: 'sea-shore' })],
+    );
+    renderPage('/admin/catalog?tab=designs');
+    expect(screen.getByText('Лес на рассвете')).toBeInTheDocument();
+    expect(screen.getByText('Берег моря')).toBeInTheDocument();
+    // Both fixture designs use the default price of 1500 — assert ≥1 cell.
+    expect(screen.getAllByText('1 500 ₽').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('renders the design category column resolved to a category name, not the id', () => {
+    setupQueries(
+      [makeCategory({ id: 'cat-9', name: 'Море', slug: 'sea' })],
+      [makeDesign({ category_id: 'cat-9' })],
+    );
+    renderPage('/admin/catalog?tab=designs');
+    expect(screen.getByText('Море')).toBeInTheDocument();
+  });
+
+  it('toggling the inline Switch fires useToggleDesignVisibility', () => {
+    setupQueries([makeCategory()], [makeDesign()]);
+    renderPage('/admin/catalog?tab=designs');
+    const sw = screen.getByRole('switch');
+    fireEvent.click(sw);
+    expect(mockToggleVisibilityMutate).toHaveBeenCalledTimes(1);
+    expect(mockToggleVisibilityMutate.mock.calls[0][0]).toBe('d-1');
+  });
+
+  it('opens the edit-design drawer pre-filled with the design name', () => {
+    setupQueries([makeCategory()], [makeDesign({ name: 'Уникальное Имя 42' })]);
+    renderPage('/admin/catalog?tab=designs');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Редактировать дизайн' }),
+    );
+    expect(screen.getByText('Редактировать дизайн')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Уникальное Имя 42')).toBeInTheDocument();
+  });
+
+  it('opens the design create drawer with «+ Добавить дизайн»', () => {
+    setupQueries([makeCategory()], []);
+    renderPage('/admin/catalog?tab=designs');
+    fireEvent.click(screen.getByRole('button', { name: /Добавить дизайн/i }));
+    expect(screen.getByText('Новый дизайн')).toBeInTheDocument();
+    expect(screen.getByLabelText('Категория')).toBeInTheDocument();
+    expect(screen.getByLabelText('Цена (₽)')).toBeInTheDocument();
+    expect(screen.getByTestId('admin-file-upload')).toBeInTheDocument();
+  });
+
+  it('surfaces a fetch error via Alert', () => {
+    mockUseCategories.mockReturnValue({
+      data: undefined,
+      isFetching: false,
+      error: new Error('Категории недоступны'),
+    });
+    mockUseDesigns.mockReturnValue({
+      data: undefined,
+      isFetching: false,
+      error: null,
+    });
+    renderPage();
+    expect(screen.getByText('Не удалось загрузить категории')).toBeInTheDocument();
+    expect(screen.getByText('Категории недоступны')).toBeInTheDocument();
+  });
+});

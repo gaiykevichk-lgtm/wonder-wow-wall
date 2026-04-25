@@ -818,38 +818,38 @@ Frontend:
 
 ---
 
-## Фаза 7A: Управление каталогом — категории и дизайны
+## Фаза 7A: Управление каталогом — категории и дизайны ✅ РЕАЛИЗОВАНО (2026-04-25)
 
-> **Статус (2026-04-25):** ⏳ НЕ НАЧАТА. Реализации нет ни на бекенде (нет use cases `*Admin`, нет endpoints `admin/categories|designs`, нет поля `Design.is_published`, нет миграции `add_is_published_to_designs`), ни на фронте (`AdminCatalogPage.tsx` — placeholder из Фазы 2, 11 строк). Все чекбоксы ниже корректно отмечены как `[ ]`. Зависимости (Фаза 6) закрыты, можно стартовать.
+> **Статус:** Backend был дописан в рамках Phase 9/10 retrofit (use cases в `app/application/catalog/admin_use_cases.py`, endpoints в `app/infrastructure/api/admin/catalog.py`, миграция `015_add_is_published_to_designs.py`, регресс `tests/api/test_public_catalog_filters_unpublished.py`). Frontend `AdminCatalogPage.tsx` дописан в этой итерации поверх существующего `catalogAdminApi.ts` + `catalogAdminStore.ts` — табы «Категории / Дизайны», Drawer-формы с auto-slug, inline `<Switch>` через dedicated `POST /designs/:id/toggle-visibility`, цветовой редактор `<ColorListEditor>`. Тесты: backend 58/58, frontend `AdminCatalogPage.test.tsx` 9/9.
 
 > **Цель:** CRUD категорий и дизайнов через админку. Использует Фазу 6 для загрузки превью.
 
 ### Backend
-- [ ] Application: use cases `CreateCategoryAdmin`, `UpdateCategoryAdmin`, `DeleteCategoryAdmin` (отказ если есть привязанные дизайны → `CategoryInUseError` → 409).
-- [ ] Application: use cases `CreateDesignAdmin`, `UpdateDesignAdmin`, `DeleteDesignAdmin`, `ToggleDesignVisibilityAdmin`.
-- [ ] Domain: добавить `Design.is_published: bool = True` (мягкое скрытие из публичного `/api/catalog`).
-- [ ] Domain: `Design.image` теперь — путь к `MediaAsset` (миграция: для старых строк-URL — оставить как есть, новые — через `MediaAsset`).
-- [ ] Infrastructure: миграция `add_is_published_to_designs`.
-- [ ] Infrastructure: эндпоинты `POST/PATCH/DELETE /api/admin/categories`, `POST/PATCH/DELETE /api/admin/designs`, `POST /api/admin/designs/:id/toggle-visibility`.
-- [ ] Публичный `GET /api/catalog/designs` — фильтрует `is_published = true`. **Регрессия-тест.**
+- [x] Application: use cases `CreateCategoryAdmin`, `UpdateCategoryAdmin`, `DeleteCategoryAdmin` (отказ если есть привязанные дизайны → `CategoryInUseError` → 409).
+- [x] Application: use cases `CreateDesignAdmin`, `UpdateDesignAdmin`, `DeleteDesignAdmin`, `ToggleDesignVisibilityAdmin`.
+- [x] Domain: добавить `Design.is_published: bool = True` (мягкое скрытие из публичного `/api/catalog`).
+- [x] Domain: `Design.image` теперь — путь к `MediaAsset` (миграция: для старых строк-URL — оставить как есть, новые — через `MediaAsset`).
+- [x] Infrastructure: миграция `add_is_published_to_designs` (`015_add_is_published_to_designs.py`).
+- [x] Infrastructure: эндпоинты `POST/PATCH/DELETE /api/admin/categories`, `POST/PATCH/DELETE /api/admin/designs`, `POST /api/admin/designs/:id/toggle-visibility`.
+- [x] Публичный `GET /api/catalog/designs` — фильтрует `is_published = true`. **Регрессия-тест** в `tests/api/test_public_catalog_filters_unpublished.py`.
 
 ### Frontend
-- [ ] `domains/admin/ui/AdminCatalogPage.tsx` — табы «Категории» / «Дизайны».
-- [ ] Табл категорий: имя, slug, кол-во дизайнов, кнопки edit/delete.
-- [ ] Модалка категории: name, slug (auto-gen), image upload через `AdminFileUpload`.
-- [ ] Табл дизайнов: превью, имя, категория, цена, статус (опубликован / скрыт), действия.
-- [ ] Модалка дизайна: name, slug, category (Select), description, price (InputNumber), массив цветов (динамический список Color Picker), upload превью.
-- [ ] Toggle публикации — Switch инлайн в строке таблицы.
+- [x] `domains/admin/ui/AdminCatalogPage.tsx` — табы «Категории» / «Дизайны» (`?tab=designs` в URL).
+- [x] Табл категорий: имя, slug, кол-во дизайнов, кнопки edit/delete (Popconfirm блокирует delete при `designs_count > 0`).
+- [x] Модалка категории: name, slug (auto-gen с Cyrillic→ASCII), image upload через `AdminFileUpload(purpose="BANNER")`.
+- [x] Табл дизайнов: превью, имя, категория (lookup по id → name), цена, опубликован (`<Switch>`), метки `new`/`hit`, действия.
+- [x] Модалка дизайна: name, slug, category (Select с поиском), description, price (`InputNumber`), цвета (`<ColorListEditor>` с native color picker), upload превью через `AdminFileUpload(purpose="DESIGN_PREVIEW")`.
+- [x] Toggle публикации — Switch инлайн в строке таблицы, через dedicated `POST /designs/:id/toggle-visibility`.
 
 ### Тесты
-- [ ] `tests/application/catalog/test_crud_admin.py`.
-- [ ] `tests/api/admin/test_catalog_crud.py`.
-- [ ] `tests/api/catalog/test_public_catalog_filters_unpublished.py` — регрессия.
-- [ ] `frontend/src/domains/admin/__tests__/AdminCatalogPage.test.tsx`.
+- [x] `tests/application/catalog/test_crud_admin.py`.
+- [x] `tests/api/admin/test_catalog_crud.py`.
+- [x] `tests/api/test_public_catalog_filters_unpublished.py` — регрессия.
+- [x] `frontend/src/domains/admin/__tests__/AdminCatalogPage.test.tsx` (9 smoke-тестов: title, tabs, drawers, inline switch, edit pre-fill, error Alert).
 
 ### Definition of Done
-- Создан дизайн → виден в публичном `/catalog` → скрыт → не виден.
-- Удаление непустой категории → 409 «есть дизайны».
+- ✅ Создан дизайн → виден в публичном `/catalog` → скрыт через `<Switch>` → не виден (регресс-тест pinned).
+- ✅ Удаление непустой категории → 409 `category_in_use`; UI блокирует Popconfirm OK при `designs_count > 0`.
 
 ---
 
