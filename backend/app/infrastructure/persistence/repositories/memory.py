@@ -23,6 +23,8 @@ from app.domain.user.repositories import UserRepository
 from app.domain.user.value_objects import UserRole
 from app.domain.media.entities import MediaAsset
 from app.domain.media.repositories import MediaAssetRepository
+from app.domain.shop.repositories import ShopSettingsRepository
+from app.domain.shop.settings import ShopSettings
 
 
 # ─── Catalog ─────────────────────────────────────────────────────────
@@ -345,3 +347,28 @@ class InMemoryPanelRepository(PanelRepository):
         before = len(self._panels)
         self._panels = [p for p in self._panels if p.id != panel_id]
         return len(self._panels) != before
+
+
+# ─── Shop settings (Phase 8A) ───────────────────────────────────────
+
+class InMemoryShopSettingsRepository(ShopSettingsRepository):
+    """Singleton-row mirror of `SqlShopSettingsRepository`.
+
+    Holds exactly one `ShopSettings` instance; default-constructed if
+    not seeded explicitly. Test fixtures can mutate the row in-place
+    via the public `_settings` attribute (mirroring the other repos
+    where tests poke `_panels.append(...)` etc.).
+    """
+
+    def __init__(self, settings: ShopSettings | None = None):
+        self._settings: ShopSettings = settings or ShopSettings()
+
+    async def get(self) -> ShopSettings:
+        return self._settings
+
+    async def update(self, settings: ShopSettings) -> ShopSettings:
+        # Replace in place so other holders of the singleton see the new
+        # values (the SQL counterpart has no such issue — Postgres is
+        # the single source of truth).
+        self._settings = settings
+        return self._settings

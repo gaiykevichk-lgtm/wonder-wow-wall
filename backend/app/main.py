@@ -26,7 +26,7 @@ from app.domain.catalog.panel_exceptions import (
     PanelNotFoundError,
     PanelSlugConflictError,
 )
-from app.infrastructure.api import auth, catalog, orders, subscriptions, projects, contacts, visualizer
+from app.infrastructure.api import auth, catalog, orders, shop, subscriptions, projects, contacts, visualizer
 from app.infrastructure.api import admin as admin_api
 from app.infrastructure.api.error_handlers import (
     collinear_corners_handler,
@@ -108,6 +108,7 @@ app.include_router(subscriptions.router, prefix="/api/subscriptions", tags=["sub
 app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
 app.include_router(contacts.router, prefix="/api", tags=["contacts"])
 app.include_router(visualizer.router, prefix="/api/visualizer/projects", tags=["visualizer"])
+app.include_router(shop.router, prefix="/api", tags=["shop"])
 app.include_router(admin_api.router, prefix="/api/admin", tags=["admin"])
 
 

@@ -28,6 +28,8 @@ from app.domain.user.value_objects import UserRole
 from app.domain.media.entities import MediaAsset
 from app.domain.media.repositories import MediaAssetRepository
 from app.domain.media.value_objects import MediaPurpose
+from app.domain.shop.repositories import ShopSettingsRepository
+from app.domain.shop.settings import SHOP_SETTINGS_SINGLETON_ID, ShopSettings
 
 from app.infrastructure.persistence.models import (
     DesignModel,
@@ -42,6 +44,7 @@ from app.infrastructure.persistence.models import (
     ProjectModel,
     MediaAssetModel,
     PanelModel,
+    ShopSettingsModel,
 )
 
 
@@ -800,3 +803,63 @@ class SqlPanelRepository(PanelRepository):
         await self._session.delete(row)
         await self._session.flush()
         return True
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Shop settings (Phase 8A)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def _shop_settings_to_domain(m: ShopSettingsModel) -> ShopSettings:
+    return ShopSettings(
+        id=m.id,
+        design_overlay_price=m.design_overlay_price,
+        installation_price=m.installation_price,
+        min_order_amount=m.min_order_amount,
+        updated_at=m.updated_at,
+    )
+
+
+class SqlShopSettingsRepository(ShopSettingsRepository):
+    """SQLAlchemy mirror of `InMemoryShopSettingsRepository`.
+
+    The singleton row is seeded by alembic migration `012`. If a deploy
+    somehow has an empty `shop_settings` table (e.g., the migration was
+    skipped), `get()` raises rather than synthesizing — silently
+    inserting at runtime would mask a real configuration error.
+    """
+
+    def __init__(self, session: AsyncSession):
+        self._session = session
+
+    async def get(self) -> ShopSettings:
+        result = await self._session.execute(
+            select(ShopSettingsModel).where(
+                ShopSettingsModel.id == SHOP_SETTINGS_SINGLETON_ID
+            )
+        )
+        row = result.scalar_one_or_none()
+        if row is None:
+            raise RuntimeError(
+                "shop_settings singleton row is missing — "
+                "did migration 012_create_shop_settings run?"
+            )
+        return _shop_settings_to_domain(row)
+
+    async def update(self, settings: ShopSettings) -> ShopSettings:
+        result = await self._session.execute(
+            select(ShopSettingsModel).where(
+                ShopSettingsModel.id == settings.id
+            )
+        )
+        row = result.scalar_one_or_none()
+        if row is None:
+            raise RuntimeError(
+                f"shop_settings row {settings.id!r} missing on update"
+            )
+        row.design_overlay_price = settings.design_overlay_price
+        row.installation_price = settings.installation_price
+        row.min_order_amount = settings.min_order_amount
+        row.updated_at = settings.updated_at
+        await self._session.flush()
+        return settings

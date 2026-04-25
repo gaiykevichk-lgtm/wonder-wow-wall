@@ -341,3 +341,36 @@ class PanelModel(Base):
         Boolean, nullable=False, default=True, server_default=true()
     )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+# ─── Shop settings (Phase 8A) ───────────────────────────────────────
+
+class ShopSettingsModel(Base):
+    """Phase 8A — singleton row of admin-managed business knobs.
+
+    There is exactly one row, with a fixed PK `"singleton"`. Modelled
+    as a regular table (not a JSON column) so admin patches survive a
+    schema migration unchanged and individual fields can grow indexes
+    later if needed.
+
+    Defaults match `frontend/src/shared/config/constants.ts` so the
+    catalog and constructor render identically before vs after the
+    Phase 8A switchover. The migration `012_create_shop_settings`
+    seeds the row with these values; the runtime never inserts.
+    """
+
+    __tablename__ = "shop_settings"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    design_overlay_price: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1200, server_default="1200",
+    )
+    installation_price: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0",
+    )
+    min_order_amount: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0",
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.utcnow,
+    )

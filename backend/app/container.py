@@ -20,6 +20,7 @@ from app.infrastructure.persistence.repositories.memory import (
     InMemoryUserRepository,
     InMemoryMediaAssetRepository,
     InMemoryPanelRepository,
+    InMemoryShopSettingsRepository,
 )
 from app.infrastructure.persistence.repositories.project_repo import (
     InMemoryProjectRepository,
@@ -59,6 +60,10 @@ _mem_media_repo = InMemoryMediaAssetRepository()
 # Phase 7B — panel SKU catalog. Same singleton rationale as media: tests
 # seed via `_mem_panel_repo._panels.append(...)` and the API sees it.
 _mem_panel_repo = InMemoryPanelRepository()
+# Phase 8A — singleton shop settings. The aggregate itself is one row;
+# the repo wraps it so tests can poke `_mem_shop_settings_repo._settings
+# = ShopSettings(...)` between cases without rebuilding the container.
+_mem_shop_settings_repo = InMemoryShopSettingsRepository()
 
 
 # ─── Backward-compatible aliases (used by existing tests) ────────────
@@ -93,6 +98,7 @@ def _get_sql_repo_classes() -> dict:
             SqlUserRepository,
             SqlMediaAssetRepository,
             SqlPanelRepository,
+            SqlShopSettingsRepository,
         )
         from app.infrastructure.persistence.repositories.project_repo import SqlProjectRepository
         from app.infrastructure.persistence.repositories.visualization_repo import SqlVisualizationProjectRepository
@@ -109,6 +115,7 @@ def _get_sql_repo_classes() -> dict:
             "analytics": SqlAnalyticsRepository,
             "media": SqlMediaAssetRepository,
             "panel": SqlPanelRepository,
+            "shop_settings": SqlShopSettingsRepository,
         }
     return _sql_repo_classes
 
@@ -206,6 +213,18 @@ def get_panel_repo(session=Depends(get_db_session)):
     if settings.USE_MEMORY_REPOS:
         return _mem_panel_repo
     return _get_sql_repo_classes()["panel"](session)
+
+
+def get_shop_settings_repo(session=Depends(get_db_session)):
+    """Phase 8A — singleton shop settings.
+
+    Both `/api/shop/settings` (public) and `/api/admin/shop/settings`
+    (admin) depend on this. The split is at the API layer (auth gate);
+    the use cases share the same repo dependency.
+    """
+    if settings.USE_MEMORY_REPOS:
+        return _mem_shop_settings_repo
+    return _get_sql_repo_classes()["shop_settings"](session)
 
 
 # ─── Phase 6 (admin panel) — file storage singleton ──────────────────
