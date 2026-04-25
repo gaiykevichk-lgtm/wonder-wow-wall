@@ -1,3 +1,4 @@
+from app.domain.audit.value_objects import AuditAction, AuditTargetType
 from app.domain.user.entities import User
 from app.domain.user.exceptions import (
     LastAdminRemovalError,
@@ -8,6 +9,12 @@ from app.domain.user.filters import UserFilters
 from app.domain.user.repositories import UserRepository
 from app.domain.user.value_objects import Email, UserRole
 from app.infrastructure.security.jwt import hash_password, verify_password, create_access_token
+
+# Phase 9 — typed alias for the audit collaborator. Imported lazily-via-string
+# in annotations would also work, but the use cases here call it eagerly so
+# we want a real reference. Module-level import is fine: `audit` has no back-
+# pointer to `user`, so no circular risk.
+from app.application.audit.use_cases import RecordAuditEntry  # noqa: E402
 
 
 class Register:
@@ -127,15 +134,21 @@ class ResetPassword:
 # ─── Phase 1: Role management ────────────────────────────────────────
 
 class GrantAdminRole:
-    """Promote a user to ADMIN. `actor_id` is captured for the Phase 9
-    audit decorator; today it is only validated (actor must be admin or
-    the `SYSTEM` bootstrap actor used by the CLI).
+    """Promote a user to ADMIN. `actor_id` is recorded on the audit entry
+    when an `audit_recorder` collaborator is wired in (Phase 9); the SYSTEM
+    bootstrap actor used by the CLI bypasses the actor-must-be-admin check
+    and is recorded verbatim on the entry.
     """
 
     SYSTEM_ACTOR = "SYSTEM"
 
-    def __init__(self, repo: UserRepository):
+    def __init__(
+        self,
+        repo: UserRepository,
+        audit_recorder: RecordAuditEntry | None = None,
+    ):
         self.repo = repo
+        self.audit_recorder = audit_recorder
 
     async def execute(self, actor_id: str, target_user_id: str) -> User:
         await _ensure_actor_is_admin(self.repo, actor_id)
@@ -144,8 +157,22 @@ class GrantAdminRole:
         if target is None:
             raise ValueError(f"User not found: {target_user_id}")
 
+        was_admin = target.role == UserRole.ADMIN
         target.promote_to_admin()
-        return await self.repo.update(target)
+        updated = await self.repo.update(target)
+
+        # Emit only on a real state change (was_admin → False → True). An
+        # idempotent re-grant on an already-admin should not pollute the log
+        # — operator sees the same noise as if they double-clicked the button.
+        if self.audit_recorder is not None and not was_admin:
+            await self.audit_recorder.execute(
+                actor_id=actor_id,
+                action=AuditAction.ROLE_GRANT,
+                target_type=AuditTargetType.USER,
+                target_id=target_user_id,
+                payload={"email": updated.email},
+            )
+        return updated
 
 
 class RevokeAdminRole:
@@ -155,8 +182,13 @@ class RevokeAdminRole:
 
     SYSTEM_ACTOR = "SYSTEM"
 
-    def __init__(self, repo: UserRepository):
+    def __init__(
+        self,
+        repo: UserRepository,
+        audit_recorder: RecordAuditEntry | None = None,
+    ):
         self.repo = repo
+        self.audit_recorder = audit_recorder
 
     async def execute(self, actor_id: str, target_user_id: str) -> User:
         await _ensure_actor_is_admin(self.repo, actor_id)
@@ -187,7 +219,17 @@ class RevokeAdminRole:
             )
 
         target.demote_to_customer()
-        return await self.repo.update(target)
+        updated = await self.repo.update(target)
+
+        if self.audit_recorder is not None:
+            await self.audit_recorder.execute(
+                actor_id=actor_id,
+                action=AuditAction.ROLE_REVOKE,
+                target_type=AuditTargetType.USER,
+                target_id=target_user_id,
+                payload={"email": updated.email},
+            )
+        return updated
 
 
 class RequireAdmin:
@@ -269,8 +311,13 @@ class BlockUserAdmin:
     same guard as `RevokeAdminRole.execute(actor_id, actor_id)`.
     """
 
-    def __init__(self, repo: UserRepository):
+    def __init__(
+        self,
+        repo: UserRepository,
+        audit_recorder: RecordAuditEntry | None = None,
+    ):
         self.repo = repo
+        self.audit_recorder = audit_recorder
 
     async def execute(self, actor_id: str, target_user_id: str) -> User:
         await _ensure_actor_is_admin(self.repo, actor_id)
@@ -299,7 +346,17 @@ class BlockUserAdmin:
                 )
 
         target.block()
-        return await self.repo.update(target)
+        updated = await self.repo.update(target)
+
+        if self.audit_recorder is not None:
+            await self.audit_recorder.execute(
+                actor_id=actor_id,
+                action=AuditAction.USER_BLOCK,
+                target_type=AuditTargetType.USER,
+                target_id=target_user_id,
+                payload={"email": updated.email},
+            )
+        return updated
 
 
 class UnblockUserAdmin:
@@ -307,8 +364,13 @@ class UnblockUserAdmin:
     last-admin guard only triggers on the *removal* direction.
     """
 
-    def __init__(self, repo: UserRepository):
+    def __init__(
+        self,
+        repo: UserRepository,
+        audit_recorder: RecordAuditEntry | None = None,
+    ):
         self.repo = repo
+        self.audit_recorder = audit_recorder
 
     async def execute(self, actor_id: str, target_user_id: str) -> User:
         await _ensure_actor_is_admin(self.repo, actor_id)
@@ -321,4 +383,14 @@ class UnblockUserAdmin:
             return target  # idempotent no-op
 
         target.unblock()
-        return await self.repo.update(target)
+        updated = await self.repo.update(target)
+
+        if self.audit_recorder is not None:
+            await self.audit_recorder.execute(
+                actor_id=actor_id,
+                action=AuditAction.USER_UNBLOCK,
+                target_type=AuditTargetType.USER,
+                target_id=target_user_id,
+                payload={"email": updated.email},
+            )
+        return updated

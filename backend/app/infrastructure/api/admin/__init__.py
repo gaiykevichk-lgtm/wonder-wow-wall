@@ -9,6 +9,7 @@ touched again.
 
 from fastapi import APIRouter
 
+from . import audit as _audit
 from . import auth as _auth
 from . import dashboard as _dashboard
 from . import media as _media
@@ -25,3 +26,4 @@ router.include_router(_users.router, prefix="", tags=["admin-users"])
 router.include_router(_media.router, prefix="", tags=["admin-media"])
 router.include_router(_panels.router, prefix="", tags=["admin-panels"])
 router.include_router(_shop_settings.router, prefix="", tags=["admin-shop"])
+router.include_router(_audit.router, prefix="", tags=["admin-audit"])

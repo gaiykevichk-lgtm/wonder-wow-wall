@@ -25,6 +25,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Query, Response
 from pydantic import BaseModel, Field
 
+from app.application.audit.use_cases import RecordAuditEntry
 from app.application.catalog.panel_use_cases import (
     CreatePanelAdmin,
     DeletePanelAdmin,
@@ -32,11 +33,11 @@ from app.application.catalog.panel_use_cases import (
     ListPanelsAdmin,
     UpdatePanelAdmin,
 )
-from app.container import get_panel_repo
+from app.container import get_audit_repo, get_panel_repo
 from app.domain.catalog.panel import Panel
 from app.domain.catalog.panel_exceptions import PanelNotFoundError
 from app.domain.catalog.value_objects import PanelSize
-from app.utils.dependencies import get_current_admin_id
+from app.utils.dependencies import get_current_admin_id, get_request_ip
 
 router = APIRouter()
 
@@ -221,10 +222,15 @@ async def update_panel_admin(
 @router.delete("/panels/{panel_id}", status_code=204)
 async def delete_panel_admin(
     panel_id: str,
-    _admin_id: str = Depends(get_current_admin_id),
+    admin_id: str = Depends(get_current_admin_id),
     panel_repo=Depends(get_panel_repo),
+    audit_repo=Depends(get_audit_repo),
+    ip: str | None = Depends(get_request_ip),
 ):
-    deleted = await DeletePanelAdmin(panel_repo).execute(panel_id)
+    deleted = await DeletePanelAdmin(
+        panel_repo,
+        audit_recorder=RecordAuditEntry(audit_repo, request_ip=ip),
+    ).execute(panel_id, actor_id=admin_id)
     if not deleted:
         # Defer the envelope shape to the global PanelNotFoundError
         # handler — keeps the frontend's branching uniform and avoids

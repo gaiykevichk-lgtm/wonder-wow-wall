@@ -30,6 +30,10 @@ from app.domain.media.repositories import MediaAssetRepository
 from app.domain.media.value_objects import MediaPurpose
 from app.domain.shop.repositories import ShopSettingsRepository
 from app.domain.shop.settings import SHOP_SETTINGS_SINGLETON_ID, ShopSettings
+from app.domain.audit.entities import AuditEntry
+from app.domain.audit.filters import AuditFilters
+from app.domain.audit.repositories import AuditEntryRepository
+from app.domain.audit.value_objects import AuditAction, AuditTargetType
 
 from app.infrastructure.persistence.models import (
     DesignModel,
@@ -45,6 +49,7 @@ from app.infrastructure.persistence.models import (
     MediaAssetModel,
     PanelModel,
     ShopSettingsModel,
+    AuditEntryModel,
 )
 
 
@@ -866,3 +871,92 @@ class SqlShopSettingsRepository(ShopSettingsRepository):
 
 
 # Banners (Phase 8B) — pending; see app/domain/shop/__init__.py.
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Audit log (Phase 9)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def _audit_entry_to_domain(m: AuditEntryModel) -> AuditEntry:
+    return AuditEntry(
+        id=m.id,
+        actor_id=m.actor_id,
+        # Storing as the literal string in DB; map back to enum here so
+        # the domain stays typed. A row with an unknown action raises
+        # `ValueError` rather than silently mis-categorising — better
+        # to have one row in the read API explode than to corrupt an
+        # incident investigation.
+        action=AuditAction(m.action),
+        target_type=AuditTargetType(m.target_type) if m.target_type else None,
+        target_id=m.target_id,
+        payload=m.payload or {},
+        ip=m.ip,
+        created_at=m.created_at,
+    )
+
+
+class SqlAuditEntryRepository(AuditEntryRepository):
+    """SQLAlchemy mirror of `InMemoryAuditEntryRepository`.
+
+    Append-only: only `append()` writes; `find_paginated()` reads with
+    DESC sort by `created_at`. The composite indexes on
+    `(actor_id, created_at)` and `(target_type, target_id, created_at)`
+    are created in migration `013_create_audit_entries`.
+    """
+
+    def __init__(self, session: AsyncSession):
+        self._session = session
+
+    async def append(self, entry: AuditEntry) -> AuditEntry:
+        model = AuditEntryModel(
+            id=entry.id,
+            actor_id=entry.actor_id,
+            action=entry.action.value,
+            target_type=entry.target_type.value if entry.target_type else None,
+            target_id=entry.target_id,
+            payload=entry.payload,
+            ip=entry.ip,
+            created_at=entry.created_at,
+        )
+        self._session.add(model)
+        await self._session.flush()
+        return entry
+
+    async def find_paginated(
+        self,
+        filters: AuditFilters,
+        *,
+        offset: int = 0,
+        limit: int = 50,
+    ) -> tuple[list[AuditEntry], int]:
+        query = select(AuditEntryModel)
+        count_query = select(func.count()).select_from(AuditEntryModel)
+
+        if filters.action is not None:
+            query = query.where(AuditEntryModel.action == filters.action.value)
+            count_query = count_query.where(AuditEntryModel.action == filters.action.value)
+        if filters.actor_id is not None:
+            query = query.where(AuditEntryModel.actor_id == filters.actor_id)
+            count_query = count_query.where(AuditEntryModel.actor_id == filters.actor_id)
+        if filters.target_type is not None:
+            query = query.where(AuditEntryModel.target_type == filters.target_type.value)
+            count_query = count_query.where(AuditEntryModel.target_type == filters.target_type.value)
+        if filters.target_id is not None:
+            query = query.where(AuditEntryModel.target_id == filters.target_id)
+            count_query = count_query.where(AuditEntryModel.target_id == filters.target_id)
+        if filters.date_from is not None:
+            query = query.where(AuditEntryModel.created_at >= filters.date_from)
+            count_query = count_query.where(AuditEntryModel.created_at >= filters.date_from)
+        if filters.date_to is not None:
+            query = query.where(AuditEntryModel.created_at <= filters.date_to)
+            count_query = count_query.where(AuditEntryModel.created_at <= filters.date_to)
+
+        total = int((await self._session.execute(count_query)).scalar_one())
+        query = (
+            query.order_by(desc(AuditEntryModel.created_at))
+            .offset(offset)
+            .limit(limit)
+        )
+        rows = (await self._session.execute(query)).scalars().all()
+        return [_audit_entry_to_domain(r) for r in rows], total

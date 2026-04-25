@@ -21,6 +21,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from app.application.audit.use_cases import RecordAuditEntry
 from app.application.order.use_cases import (
     AddOrderNoteAdmin,
     GetOrderAdmin,
@@ -28,12 +29,12 @@ from app.application.order.use_cases import (
     OrderNotFoundError,
     UpdateOrderStatusAdmin,
 )
-from app.container import get_order_repo, get_user_repo
+from app.container import get_audit_repo, get_order_repo, get_user_repo
 from app.domain.order.entities import Order, OrderNote
 from app.domain.order.exceptions import InvalidOrderTransitionError
 from app.domain.order.filters import InvalidOrderFilterError, OrderFilters
 from app.domain.order.value_objects import OrderStatus
-from app.utils.dependencies import get_current_admin_id
+from app.utils.dependencies import get_current_admin_id, get_request_ip
 
 router = APIRouter()
 
@@ -225,10 +226,15 @@ async def update_order_status_admin(
     admin_id: str = Depends(get_current_admin_id),
     order_repo=Depends(get_order_repo),
     user_repo=Depends(get_user_repo),
+    audit_repo=Depends(get_audit_repo),
+    ip: str | None = Depends(get_request_ip),
 ):
     target = OrderStatus(body.status)
     try:
-        order = await UpdateOrderStatusAdmin(order_repo).execute(
+        order = await UpdateOrderStatusAdmin(
+            order_repo,
+            audit_recorder=RecordAuditEntry(audit_repo, request_ip=ip),
+        ).execute(
             actor_id=admin_id,
             order_id=order_id,
             new_status=target,
@@ -258,9 +264,14 @@ async def add_order_note_admin(
     admin_id: str = Depends(get_current_admin_id),
     order_repo=Depends(get_order_repo),
     user_repo=Depends(get_user_repo),
+    audit_repo=Depends(get_audit_repo),
+    ip: str | None = Depends(get_request_ip),
 ):
     try:
-        note = await AddOrderNoteAdmin(order_repo).execute(
+        note = await AddOrderNoteAdmin(
+            order_repo,
+            audit_recorder=RecordAuditEntry(audit_repo, request_ip=ip),
+        ).execute(
             actor_id=admin_id,
             order_id=order_id,
             text=body.text,

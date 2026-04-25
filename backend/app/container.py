@@ -21,6 +21,7 @@ from app.infrastructure.persistence.repositories.memory import (
     InMemoryMediaAssetRepository,
     InMemoryPanelRepository,
     InMemoryShopSettingsRepository,
+    InMemoryAuditEntryRepository,
 )
 from app.infrastructure.persistence.repositories.project_repo import (
     InMemoryProjectRepository,
@@ -64,6 +65,11 @@ _mem_panel_repo = InMemoryPanelRepository()
 # the repo wraps it so tests can poke `_mem_shop_settings_repo._settings
 # = ShopSettings(...)` between cases without rebuilding the container.
 _mem_shop_settings_repo = InMemoryShopSettingsRepository()
+# Phase 9 — append-only admin audit log. Singleton so retrofitted
+# admin use cases (BlockUserAdmin etc.) writing through the
+# `RecordAuditEntry` collaborator land in the same list the
+# `/api/admin/audit` route reads from in tests.
+_mem_audit_repo = InMemoryAuditEntryRepository()
 
 
 # ─── Backward-compatible aliases (used by existing tests) ────────────
@@ -99,6 +105,7 @@ def _get_sql_repo_classes() -> dict:
             SqlMediaAssetRepository,
             SqlPanelRepository,
             SqlShopSettingsRepository,
+            SqlAuditEntryRepository,
         )
         from app.infrastructure.persistence.repositories.project_repo import SqlProjectRepository
         from app.infrastructure.persistence.repositories.visualization_repo import SqlVisualizationProjectRepository
@@ -116,6 +123,7 @@ def _get_sql_repo_classes() -> dict:
             "media": SqlMediaAssetRepository,
             "panel": SqlPanelRepository,
             "shop_settings": SqlShopSettingsRepository,
+            "audit": SqlAuditEntryRepository,
         }
     return _sql_repo_classes
 
@@ -225,6 +233,21 @@ def get_shop_settings_repo(session=Depends(get_db_session)):
     if settings.USE_MEMORY_REPOS:
         return _mem_shop_settings_repo
     return _get_sql_repo_classes()["shop_settings"](session)
+
+
+def get_audit_repo(session=Depends(get_db_session)):
+    """Phase 9 — append-only admin audit log.
+
+    Used by `/api/admin/audit` for reads, and injected as a
+    `RecordAuditEntry` collaborator into every retrofitted admin use
+    case (BlockUserAdmin etc.) for writes. In production both share
+    the same SQL session — keeping audit writes inside the same
+    transaction as the action they describe means a rolled-back
+    action also rolls back its audit row (no orphan entries).
+    """
+    if settings.USE_MEMORY_REPOS:
+        return _mem_audit_repo
+    return _get_sql_repo_classes()["audit"](session)
 
 
 # ─── Phase 6 (admin panel) — file storage singleton ──────────────────

@@ -16,13 +16,14 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
+from app.application.audit.use_cases import RecordAuditEntry
 from app.application.shop.settings_use_cases import (
     GetShopSettings,
     UpdateShopSettingsAdmin,
 )
-from app.container import get_shop_settings_repo
+from app.container import get_audit_repo, get_shop_settings_repo
 from app.domain.shop.settings import ShopSettings
-from app.utils.dependencies import get_current_admin_id
+from app.utils.dependencies import get_current_admin_id, get_request_ip
 
 router = APIRouter()
 
@@ -75,10 +76,16 @@ async def get_shop_settings_admin(
 @router.patch("/shop/settings", response_model=ShopSettingsResponse)
 async def patch_shop_settings_admin(
     body: ShopSettingsUpdate,
-    _admin_id: str = Depends(get_current_admin_id),
+    admin_id: str = Depends(get_current_admin_id),
     repo=Depends(get_shop_settings_repo),
+    audit_repo=Depends(get_audit_repo),
+    ip: str | None = Depends(get_request_ip),
 ):
-    settings = await UpdateShopSettingsAdmin(repo).execute(
+    settings = await UpdateShopSettingsAdmin(
+        repo,
+        audit_recorder=RecordAuditEntry(audit_repo, request_ip=ip),
+    ).execute(
+        actor_id=admin_id,
         design_overlay_price=body.design_overlay_price,
         installation_price=body.installation_price,
         min_order_amount=body.min_order_amount,

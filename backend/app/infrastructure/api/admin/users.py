@@ -31,6 +31,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from app.application.audit.use_cases import RecordAuditEntry
 from app.application.order.use_cases import ListOrdersAdmin
 from app.application.user.use_cases import (
     BlockUserAdmin,
@@ -41,13 +42,13 @@ from app.application.user.use_cases import (
     UnblockUserAdmin,
     UserNotFoundError,
 )
-from app.container import get_order_repo, get_user_repo
+from app.container import get_audit_repo, get_order_repo, get_user_repo
 from app.domain.order.entities import Order
 from app.domain.order.filters import OrderFilters
 from app.domain.user.entities import User
 from app.domain.user.filters import UserFilters
 from app.domain.user.value_objects import UserRole
-from app.utils.dependencies import get_current_admin_id
+from app.utils.dependencies import get_current_admin_id, get_request_ip
 
 router = APIRouter()
 
@@ -239,11 +240,14 @@ async def block_user(
     admin_id: str = Depends(get_current_admin_id),
     user_repo=Depends(get_user_repo),
     order_repo=Depends(get_order_repo),
+    audit_repo=Depends(get_audit_repo),
+    ip: str | None = Depends(get_request_ip),
 ):
     try:
-        await BlockUserAdmin(user_repo).execute(
-            actor_id=admin_id, target_user_id=user_id,
-        )
+        await BlockUserAdmin(
+            user_repo,
+            audit_recorder=RecordAuditEntry(audit_repo, request_ip=ip),
+        ).execute(actor_id=admin_id, target_user_id=user_id)
     except UserNotFoundError as exc:
         raise _user_not_found(str(exc))
     # Re-fetch with recent orders so the frontend can `setQueryData(detail)`
@@ -258,11 +262,14 @@ async def unblock_user(
     admin_id: str = Depends(get_current_admin_id),
     user_repo=Depends(get_user_repo),
     order_repo=Depends(get_order_repo),
+    audit_repo=Depends(get_audit_repo),
+    ip: str | None = Depends(get_request_ip),
 ):
     try:
-        await UnblockUserAdmin(user_repo).execute(
-            actor_id=admin_id, target_user_id=user_id,
-        )
+        await UnblockUserAdmin(
+            user_repo,
+            audit_recorder=RecordAuditEntry(audit_repo, request_ip=ip),
+        ).execute(actor_id=admin_id, target_user_id=user_id)
     except UserNotFoundError as exc:
         raise _user_not_found(str(exc))
     return await _load_detail(user_id, user_repo, order_repo)
@@ -277,11 +284,14 @@ async def grant_admin(
     admin_id: str = Depends(get_current_admin_id),
     user_repo=Depends(get_user_repo),
     order_repo=Depends(get_order_repo),
+    audit_repo=Depends(get_audit_repo),
+    ip: str | None = Depends(get_request_ip),
 ):
     try:
-        await GrantAdminRole(user_repo).execute(
-            actor_id=admin_id, target_user_id=user_id,
-        )
+        await GrantAdminRole(
+            user_repo,
+            audit_recorder=RecordAuditEntry(audit_repo, request_ip=ip),
+        ).execute(actor_id=admin_id, target_user_id=user_id)
     except ValueError as exc:
         # GrantAdminRole raises ValueError for missing user. Mirror the
         # 404 mapping used by Get/Block/Unblock so the frontend can branch
@@ -296,11 +306,14 @@ async def revoke_admin(
     admin_id: str = Depends(get_current_admin_id),
     user_repo=Depends(get_user_repo),
     order_repo=Depends(get_order_repo),
+    audit_repo=Depends(get_audit_repo),
+    ip: str | None = Depends(get_request_ip),
 ):
     try:
-        await RevokeAdminRole(user_repo).execute(
-            actor_id=admin_id, target_user_id=user_id,
-        )
+        await RevokeAdminRole(
+            user_repo,
+            audit_recorder=RecordAuditEntry(audit_repo, request_ip=ip),
+        ).execute(actor_id=admin_id, target_user_id=user_id)
     except ValueError as exc:
         # Same 404-on-missing-target convention as grant_admin above.
         raise _user_not_found(str(exc))

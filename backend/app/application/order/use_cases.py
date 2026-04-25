@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from app.application.audit.use_cases import RecordAuditEntry
+from app.domain.audit.value_objects import AuditAction, AuditTargetType
 from app.domain.order.entities import Order, OrderItem, OrderNote
 from app.domain.order.exceptions import InvalidOrderTransitionError
 from app.domain.order.filters import OrderFilters
@@ -113,12 +115,17 @@ class UpdateOrderStatusAdmin:
     409 with `code: "invalid_transition"` so the UI can show a toast.
     """
 
-    def __init__(self, repo: OrderRepository):
+    def __init__(
+        self,
+        repo: OrderRepository,
+        audit_recorder: RecordAuditEntry | None = None,
+    ):
         self.repo = repo
+        self.audit_recorder = audit_recorder
 
     async def execute(
         self,
-        actor_id: str,  # noqa: ARG002 — accepted for symmetry/audit logging
+        actor_id: str,
         order_id: str,
         new_status: OrderStatus,
         reason: str | None = None,
@@ -126,6 +133,8 @@ class UpdateOrderStatusAdmin:
         order = await self.repo.get_by_id(order_id)
         if order is None:
             raise OrderNotFoundError(f"Order {order_id} not found")
+
+        previous_status = order.status
 
         if new_status is OrderStatus.CANCELLED:
             order.cancel(reason or "")
@@ -141,14 +150,44 @@ class UpdateOrderStatusAdmin:
             method_name = _STATUS_TRANSITIONS[new_status]
             getattr(order, method_name)()
 
-        return await self.repo.update(order)
+        updated = await self.repo.update(order)
+
+        # Phase 9 — Refund gets its own action key so the audit page can
+        # surface "money moved" events distinctly from regular workflow
+        # transitions; everything else is logged as ORDER_STATUS_CHANGE.
+        if self.audit_recorder is not None:
+            action = (
+                AuditAction.ORDER_REFUND
+                if new_status is OrderStatus.REFUNDED
+                else AuditAction.ORDER_STATUS_CHANGE
+            )
+            payload: dict = {
+                "number": updated.number,
+                "from": previous_status.value,
+                "to": new_status.value,
+            }
+            if reason:
+                payload["reason"] = reason
+            await self.audit_recorder.execute(
+                actor_id=actor_id,
+                action=action,
+                target_type=AuditTargetType.ORDER,
+                target_id=order_id,
+                payload=payload,
+            )
+        return updated
 
 
 class AddOrderNoteAdmin:
     """Phase 4B — append an internal admin note to an order."""
 
-    def __init__(self, repo: OrderRepository):
+    def __init__(
+        self,
+        repo: OrderRepository,
+        audit_recorder: RecordAuditEntry | None = None,
+    ):
         self.repo = repo
+        self.audit_recorder = audit_recorder
 
     async def execute(
         self, actor_id: str, order_id: str, text: str,
@@ -161,6 +200,22 @@ class AddOrderNoteAdmin:
         # reads (within the same session or not) see it.
         note = order.add_note(author_id=actor_id, text=text)
         await self.repo.add_note(order_id, note)
+
+        if self.audit_recorder is not None:
+            await self.audit_recorder.execute(
+                actor_id=actor_id,
+                action=AuditAction.ORDER_NOTE_ADD,
+                target_type=AuditTargetType.ORDER,
+                target_id=order_id,
+                # Truncate the note text so the audit log row stays compact
+                # and bulk reads (the admin audit page) don't have to ship
+                # 2 KB blobs over the wire just for the actor history.
+                payload={
+                    "number": order.number,
+                    "note_id": note.id,
+                    "text_preview": text[:200],
+                },
+            )
         return note
 
 

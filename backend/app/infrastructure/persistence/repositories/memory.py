@@ -25,6 +25,9 @@ from app.domain.media.entities import MediaAsset
 from app.domain.media.repositories import MediaAssetRepository
 from app.domain.shop.repositories import ShopSettingsRepository
 from app.domain.shop.settings import ShopSettings
+from app.domain.audit.entities import AuditEntry
+from app.domain.audit.filters import AuditFilters
+from app.domain.audit.repositories import AuditEntryRepository
 
 
 # ─── Catalog ─────────────────────────────────────────────────────────
@@ -375,3 +378,47 @@ class InMemoryShopSettingsRepository(ShopSettingsRepository):
 
 
 # ─── Banners (Phase 8B) — pending; see app/domain/shop/__init__.py.
+
+
+# ─── Audit log (Phase 9) ────────────────────────────────────────────
+
+class InMemoryAuditEntryRepository(AuditEntryRepository):
+    """List-backed mirror of `SqlAuditEntryRepository`.
+
+    `_entries` is the seed/inspection backdoor mirrored across the
+    other in-memory repos in this file. The filter implementation
+    mirrors the SQL one literally so a regression in either is caught
+    by the shared use-case tests.
+    """
+
+    def __init__(self, entries: list[AuditEntry] | None = None):
+        self._entries: list[AuditEntry] = entries or []
+
+    async def append(self, entry: AuditEntry) -> AuditEntry:
+        self._entries.append(entry)
+        return entry
+
+    async def find_paginated(
+        self,
+        filters: AuditFilters,
+        *,
+        offset: int = 0,
+        limit: int = 50,
+    ) -> tuple[list[AuditEntry], int]:
+        rows = list(self._entries)
+        if filters.action is not None:
+            rows = [r for r in rows if r.action == filters.action]
+        if filters.actor_id is not None:
+            rows = [r for r in rows if r.actor_id == filters.actor_id]
+        if filters.target_type is not None:
+            rows = [r for r in rows if r.target_type == filters.target_type]
+        if filters.target_id is not None:
+            rows = [r for r in rows if r.target_id == filters.target_id]
+        if filters.date_from is not None:
+            rows = [r for r in rows if r.created_at >= filters.date_from]
+        if filters.date_to is not None:
+            rows = [r for r in rows if r.created_at <= filters.date_to]
+        # `created_at desc` matches the SQL composite-index sort.
+        rows.sort(key=lambda r: r.created_at, reverse=True)
+        total = len(rows)
+        return rows[offset:offset + limit], total

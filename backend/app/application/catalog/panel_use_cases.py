@@ -22,6 +22,8 @@ Validation strategy:
 """
 from __future__ import annotations
 
+from app.application.audit.use_cases import RecordAuditEntry
+from app.domain.audit.value_objects import AuditAction, AuditTargetType
 from app.domain.catalog.panel import Panel
 from app.domain.catalog.panel_exceptions import (
     PanelNotFoundError,
@@ -173,13 +175,48 @@ class DeletePanelAdmin:
 
     Returns True on success, False if the id was unknown — same shape as
     `DeleteMedia`. The API layer turns False into 404.
+
+    Phase 9 — when an `audit_recorder` collaborator is wired in, a
+    successful delete (and ONLY a successful one) appends a
+    `PANEL_DELETE` audit entry. A miss (panel didn't exist) is not
+    logged because there is nothing to attribute the event to — same
+    rule as the idempotent no-ops in `BlockUserAdmin`.
+
+    `actor_id` is optional to preserve the original signature for
+    callers that don't run under an admin context (the CLI seeder, the
+    deprecated test path that pre-dates Phase 9). When the audit
+    recorder is wired in but `actor_id` is None we skip logging — an
+    unattributed entry would fail the entity invariant.
     """
 
-    def __init__(self, repo: PanelRepository):
+    def __init__(
+        self,
+        repo: PanelRepository,
+        audit_recorder: RecordAuditEntry | None = None,
+    ):
         self.repo = repo
+        self.audit_recorder = audit_recorder
 
-    async def execute(self, panel_id: str) -> bool:
-        return await self.repo.delete(panel_id)
+    async def execute(
+        self, panel_id: str, *, actor_id: str | None = None,
+    ) -> bool:
+        # Pre-load so the audit payload can carry the slug/name even
+        # though the row is gone after delete(). One extra read per
+        # delete is cheap; reconstructing the payload from the soon-to-
+        # be-deleted row is impossible after the fact.
+        panel = await self.repo.get_by_id(panel_id)
+        if panel is None:
+            return False
+        deleted = await self.repo.delete(panel_id)
+        if deleted and self.audit_recorder is not None and actor_id:
+            await self.audit_recorder.execute(
+                actor_id=actor_id,
+                action=AuditAction.PANEL_DELETE,
+                target_type=AuditTargetType.PANEL,
+                target_id=panel_id,
+                payload={"name": panel.name, "slug": panel.slug},
+            )
+        return deleted
 
 
 class ListPanelsAdmin:

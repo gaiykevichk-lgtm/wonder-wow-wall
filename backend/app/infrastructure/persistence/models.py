@@ -380,3 +380,41 @@ class ShopSettingsModel(Base):
 # 2026-04-25 because shipping it without alembic migration `013` and
 # container wiring caused schema-divergence between dev (Base.metadata
 # create_all) and prod (alembic). Re-add with migration in the same PR.
+
+
+# ─── Audit log (Phase 9) ────────────────────────────────────────────
+
+class AuditEntryModel(Base):
+    """Phase 9 — append-only admin action log.
+
+    `payload` is a JSON column (not a child table) because:
+      * the shape is action-specific — ORDER_STATUS_CHANGE carries
+        `{old, new}`, USER_BLOCK carries `{reason}`, etc. — a typed
+        column would force a NULLable kitchen-sink schema.
+      * the read pattern is "show me everything for this row" — we
+        never query INTO the JSON, only display it.
+
+    Indexes:
+      * `(actor_id, created_at desc)` — admin filter "what did THIS
+        admin do recently".
+      * `(target_type, target_id, created_at desc)` — admin deep link
+        "show all events for THIS user/order".
+      * Plain `created_at desc` index covers the unfiltered list view.
+
+    `target_type` and `target_id` are NULLable because some future
+    actions (e.g., bulk export) won't have a single target. The domain
+    enforces that `target_id` cannot be set without `target_type`.
+    """
+
+    __tablename__ = "audit_entries"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=gen_uuid)
+    actor_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    action: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    target_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    target_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.utcnow, index=True,
+    )
