@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 
 from app.application.catalog.use_cases import ListDesigns, GetDesignDetails, ListCategories, AddReview, ListReviews
@@ -231,6 +231,7 @@ async def list_panels_public(
 async def get_public_recommendations(
     source_type: str,
     source_id: str,
+    response: Response,
     limit: int = Query(
         DEFAULT_RECOMMENDATIONS_LIMIT, ge=1, le=50,
         description="Cap on returned items; clamped against the admin "
@@ -268,6 +269,11 @@ async def get_public_recommendations(
         source_id=source_id,
         limit=limit,
     )
+    # Cache for 5 minutes — admin curation changes are rare and the
+    # fallback heuristic is deterministic against the design catalog.
+    # `public` lets shared caches (CDN, nginx) serve hits; an admin
+    # who just edited the rail can hard-refresh the product page.
+    response.headers["Cache-Control"] = "public, max-age=300"
     return RecommendationListResponse(
         items=[
             RecommendationTargetSchema(

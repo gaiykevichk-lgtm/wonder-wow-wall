@@ -33,6 +33,7 @@ class ShopSettingsResponse(BaseModel):
     design_overlay_price: int
     installation_price: int
     min_order_amount: int
+    recommendations_limit_per_source: int
     updated_at: str
 
 
@@ -52,5 +53,6 @@ async def get_shop_settings_public(
         design_overlay_price=s.design_overlay_price,
         installation_price=s.installation_price,
         min_order_amount=s.min_order_amount,
+        recommendations_limit_per_source=s.recommendations_limit_per_source,
         updated_at=s.updated_at.isoformat(),
     )

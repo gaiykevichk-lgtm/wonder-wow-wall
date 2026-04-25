@@ -44,8 +44,12 @@ class TestPublicShopSettings:
             "design_overlay_price",
             "installation_price",
             "min_order_amount",
+            "recommendations_limit_per_source",
             "updated_at",
         }
+        # Phase 10 — default cap surfaces on the public read so the
+        # frontend can size pagination without hitting the admin endpoint.
+        assert body["recommendations_limit_per_source"] == 12
 
     @pytest.mark.asyncio
     async def test_reflects_admin_patch(self, client):

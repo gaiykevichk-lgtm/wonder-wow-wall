@@ -36,6 +36,7 @@ class ShopSettingsResponse(BaseModel):
     design_overlay_price: int
     installation_price: int
     min_order_amount: int
+    recommendations_limit_per_source: int
     updated_at: str
 
 
@@ -45,10 +46,14 @@ class ShopSettingsUpdate(BaseModel):
     `ge=0` enforced at the DTO so an oversize-negative payload bounces
     at 422 before the use case is invoked. The use case re-validates as
     a defence-in-depth (a non-API caller could bypass Pydantic).
+    `recommendations_limit_per_source` uses `ge=1` because a zero limit
+    would silently disable the «с этим покупают» rail — that's a
+    feature-toggle decision, not a knob value.
     """
     design_overlay_price: int | None = Field(default=None, ge=0)
     installation_price: int | None = Field(default=None, ge=0)
     min_order_amount: int | None = Field(default=None, ge=0)
+    recommendations_limit_per_source: int | None = Field(default=None, ge=1)
 
 
 def _to_response(s: ShopSettings) -> ShopSettingsResponse:
@@ -57,6 +62,7 @@ def _to_response(s: ShopSettings) -> ShopSettingsResponse:
         design_overlay_price=s.design_overlay_price,
         installation_price=s.installation_price,
         min_order_amount=s.min_order_amount,
+        recommendations_limit_per_source=s.recommendations_limit_per_source,
         updated_at=s.updated_at.isoformat(),
     )
 
@@ -89,5 +95,6 @@ async def patch_shop_settings_admin(
         design_overlay_price=body.design_overlay_price,
         installation_price=body.installation_price,
         min_order_amount=body.min_order_amount,
+        recommendations_limit_per_source=body.recommendations_limit_per_source,
     )
     return _to_response(settings)

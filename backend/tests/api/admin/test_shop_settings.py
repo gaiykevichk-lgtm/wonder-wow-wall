@@ -118,6 +118,9 @@ class TestGet:
         assert body["design_overlay_price"] == 1200
         assert body["installation_price"] == 0
         assert body["min_order_amount"] == 0
+        # Phase 10 — the cap on the admin-curated «с этим покупают» rail
+        # must surface in the admin payload so the editor can render it.
+        assert body["recommendations_limit_per_source"] == 12
         assert "updated_at" in body
 
 
@@ -187,3 +190,46 @@ class TestPatch:
             json={"design_overlay_price": -1},
         )
         assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_patch_recommendations_limit(self, client):
+        # Phase 10 — admin can resize the «с этим покупают» rail cap.
+        token = await _admin_token(client)
+        resp = await client.patch(
+            "/api/admin/shop/settings",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"recommendations_limit_per_source": 8},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["recommendations_limit_per_source"] == 8
+        # Other fields untouched.
+        assert body["design_overlay_price"] == 1200
+
+    @pytest.mark.asyncio
+    async def test_patch_recommendations_limit_zero_rejected_422(self, client):
+        # `ge=1` — 0 would silently disable the rail; that's a feature
+        # toggle decision, not a knob value.
+        token = await _admin_token(client)
+        resp = await client.patch(
+            "/api/admin/shop/settings",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"recommendations_limit_per_source": 0},
+        )
+        assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_patch_recommendations_limit_persisted_in_get(self, client):
+        # PATCH→GET round-trip — the new value must survive a re-read so
+        # the public endpoint and the admin editor both see it.
+        token = await _admin_token(client)
+        await client.patch(
+            "/api/admin/shop/settings",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"recommendations_limit_per_source": 6},
+        )
+        resp = await client.get(
+            "/api/admin/shop/settings",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.json()["recommendations_limit_per_source"] == 6

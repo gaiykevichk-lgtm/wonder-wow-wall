@@ -62,7 +62,15 @@ export default function ProductPage() {
   const { addItem, setOpen: setCartOpen } = useCartStore();
 
   const { data: apiDesign, isLoading, isError } = useDesign(id || '');
-  const { data: allDesigns } = useDesigns();
+  // Phase 10 — `allDesigns` is the lookup table the «с этим покупают»
+  // rail uses to hydrate server-side recommendation ids into product
+  // cards. The default backend `limit` is 20, which is too small for a
+  // medium-sized catalog: a recommended id outside the first page
+  // would silently disappear from the rail (the dedup-by-id below
+  // would drop it). Asking for 200 covers the realistic shop size; if
+  // the catalog grows past that we should switch to fetching the
+  // recommended ids individually instead of bumping this further.
+  const { data: allDesigns } = useDesigns({ limit: 200 });
   const { data: reviewsData, isLoading: reviewsLoading } = useDesignReviews(id || '');
   const addReviewMutation = useAddReview(id || '');
   const isAuth = useAuthStore((s) => s.isAuth);

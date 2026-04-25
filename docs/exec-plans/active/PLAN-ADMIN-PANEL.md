@@ -1173,15 +1173,20 @@ OQ2 (решено 24.04.2026) явно требовал «**обязательн
 
 ---
 
-## Фаза 10: Управление рекомендациями («с этим покупают») ⚠️ ЧАСТИЧНО РЕАЛИЗОВАНО (line-by-line review 2026-04-25)
+## Фаза 10: Управление рекомендациями («с этим покупают») ⚠️ ЧАСТИЧНО РЕАЛИЗОВАНО (review 2026-04-25, remediation 2026-04-25)
 
-**Статус по итогам ревью 2026-04-25:**
-- ✅ Backend полностью готов (домен → application → infrastructure → API), 653 теста проходят, alembic head=014.
+**Статус после remediation 2026-04-25 (закрыто 5 из 8 гэпов):**
+- ✅ Backend полностью готов (домен → application → infrastructure → API), 657 тестов проходят, alembic head=014.
+- ✅ **HIGH-1 закрыт:** `recommendations_limit_per_source` пробит через HTTP API (`admin/shop_settings.py` PATCH/GET + публичный `shop.py` GET). Покрыт тестами round-trip + `ge=1` validation (`test_shop_settings.py:test_patch_recommendations_limit*`, `test_shop_public.py` payload pin).
+- ✅ **HIGH-2 закрыт:** `AdminRecommendationsPage.tsx` полностью реализован — таблица с фильтрами `source_type`/`has_manual` и URL-driven pagination, modal «Новая подборка», Drawer-редактор с add/remove/reorder targets, save/reset/delete actions, валидацией self-reference и dup, AntD picker для DESIGN через `useDesigns({ limit: 200 })`, free-text input для PANEL.
+- ✅ **MEDIUM-4 закрыт:** `ProductPage.tsx:65` теперь вызывает `useDesigns({ limit: 200 })` — рекомендации на дизайны вне первых 20 не теряются молча.
+- ✅ **LOW-5 закрыт:** `Cache-Control: public, max-age=300` выставлен на публичном `GET /api/recommendations/...` (`catalog.py:271–279`). Покрыт `test_cache_control_set` в `test_recommendations_public.py`.
+- ✅ **MEDIUM-3 (частично):** `frontend/src/domains/admin/__tests__/recommendationsAdminStore.test.ts` написан — 14 тестов на URL-round-trip, parser tolerance, defaults-omitted, `applyFilterPatch` immutability, OPTIONS-pin. **Не написаны:** AdminRecommendationEditor.test.tsx + ProductPage.recommendations regression test.
 - ⚠️ Каскадная чистка через collaborator подключена ТОЛЬКО к `DeletePanelAdmin` — `DeleteDesignAdmin` (Фаза 7A) ещё не существует, поэтому R9 закрыт частично.
-- ⚠️ Frontend admin: API-клиент (`recommendationsAdminApi.ts`) и URL-store (`recommendationsAdminStore.ts`) собраны, но `AdminRecommendationsPage.tsx` остался заглушкой `AdminSectionPlaceholder` — **редактор не реализован**.
-- ✅ Frontend public: `usePublicRecommendations` + рефакторинг `ProductPage.tsx` с двойным fallback готовы (tsc проходит).
-- ❌ Frontend tests Фазы 10 отсутствуют целиком (store / editor / ProductPage regression).
-- ⚠️ `recommendations_limit_per_source` пробит до `UpdateShopSettingsAdmin`, но **не выставлен в HTTP API** (`shop_settings.py` PATCH/GET и публичный `shop.py` GET) — админ не может настроить лимит без прямого UPDATE в БД.
+- ❌ **LOW-6:** `search` фильтр на `GET /api/admin/recommendations` — не реализован.
+- ❌ **LOW-7:** Список fallback-предложений в admin GET detail — не реализован (план обещал «предложения от fallback-сервиса для UI с кнопкой "Принять авто-предложение"»).
+- ❌ **LOW-8:** Cascade cleanup для DESIGN — блокирован отсутствием `DeleteDesignAdmin` (Фаза 7A).
+- ❌ Bulk «Скопировать рекомендации с другого товара» — TODO.
 
 > **Цель:** Админ вручную задаёт, какие дизайны/панели рекомендовать в карточке товара. Заменяет текущую клиентскую эвристику (`ProductPage.tsx:96–107` — фильтр по `category_id`, `slice(0, 3)`, fallback на `mockProducts`) на админ-управляемые связи. При отсутствии ручных связей — fallback на ту же эвристику (старое поведение не ломается).
 
@@ -1217,10 +1222,10 @@ OQ2 (решено 24.04.2026) явно требовал «**обязательн
 - [x] Infrastructure: Pydantic DTO `RecommendationTargetResponse`, `RecommendationResponse`, `RecommendationListResponse`, `RecommendationUpsertBody`, `RecommendationTargetInput` (`app/infrastructure/api/admin/recommendations.py`).
 - [x] Infrastructure: эндпоинты подняты:
   - `GET /api/admin/recommendations?source_type=&has_manual=&page=&size=` — пагинированный список. **⚠ `search` фильтр не реализован** (план перечислял его).
-  - `GET /api/admin/recommendations/:source_type/:source_id` — возвращает 200 + пустой агрегат при отсутствии. **⚠ Список fallback-предложений в payload отсутствует** (план обещал «предложения от fallback-сервиса для UI с кнопкой "Принять авто-предложение"») — заблокировано отсутствием редактора.
+  - `GET /api/admin/recommendations/:source_type/:source_id` — возвращает 200 + пустой агрегат при отсутствии. **⚠ Список fallback-предложений в payload отсутствует** (план обещал «предложения от fallback-сервиса для UI с кнопкой "Принять авто-предложение"»).
   - `PUT /api/admin/recommendations/:source_type/:source_id` — идемпотентный upsert.
   - `DELETE /api/admin/recommendations/:source_type/:source_id` — 204 + 404 на повторе.
-  - `GET /api/recommendations/:source_type/:source_id?limit=` — публичный (`app/infrastructure/api/catalog.py:227–279`). **⚠ HTTP-заголовок `Cache-Control: max-age=300, public` не выставлен** (план обещал кеш).
+  - `GET /api/recommendations/:source_type/:source_id?limit=` — публичный (`app/infrastructure/api/catalog.py:227–279`). ✅ **`Cache-Control: public, max-age=300` выставлен** (closed в remediation 2026-04-25), покрыт `test_cache_control_set`.
 - [x] Infrastructure: handlers в `error_handlers.py`:
   - `SelfRecommendationError` → 422 `code: "self_reference"`
   - `DuplicateRecommendationTargetError` → 422 `code: "duplicate_target"`
@@ -1228,52 +1233,58 @@ OQ2 (решено 24.04.2026) явно требовал «**обязательн
   - `RecommendationTargetNotFoundError` → 404 `code: "target_not_found"`
   - `RecommendationNotFoundError` → 404 `code: "recommendation_not_found"`
   - Зарегистрированы в `app/main.py:104–115`. **Расхождение с планом по именам кодов** — в плане `RECOMMENDATION_SELF` / `RECOMMENDATION_DUPLICATE` / `RECOMMENDATION_LIMIT_EXCEEDED` / `RECOMMENDATION_TARGET_NOT_FOUND` (UPPER_SNAKE), фактически использованы `snake_case` без префикса `recommendation_` — соответствует стилю Фаз 5/9 (`stale_version`, `last_admin`). Стиль кодов унифицирован, план разойдётся по терминологии.
-- [x] Infrastructure: `ShopSettings.recommendations_limit_per_source: int = 12` добавлено (домен `app/domain/shop/settings.py` + миграция 014 + repos). **⚠ Поле НЕ выставлено через HTTP API** — `app/infrastructure/api/admin/shop_settings.py` (`ShopSettingsResponse`, `ShopSettingsUpdate`, `_to_response`, PATCH-handler) и публичный `app/infrastructure/api/shop.py` его не возвращают и не принимают. Use case `UpdateShopSettingsAdmin.execute(...)` поле принимает, но никто не передаёт.
+- [x] Infrastructure: `ShopSettings.recommendations_limit_per_source: int = 12` добавлено (домен `app/domain/shop/settings.py` + миграция 014 + repos). ✅ **Поле выставлено через HTTP API** (closed в remediation 2026-04-25): `ShopSettingsResponse` / `ShopSettingsUpdate` (`Field(default=None, ge=1)`) / `_to_response` / `patch_shop_settings_admin` в `admin/shop_settings.py` + публичный `api/shop.py` все три точки. Покрыто тестами `test_patch_recommendations_limit*` (PATCH/GET round-trip + 422 на 0) и payload-shape pin в `test_shop_public.py`.
 - [x] Audit (Фаза 9): `AuditAction.RECOMMENDATION_UPSERT` и `RECOMMENDATION_DELETE`, `AuditTargetType.RECOMMENDATION` (`app/domain/audit/value_objects.py`). Использован collaborator-паттерн (без `@audited`-декоратора, как и в Фазах 5/9). Композитный `target_id` = `f"{source_type}:{source_id}"` для forensics-поиска.
 
 ### Frontend
 
 - [x] `frontend/src/domains/admin/api/recommendationsAdminApi.ts` — wire-types + 5 хуков (`useRecommendationsAdminList`, `useRecommendationDetail`, `useUpsertRecommendation`, `useDeleteRecommendation`) с invalidate prefix `lists` и priming `detail` после save/delete.
-- [x] `frontend/src/domains/admin/model/recommendationsAdminStore.ts` — URL ↔ DTO round-trip (`queryFromSearchParams`, `searchParamsFromQuery`, `applyFilterPatch`). Источник истины — URL, F5 переживает фильтры и пагинацию. **⚠ Local draft state для несохранённых изменений редактора отсутствует** (план обещал) — заблокировано отсутствием самого редактора.
-- [ ] `frontend/src/domains/admin/ui/AdminRecommendationsPage.tsx` — **СЕЙЧАС ЗАГЛУШКА** `<AdminSectionPlaceholder phase="Фаза 10" .../>`. Таблица «настроено / fallback» с кнопкой «Настроить» не реализована.
-- [ ] `frontend/src/domains/admin/ui/AdminRecommendationEditor.tsx` — **НЕ СОЗДАН**. Drag-to-reorder, селектор «Добавить», блок «Авто-предложения», кнопки Сохранить / Отмена / Сбросить — всё это TODO.
+- [x] `frontend/src/domains/admin/model/recommendationsAdminStore.ts` — URL ↔ DTO round-trip (`queryFromSearchParams`, `searchParamsFromQuery`, `applyFilterPatch`). Источник истины — URL, F5 переживает фильтры и пагинацию. **Local draft state для несохранённых изменений** теперь живёт в самом редакторе (компонентный `useState` в `RecommendationEditorDrawer`, см. ниже).
+- [x] `frontend/src/domains/admin/ui/AdminRecommendationsPage.tsx` — ✅ **РЕАЛИЗОВАНО** (closed в remediation 2026-04-25). AntD `<Table>` (Источник, Тип, Целей, Обновлено) + фильтры `Select<source_type>`/`Select<has_manual>` + кнопка «Сбросить» + URL-driven pagination. Кнопка «+ Новая подборка» открывает modal-выбор source. Клик по строке → Drawer-редактор.
+- [x] `frontend/src/domains/admin/ui/AdminRecommendationsPage.tsx`:`RecommendationEditorDrawer` — ✅ **РЕАЛИЗОВАНО** (часть того же файла). Список целей с reorder (↑/↓), remove (✕), add-форма (тип + Select<design id> по `useDesigns({ limit: 200 })` или Input для panel), валидация self-reference и dup, кнопки Сохранить (PUT)/Сбросить (revert local draft)/Удалить (с Popconfirm). Используются `useUpsertRecommendation` и `useDeleteRecommendation` хуки.
 - [ ] **Bulk actions** «Скопировать рекомендации с другого товара» — TODO.
+- [ ] **Список fallback-предложений** в редакторе («Принять авто-предложение») — TODO (заблокировано LOW-7 на бекенде).
 - [x] Публичный API-хук: `usePublicRecommendations` добавлен напрямую в `frontend/src/domains/catalog/api/catalogApi.ts:41–58` (отдельный модуль `recommendationsApi.ts` не создан — тип-маленький, держим рядом с `useDesigns` чтобы catalog-домен оставался связным).
 - [x] **Refactor `ProductPage.tsx:96–137`** выполнен:
   - `useMemo(relatedProducts)` теперь сначала маппит ответ `usePublicRecommendations` через кеш `useDesigns()` (только `target_type === 'design'`, `slice(0, 3)`), при пустом mapped fallback на legacy same-category эвристику, при отсутствии `allDesigns` — на `mockProducts`.
   - Визуальный JSX блока не тронут.
-  - **⚠ Известная проблема:** `useDesigns()` без параметров тянет первые 20 дизайнов; если admin курирует id, который не попал в кеш (пагинация или фильтр), `mapped.length === 0` → молча упадёт в legacy heuristic. Корректно для дев-данных (~10 дизайнов), но при росте каталога нужно либо тянуть полный список, либо вернуть с публичного эндпоинта enriched-DTO с именем/превью/ценой.
+  - ✅ **Stale-cache fix** (closed в remediation 2026-04-25): `useDesigns({ limit: 200 })` вместо дефолтного 20 — id за пределами первой страницы больше не теряется молча. Комментарий в коде описывает дальнейший путь (либо enriched DTO с публичного эндпоинта, либо fetch by id) если каталог разрастётся за 200.
 
 ### Тесты
 
 - [x] `tests/domain/test_recommendation.py` (22 теста) — все инварианты на всех 4 мутаторах + конструкторе. Граничные кейсы (length 0/1/limit) явные.
 - [x] `tests/application/test_recommendation_use_cases.py` (19 тестов) — `Get/List/Upsert/Delete*` use cases, `GetPublicRecommendations` (manual-only / fallback-fill / no-curation / limit=0), `CleanupRecommendationsOnDelete` (drops source / prunes target / idempotent miss). Аудит: emission + skip-без-actor_id + skip-on-delete-miss.
 - [x] `tests/api/admin/test_recommendations.py` (22 теста) — auth gate (401/403), GET detail (empty / after-PUT / 422 bad type), PUT (fresh/overwrite/idempotent/self-ref/dup/limit/422 bad target_type), DELETE (204/404/double-delete), List (pagination + source_type + has_manual filters), Audit retrofit.
-- [x] `tests/api/test_recommendations_public.py` (8 тестов) — нет auth required, curation-first, fallback-only, unknown source_id, 422 bad source_type, dedup self, payload shape, curation-already-enough. **⚠ Тест на `Cache-Control: max-age=300` отсутствует** — заголовок не выставлен (см. backend гэп).
+- [x] `tests/api/test_recommendations_public.py` (9 тестов) — нет auth required, curation-first, fallback-only, unknown source_id, 422 bad source_type, dedup self, payload shape, curation-already-enough. ✅ **`test_cache_control_set` добавлен** (closed в remediation 2026-04-25) — пинит `Cache-Control: public, max-age=300`.
 - [x] `tests/application/test_panel_use_cases.py` (2 новых теста) — cascade payload landing in audit + opt-out path без collaborator.
 - [x] `tests/api/admin/test_audit.py` — релаксирована equality-проверка payload PANEL_DELETE: subset assertion на `name`/`slug` + явная проверка `recommendations_cleanup`.
+- [x] `tests/api/admin/test_shop_settings.py` (3 новых теста) — `test_patch_recommendations_limit`, `test_patch_recommendations_limit_zero_rejected_422` (`ge=1`), `test_patch_recommendations_limit_persisted_in_get` (PATCH→GET round-trip). Default `12` запинен в `TestGet`.
+- [x] `tests/api/test_shop_public.py` — payload-shape pin расширен на `recommendations_limit_per_source` + assertion дефолта `12`.
 - [x] `tests/infrastructure/test_alembic.py` — head bumped до `"014"`.
-- [ ] `frontend/src/domains/admin/__tests__/recommendationsAdminStore.test.ts` — **НЕ НАПИСАН**.
-- [ ] `frontend/src/domains/admin/__tests__/AdminRecommendationEditor.test.tsx` — **НЕ НАПИСАН** (нет редактора).
-- [ ] `frontend/src/domains/catalog/__tests__/ProductPage.recommendations.test.tsx` — **НЕ НАПИСАН**. Регрессия рекомендательного блока пока не зафиксирована тестом.
+- [x] `frontend/src/domains/admin/__tests__/recommendationsAdminStore.test.ts` — ✅ **НАПИСАН** (closed в remediation 2026-04-25, 14 тестов: defaults / parser tolerance / round-trip identity / `applyFilterPatch` / OPTIONS pin). PASS 14/14.
+- [ ] `frontend/src/domains/admin/__tests__/AdminRecommendationsPage.test.tsx` — **НЕ НАПИСАН**. Smoke-тест на drawer-editor (открытие, add/remove target, save, delete) пока отсутствует.
+- [ ] `frontend/src/domains/catalog/__tests__/ProductPage.recommendations.test.tsx` — **НЕ НАПИСАН**. Регрессия рекомендательного блока (server data → fallback при ошибке) пока не зафиксирована тестом.
 
-### Регрессии после ревью (2026-04-25)
+### Регрессии после ревью (2026-04-25) и remediation (2026-04-25)
 
 ```
-backend: pytest tests/  → 653 passed, 13 warnings (alembic deprecated)
-frontend: npx tsc --noEmit  → clean
+backend (после remediation): pytest tests/  → 657 passed, 13 warnings (alembic deprecated)
+                                              # +4 теста от Phase 10 remediation
+                                              # (limit field PATCH/GET round-trip + Cache-Control + payload-shape pin)
+frontend tsc --noEmit  → clean
+frontend vitest recommendationsAdminStore.test.ts → 14/14 passed
 ```
 
-### Гэпы под закрытие (по приоритету)
+### Гэпы под закрытие (по приоритету) — после remediation 2026-04-25
 
-1. **HIGH — `recommendations_limit_per_source` через HTTP API.** Достаточно расширить `ShopSettingsResponse`/`ShopSettingsUpdate`/`_to_response`/`patch_shop_settings_admin` в `backend/app/infrastructure/api/admin/shop_settings.py` + публичный `backend/app/infrastructure/api/shop.py`. Use case уже принимает поле — последняя миля.
-2. **HIGH — Frontend admin editor.** Без него админ физически не может курировать связи через UI. План на 4 файла: `AdminRecommendationsPage.tsx` (таблица), `AdminRecommendationEditor.tsx` (модалка/drawer), draft-store в `recommendationsAdminStore.ts`, регистрация в admin-роутере.
-3. **MEDIUM — Frontend tests Фазы 10.** Минимум: store round-trip, ProductPage regression (показ admin-кураций → fallback при ошибке).
-4. **MEDIUM — Stale-cache в `ProductPage`.** При `useDesigns()` с дефолтным limit=20 рекомендация на 21-й дизайн молча падает в legacy. Фикс: либо `useDesigns({ limit: 200 })`, либо enriched-DTO с публичного эндпоинта.
-5. **LOW — `Cache-Control: max-age=300, public`** на публичном `GET /api/recommendations/...` (план обещал кеш для 5-минутной задержки до пользователя).
-6. **LOW — `search` фильтр на `GET /api/admin/recommendations`** (план перечислял).
-7. **LOW — Fallback-предложения в admin GET detail** (план обещал, но без редактора UI бессмысленно).
-8. **LOW — Cascade cleanup для DESIGN.** Как только Фаза 7A построит `DeleteDesignAdmin`, подключить `CleanupRecommendationsOnDelete` тем же collaborator-паттерном (см. R9).
+1. ✅ **HIGH — `recommendations_limit_per_source` через HTTP API** — ЗАКРЫТО.
+2. ✅ **HIGH — Frontend admin editor** — ЗАКРЫТО (`AdminRecommendationsPage.tsx` + inline `RecommendationEditorDrawer` готовы; реализован в одном файле для компактности — раздробление на отдельный `AdminRecommendationEditor.tsx` отложено как нерелевантный split).
+3. ⚠️ **MEDIUM — Frontend tests Фазы 10** — ЗАКРЫТО частично: store round-trip написан (14 тестов). **Открыто:** `AdminRecommendationsPage.test.tsx` (smoke на drawer flow) и `ProductPage.recommendations.test.tsx` (regression на server-data-→-fallback).
+4. ✅ **MEDIUM — Stale-cache в `ProductPage`** — ЗАКРЫТО (`useDesigns({ limit: 200 })`).
+5. ✅ **LOW — `Cache-Control: public, max-age=300`** на публичном `GET /api/recommendations/...` — ЗАКРЫТО.
+6. ❌ **LOW — `search` фильтр на `GET /api/admin/recommendations`** — открыто (низкий приоритет; нагрузка на админ-таблицу пока минимальная, фильтры по `source_type`/`has_manual` покрывают большинство сценариев).
+7. ❌ **LOW — Fallback-предложения в admin GET detail** — открыто. План обещал «предложения от fallback-сервиса для UI с кнопкой "Принять авто-предложение"» — реализуется когда понадобится UX-ускорение для крупного каталога.
+8. ❌ **LOW — Cascade cleanup для DESIGN** — заблокирован отсутствием `DeleteDesignAdmin` (Фаза 7A не начата).
 
 ### Что было проверено в ревью (line-by-line, 25 файлов)
 

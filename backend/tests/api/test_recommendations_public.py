@@ -119,6 +119,14 @@ class TestPublicRecommendations:
         assert set(item.keys()) == {"target_type", "target_id"}
 
     @pytest.mark.asyncio
+    async def test_cache_control_set(self, client):
+        # Public rail is cacheable for 5 minutes — admin curation is
+        # rare and the fallback is deterministic. Pin the directive so a
+        # future change to the header is deliberate.
+        resp = await client.get("/api/recommendations/design/d-1?limit=3")
+        assert resp.headers.get("cache-control") == "public, max-age=300"
+
+    @pytest.mark.asyncio
     async def test_curation_alone_is_enough(self, client):
         # When the manual list is already at/above the requested limit,
         # the fallback should be skipped entirely.
