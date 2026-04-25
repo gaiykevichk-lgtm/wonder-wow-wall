@@ -28,11 +28,7 @@ from app.domain.user.value_objects import UserRole
 from app.domain.media.entities import MediaAsset
 from app.domain.media.repositories import MediaAssetRepository
 from app.domain.media.value_objects import MediaPurpose
-from app.domain.shop.banner import Banner, BannerPosition
-from app.domain.shop.repositories import (
-    BannerRepository,
-    ShopSettingsRepository,
-)
+from app.domain.shop.repositories import ShopSettingsRepository
 from app.domain.shop.settings import SHOP_SETTINGS_SINGLETON_ID, ShopSettings
 
 from app.infrastructure.persistence.models import (
@@ -49,7 +45,6 @@ from app.infrastructure.persistence.models import (
     MediaAssetModel,
     PanelModel,
     ShopSettingsModel,
-    BannerModel,
 )
 
 
@@ -870,116 +865,4 @@ class SqlShopSettingsRepository(ShopSettingsRepository):
         return settings
 
 
-# ═══════════════════════════════════════════════════════════════════════
-# Banners (Phase 8B)
-# ═══════════════════════════════════════════════════════════════════════
-
-
-def _banner_to_domain(m: BannerModel) -> Banner:
-    return Banner(
-        id=m.id,
-        image_path=m.image_path,
-        title=m.title or "",
-        cta_text=m.cta_text or "",
-        cta_link=m.cta_link or "",
-        # DB stores literal string; map back to enum. If a deploy ever
-        # has a row with an unknown position (e.g., manual SQL edit), the
-        # `BannerPosition(...)` raises here — better than silently
-        # mis-rendering on the frontend.
-        position=BannerPosition(m.position),
-        is_active=m.is_active,
-        priority=m.priority,
-        created_at=m.created_at,
-    )
-
-
-class SqlBannerRepository(BannerRepository):
-    """SQLAlchemy mirror of `InMemoryBannerRepository`.
-
-    Sort: `(priority desc, created_at desc)`. The composite index on
-    `(position, priority)` covers the public listing's hot path
-    (filter by position + sorted by priority); `created_at` is a
-    secondary sort that the index doesn't need to cover (the
-    cardinality after the priority sort is already small).
-    """
-
-    def __init__(self, session: AsyncSession):
-        self._session = session
-
-    async def list_banners(
-        self,
-        *,
-        position: BannerPosition | None = None,
-        include_inactive: bool = False,
-        offset: int = 0,
-        limit: int = 100,
-    ) -> tuple[list[Banner], int]:
-        query = select(BannerModel)
-        count_query = select(func.count()).select_from(BannerModel)
-        if position is not None:
-            query = query.where(BannerModel.position == position.value)
-            count_query = count_query.where(BannerModel.position == position.value)
-        if not include_inactive:
-            query = query.where(BannerModel.is_active.is_(True))
-            count_query = count_query.where(BannerModel.is_active.is_(True))
-        total = int((await self._session.execute(count_query)).scalar_one())
-        query = (
-            query.order_by(
-                desc(BannerModel.priority), desc(BannerModel.created_at),
-            )
-            .offset(offset)
-            .limit(limit)
-        )
-        rows = (await self._session.execute(query)).scalars().all()
-        return [_banner_to_domain(r) for r in rows], total
-
-    async def get_by_id(self, banner_id: str) -> Banner | None:
-        result = await self._session.execute(
-            select(BannerModel).where(BannerModel.id == banner_id)
-        )
-        row = result.scalar_one_or_none()
-        return _banner_to_domain(row) if row else None
-
-    async def create(self, banner: Banner) -> Banner:
-        model = BannerModel(
-            id=banner.id,
-            image_path=banner.image_path,
-            title=banner.title,
-            cta_text=banner.cta_text,
-            cta_link=banner.cta_link,
-            position=banner.position.value,
-            is_active=banner.is_active,
-            priority=banner.priority,
-            created_at=banner.created_at,
-        )
-        self._session.add(model)
-        await self._session.flush()
-        return banner
-
-    async def update(self, banner: Banner) -> Banner:
-        result = await self._session.execute(
-            select(BannerModel).where(BannerModel.id == banner.id)
-        )
-        row = result.scalar_one_or_none()
-        if row is None:
-            raise LookupError(f"Banner {banner.id} not found")
-        row.image_path = banner.image_path
-        row.title = banner.title
-        row.cta_text = banner.cta_text
-        row.cta_link = banner.cta_link
-        row.position = banner.position.value
-        row.is_active = banner.is_active
-        row.priority = banner.priority
-        await self._session.flush()
-        return banner
-
-    async def delete(self, banner_id: str) -> bool:
-        result = await self._session.execute(
-            select(BannerModel).where(BannerModel.id == banner_id)
-        )
-        row = result.scalar_one_or_none()
-        if row is None:
-            return False
-        await self._session.delete(row)
-        await self._session.flush()
-        return True
+# Banners (Phase 8B) — pending; see app/domain/shop/__init__.py.

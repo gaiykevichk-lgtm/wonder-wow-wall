@@ -376,42 +376,7 @@ class ShopSettingsModel(Base):
     )
 
 
-# ─── Banners (Phase 8B) ─────────────────────────────────────────────
-
-class BannerModel(Base):
-    """Phase 8B — admin-managed promotional banners.
-
-    `position` is a string column (mapped to the `BannerPosition` enum
-    at the domain layer); storing the literal string keeps DB diffs
-    readable and survives enum reordering.
-
-    `image_path` is a soft pointer to `media_assets.path` (no FK) —
-    same trade-off as `PanelModel.photo_path`: deleting an asset
-    leaves a 404'ing URL the admin UI handles, but never cascades
-    nulls into the banner row.
-
-    Sort key for the public listing is `(priority desc, created_at
-    desc)`; the dual index supports both axes without requiring a
-    composite that would be redundant once `priority` is the dominant
-    filter.
-    """
-
-    __tablename__ = "banners"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=gen_uuid)
-    image_path: Mapped[str] = mapped_column(String(500), nullable=False)
-    title: Mapped[str] = mapped_column(String(255), nullable=False, default="")
-    cta_text: Mapped[str] = mapped_column(String(120), nullable=False, default="")
-    cta_link: Mapped[str] = mapped_column(String(500), nullable=False, default="")
-    position: Mapped[str] = mapped_column(
-        String(40), nullable=False, default="homepage_hero", index=True,
-    )
-    is_active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=True, server_default=true(),
-    )
-    priority: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=0, server_default="0",
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow,
-    )
+# ─── Banners (Phase 8B) — pending; the draft model was removed
+# 2026-04-25 because shipping it without alembic migration `013` and
+# container wiring caused schema-divergence between dev (Base.metadata
+# create_all) and prod (alembic). Re-add with migration in the same PR.
