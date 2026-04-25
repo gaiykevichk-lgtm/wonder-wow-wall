@@ -402,6 +402,208 @@ class TestList:
         assert ids == {"full"}
 
 
+    @pytest.mark.asyncio
+    async def test_filter_search_substring_on_source_id(self, client):
+        """Phase 10 LOW-6 — substring filter on source_id."""
+        token = await _admin_token(client)
+        for src_id in ("forest-sunrise", "FOREST-NIGHT", "city-grid"):
+            await client.put(
+                f"/api/admin/recommendations/design/{src_id}",
+                headers={"Authorization": f"Bearer {token}"},
+                json={"targets": [_t("x-001")]},
+            )
+        resp = await client.get(
+            "/api/admin/recommendations?search=forest",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        body = resp.json()
+        ids = {item["source_id"] for item in body["items"]}
+        # Both forest rows match (case-insensitive); city does not.
+        assert ids == {"forest-sunrise", "FOREST-NIGHT"}
+        assert body["total"] == 2
+
+    @pytest.mark.asyncio
+    async def test_filter_search_combined_with_source_type(self, client):
+        token = await _admin_token(client)
+        await client.put(
+            "/api/admin/recommendations/design/forest-sunrise",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"targets": [_t("x-001")]},
+        )
+        await client.put(
+            "/api/admin/recommendations/panel/forest-panel",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"targets": [_t("x-001")]},
+        )
+        resp = await client.get(
+            "/api/admin/recommendations?search=forest&source_type=panel",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        body = resp.json()
+        # AND-combined: only the panel row survives.
+        assert {item["source_id"] for item in body["items"]} == {"forest-panel"}
+
+
+# ─── Phase 10 LOW-7 — fallback suggestions in admin detail ───────────
+
+
+class TestFallbackSuggestionsInDetail:
+    @pytest.mark.asyncio
+    async def test_empty_curation_returns_fallback_suggestions(self, client):
+        """LOW-7 — admin lands on a never-curated source and sees the
+        heuristic's auto-suggestions so they can one-click accept."""
+        from app.container import _mem_design_repo
+        from app.domain.catalog.entities import Design
+
+        # Snapshot the seed so we can append + restore without wiping
+        # the catalog rows other suites rely on.
+        seed = list(_mem_design_repo._designs)
+        _mem_design_repo._designs.append(
+            Design(id="d-src", name="Src", slug="src", category_id="cat-1")
+        )
+        _mem_design_repo._designs.append(
+            Design(id="d-fb-1", name="FB1", slug="fb-1", category_id="cat-1")
+        )
+        try:
+            token = await _admin_token(client)
+            resp = await client.get(
+                "/api/admin/recommendations/design/d-src",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            assert resp.status_code == 200
+            body = resp.json()
+            assert body["targets"] == []
+            # `d-fb-1` is in the same category and not excluded → suggested.
+            suggestion_ids = {s["target_id"] for s in body["fallback_suggestions"]}
+            assert "d-fb-1" in suggestion_ids
+            # Source itself never suggests itself.
+            assert "d-src" not in suggestion_ids
+        finally:
+            _mem_design_repo._designs.clear()
+            _mem_design_repo._designs.extend(seed)
+
+    @pytest.mark.asyncio
+    async def test_fallback_excludes_existing_curated_targets(self, client):
+        from app.container import _mem_design_repo
+        from app.domain.catalog.entities import Design
+        seed = list(_mem_design_repo._designs)
+        _mem_design_repo._designs.append(
+            Design(id="d-src2", name="Src", slug="src2", category_id="cat-2")
+        )
+        _mem_design_repo._designs.append(
+            Design(id="d-curated", name="C", slug="c", category_id="cat-2")
+        )
+        _mem_design_repo._designs.append(
+            Design(id="d-fb-2", name="F", slug="f", category_id="cat-2")
+        )
+        try:
+            token = await _admin_token(client)
+            # Curate one target.
+            await client.put(
+                "/api/admin/recommendations/design/d-src2",
+                headers={"Authorization": f"Bearer {token}"},
+                json={"targets": [{"target_type": "design", "target_id": "d-curated"}]},
+            )
+            resp = await client.get(
+                "/api/admin/recommendations/design/d-src2",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            body = resp.json()
+            suggestion_ids = {s["target_id"] for s in body["fallback_suggestions"]}
+            # d-fb-2 is a fresh suggestion; d-curated must be filtered out.
+            assert "d-fb-2" in suggestion_ids
+            assert "d-curated" not in suggestion_ids
+        finally:
+            _mem_design_repo._designs.clear()
+            _mem_design_repo._designs.extend(seed)
+
+
+# ─── Phase 10 follow-up — bulk copy from another source ──────────────
+
+
+class TestCopyFrom:
+    @pytest.mark.asyncio
+    async def test_copy_replace_overwrites_destination(self, client):
+        token = await _admin_token(client)
+        # Source A with 2 curated targets.
+        await client.put(
+            "/api/admin/recommendations/design/A",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"targets": [_t("x-1"), _t("x-2")]},
+        )
+        # Destination B with a different curated target.
+        await client.put(
+            "/api/admin/recommendations/design/B",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"targets": [_t("y-9")]},
+        )
+        resp = await client.post(
+            "/api/admin/recommendations/design/B/copy-from",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"from_source_type": "design", "from_source_id": "A", "mode": "replace"},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        # Replace overwrites — y-9 is gone; A's order is preserved.
+        ids = [t["target_id"] for t in body["targets"]]
+        assert ids == ["x-1", "x-2"]
+
+    @pytest.mark.asyncio
+    async def test_copy_append_dedupes_and_preserves_existing(self, client):
+        token = await _admin_token(client)
+        await client.put(
+            "/api/admin/recommendations/design/A",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"targets": [_t("x-1"), _t("x-2")]},
+        )
+        await client.put(
+            "/api/admin/recommendations/design/B",
+            headers={"Authorization": f"Bearer {token}"},
+            # Existing y-9 + x-1 (will be deduped against the source).
+            json={"targets": [_t("y-9"), _t("x-1")]},
+        )
+        resp = await client.post(
+            "/api/admin/recommendations/design/B/copy-from",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"from_source_type": "design", "from_source_id": "A", "mode": "append"},
+        )
+        body = resp.json()
+        ids = [t["target_id"] for t in body["targets"]]
+        # Existing first (order preserved), then x-2 appended (x-1 dedup).
+        assert ids == ["y-9", "x-1", "x-2"]
+
+    @pytest.mark.asyncio
+    async def test_copy_from_missing_source_404(self, client):
+        token = await _admin_token(client)
+        resp = await client.post(
+            "/api/admin/recommendations/design/B/copy-from",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "from_source_type": "design",
+                "from_source_id": "never-curated",
+                "mode": "replace",
+            },
+        )
+        assert resp.status_code == 404
+        assert resp.json().get("code") == "recommendation_not_found"
+
+    @pytest.mark.asyncio
+    async def test_copy_self_to_self_422(self, client):
+        token = await _admin_token(client)
+        await client.put(
+            "/api/admin/recommendations/design/A",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"targets": [_t("x-1")]},
+        )
+        resp = await client.post(
+            "/api/admin/recommendations/design/A/copy-from",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"from_source_type": "design", "from_source_id": "A", "mode": "replace"},
+        )
+        assert resp.status_code == 422
+        assert resp.json().get("code") == "self_reference"
+
+
 # ─── Audit retrofit ──────────────────────────────────────────────────
 
 

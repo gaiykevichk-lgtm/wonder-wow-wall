@@ -38,9 +38,11 @@ from app.domain.audit.value_objects import AuditAction, AuditTargetType
 from app.domain.catalog.recommendation import (
     DEFAULT_RECOMMENDATIONS_LIMIT,
     Recommendation,
+    RecommendationNotFoundError,
     RecommendationSourceType,
     RecommendationTarget,
     RecommendationTargetType,
+    SelfRecommendationError,
 )
 from app.domain.catalog.repositories import (
     RecommendationFilters,
@@ -181,6 +183,148 @@ class UpsertRecommendationAdmin:
                         f"{t.target_type.value}:{t.target_id}"
                         for t in saved.targets
                     ],
+                },
+            )
+        return saved
+
+
+class CopyRecommendationsAdmin:
+    """Phase 10 follow-up — bulk «Скопировать рекомендации» from another source.
+
+    Use case:
+      Admin curates panel A with 8 hand-picked designs. Panel A' is a
+      sibling with the same expected rail — the admin wants to seed it
+      from A and then tweak.
+
+    Mode is explicit:
+      * `REPLACE` — overwrite the destination's curation entirely. The
+        new list is the source's targets, in the source's order, capped
+        by the live `recommendations_limit_per_source`.
+      * `APPEND` — keep the destination's existing manual targets, then
+        add any source target that isn't already present (key =
+        `(target_type, target_id)`). Trimmed to the live cap.
+
+    Self-recommendation guard: if the destination's `(source_type,
+    source_id)` appears in the source's target list, it is silently
+    dropped (would otherwise trigger `SelfRecommendationError` from the
+    aggregate). Same posture as `DesignSimilarityFallback`.
+
+    Audited under `RECOMMENDATION_UPSERT` (one logical change to the
+    destination) — the source row is not modified, so no dual entry.
+    """
+
+    def __init__(
+        self,
+        repo: RecommendationRepository,
+        settings_repo: ShopSettingsRepository,
+        audit_recorder: RecordAuditEntry | None = None,
+    ):
+        self.repo = repo
+        self.settings_repo = settings_repo
+        self.audit_recorder = audit_recorder
+
+    async def execute(
+        self,
+        *,
+        actor_id: str | None = None,
+        dest_source_type: RecommendationSourceType,
+        dest_source_id: str,
+        from_source_type: RecommendationSourceType,
+        from_source_id: str,
+        mode: str,  # 'replace' | 'append'
+    ) -> Recommendation:
+        if mode not in {"replace", "append"}:
+            raise ValueError(
+                f"Unknown copy mode {mode!r}; expected 'replace' or 'append'"
+            )
+        if (dest_source_type, dest_source_id) == (
+            from_source_type, from_source_id,
+        ):
+            raise SelfRecommendationError(
+                "Cannot copy a source onto itself",
+            )
+
+        from_rec = await self.repo.find_by_source(
+            from_source_type, from_source_id,
+        )
+        if from_rec is None or not from_rec.targets:
+            raise RecommendationNotFoundError(
+                f"No curation to copy from "
+                f"{from_source_type.value}:{from_source_id}"
+            )
+
+        # Drop any target that would self-recommend the destination.
+        copyable: list[RecommendationTarget] = []
+        for t in from_rec.targets:
+            # The destination's source-type/id pair maps to a target by
+            # spec: DESIGN→DESIGN, PANEL→PANEL. Cross-type self-loops
+            # (PANEL source + DESIGN target same id) are not real self-
+            # references in this domain because the keyspaces are
+            # disjoint, so we only filter the same-type/same-id pair.
+            if (
+                t.target_type.value == dest_source_type.value
+                and t.target_id == dest_source_id
+            ):
+                continue
+            copyable.append(t)
+
+        if not copyable:
+            raise RecommendationNotFoundError(
+                "Source has no copyable targets after self-reference filter"
+            )
+
+        settings = await self.settings_repo.get()
+        cap = settings.recommendations_limit_per_source
+
+        existing = await self.repo.find_by_source(
+            dest_source_type, dest_source_id,
+        )
+
+        if mode == "replace":
+            new_targets = copyable[:cap]
+        else:  # append
+            seen: set[tuple[RecommendationTargetType, str]] = set()
+            new_targets = []
+            if existing is not None:
+                for t in existing.targets:
+                    key = (t.target_type, t.target_id)
+                    seen.add(key)
+                    new_targets.append(t)
+            for t in copyable:
+                key = (t.target_type, t.target_id)
+                if key in seen:
+                    continue
+                seen.add(key)
+                new_targets.append(t)
+                if len(new_targets) >= cap:
+                    break
+            new_targets = new_targets[:cap]
+
+        if existing is None:
+            rec = Recommendation(
+                source_type=dest_source_type,
+                source_id=dest_source_id,
+                targets=[],
+            )
+        else:
+            rec = existing
+        rec.replace_all(new_targets, limit=cap)
+        saved = await self.repo.save(rec)
+
+        if self.audit_recorder is not None and actor_id:
+            await self.audit_recorder.execute(
+                actor_id=actor_id,
+                action=AuditAction.RECOMMENDATION_UPSERT,
+                target_type=AuditTargetType.RECOMMENDATION,
+                target_id=_audit_target_id(dest_source_type, dest_source_id),
+                payload={
+                    "source_type": dest_source_type.value,
+                    "source_id": dest_source_id,
+                    "copy_mode": mode,
+                    "copied_from": (
+                        f"{from_source_type.value}:{from_source_id}"
+                    ),
+                    "targets_count": len(saved.targets),
                 },
             )
         return saved

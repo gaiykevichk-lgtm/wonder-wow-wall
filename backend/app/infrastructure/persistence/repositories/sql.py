@@ -1301,6 +1301,22 @@ class SqlRecommendationRepository(RecommendationRepository):
             else:
                 query = query.where(~sub)
                 count_query = count_query.where(~sub)
+        if filters.search:
+            # Phase 10 LOW-6 — case-insensitive substring on source_id.
+            # Spec-chars are escaped with `\` so admin-supplied `%` / `_`
+            # aren't interpreted as wildcards (same defence as panels.search).
+            needle = (
+                filters.search.lower()
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_")
+            )
+            pattern = f"%{needle}%"
+            predicate = func.lower(RecommendationModel.source_id).like(
+                pattern, escape="\\",
+            )
+            query = query.where(predicate)
+            count_query = count_query.where(predicate)
 
         total = int((await self._session.execute(count_query)).scalar_one())
         query = (

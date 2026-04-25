@@ -37,6 +37,7 @@ export function queryFromSearchParams(
 ): RecommendationsAdminQuery {
   const sourceTypeRaw = searchParams.get('source_type');
   const hasManualRaw = searchParams.get('has_manual');
+  const searchRaw = (searchParams.get('search') ?? '').trim();
   const page = Number(searchParams.get('page')) || DEFAULT_PAGE;
   const size = Number(searchParams.get('size')) || DEFAULT_SIZE;
   return {
@@ -46,6 +47,7 @@ export function queryFromSearchParams(
         : null,
     hasManual:
       hasManualRaw === 'true' ? true : hasManualRaw === 'false' ? false : null,
+    search: searchRaw.length > 0 ? searchRaw : null,
     page,
     size,
   };
@@ -57,6 +59,7 @@ export function searchParamsFromQuery(
   const params = new URLSearchParams();
   if (q.sourceType) params.set('source_type', q.sourceType);
   if (q.hasManual !== null) params.set('has_manual', String(q.hasManual));
+  if (q.search) params.set('search', q.search);
   if (q.page !== DEFAULT_PAGE) params.set('page', String(q.page));
   if (q.size !== DEFAULT_SIZE) params.set('size', String(q.size));
   return params;

@@ -22,6 +22,7 @@ import type { RecommendationsAdminQuery } from '../api/recommendationsAdminApi';
 const baseQuery: RecommendationsAdminQuery = {
   sourceType: null,
   hasManual: null,
+  search: null,
   page: DEFAULT_PAGE,
   size: DEFAULT_SIZE,
 };
@@ -41,6 +42,7 @@ describe('queryFromSearchParams', () => {
     expect(queryFromSearchParams(params)).toEqual({
       sourceType: 'panel',
       hasManual: true,
+      search: null,
       page: 3,
       size: 25,
     });
@@ -99,11 +101,26 @@ describe('round-trip identity (URL ↔ state)', () => {
     const original: RecommendationsAdminQuery = {
       sourceType: 'design',
       hasManual: true,
+      search: 'forest',
       page: 5,
       size: 100,
     };
     const restored = queryFromSearchParams(searchParamsFromQuery(original));
     expect(restored).toEqual(original);
+  });
+
+  it('preserves search through round-trip and trims whitespace (LOW-6)', () => {
+    const original: RecommendationsAdminQuery = {
+      ...baseQuery,
+      search: 'sunrise',
+    };
+    const restored = queryFromSearchParams(searchParamsFromQuery(original));
+    expect(restored.search).toBe('sunrise');
+  });
+
+  it('whitespace-only search collapses to null (treat as "no filter")', () => {
+    const params = new URLSearchParams({ search: '   ' });
+    expect(queryFromSearchParams(params).search).toBeNull();
   });
 
   it('preserves hasManual=false through round-trip', () => {

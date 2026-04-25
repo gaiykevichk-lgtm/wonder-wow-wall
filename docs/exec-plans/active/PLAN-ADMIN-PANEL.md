@@ -1357,20 +1357,22 @@ Frontend:
 
 ---
 
-## Фаза 10: Управление рекомендациями («с этим покупают») ⚠️ ЧАСТИЧНО РЕАЛИЗОВАНО (review 2026-04-25, remediation 2026-04-25)
+## Фаза 10: Управление рекомендациями («с этим покупают») ✅ РЕАЛИЗОВАНО (закрыто 8 из 8 гэпов, 2026-04-25)
 
-**Статус после remediation 2026-04-25 (закрыто 5 из 8 гэпов):**
-- ✅ Backend полностью готов (домен → application → infrastructure → API), 657 тестов проходят, alembic head=014.
-- ✅ **HIGH-1 закрыт:** `recommendations_limit_per_source` пробит через HTTP API (`admin/shop_settings.py` PATCH/GET + публичный `shop.py` GET). Покрыт тестами round-trip + `ge=1` validation (`test_shop_settings.py:test_patch_recommendations_limit*`, `test_shop_public.py` payload pin).
-- ✅ **HIGH-2 закрыт:** `AdminRecommendationsPage.tsx` полностью реализован — таблица с фильтрами `source_type`/`has_manual` и URL-driven pagination, modal «Новая подборка», Drawer-редактор с add/remove/reorder targets, save/reset/delete actions, валидацией self-reference и dup, AntD picker для DESIGN через `useDesigns({ limit: 200 })`, free-text input для PANEL.
-- ✅ **MEDIUM-4 закрыт:** `ProductPage.tsx:65` теперь вызывает `useDesigns({ limit: 200 })` — рекомендации на дизайны вне первых 20 не теряются молча.
-- ✅ **LOW-5 закрыт:** `Cache-Control: public, max-age=300` выставлен на публичном `GET /api/recommendations/...` (`catalog.py:271–279`). Покрыт `test_cache_control_set` в `test_recommendations_public.py`.
-- ✅ **MEDIUM-3 (частично):** `frontend/src/domains/admin/__tests__/recommendationsAdminStore.test.ts` написан — 14 тестов на URL-round-trip, parser tolerance, defaults-omitted, `applyFilterPatch` immutability, OPTIONS-pin. **Не написаны:** AdminRecommendationEditor.test.tsx + ProductPage.recommendations regression test.
-- ⚠️ Каскадная чистка через collaborator подключена ТОЛЬКО к `DeletePanelAdmin` — `DeleteDesignAdmin` (Фаза 7A) ещё не существует, поэтому R9 закрыт частично.
-- ❌ **LOW-6:** `search` фильтр на `GET /api/admin/recommendations` — не реализован.
-- ❌ **LOW-7:** Список fallback-предложений в admin GET detail — не реализован (план обещал «предложения от fallback-сервиса для UI с кнопкой "Принять авто-предложение"»).
-- ❌ **LOW-8:** Cascade cleanup для DESIGN — блокирован отсутствием `DeleteDesignAdmin` (Фаза 7A).
-- ❌ Bulk «Скопировать рекомендации с другого товара» — TODO.
+**Статус после второго раунда remediation 2026-04-25 (все 8 гэпов закрыты):**
+- ✅ Backend полностью готов (домен → application → infrastructure → API), 812/812 тестов проходят, alembic head=017.
+- ✅ **HIGH-1 закрыт:** `recommendations_limit_per_source` пробит через HTTP API (`admin/shop_settings.py` PATCH/GET + публичный `shop.py` GET). Покрыт тестами round-trip + `ge=1` validation.
+- ✅ **HIGH-2 закрыт:** `AdminRecommendationsPage.tsx` полностью реализован — таблица с фильтрами `source_type`/`has_manual`/`search` и URL-driven pagination, modal «Новая подборка», Drawer-редактор с add/remove/reorder targets, fallback-предложения с одним кликом «Принять», bulk-copy modal, save/reset/delete actions, валидацией self-reference и dup, AntD picker для DESIGN через `useDesigns({ limit: 200 })`, free-text input для PANEL.
+- ✅ **MEDIUM-4 закрыт:** `ProductPage.tsx:65` вызывает `useDesigns({ limit: 200 })` — рекомендации на дизайны вне первых 20 не теряются молча.
+- ✅ **LOW-5 закрыт:** `Cache-Control: public, max-age=300` выставлен на публичном `GET /api/recommendations/...`. Покрыт `test_cache_control_set`.
+- ✅ **MEDIUM-3 закрыт:** все 3 фронт-тестовых файла написаны:
+  - `recommendationsAdminStore.test.ts` (16 тестов: URL round-trip, parser tolerance, defaults-omitted, search round-trip + whitespace collapse, OPTIONS-pin).
+  - `AdminRecommendationsPage.test.tsx` (6 smoke-тестов: title, table rows, ?search= URL sync (LOW-6), drawer открывается + fallback suggestions с «Принять» (LOW-7), bulk-copy modal с modes + canSubmit guard, error Alert).
+  - `ProductPage.recommendations.test.tsx` (3 регресс-теста: server-curated wins, empty API → same-category fallback, API error → same-category fallback).
+- ✅ **LOW-6 закрыт:** добавлено поле `search: str | None` в `RecommendationFilters` + параметр на `GET /api/admin/recommendations?search=` (case-insensitive substring on `source_id`, spec-chars экранированы). InMemory + Sql repos обновлены. Покрыто 2 backend-тестами (`test_filter_search_substring_on_source_id`, `test_filter_search_combined_with_source_type`).
+- ✅ **LOW-7 закрыт:** `RecommendationResponse.fallback_suggestions: list[Target]` добавлено в `admin/recommendations.py`; admin GET detail теперь композирует `DesignSimilarityFallback` + `ShopSettingsRepository` чтобы выдать heuristic suggestions, исключая existing manual targets и source-self. Покрыто 2 backend-тестами (`test_empty_curation_returns_fallback_suggestions`, `test_fallback_excludes_existing_curated_targets`).
+- ✅ **LOW-8 закрыт:** каскадная чистка для DESIGN подключена через collaborator к `DeleteDesignAdmin` (`app/application/catalog/admin_use_cases.py:413+`); endpoint `DELETE /api/admin/designs/{id}` инжектит `CleanupRecommendationsOnDelete(rec_repo)` (`admin/catalog.py:378`). Cascade-report фолдится в audit `DESIGN_DELETE` payload как `recommendations_cleanup`.
+- ✅ **Bulk «Скопировать рекомендации» закрыт:** `CopyRecommendationsAdmin` use case + `POST /api/admin/recommendations/{type}/{id}/copy-from` (body `{from_source_type, from_source_id, mode: 'replace'|'append'}`); modes описаны в OQ E18 — `replace` overwrites, `append` добавляет недостающее с дедупликацией по `(target_type, target_id)`. Self-reference filter защищает destination от cross-loop. Cap соблюдается (`recommendations_limit_per_source`). Audit `RECOMMENDATION_UPSERT` с payload-метаданными `copied_from`/`copy_mode`. UI: button «Скопировать рекомендации с другого товара» в редакторе → `<CopyRecommendationsModal>` с radio-выбором replace/append. Покрыто 4 backend-тестами (`replace`, `append+dedup`, missing source 404, self-to-self 422).
 
 > **Цель:** Админ вручную задаёт, какие дизайны/панели рекомендовать в карточке товара. Заменяет текущую клиентскую эвристику (`ProductPage.tsx:96–107` — фильтр по `category_id`, `slice(0, 3)`, fallback на `mockProducts`) на админ-управляемые связи. При отсутствии ручных связей — fallback на ту же эвристику (старое поведение не ломается).
 

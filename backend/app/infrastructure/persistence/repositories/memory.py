@@ -707,6 +707,9 @@ class InMemoryRecommendationRepository(RecommendationRepository):
                 rows = [r for r in rows if len(r.targets) > 0]
             else:
                 rows = [r for r in rows if len(r.targets) == 0]
+        if filters.search:
+            needle = filters.search.lower()
+            rows = [r for r in rows if needle in r.source_id.lower()]
         # Newest-first matches the SQL repo's ORDER BY updated_at DESC —
         # keeps the admin table consistent across implementations.
         rows.sort(key=lambda r: r.updated_at, reverse=True)

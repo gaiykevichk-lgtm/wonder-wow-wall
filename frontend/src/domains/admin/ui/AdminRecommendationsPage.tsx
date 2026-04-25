@@ -51,6 +51,7 @@ import {
   type RecommendationsAdminQuery,
   type RecommendationSourceTypeKey,
   type RecommendationTargetTypeKey,
+  useCopyRecommendations,
   useDeleteRecommendation,
   useRecommendationDetail,
   useRecommendationsAdminList,
@@ -120,6 +121,14 @@ export default function AdminRecommendationsPage() {
   // table only lists existing rows.
   const [creating, setCreating] = useState(false);
 
+  // Phase 10 LOW-6 — local draft mirrors `?search=` so typing doesn't
+  // fire a request per keystroke; debounced by Enter or the AntD search
+  // icon (same UX as `AdminCatalogPage`).
+  const [searchDraft, setSearchDraft] = useState<string>(query.search ?? '');
+  useEffect(() => {
+    setSearchDraft(query.search ?? '');
+  }, [query.search]);
+
   function updateUrl(next: RecommendationsAdminQuery): void {
     setSearchParams(searchParamsFromQuery(next), { replace: false });
   }
@@ -133,6 +142,11 @@ export default function AdminRecommendationsPage() {
   function onHasManualChange(value: 'true' | 'false' | null | undefined): void {
     const hasManual = value === 'true' ? true : value === 'false' ? false : null;
     updateUrl(applyFilterPatch(query, { hasManual }));
+  }
+
+  function onSearchSubmit(value: string): void {
+    const cleaned = value.trim();
+    updateUrl(applyFilterPatch(query, { search: cleaned || null }));
   }
 
   function onResetFilters(): void {
@@ -186,7 +200,7 @@ export default function AdminRecommendationsPage() {
   ];
 
   const hasActiveFilters =
-    query.sourceType !== null || query.hasManual !== null;
+    query.sourceType !== null || query.hasManual !== null || !!query.search;
 
   return (
     <motion.div
@@ -224,6 +238,14 @@ export default function AdminRecommendationsPage() {
             }
             onChange={onHasManualChange}
             options={HAS_MANUAL_OPTIONS}
+          />
+          <Input.Search
+            placeholder="Поиск по source_id"
+            allowClear
+            value={searchDraft}
+            onChange={(e) => setSearchDraft(e.target.value)}
+            onSearch={onSearchSubmit}
+            style={{ width: 280 }}
           />
           {hasActiveFilters && (
             <Button onClick={onResetFilters}>Сбросить</Button>
@@ -414,6 +436,8 @@ function RecommendationEditorDrawer({
   );
   const upsert = useUpsertRecommendation();
   const remove = useDeleteRecommendation();
+  const copyMutation = useCopyRecommendations();
+  const [copyOpen, setCopyOpen] = useState<boolean>(false);
 
   // Local draft mirrors the fetched targets — keeps the save flow as a
   // single PUT (matches the backend's idempotent upsert semantics) and
@@ -659,7 +683,228 @@ function RecommendationEditorDrawer({
             </div>
           )}
         </div>
+
+        {/* Phase 10 LOW-7 — fallback suggestions one-click pickers. */}
+        {(detail?.fallback_suggestions ?? []).length > 0 && (
+          <div>
+            <Text strong>Авто-предложения</Text>
+            <div style={{ marginTop: 4 }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                Эвристика «с этим покупают». Уже добавленные цели исключены.
+              </Text>
+            </div>
+            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {(detail?.fallback_suggestions ?? []).map((s) => {
+                const alreadyInDraft = draft.some(
+                  (t) => t.target_type === s.target_type && t.target_id === s.target_id,
+                );
+                const label =
+                  s.target_type === 'design'
+                    ? designLookup.get(s.target_id) ?? s.target_id
+                    : s.target_id;
+                return (
+                  <div
+                    key={`fb:${s.target_type}:${s.target_id}`}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '6px 12px',
+                      border: '1px dashed #f0f0f0',
+                      borderRadius: 6,
+                      background: '#FAFAFA',
+                    }}
+                  >
+                    <Tag color={SOURCE_TAG_COLOR[s.target_type]} style={{ margin: 0 }}>
+                      {TYPE_LABEL[s.target_type]}
+                    </Tag>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 500 }}>{label}</div>
+                    </div>
+                    <Button
+                      size="small"
+                      type="primary"
+                      ghost
+                      disabled={alreadyInDraft}
+                      onClick={() =>
+                        setDraft((prev) => [
+                          ...prev,
+                          { target_type: s.target_type, target_id: s.target_id },
+                        ])
+                      }
+                    >
+                      {alreadyInDraft ? 'Уже добавлен' : 'Принять'}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Phase 10 follow-up — bulk copy from another source. */}
+        <div>
+          <Button onClick={() => setCopyOpen(true)} block>
+            Скопировать рекомендации с другого товара
+          </Button>
+        </div>
       </Space>
+
+      <CopyRecommendationsModal
+        open={copyOpen}
+        onCancel={() => setCopyOpen(false)}
+        loading={copyMutation.isPending}
+        onSubmit={async (vars) => {
+          if (!sourceType || !sourceId) return;
+          try {
+            await copyMutation.mutateAsync({
+              sourceType,
+              sourceId,
+              fromSourceType: vars.fromSourceType,
+              fromSourceId: vars.fromSourceId,
+              mode: vars.mode,
+            });
+            setCopyOpen(false);
+            message.success('Рекомендации скопированы');
+          } catch (e) {
+            message.error(`Не удалось скопировать: ${(e as Error).message}`);
+          }
+        }}
+      />
     </Drawer>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Phase 10 follow-up — bulk-copy modal
+// ────────────────────────────────────────────────────────────────────────
+
+interface CopyModalSubmit {
+  fromSourceType: RecommendationSourceTypeKey;
+  fromSourceId: string;
+  mode: 'replace' | 'append';
+}
+
+interface CopyRecommendationsModalProps {
+  open: boolean;
+  loading: boolean;
+  onCancel: () => void;
+  onSubmit: (vars: CopyModalSubmit) => void;
+}
+
+function CopyRecommendationsModal({
+  open,
+  loading,
+  onCancel,
+  onSubmit,
+}: CopyRecommendationsModalProps) {
+  const [fromType, setFromType] =
+    useState<RecommendationSourceTypeKey>('design');
+  const [fromId, setFromId] = useState<string>('');
+  const [mode, setMode] = useState<'replace' | 'append'>('replace');
+  const { data: designsData } = useDesigns({ limit: 200 });
+  const designOptions = useMemo(
+    () =>
+      (designsData?.items ?? []).map((d) => ({
+        value: d.id,
+        label: `${d.name} · ${d.id}`,
+      })),
+    [designsData],
+  );
+  // Reset on close so the next open starts clean.
+  useEffect(() => {
+    if (!open) {
+      setFromType('design');
+      setFromId('');
+      setMode('replace');
+    }
+  }, [open]);
+  const canSubmit = fromId.trim().length > 0;
+  return (
+    <Modal
+      title="Скопировать рекомендации"
+      open={open}
+      onCancel={onCancel}
+      okText="Скопировать"
+      cancelText="Отмена"
+      okButtonProps={{ disabled: !canSubmit, loading }}
+      onOk={() =>
+        canSubmit &&
+        onSubmit({
+          fromSourceType: fromType,
+          fromSourceId: fromId.trim(),
+          mode,
+        })
+      }
+    >
+      <Space direction="vertical" size={12} style={{ width: '100%' }}>
+        <div>
+          <Text type="secondary">
+            Источник, с которого скопировать существующую подборку.
+          </Text>
+        </div>
+        <Space.Compact style={{ width: '100%' }}>
+          <Select<RecommendationSourceTypeKey>
+            value={fromType}
+            onChange={(v) => {
+              setFromType(v);
+              setFromId('');
+            }}
+            options={SOURCE_TYPE_OPTIONS}
+            style={{ width: 140 }}
+          />
+          {fromType === 'design' ? (
+            <Select<string>
+              showSearch
+              placeholder="Найти дизайн…"
+              value={fromId || undefined}
+              onChange={setFromId}
+              options={designOptions}
+              filterOption={(input, opt) =>
+                (opt?.label ?? '').toLowerCase().includes(input.toLowerCase())
+              }
+              style={{ flex: 1 }}
+            />
+          ) : (
+            <Input
+              placeholder="ID панели"
+              value={fromId}
+              onChange={(e) => setFromId(e.target.value)}
+            />
+          )}
+        </Space.Compact>
+        <div>
+          <Text strong>Режим</Text>
+          <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+              <input
+                type="radio"
+                checked={mode === 'replace'}
+                onChange={() => setMode('replace')}
+              />
+              <div>
+                <div>Заменить</div>
+                <div style={{ fontSize: 12, color: '#9CA3AF' }}>
+                  Текущая подборка целевого товара будет полностью перезаписана.
+                </div>
+              </div>
+            </label>
+            <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+              <input
+                type="radio"
+                checked={mode === 'append'}
+                onChange={() => setMode('append')}
+              />
+              <div>
+                <div>Дополнить</div>
+                <div style={{ fontSize: 12, color: '#9CA3AF' }}>
+                  Добавить недостающие цели из источника без перезаписи существующих (с дедупликацией).
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+      </Space>
+    </Modal>
   );
 }

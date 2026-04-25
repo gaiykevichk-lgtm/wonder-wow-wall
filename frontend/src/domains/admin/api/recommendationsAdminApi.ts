@@ -43,6 +43,13 @@ export interface ApiRecommendation {
   targets: ApiRecommendationTarget[];
   /** ISO datetime; empty string when no row exists yet. */
   updated_at: string;
+  /**
+   * Phase 10 LOW-7 — what the heuristic would surface if no curation
+   * existed. The editor uses this for «Принять авто-предложение»
+   * one-click pickers. Always present (possibly empty) on detail
+   * reads; omitted on list reads.
+   */
+  fallback_suggestions: ApiRecommendationTarget[];
 }
 
 export interface ApiRecommendationListResponse {
@@ -58,6 +65,8 @@ export interface RecommendationsAdminFilters {
   sourceType: RecommendationSourceTypeKey | null;
   /** null = "all", true = "only with manual targets". */
   hasManual: boolean | null;
+  /** Phase 10 LOW-6 — case-insensitive substring on `source_id`. */
+  search: string | null;
 }
 
 export interface RecommendationsAdminQuery extends RecommendationsAdminFilters {
@@ -83,6 +92,7 @@ function buildQueryString(q: RecommendationsAdminQuery): string {
   const params = new URLSearchParams();
   if (q.sourceType) params.set('source_type', q.sourceType);
   if (q.hasManual !== null) params.set('has_manual', String(q.hasManual));
+  if (q.search) params.set('search', q.search);
   params.set('page', String(q.page));
   params.set('size', String(q.size));
   return params.toString();
@@ -186,7 +196,49 @@ export function useDeleteRecommendation() {
           source_id: vars.sourceId,
           targets: [],
           updated_at: '',
+          fallback_suggestions: [],
         },
+      );
+      qc.invalidateQueries({ queryKey: recommendationsAdminKeys.lists });
+    },
+  });
+}
+
+// ─── Phase 10 follow-up: bulk copy from another source ─────────────────
+
+export interface CopyRecommendationsVars {
+  /** Destination — the row the admin is editing. */
+  sourceType: RecommendationSourceTypeKey;
+  sourceId: string;
+  /** Where to copy from. */
+  fromSourceType: RecommendationSourceTypeKey;
+  fromSourceId: string;
+  /** `replace` overwrites; `append` keeps existing + dedups by key. */
+  mode: 'replace' | 'append';
+}
+
+/**
+ * POST `/admin/recommendations/{type}/{id}/copy-from` — seed a
+ * destination from another source. Server enforces the live cap on
+ * `recommendations_limit_per_source`. Returns the saved aggregate so
+ * the editor can swap its detail cache without a refetch.
+ */
+export function useCopyRecommendations() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: CopyRecommendationsVars) =>
+      api.post<ApiRecommendation>(
+        `/admin/recommendations/${vars.sourceType}/${vars.sourceId}/copy-from`,
+        {
+          from_source_type: vars.fromSourceType,
+          from_source_id: vars.fromSourceId,
+          mode: vars.mode,
+        },
+      ),
+    onSuccess: (data) => {
+      qc.setQueryData(
+        recommendationsAdminKeys.detail(data.source_type, data.source_id),
+        data,
       );
       qc.invalidateQueries({ queryKey: recommendationsAdminKeys.lists });
     },
