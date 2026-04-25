@@ -361,21 +361,26 @@ describe('visualizerStore', () => {
       expect(state.scene!.segmentationStatus).toBe('ready');
     });
 
-    it('leaves corners null when provider throws (adapter unavailable)', async () => {
+    it('falls back to mask-bbox trapezoid when provider throws (adapter unavailable)', async () => {
       setupReadyScene();
       const failingProvider = async () => {
         throw new Error('opencv-not-installed');
       };
       await useVisualizerStore.getState().runAutoPerspective(failingProvider);
       const state = useVisualizerStore.getState();
-      expect(state.perspectiveCorners).toBeNull();
-      expect(state.scene!.perspectiveAutoDetected).toBeFalsy();
+      // New contract: when no ML detector is available, we seed a
+      // trapezoidal starting shape from the wall-mask bbox so the panels
+      // still render with visible perspective. The user then refines in
+      // the editor. perspectiveAutoDetected stays FALSE to keep UI copy
+      // honest — "starting shape", not "detected".
+      expect(state.perspectiveCorners).not.toBeNull();
+      expect(state.scene!.perspectiveAutoDetected).toBe(false);
       // Status must be back to 'ready' — never leave the user stuck on
       // the 'detecting-perspective' spinner.
       expect(state.scene!.segmentationStatus).toBe('ready');
     });
 
-    it('leaves corners null when detector returns low-confidence', async () => {
+    it('falls back to mask-bbox trapezoid when detector returns low-confidence', async () => {
       setupReadyScene();
       // Single direction (only horizontals) → low-confidence reason.
       const horizontalsOnly = async () => {
@@ -388,7 +393,9 @@ describe('visualizerStore', () => {
       };
       await useVisualizerStore.getState().runAutoPerspective(horizontalsOnly);
       const state = useVisualizerStore.getState();
-      expect(state.perspectiveCorners).toBeNull();
+      // Same new contract as above — heuristic fires when ML returns null.
+      expect(state.perspectiveCorners).not.toBeNull();
+      expect(state.scene!.perspectiveAutoDetected).toBe(false);
       expect(state.scene!.segmentationStatus).toBe('ready');
     });
 

@@ -3,7 +3,7 @@
  * All operations work on flat Uint8Array (0 = not wall, 255 = wall).
  */
 
-import type { Point, WallMask, MaskTool } from '../model/types';
+import type { Point, WallMask, MaskTool, PerspectiveCorners } from '../model/types';
 
 /**
  * Create an empty mask filled with a given value.
@@ -279,4 +279,80 @@ export function totalWallFraction(mask: WallMask): number {
     if (mask.data[i] === 255) wallPixels++;
   }
   return wallPixels / mask.data.length;
+}
+
+/**
+ * Axis-aligned bounding box of the masked (wall) pixels, in mask-pixel
+ * coordinates. Returns `null` when the mask is effectively empty (fewer
+ * wall pixels than `minFraction * totalPixels`, default 0.1%). A mask this
+ * sparse usually indicates segmentation failure; downstream heuristics
+ * should bail out rather than operate on noise.
+ */
+export function maskBbox(
+  mask: WallMask,
+  minFraction: number = 0.001,
+): { minX: number; maxX: number; minY: number; maxY: number } | null {
+  const { data, width, height } = mask;
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  let count = 0;
+  for (let y = 0; y < height; y++) {
+    const row = y * width;
+    for (let x = 0; x < width; x++) {
+      // Threshold rather than strict === 255 so antialiased/blurred masks
+      // (e.g. from ONNX segmenters that output soft alpha) still count.
+      if (data[row + x] > 127) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+        count++;
+      }
+    }
+  }
+  if (count < minFraction * width * height) return null;
+  return { minX, maxX, minY, maxY };
+}
+
+/**
+ * Heuristic fallback used when no ML-based perspective detector is
+ * available (stub depth estimator on the backend, OpenCV.js unreachable,
+ * YOLO reference not wired). Derives a trapezoidal perspective frame from
+ * the wall mask's bounding box by tapering the *top* edge inward by
+ * `topInsetPct` of the bbox width.
+ *
+ * Rationale: interior-wall photos are overwhelmingly taken from roughly
+ * floor-to-mid-height, pointing slightly upward — ceilings read narrower
+ * than floors in the photo. A symmetric inward taper at the top is a
+ * defensible default that gives the user a visibly-perspective starting
+ * shape to refine in the corner editor, rather than a flat rectangle that
+ * renders tiles identically to the no-perspective case.
+ *
+ * This is *not* real detection — the returned corners should be flagged as
+ * a heuristic so the UI can prompt the user to verify/adjust them. Real
+ * detectors (when available) should override the heuristic entirely.
+ *
+ * Returns `null` when the mask is too sparse to trust (`maskBbox` returns
+ * null) or the bbox is degenerate (zero-width/height).
+ */
+export function trapezoidFromMaskBbox(
+  mask: WallMask,
+  options: { topInsetPct?: number } = {},
+): PerspectiveCorners | null {
+  const topInsetPct = options.topInsetPct ?? 0.08;
+  const bbox = maskBbox(mask);
+  if (!bbox) return null;
+  const bboxW = bbox.maxX - bbox.minX;
+  const bboxH = bbox.maxY - bbox.minY;
+  if (bboxW <= 0 || bboxH <= 0) return null;
+  const inset = bboxW * topInsetPct;
+  // TL, TR, BR, BL — matches the PerspectiveCorners contract.
+  return [
+    { x: bbox.minX + inset, y: bbox.minY },
+    { x: bbox.maxX - inset, y: bbox.minY },
+    { x: bbox.maxX, y: bbox.maxY },
+    { x: bbox.minX, y: bbox.maxY },
+  ];
 }

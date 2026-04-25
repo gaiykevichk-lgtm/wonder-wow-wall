@@ -2,42 +2,39 @@
  * Adapter that supplies `vanishingPointDetector` with line segments extracted
  * by OpenCV.js.
  *
- * STATUS — Phase 3.1c. Real implementation using `@techstark/opencv-js`.
+ * STATUS — Stage-2 (client-side) currently **disabled**. See
+ * [`docs/design-docs/AUTO-PERSPECTIVE-FALLBACK-STRATEGY.md`](../../../../../docs/design-docs/AUTO-PERSPECTIVE-FALLBACK-STRATEGY.md).
  *
- * Pipeline:
- *   ImageBitmap ← imageUrl
- *     → downscale to ≤`maxDim` px on the long edge (cost, not accuracy)
- *     → grayscale
- *     → Canny edges
- *     → HoughLinesP (probabilistic Hough)
- *     → scale coords back to photo space
- *   ⇒ Line[]
+ * Why disabled: the `@techstark/opencv-js` bundle is a ~11 MB Emscripten
+ * UMD. Loading it via dynamic import through Vite either pre-bundles (OOMs
+ * the 512 MB sandbox) or serves the raw UMD (times out before ESM wrapping
+ * completes). Loading it via `<script>` injection works, but parsing 11 MB
+ * of asm.js blocks the main thread for 15+ seconds on the sandbox — long
+ * enough that Chrome shows "Страница не отвечает".
  *
- * Why HoughLinesP and not LSD: OpenCV removed the real LSD implementation in
- * 4.1 over licensing (BSD-3 → patent concerns). `createLineSegmentDetector`
- * throws in modern opencv.js builds. HoughLinesP returns comparable segment
- * lists for the flat, edge-rich walls we care about (doors, window frames,
- * floor/ceiling lines), which are exactly the cues the VP detector uses.
+ * Every path we have tried either (a) fails to load OpenCV or (b) freezes
+ * the tab during load. Shipping this code live means the best user
+ * experience is a **fast-failing** `loadOpenCV` that lets
+ * `runAutoPerspective` fall through to the mask-bbox trapezoid heuristic
+ * immediately, instead of burning the 15 s auto-perspective budget on a
+ * load that will ultimately freeze the tab.
  *
- * Why `<script>` injection, not dynamic import: the opencv.js bundle is
- * ~11 MB (Emscripten-compiled asm.js, not lazy WASM). Going through Vite's
- * module system for a file this large is unreliable in dev — excluding it
- * from `optimizeDeps` makes the dev server serve the raw UMD, which Vite
- * can't always wrap as an ES module within a usable timeout; including it
- * triggers a very heavy pre-bundle step that has OOM'd the 512 MB sandbox.
- * Shipping the file as a static public asset and letting the browser
- * evaluate it as a classic script (which sets `window.cv`, exactly as
- * opencv.js expects) sidesteps both problems. The file is still lazy — the
- * `<script>` tag is only appended on the first auto-perspective call.
+ * The Phase-3.1c pipeline (HoughLinesP + vanishing-point) is preserved
+ * below so that turning this back on requires only replacing `loadOpenCV`
+ * with a Web-Worker-backed implementation — no changes to the call site
+ * in `runAutoPerspective` or `vanishingPointDetector`. The planned
+ * migration is:
+ *   - `public/workers/opencv-worker.js` — classic Web Worker that
+ *     `importScripts('/opencv.js')` (this unblocks main-thread parsing).
+ *   - `cvWorkerHost` switches from an in-process queue to a real
+ *     `new Worker(...)` host that posts `{imageData, params}` to the
+ *     worker and receives `{lines}` back.
+ *   - `loadOpenCV` below becomes a thin wrapper that lazily spins the
+ *     worker up and caches the handle.
  *
- * Initialization: OpenCV's Emscripten runtime boots asynchronously via
- * `cv.onRuntimeInitialized`. We resolve a module-level promise exactly once
- * so concurrent auto-perspective calls share the 300–500 ms cold start
- * instead of each paying it.
- *
- * Memory: every `cv.Mat` must be `.delete()`d; the Emscripten heap does not
- * garbage-collect. We wrap the inference in a finally-block that releases
- * every Mat regardless of path.
+ * The `createOpencvLsdProvider` factory below is preserved verbatim
+ * (HoughLinesP pipeline, Mat memory discipline, downscaling) so the
+ * Worker migration is a one-function swap rather than a full rewrite.
  */
 
 import type { Line, LineProvider } from './vanishingPointDetector';
@@ -112,197 +109,26 @@ interface CvMat {
   delete(): void;
 }
 
-let cvPromise: Promise<CvNamespace> | null = null;
-
-// Hard ceiling on how long we wait for the opencv.js Emscripten runtime to
-// become usable. The asset is ~11 MB so on a cold HTTP cache + slow sandbox
-// network + the asm.js runtime's async init it can take a good while.
-// Anything beyond this and we surrender to the fallback chain — a stuck
-// "detecting…" indicator is worse than a quiet manual mode.
-const OPENCV_LOAD_TIMEOUT_MS = 30_000;
-
-// Path under which `opencv.js` is served as a static asset. Copied from
-// `node_modules/@techstark/opencv-js/dist/opencv.js` into `public/` at
-// repo bootstrap; Vite serves it verbatim from the dev server root and
-// the production build emits it to `/dist/opencv.js`.
-const OPENCV_SCRIPT_URL = '/opencv.js';
-
-// Tag applied to the injected <script> so concurrent callers can reuse an
-// in-flight load, and browsers can dedupe if this file is hot-reloaded.
-const SCRIPT_MARKER = 'data-opencv-js';
-
-/** Window shape we touch. Declared locally to avoid polluting global types. */
-interface OpenCVWindow {
-  cv?: CvNamespace;
-  document: Document;
-}
-
-function getOpenCVWindow(): OpenCVWindow | null {
-  if (typeof window === 'undefined' || typeof document === 'undefined') {
-    return null;
-  }
-  return window as unknown as OpenCVWindow;
-}
-
 async function loadOpenCV(): Promise<CvNamespace> {
-  if (cvPromise) return cvPromise;
-  const w = getOpenCVWindow();
-  if (!w) {
-    // SSR / node / non-DOM test runner — nothing we can do.
-    return Promise.reject(
-      new OpencvNotInstalledError('DOM not available (SSR or test env)'),
-    );
-  }
-  const raw = (async (): Promise<CvNamespace> => {
-    // Fast-path: a previous run already installed it on window.
-    if (typeof w.cv?.getBuildInformation === 'function') {
-      return w.cv;
-    }
-
-    // Sanity-check the asset is actually served before we inject. A HEAD
-    // request is cheap and fails instantly in jsdom / misconfigured
-    // deployments where `/opencv.js` would 404 — that gives tests a fast
-    // rejection path instead of hanging on a `<script>` tag whose onload
-    // never fires.
-    try {
-      const probe = await fetch(OPENCV_SCRIPT_URL, { method: 'HEAD' });
-      if (!probe.ok) {
-        throw new OpencvNotInstalledError(
-          `opencv.js asset unavailable (HTTP ${probe.status}). ` +
-            `Ensure public/opencv.js is served.`,
-        );
-      }
-    } catch (err) {
-      if (err instanceof OpencvNotInstalledError) throw err;
-      throw new OpencvNotInstalledError(err);
-    }
-
-    // Inject (or reuse) a <script> tag. opencv.js is a UMD that assigns
-    // `window.cv` during evaluation and fires `onRuntimeInitialized` once
-    // the Emscripten asm.js heap is set up. We wait for that event (or a
-    // getBuildInformation poll as belt+braces).
-    const doc = w.document;
-    let script = doc.querySelector<HTMLScriptElement>(
-      `script[${SCRIPT_MARKER}]`,
-    );
-    if (!script) {
-      script = doc.createElement('script');
-      script.setAttribute(SCRIPT_MARKER, '1');
-      script.async = true;
-      script.src = OPENCV_SCRIPT_URL;
-      doc.head.appendChild(script);
-    }
-
-    // Wait for the script tag to finish evaluating. If it errors we map to
-    // OpencvNotInstalledError for the store's fallback chain.
-    await new Promise<void>((resolve, reject) => {
-      if (script!.dataset.loaded === '1') {
-        resolve();
-        return;
-      }
-      script!.addEventListener('load', () => {
-        script!.dataset.loaded = '1';
-        resolve();
-      });
-      script!.addEventListener('error', (e) =>
-        reject(
-          new OpencvNotInstalledError(
-            e instanceof Event ? 'script tag load error' : String(e),
-          ),
-        ),
-      );
-    });
-
-    const cv = w.cv;
-    if (!cv) {
-      throw new OpencvNotInstalledError(
-        'window.cv missing after opencv.js evaluated',
-      );
-    }
-    if (typeof cv.getBuildInformation === 'function') {
-      return cv;
-    }
-
-    // Runtime may not be ready yet even though the script evaluated —
-    // Emscripten boots the asm.js heap asynchronously and fires
-    // `onRuntimeInitialized` exactly once. Hook it and also poll as a
-    // belt+braces check (the handler occasionally misses when another
-    // consumer has already attached a listener).
-    await new Promise<void>((resolve) => {
-      if (typeof cv.getBuildInformation === 'function') {
-        resolve();
-        return;
-      }
-      const prev = cv.onRuntimeInitialized;
-      cv.onRuntimeInitialized = () => {
-        try {
-          prev?.();
-        } finally {
-          resolve();
-        }
-      };
-      const pollId = setInterval(() => {
-        if (typeof cv.getBuildInformation === 'function') {
-          clearInterval(pollId);
-          resolve();
-        }
-      }, 50);
-    });
-    return cv;
-  })();
-
-  cvPromise = Promise.race<CvNamespace>([
-    raw,
-    new Promise<CvNamespace>((_, reject) => {
-      setTimeout(
-        () =>
-          reject(
-            new OpencvNotInstalledError(
-              `OpenCV runtime did not initialise within ${OPENCV_LOAD_TIMEOUT_MS} ms`,
-            ),
-          ),
-        OPENCV_LOAD_TIMEOUT_MS,
-      );
-    }),
-  ]);
-  // If the first attempt throws we want the next call to *retry* (e.g., the
-  // network blip is transient), so clear the cache on failure. We also log
-  // the underlying cause in dev so debugging doesn't require a breakpoint.
-  return cvPromise.catch((err) => {
-    cvPromise = null;
-    if (import.meta.env.DEV) {
-      const cause = (err as { cause?: unknown }).cause;
-      // eslint-disable-next-line no-console
-      console.warn('[opencvLsdAdapter] loadOpenCV failed:', err, 'cause:', cause);
-    }
-    throw err;
-  });
+  // Disabled pending Web-Worker migration (see file-level doc comment).
+  // Returning a rejection immediately means `runAutoPerspective`'s Stage 2
+  // catch block fires within microseconds — the mask-bbox trapezoid
+  // heuristic takes over and the user sees panels with visible perspective
+  // instead of a frozen tab or a 15 s no-op.
+  throw new OpencvNotInstalledError(
+    'Stage-2 OpenCV loader disabled until Web-Worker migration — ' +
+      'see docs/design-docs/AUTO-PERSPECTIVE-FALLBACK-STRATEGY.md',
+  );
 }
 
 /**
- * Fire-and-forget warm-up. Triggers `<script>` injection + Emscripten boot so
- * that by the time `runAutoPerspective` actually needs OpenCV, the ~11 MB
- * bundle is already fetched and the runtime is initialised.
- *
- * Safe to call multiple times — `loadOpenCV()` dedupes via `cvPromise`.
- * Errors are swallowed: this is best-effort; the real call path in the store
- * will still produce a typed `OpencvNotInstalledError` if loading ultimately
- * fails, which triggers the proper fallback chain.
- *
- * Callers: `PhotoEditorPage` kicks this off the moment segmentation finishes
- * so the backend (Stage 1) and OpenCV cold-start run in parallel instead of
- * serially eating the overall 25 s detection budget.
+ * No-op in the disabled state — exported to keep the call site in
+ * `PhotoEditorPage` stable. When OpenCV is re-enabled (via Web Worker),
+ * this will warm up the worker in parallel with segmentation so the
+ * first auto-perspective run does not pay the cold-start cost serially.
  */
 export function prefetchOpenCV(): void {
-  // Only in DOM environments — SSR / jest-node would hit the SSR reject path
-  // and log spurious warnings.
-  if (typeof window === 'undefined' || typeof document === 'undefined') return;
-  loadOpenCV().catch((err) => {
-    if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
-      console.warn('[opencvLsdAdapter] prefetchOpenCV failed:', err);
-    }
-  });
+  // intentional no-op
 }
 
 // ─── Image decoding ─────────────────────────────────────────────────

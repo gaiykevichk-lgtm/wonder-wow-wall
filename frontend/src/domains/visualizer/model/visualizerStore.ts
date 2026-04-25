@@ -23,7 +23,7 @@ import type {
 import { message } from 'antd';
 import { calculateCost } from '../lib/costCalculator';
 import { autoFillWall, AutoFillBlockedError } from '../lib/layoutEngine';
-import { createEmptyMask } from '../lib/maskUtils';
+import { createEmptyMask, trapezoidFromMaskBbox } from '../lib/maskUtils';
 import { createPerspective } from '../lib/perspectiveEngine';
 import { uint8ArrayToBase64, base64ToUint8Array } from '../lib/maskSerialization';
 import { detectFromLines, type LineProvider } from '../lib/vanishingPointDetector';
@@ -717,6 +717,41 @@ export const useVisualizerStore = create<VisualizerState>()(
         resolvedCorners = null;
         resolvedResult = null;
       }
+      // Heuristic fallback — when no ML detector produced usable corners
+      // (stub depth → identity → rejected; OpenCV.js unavailable / too
+      // heavy for main thread; YOLO reference not wired), derive a
+      // trapezoidal starting shape from the wall-mask bbox so the panels
+      // still warp with visible perspective. User refines in the corner
+      // editor; we flag it as a heuristic (perspectiveAutoDetected:false)
+      // so the UI can prompt rather than claim successful auto-detection.
+      // Real detectors (when deployed) short-circuit this by populating
+      // resolvedCorners with non-identity values above.
+      let cornersAreHeuristic = false;
+      if (!resolvedCorners) {
+        const fallback = trapezoidFromMaskBbox(wallMask);
+        if (fallback) {
+          if (import.meta.env.DEV) {
+            console.info(
+              '[runAutoPerspective] no ML result — using wall-mask bbox trapezoid heuristic',
+            );
+          }
+          resolvedCorners = fallback;
+          cornersAreHeuristic = true;
+          // Synthesise a bbox hint so the calibration-seeding block below
+          // still fires (we have wall extent from the mask). Width = bottom
+          // edge (BR.x − BL.x); height = right edge (BR.y − TR.y). These
+          // are the true mask-bbox dimensions since the trapezoid taper
+          // only moves the TOP corners inward.
+          resolvedResult = {
+            corners: fallback,
+            confidence: 0,
+            bboxPixels: {
+              width: fallback[2].x - fallback[3].x,
+              height: fallback[2].y - fallback[1].y,
+            },
+          } satisfies AutoPerspectiveResult;
+        }
+      }
       if (current && current.segmentationStatus === 'detecting-perspective') {
         if (resolvedCorners !== null) {
           // Seed a bbox-derived calibration whenever detection returns a
@@ -762,7 +797,12 @@ export const useVisualizerStore = create<VisualizerState>()(
             scene: {
               ...current,
               segmentationStatus: 'ready',
-              perspectiveAutoDetected: true,
+              // Only claim auto-detection when an ML pipeline actually
+              // produced the corners. The heuristic trapezoid is a
+              // *starting shape* derived from mask geometry — surfacing
+              // it as "detected" would mislead the user into trusting
+              // corners that were never measured.
+              perspectiveAutoDetected: !cornersAreHeuristic,
               calibration: seedCalibration ?? current.calibration,
               calibrationAutoDetected: shouldSeed
                 ? true

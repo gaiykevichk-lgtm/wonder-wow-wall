@@ -399,6 +399,32 @@
 4. **AdminOrdersPage не покрыт component-тестом** — store тесты доказывают URL↔state контракт, но визуальное отображение колонок/тегов не проверено. Добавить smoke-тест в Phase 4B (вместе с тестом `AdminOrderDetailPage`).
 5. **`datetime.utcnow()` в фильтре** — в `_make_order` тестовых фикстур используется UTC-naive datetime; при переходе на timezone-aware (см. Phase 3 backlog) это может треснуть. Закрывается общим переходом в Phase 4B.
 
+### Аудит 2026-04-25 — детальная line-by-line проверка
+
+**Проверено пофайлово:**
+- Backend: `domain/order/filters.py`, `domain/order/repositories.py`, `application/order/use_cases.py` (`ListOrdersAdmin`), `infrastructure/persistence/repositories/memory.py` (`find_paginated`), `infrastructure/persistence/repositories/sql.py` (`find_paginated`), `container.py` (порядок init), `infrastructure/api/admin/orders.py`, `alembic/versions/007_add_order_indexes.py`, `infrastructure/api/admin/__init__.py` (подключение роутера).
+- Backend tests: `tests/domain/order/test_order_filters.py`, `tests/application/order/test_list_orders_admin.py`, `tests/api/admin/test_orders_list.py`, `tests/infrastructure/test_alembic.py` (правки head/индексы/downgrade-цели).
+- Frontend: `domains/admin/api/ordersAdminApi.ts`, `domains/admin/model/ordersAdminStore.ts`, `domains/admin/ui/AdminOrdersPage.tsx`, `domains/admin/__tests__/ordersAdminStore.test.ts`.
+
+#### Критические проблемы
+**Не выявлены.** Auth-guard работает (401/403 покрыты), валидация отвергает мусор на трёх слоях (Pydantic Query → use case ValueError → доменный `InvalidOrderFilterError`), SQL JOIN не размножает строки (`selectinload` для items + LEFT OUTER JOIN с PK на FK даёт 1:1), URL ↔ state round-trip зафиксирован identity-тестом, миграция 007 идемпотентна и имеет симметричный downgrade. Регрессий в существующих миграционных тестах нет (downgrade-цели пиннуты на явные ревизии).
+
+#### Некритические замечания
+1. **AdminOrdersPage.tsx:262** — `<Input.Search defaultValue={query.search ?? ''}>` использует **неуправляемый** input. Когда пользователь жмёт «Сбросить» (строка 267 → 132 `onResetFilters`), URL очищается, но текст в поле поиска остаётся. Аналогично сломается на browser back/forward, если поиск меняется через URL. **Фикс:** заменить на `value={query.search ?? ''}` + `onChange` (или `key={query.search ?? ''}` как cheap workaround). Перенести в Phase 4B.
+2. **AdminOrdersPage.tsx:104-106** — обработчик `onStatusChange(value: OrderStatusKey | null)` лжёт сигнатурой: AntD `<Select allowClear>` при очистке передаёт `undefined`, не `null`. На рантайме результат проходит через `applyFilterPatch({ status: undefined })` → `searchParamsFromQuery` отбрасывает falsy → URL пуст → следующий парс возвращает `null`, поэтому **бага нет**, но типы и реальность расходятся. Фикс: `OrderStatusKey | null | undefined` либо явная нормализация `value ?? null`.
+3. **AdminOrdersPage.tsx:289** — `loading={isLoading || isFetching}`. `isFetching` уже включает `isLoading` как частный случай (первый запрос); упрощается до `loading={isFetching}`. Косметика.
+4. **ordersAdminApi.ts:67-77 vs ordersAdminStore.ts:89-99** — две функции делают почти одно и то же (`buildQueryString` для бэка, `searchParamsFromQuery` для URL). Различие: `buildQueryString` всегда выставляет `page`/`size` (бэку нужен явный параметр), а `searchParamsFromQuery` опускает дефолты (URL чище). Это осознанное расхождение, но дублирование стоит извлечь в общий хелпер `buildBaseParams(q)` + 2 тонких обёртки.
+5. **ordersAdminStore.ts:50-54** — `parsePositiveInt` для `size` не клампит верхнюю границу. URL `?size=500` → фронт принимает → бэк возвращает 422 (Pydantic `le=200`). UX-улучшение: клампить к `MAX_PAGE_SIZE` на фронте и ловить ошибку до запроса.
+6. **filters.py** — отвергает `date_from == date_to` (half-open пустое окно). Это валидно по семантике интервала (`[t, t)` пусто), но возвращать пустой результат было бы дружелюбнее, чем 422. Спорный design choice, оставлен как есть для консистентности с `analytics.DateRange`.
+7. **test_orders_list.py:24-30** — fixture `_reset_order_repo` модифицирует приватные атрибуты (`._orders`, `._counter`). То же делает `test_dashboard.py` — устоявшийся паттерн в проекте, но при добавлении нового state в репо (например, индекс по статусу для perf) фикстура потребует ручного дополнения. Идея: добавить публичный `clear()` метод на InMemoryOrderRepository (эта тема уже всплывала в Phase 3 audit как pattern-debt).
+8. **use_cases.py `ListOrdersAdmin`** — `MAX_PAGE_SIZE = 200` дублирует значение Pydantic `Query(le=200)` в `api/admin/orders.py`. На уровне use case это защита от прямого вызова в обход HTTP, но при изменении лимита нужно править два места. Минорное предложение: вынести константу в `domain/order/filters.py` или `domain/_constants.py`.
+9. **sql.py `find_paginated`** — комментарий упоминает, что count и items query разделяют WHERE-условия, но JOIN с UserModel дублируется в обеих. Для очень частых запросов с поиском это два отдельных JOIN-планирования; subquery-оптимизация — не для MVP, но стоит пометить если попадёт в hot path.
+
+#### Регрессии
+- Существующие тесты `test_alembic.py` разделили на «pinned to 005/004» downgrade-цели, что устойчиво к будущим миграциям — это улучшение, не регрессия.
+- `InMemoryOrderRepository` не сломал существующих вызывающих: `users_source` имеет дефолт `None`, поведение `find_paginated` не пересекается с `save`/`find_by_user`/`find_by_id`/`list_all`.
+- Запуск изолированных тестовых модулей (Phase 4A unit + integration) проходит зелёным; preexisting flake в `test_alembic.py` при full-suite запуске (postgres :5432) задокументирован в Phase 3 audit и не связан с этой фазой.
+
 ---
 
 ## Фаза 4B: Заказы — детальный просмотр и управление статусом
