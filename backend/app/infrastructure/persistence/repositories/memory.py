@@ -18,6 +18,8 @@ from app.domain.user.entities import User
 from app.domain.user.filters import UserFilters
 from app.domain.user.repositories import UserRepository
 from app.domain.user.value_objects import UserRole
+from app.domain.media.entities import MediaAsset
+from app.domain.media.repositories import MediaAssetRepository
 
 
 # ─── Catalog ─────────────────────────────────────────────────────────
@@ -242,3 +244,37 @@ class InMemoryUserRepository(UserRepository):
         total = len(result)
         offset = (page - 1) * size
         return result[offset:offset + size], total
+
+
+# ─── Media (Phase 6) ─────────────────────────────────────────────────
+
+class InMemoryMediaAssetRepository(MediaAssetRepository):
+    """List-backed mirror of `SqlMediaAssetRepository`.
+
+    Used by the test suite (`USE_MEMORY_REPOS=true`) so admin-media
+    endpoint tests can run without a postgres instance. Mutations operate
+    on the same singleton as the API (see `container.py`); tests reset
+    `_assets` per-test to avoid cross-pollution — same pattern as
+    `_mem_user_repo._users.clear()`.
+    """
+
+    def __init__(self):
+        self._assets: list[MediaAsset] = []
+
+    async def create(self, asset: MediaAsset) -> MediaAsset:
+        # Defend the UNIQUE(path) constraint that the SQL repo enforces
+        # at the DB level — keeps the two implementations behaviourally
+        # equivalent so a test that passes in-memory doesn't surprise
+        # the postgres deployment.
+        if any(a.path == asset.path for a in self._assets):
+            raise ValueError(f"MediaAsset.path collision: {asset.path}")
+        self._assets.append(asset)
+        return asset
+
+    async def get_by_id(self, asset_id: str) -> MediaAsset | None:
+        return next((a for a in self._assets if a.id == asset_id), None)
+
+    async def delete(self, asset_id: str) -> bool:
+        before = len(self._assets)
+        self._assets = [a for a in self._assets if a.id != asset_id]
+        return len(self._assets) != before

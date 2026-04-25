@@ -10,6 +10,7 @@
 | [AUTO-PERSPECTIVE-FALLBACK-STRATEGY.md](./AUTO-PERSPECTIVE-FALLBACK-STRATEGY.md) | Визуализатор · auto-perspective pipeline + fallbacks | draft |
 | [DEPTH-ESTIMATION-INFRA.md](./DEPTH-ESTIMATION-INFRA.md) | Backend · depth estimator + RANSAC | approved |
 | [DESIGN-SYSTEM.md](./DESIGN-SYSTEM.md) | UI · дизайн-система | approved |
+| [FILE-STORAGE-ROADMAP.md](./FILE-STORAGE-ROADMAP.md) | Backend · `FileStorage` MVP → S3 миграция | draft |
 | [PANEL-WARP-RENDERER.md](./PANEL-WARP-RENDERER.md) | Визуализатор · рендер плиток в перспективе | approved |
 | [PERSPECTIVE-AUDIT.md](./PERSPECTIVE-AUDIT.md) | Визуализатор · аудит Фазы 0 | approved (archived) |
 | [PHOTO-WALL-EDITOR-ARCHITECTURE.md](./PHOTO-WALL-EDITOR-ARCHITECTURE.md) | Визуализатор · общая архитектура | approved |

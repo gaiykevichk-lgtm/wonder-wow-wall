@@ -5,6 +5,11 @@ services:
       - "80:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Phase 6 — admin file uploads. nginx serves `/uploads/` directly
+      # from the same volume the backend writes into, so we save a
+      # backend round-trip per asset fetch (pure file IO is much faster
+      # via nginx than via FastAPI's StaticFiles).
+      - uploads:/var/uploads:ro
     depends_on:
       - frontend
       - backend
@@ -28,6 +33,13 @@ services:
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost}
       - ENV=${ENV:-development}
+      # Phase 6 — admin file uploads land here. Same path mounted on
+      # both `backend` (read+write) and `nginx` (read-only) so writes
+      # are immediately visible to URL fetches without a copy step.
+      - MEDIA_STORAGE_ROOT=/var/uploads
+      - MEDIA_URL_PREFIX=/uploads
+    volumes:
+      - uploads:/var/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -56,3 +68,7 @@ services:
 
 volumes:
   pgdata:
+  # Phase 6 — admin-uploaded media. Lifetime is independent of any
+  # individual container; nuking the postgres volume should NOT delete
+  # the files (and vice-versa).
+  uploads:

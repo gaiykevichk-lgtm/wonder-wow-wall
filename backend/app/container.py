@@ -18,6 +18,7 @@ from app.infrastructure.persistence.repositories.memory import (
     InMemoryOrderRepository,
     InMemorySubscriptionRepository,
     InMemoryUserRepository,
+    InMemoryMediaAssetRepository,
 )
 from app.infrastructure.persistence.repositories.project_repo import (
     InMemoryProjectRepository,
@@ -51,6 +52,9 @@ _mem_analytics_repo = InMemoryAnalyticsRepository(
     orders=lambda: _mem_order_repo._orders,
     users=lambda: _mem_user_repo._users,
 )
+# Phase 6 — admin file uploads. Singleton so test seeding/cleanup is
+# visible to the API across requests, mirroring `_mem_user_repo`.
+_mem_media_repo = InMemoryMediaAssetRepository()
 
 
 # ─── Backward-compatible aliases (used by existing tests) ────────────
@@ -64,6 +68,7 @@ user_repo = _mem_user_repo
 project_repo = _mem_project_repo
 visualization_repo = _mem_visualization_repo
 analytics_repo = _mem_analytics_repo
+media_repo = _mem_media_repo
 
 
 # ─── FastAPI Dependencies ────────────────────────────────────────────
@@ -82,6 +87,7 @@ def _get_sql_repo_classes() -> dict:
             SqlOrderRepository,
             SqlSubscriptionRepository,
             SqlUserRepository,
+            SqlMediaAssetRepository,
         )
         from app.infrastructure.persistence.repositories.project_repo import SqlProjectRepository
         from app.infrastructure.persistence.repositories.visualization_repo import SqlVisualizationProjectRepository
@@ -96,6 +102,7 @@ def _get_sql_repo_classes() -> dict:
             "project": SqlProjectRepository,
             "visualization": SqlVisualizationProjectRepository,
             "analytics": SqlAnalyticsRepository,
+            "media": SqlMediaAssetRepository,
         }
     return _sql_repo_classes
 
@@ -168,6 +175,64 @@ def get_analytics_repo(session=Depends(get_db_session)):
     if settings.USE_MEMORY_REPOS:
         return _mem_analytics_repo
     return _get_sql_repo_classes()["analytics"](session)
+
+
+def get_media_repo(session=Depends(get_db_session)):
+    """Phase 6 — admin media uploads.
+
+    Mirrors the other repo dependencies; the in-memory variant is a
+    process-singleton so multi-step tests (upload then re-fetch by id)
+    see each other's writes.
+    """
+    if settings.USE_MEMORY_REPOS:
+        return _mem_media_repo
+    return _get_sql_repo_classes()["media"](session)
+
+
+# ─── Phase 6 (admin panel) — file storage singleton ──────────────────
+
+_file_storage = None  # type: ignore[var-annotated]
+_file_storage_lock = threading.Lock()
+
+
+def get_file_storage():
+    """Return the process-wide `FileStorage` instance.
+
+    Singleton because:
+      * `LocalFileStorage` holds no per-request state (the root path is
+        fixed at boot).
+      * Tests can monkeypatch this function via FastAPI's
+        `app.dependency_overrides[get_file_storage] = ...` to swap in a
+        tempdir-backed adapter without touching the production singleton.
+
+    Same lazy-init + double-checked-lock pattern as `get_depth_estimator`
+    above — keeps boot fast and avoids importing `LocalFileStorage` if
+    no admin endpoint is ever hit (tests for unrelated areas).
+    """
+    global _file_storage
+    if _file_storage is not None:
+        return _file_storage
+    with _file_storage_lock:
+        if _file_storage is not None:
+            return _file_storage
+        from app.infrastructure.storage.local import LocalFileStorage
+        _file_storage = LocalFileStorage(
+            root=settings.MEDIA_STORAGE_ROOT,
+            url_prefix=settings.MEDIA_URL_PREFIX,
+        )
+    return _file_storage
+
+
+def reset_file_storage_singleton() -> None:
+    """Test helper — drops the cached storage so the next `get_file_storage`
+    call re-reads the (possibly monkeypatched) settings.
+
+    Lives next to the singleton it operates on so future readers don't
+    have to grep across files to find the reset hook.
+    """
+    global _file_storage
+    with _file_storage_lock:
+        _file_storage = None
 
 
 # ─── Phase 6 — Depth Estimator (singleton across the process) ──────────

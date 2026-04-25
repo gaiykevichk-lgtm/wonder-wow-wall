@@ -255,3 +255,39 @@ class VisualizationProjectModel(Base):
     )
 
     user: Mapped["UserModel"] = relationship(back_populates="visualization_projects")
+
+
+# ─── Media assets (Phase 6) ─────────────────────────────────────────
+
+class MediaAssetModel(Base):
+    """Phase 6 — admin file uploads (panel photos, design previews, banners).
+
+    `path` is storage-relative and UNIQUE — the storage adapter
+    (`LocalFileStorage`) hands out `<purpose>/<uuid4>.<ext>` strings, so
+    a UNIQUE constraint serves as a defense-in-depth check against a
+    UUID collision (vanishingly unlikely, but free here).
+
+    `uploaded_by` is a soft FK (no `ForeignKey()`) because we want to
+    preserve audit history even if the user is later deleted. Same
+    decision as `OrderNoteModel.author_id` — admins are permanent in
+    practice, but the audit trail must outlive any individual account.
+    """
+
+    __tablename__ = "media_assets"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=gen_uuid)
+    # Storage-relative path; nginx serves `/uploads/<path>`. UNIQUE +
+    # indexed for the orphan-sweep query (`SELECT path FROM media_assets`
+    # vs. directory listing) — see `DeleteMedia` use case docstring.
+    path: Mapped[str] = mapped_column(
+        String(500), unique=True, nullable=False, index=True,
+    )
+    mime: Mapped[str] = mapped_column(String(100), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Original filename from the upload form, sanitised (no directories)
+    # by `UploadMedia._safe_original_name`. 255 char cap matches the
+    # POSIX filename limit so any reasonable name fits.
+    original_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    uploaded_by: Mapped[str] = mapped_column(String(36), nullable=False)
+    purpose: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

@@ -18,6 +18,19 @@ class Settings(BaseSettings):
     DEPTH_MODEL_PATH: str = ""
     DEPTH_INPUT_SIZE: int = 256
 
+    # ─── Phase 6 (admin panel) — media file storage ──────────────────
+    # `MEDIA_STORAGE_ROOT` is the absolute filesystem directory the
+    # `LocalFileStorage` adapter writes into. nginx mounts the same
+    # directory (see `docker-compose.yml:backend.volumes`) and serves it
+    # at `/uploads/`. In the test rig this is overridden per-test to a
+    # `tempfile.TemporaryDirectory` so the suite never touches disk
+    # state outside its sandbox.
+    MEDIA_STORAGE_ROOT: str = "/var/uploads"
+    # URL prefix the frontend uses to fetch uploaded files. Must match
+    # the nginx `location` alias. Kept configurable for environments
+    # that mount uploads under a CDN subdomain.
+    MEDIA_URL_PREFIX: str = "/uploads"
+
     # Derived
     @property
     def cors_origins_list(self) -> list[str]:

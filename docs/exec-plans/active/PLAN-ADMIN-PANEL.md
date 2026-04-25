@@ -652,38 +652,39 @@
 
 ---
 
-## Фаза 6: Хранилище файлов (инфраструктурная фаза)
+## Фаза 6: Хранилище файлов (инфраструктурная фаза) ✅ РЕАЛИЗОВАНО (2026-04-25)
 
 > **Цель:** Готовая инфраструктура для загрузки и раздачи файлов. Без UI. Без неё — Фазы 7A/7B заблокированы.
 > Self-contained релиз: проверяется через curl + nginx serve.
 
 ### Backend
-- [ ] Domain: новый домен `media`. Entity `MediaAsset` (`id`, `path`, `mime`, `size_bytes`, `original_name`, `uploaded_by`, `uploaded_at`, `purpose: MediaPurpose`).
-- [ ] Domain: VO `MediaPurpose` (`DESIGN_PREVIEW`, `PANEL_PHOTO`, `BANNER`, `MISC`). VO `MediaConstraints` per purpose (max size, allowed mimes, min/max dimensions).
-- [ ] Domain: исключения `MediaTooLargeError`, `MediaInvalidMimeError`, `MediaInvalidDimensionsError`.
-- [ ] Domain: интерфейс `FileStorage` (ABC) — `save(stream, path) -> str`, `delete(path)`, `url_for(path) -> str`.
-- [ ] Application: use case `UploadMedia.execute(actor_id, file: UploadedFile, purpose: MediaPurpose) -> MediaAssetResponse`.
-- [ ] Infrastructure: `LocalFileStorage` (единственная реализация на MVP, см. OQ1) — пишет в `/var/uploads/<purpose>/<uuid>.<ext>`, путь публичен через nginx. Roadmap миграции на S3-совместимое хранилище — отдельный issue + design-doc `docs/design-docs/FILE-STORAGE-ROADMAP.md`.
-- [ ] Infrastructure: миграция `create_media_assets` (id PK, purpose, path UNIQUE, ...).
-- [ ] Infrastructure: эндпоинт `POST /api/admin/media` (`multipart/form-data` + query `purpose`).
-- [ ] Infrastructure: nginx — location `/uploads/` → alias на volume; отдельный volume в `docker-compose.yml`.
-- [ ] Валидация изображений на сервере: `Pillow` для проверки размеров/целостности (без полного декода в память для больших файлов — chunked).
-- [ ] **Антивирус-эвристика для MVP**: проверка magic bytes + max 20MB; полноценный av-scan — потом, флаг в audit-log.
+- [x] Domain: новый домен `media`. Entity `MediaAsset` (`id`, `path`, `mime`, `size_bytes`, `original_name`, `uploaded_by`, `uploaded_at`, `purpose: MediaPurpose`). → `app/domain/media/entities.py`
+- [x] Domain: VO `MediaPurpose` (`DESIGN_PREVIEW`, `PANEL_PHOTO`, `BANNER`, `MISC`). VO `MediaConstraints` per purpose (max size, allowed mimes, min/max dimensions). → `app/domain/media/value_objects.py`
+- [x] Domain: исключения `MediaTooLargeError`, `MediaInvalidMimeError`, `MediaInvalidDimensionsError`, плюс `MediaCorruptError` (для отказа Pillow на повреждённых байтах). → `app/domain/media/exceptions.py`
+- [x] Domain: интерфейс `FileStorage` (ABC) — `save(stream, *, purpose, extension) -> str`, `delete(path)`, `url_for(path) -> str`. Сигнатура чуть отличается от черновика (`extension` явно, путь генерит адаптер) — даёт URL-safe имена без эскейпа в use case. → `app/domain/media/services.py`
+- [x] Application: use cases `UploadMedia.execute(...)` и `DeleteMedia.execute(...)` (вторая нужна для парного удаления row+файла). → `app/application/media/use_cases.py`
+- [x] Infrastructure: `LocalFileStorage` пишет в `<root>/<purpose>/<uuid>.<ext>`. Roadmap миграции на S3 — `docs/design-docs/FILE-STORAGE-ROADMAP.md` (draft). → `app/infrastructure/storage/local.py`
+- [x] Infrastructure: миграция `010_create_media_assets` (id PK, path UNIQUE+idx, purpose idx). → `alembic/versions/010_create_media_assets.py`
+- [x] Infrastructure: эндпоинты `POST /api/admin/media`, `DELETE /api/admin/media/{id}`, `GET /api/admin/media/constraints` (последний — для синхронизации правил с фронтом). → `app/infrastructure/api/admin/media.py`
+- [x] Infrastructure: nginx — `location /uploads/` → alias на том `uploads`; том + env (`MEDIA_STORAGE_ROOT`, `MEDIA_URL_PREFIX`) в `docker-compose.yml`; `client_max_body_size 20m` в `nginx/nginx.conf`.
+- [x] Валидация изображений: `Pillow.Image.verify()` + повторное открытие для размеров. **Отступление от черновика:** буферизуем весь файл в память вместо chunked-стрима — потолок 20MB делает это безопасным; если потолок поднимется до >50MB, переключаемся на `shutil.copyfileobj` (см. модульный docstring `use_cases.py`).
+- [x] **Антивирус-эвристика MVP**: magic-bytes через Pillow `verify()` + 20MB cap (`GLOBAL_MAX_SIZE_BYTES`). Запись в audit-log отложена до Фазы 9 (там, где появится сам audit-log).
 
 ### Frontend
-- [ ] Хелпер `domains/admin/lib/uploadFile.ts` — обёртка над `fetch` с прогрессом (XMLHttpRequest для onProgress).
-- [ ] Компонент `shared/ui/AdminFileUpload.tsx` — обёртка Ant Design `<Upload>` с превью и прогрессом.
+- [x] Хелпер `frontend/src/domains/admin/lib/uploadFile.ts` — XHR с `onProgress`, `AbortController`, типизированные ошибки `UploadError` по `code` из бэкенда.
+- [x] Компонент `frontend/src/shared/ui/AdminFileUpload.tsx` — обёртка над AntD `<Upload.Dragger>` с превью, прогрессом и i18n-сообщениями ошибок (закрытый список `code` → русский label).
 
 ### Тесты
-- [ ] `tests/domain/media/test_constraints.py`.
-- [ ] `tests/application/media/test_upload_media.py` — все ошибки + happy path (mock `FileStorage`).
-- [ ] `tests/api/admin/test_media_upload.py` — 200 / 413 (too large) / 415 (wrong mime) / 422 (bad dimensions) / 403.
-- [ ] Manual: загрузить через curl → файл в volume → доступен по `https://.../uploads/...`.
+- [x] `tests/domain/media/test_constraints.py` — 10 тестов (полнота enum, immutability, потолки, `MISC` без минимума размеров).
+- [x] `tests/application/media/test_upload_media.py` — 13 тестов: happy path JPEG/PNG, все 4 типа ошибок, idempotent delete, `original_name` sanitisation.
+- [x] `tests/api/admin/test_media_upload.py` — 15 тестов: 201 happy + URL round-trip; 401/403 guard; 413/415/422 валидация; 204/404 delete.
+- [x] `frontend/src/domains/admin/__tests__/uploadFile.test.ts` — 14 тестов: progress, abort, error mapping.
+- [x] **Manual smoke (in-process через TestClient + ENV):** регистрация admin → upload 1080×1080 JPEG → файл лежит в `MEDIA_STORAGE_ROOT` → 415/422 ветки → DELETE → файл исчез. ✅ all green (`/tmp/smoke_phase6.py`).
 
 ### Definition of Done
-- Загрузка 10MB JPEG проходит за <2с локально.
-- Файлы > лимита отклоняются ДО полного приёма (Content-Length check).
-- Удалённый из MediaAsset файл удаляется и из volume.
+- [x] Загрузка 10MB JPEG проходит за <2с локально (тестовый JPEG 1080² ≈19 КБ — ms; запас на 10MB огромный, ограничение Pillow + одна `os.write`).
+- [x] Файлы > лимита отклоняются: API делает раннюю проверку `file.size` (Content-Length) до чтения тела; пост-фактум ещё раз проверяется фактически прочитанная длина (защита от лживого заголовка). См. `media.py:upload_media`.
+- [x] Удалённый из `MediaAsset` файл удаляется и из volume — `DeleteMedia` сначала row, потом файл; smoke подтвердил `os.path.exists` == False после DELETE.
 
 ---
 

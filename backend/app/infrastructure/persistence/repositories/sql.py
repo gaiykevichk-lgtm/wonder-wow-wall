@@ -22,6 +22,9 @@ from app.domain.user.entities import User, UserAddress
 from app.domain.user.filters import UserFilters
 from app.domain.user.repositories import UserRepository
 from app.domain.user.value_objects import UserRole
+from app.domain.media.entities import MediaAsset
+from app.domain.media.repositories import MediaAssetRepository
+from app.domain.media.value_objects import MediaPurpose
 
 from app.infrastructure.persistence.models import (
     DesignModel,
@@ -34,6 +37,7 @@ from app.infrastructure.persistence.models import (
     UserModel,
     UserAddressModel,
     ProjectModel,
+    MediaAssetModel,
 )
 
 
@@ -605,3 +609,65 @@ class SqlUserRepository(UserRepository):
         query = query.order_by(desc(UserModel.created_at)).offset(offset).limit(size)
         rows = (await self._session.execute(query)).scalars().all()
         return [_user_to_domain(r) for r in rows], total
+
+
+# ─── Media (Phase 6) ─────────────────────────────────────────────────
+
+
+def _media_to_domain(m: MediaAssetModel) -> MediaAsset:
+    return MediaAsset(
+        id=m.id,
+        path=m.path,
+        mime=m.mime,
+        size_bytes=m.size_bytes,
+        original_name=m.original_name or "",
+        uploaded_by=m.uploaded_by,
+        # Defensive: a `purpose` value that no longer maps to the enum
+        # would surface as a `ValueError` here (loud failure) instead of
+        # silently coercing to `MISC` — same posture as `UserRole(...)`
+        # in `_user_to_domain`.
+        purpose=MediaPurpose(m.purpose),
+        uploaded_at=m.uploaded_at,
+    )
+
+
+class SqlMediaAssetRepository(MediaAssetRepository):
+    def __init__(self, session: AsyncSession):
+        self._session = session
+
+    async def create(self, asset: MediaAsset) -> MediaAsset:
+        model = MediaAssetModel(
+            id=asset.id,
+            path=asset.path,
+            mime=asset.mime,
+            size_bytes=asset.size_bytes,
+            original_name=asset.original_name,
+            uploaded_by=asset.uploaded_by,
+            purpose=asset.purpose.value,
+            uploaded_at=asset.uploaded_at,
+        )
+        self._session.add(model)
+        # `flush` (not `commit`) — the request-scoped session
+        # (`get_db_session`) commits on success. If anything downstream
+        # raises, the row rolls back together with the rest of the unit
+        # of work. This matches every other repo in this file.
+        await self._session.flush()
+        return asset
+
+    async def get_by_id(self, asset_id: str) -> MediaAsset | None:
+        result = await self._session.execute(
+            select(MediaAssetModel).where(MediaAssetModel.id == asset_id)
+        )
+        row = result.scalar_one_or_none()
+        return _media_to_domain(row) if row else None
+
+    async def delete(self, asset_id: str) -> bool:
+        result = await self._session.execute(
+            select(MediaAssetModel).where(MediaAssetModel.id == asset_id)
+        )
+        row = result.scalar_one_or_none()
+        if row is None:
+            return False
+        await self._session.delete(row)
+        await self._session.flush()
+        return True

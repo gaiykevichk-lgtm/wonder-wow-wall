@@ -116,8 +116,8 @@ def test_upgrade_head_creates_all_core_tables(alembic_cfg):
         "visualization_projects",  # 004 — Phase 5A new
     ):
         assert _table_exists(db_path, table), f"{table} should exist after upgrade head"
-    # head revision must equal the latest migration id (currently 009 — Phase 5 is_blocked).
-    assert _current_revision(db_path) == "009"
+    # head revision must equal the latest migration id (currently 010 — Phase 6 media_assets).
+    assert _current_revision(db_path) == "010"
     # 006 adds `role` to users.
     assert "role" in _column_names(db_path, "users")
     # 007 adds order list filter indexes.
@@ -130,6 +130,10 @@ def test_upgrade_head_creates_all_core_tables(alembic_cfg):
     assert _index_exists(db_path, "idx_order_notes_order_id")
     # 009 adds is_blocked to users — Phase 5.
     assert "is_blocked" in _column_names(db_path, "users")
+    # 010 adds media_assets table — Phase 6.
+    assert _table_exists(db_path, "media_assets")
+    assert _index_exists(db_path, "idx_media_assets_path")
+    assert _index_exists(db_path, "idx_media_assets_purpose")
 
 
 def test_phase5b_columns_added_by_005(alembic_cfg):
@@ -227,7 +231,7 @@ def test_full_round_trip_head_base_head(alembic_cfg):
     alembic_cmd.downgrade(cfg, "base")
     assert _current_revision(db_path) is None
     alembic_cmd.upgrade(cfg, "head")
-    assert _current_revision(db_path) == "009"
+    assert _current_revision(db_path) == "010"
     for table in ("users", "designs", "subscriptions", "visualization_projects"):
         assert _table_exists(db_path, table), f"{table} should be re-created at head"
     # Phase 5B columns must be present at head after the full round-trip.
@@ -236,3 +240,5 @@ def test_full_round_trip_head_base_head(alembic_cfg):
     assert _index_exists(db_path, "idx_orders_status")
     # Phase 5 (admin panel) — is_blocked column must round-trip cleanly.
     assert "is_blocked" in _column_names(db_path, "users")
+    # Phase 6 — media_assets table must round-trip cleanly.
+    assert _table_exists(db_path, "media_assets")

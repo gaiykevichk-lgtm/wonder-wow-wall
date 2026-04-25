@@ -27,6 +27,12 @@ from app.domain.visualizer.exceptions import (
     PlaneFittingError,
     StaleSceneVersionError,
 )
+from app.domain.media.exceptions import (
+    MediaCorruptError,
+    MediaInvalidDimensionsError,
+    MediaInvalidMimeError,
+    MediaTooLargeError,
+)
 
 
 async def collinear_corners_handler(request: Request, exc: CollinearCornersError):
@@ -149,4 +155,45 @@ async def user_blocked_handler(request: Request, exc: UserBlockedError):
     return JSONResponse(
         status_code=403,
         content={"detail": str(exc), "code": "user_blocked"},
+    )
+
+
+# ─── Phase 6 — admin file uploads ────────────────────────────────────
+# The four media-validation failures map to distinct status codes so the
+# admin UI can render a precise message ("file too big" vs "wrong type")
+# without parsing the localized `detail` string. See exceptions.py for
+# the rationale of each code split.
+
+
+async def media_too_large_handler(request: Request, exc: MediaTooLargeError):
+    """Upload exceeds per-purpose or global cap → 413."""
+    return JSONResponse(
+        status_code=413,
+        content={"detail": str(exc), "code": "media_too_large"},
+    )
+
+
+async def media_invalid_mime_handler(request: Request, exc: MediaInvalidMimeError):
+    """Detected MIME isn't allowed → 415 (Unsupported Media Type)."""
+    return JSONResponse(
+        status_code=415,
+        content={"detail": str(exc), "code": "media_invalid_mime"},
+    )
+
+
+async def media_invalid_dimensions_handler(
+    request: Request, exc: MediaInvalidDimensionsError,
+):
+    """Image decoded fine but its pixel dimensions are out of policy → 422."""
+    return JSONResponse(
+        status_code=422,
+        content={"detail": str(exc), "code": "media_invalid_dimensions"},
+    )
+
+
+async def media_corrupt_handler(request: Request, exc: MediaCorruptError):
+    """Pillow could not decode the bytes (truncated / not an image) → 422."""
+    return JSONResponse(
+        status_code=422,
+        content={"detail": str(exc), "code": "media_corrupt"},
     )

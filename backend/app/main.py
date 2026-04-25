@@ -16,6 +16,12 @@ from app.domain.visualizer.exceptions import (
     PlaneFittingError,
     StaleSceneVersionError,
 )
+from app.domain.media.exceptions import (
+    MediaCorruptError,
+    MediaInvalidDimensionsError,
+    MediaInvalidMimeError,
+    MediaTooLargeError,
+)
 from app.infrastructure.api import auth, catalog, orders, subscriptions, projects, contacts, visualizer
 from app.infrastructure.api import admin as admin_api
 from app.infrastructure.api.error_handlers import (
@@ -23,6 +29,10 @@ from app.infrastructure.api.error_handlers import (
     depth_estimation_handler,
     invalid_order_transition_handler,
     last_admin_removal_handler,
+    media_corrupt_handler,
+    media_invalid_dimensions_handler,
+    media_invalid_mime_handler,
+    media_too_large_handler,
     not_authorized_handler,
     plane_fitting_handler,
     stale_scene_version_handler,
@@ -61,6 +71,13 @@ app.add_exception_handler(UserBlockedError, user_blocked_handler)
 # Phase 4B — admin order status transitions. Subclasses (e.g.
 # OrderAlreadyCancelledError) match the same handler so they all map to 409.
 app.add_exception_handler(InvalidOrderTransitionError, invalid_order_transition_handler)
+# Phase 6 (admin) — file upload validation failures. Each maps to a
+# distinct status code so the frontend can render precise messaging
+# without parsing the localized `detail` (see error_handlers.py).
+app.add_exception_handler(MediaTooLargeError, media_too_large_handler)
+app.add_exception_handler(MediaInvalidMimeError, media_invalid_mime_handler)
+app.add_exception_handler(MediaInvalidDimensionsError, media_invalid_dimensions_handler)
+app.add_exception_handler(MediaCorruptError, media_corrupt_handler)
 
 # ─── Security Headers ──────────────────────────────────────────────
 app.add_middleware(SecurityHeadersMiddleware)
