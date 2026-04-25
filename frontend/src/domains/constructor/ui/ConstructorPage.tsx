@@ -17,7 +17,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { products } from '../../catalog/model/data';
-import { DESIGN_OVERLAY_PRICE } from '../../../shared/config/constants';
+import { useShopSettings } from '../../../shared/api/shopApi';
 import { useSubscriptionStore } from '../../subscription/model/subscriptionStore';
 import { useCartStore } from '../../order/model/cartStore';
 import { useEffectivePanelPrices } from '../model/useEffectivePanelPrices';
@@ -93,13 +93,16 @@ const INTERIOR_PRESETS: InteriorPreset[] = products.flatMap((product) =>
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-// Phase 7B — accepts the live price map (API-fed, constants fallback)
-// instead of reaching into the module-level constant directly. Top-level
-// because cellsOverlap and friends sit alongside it and the page composes
-// them; keeping it as a pure helper avoids a hook-in-a-hook tangle.
-function getPanelPrice(sizeKey: string, prices: Record<string, number>): number {
+// Phase 7B/8D — accepts BOTH the live panel-price map (API-fed,
+// constants fallback) AND the live overlay price (Phase 8D — read
+// from `useShopSettings`). Top-level helper, no hooks inside.
+function getPanelPrice(
+  sizeKey: string,
+  prices: Record<string, number>,
+  overlayPrice: number,
+): number {
   const baseKey = sizeKey === '30x30' ? '300x300' : sizeKey === '30x60' ? '300x600' : '600x600';
-  return (prices[baseKey] || 0) + DESIGN_OVERLAY_PRICE;
+  return (prices[baseKey] || 0) + overlayPrice;
 }
 
 function cellsOverlap(
@@ -159,6 +162,10 @@ export default function ConstructorPage() {
   // the request hasn't resolved or returns nothing). Drives every
   // cost-summary computation below.
   const { prices: panelPrices } = useEffectivePanelPrices();
+  // Phase 8D — live overlay price from `/api/shop/settings` (5-min
+  // cache, fallback to legacy `DESIGN_OVERLAY_PRICE` constant when
+  // offline). Threaded through the cost calc + display below.
+  const { designOverlayPrice } = useShopSettings();
 
   const selectedDesign = products.find((p) => p.id === selectedDesignId) || products[0];
   const selectedColor = selectedDesign.colors[selectedColorIdx] || selectedDesign.colors[0];
@@ -184,7 +191,7 @@ export default function ConstructorPage() {
     for (const p of placedPanels) {
       const baseKey = p.sizeMm === '30×30 см' ? '300x300' : p.sizeMm === '30×60 см' ? '300x600' : '600x600';
       totalBase += panelPrices[baseKey] || 0;
-      totalOverlay += isSubscriber ? 0 : DESIGN_OVERLAY_PRICE;
+      totalOverlay += isSubscriber ? 0 : designOverlayPrice;
     }
 
     const totalArea = placedPanels.reduce((sum, p) => {
@@ -353,7 +360,7 @@ export default function ConstructorPage() {
 
     groups.forEach(({ panel, count }) => {
       const sizeKey = panel.sizeMm === '30×30 см' ? '300x300' : panel.sizeMm === '30×60 см' ? '300x600' : '600x600';
-      const unitPrice = (panelPrices[sizeKey] || 0) + DESIGN_OVERLAY_PRICE;
+      const unitPrice = (panelPrices[sizeKey] || 0) + designOverlayPrice;
       const w = panel.widthCells * CELL_SIZE_MM;
       const h = panel.heightCells * CELL_SIZE_MM;
       const areaPerPanel = (w * h) / 1_000_000;
@@ -488,7 +495,7 @@ export default function ConstructorPage() {
           </h1>
           <p className="page-header-desc" style={{ color: GRAY, margin: 0, fontSize: 15, lineHeight: 1.5 }}>
             Разместите панели на виртуальной стене. Кликайте на ячейки или используйте кнопку «Добавить».
-            Все дизайны накладок — {DESIGN_OVERLAY_PRICE.toLocaleString('ru-RU')} ₽/шт.
+            Все дизайны накладок — {designOverlayPrice.toLocaleString('ru-RU')} ₽/шт.
           </p>
         </div>
       </div>
@@ -824,7 +831,7 @@ export default function ConstructorPage() {
                   fontWeight: 600,
                 }}
               >
-                Накладка: {DESIGN_OVERLAY_PRICE.toLocaleString('ru-RU')} ₽
+                Накладка: {designOverlayPrice.toLocaleString('ru-RU')} ₽
               </div>
             </div>
 
@@ -886,11 +893,11 @@ export default function ConstructorPage() {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', color: GRAY, marginBottom: 3 }}>
                 <span>Накладка (дизайн):</span>
-                <span>{DESIGN_OVERLAY_PRICE.toLocaleString('ru-RU')} ₽</span>
+                <span>{designOverlayPrice.toLocaleString('ru-RU')} ₽</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, color: DARK, borderTop: '1px solid rgba(0,0,0,0.04)', paddingTop: 4, marginTop: 2 }}>
                 <span>Итого за 1 шт:</span>
-                <span>{getPanelPrice(selectedSizeKey, panelPrices).toLocaleString('ru-RU')} ₽</span>
+                <span>{getPanelPrice(selectedSizeKey, panelPrices, designOverlayPrice).toLocaleString('ru-RU')} ₽</span>
               </div>
             </div>
 

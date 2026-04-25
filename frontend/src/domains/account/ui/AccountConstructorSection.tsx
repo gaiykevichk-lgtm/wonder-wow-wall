@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import { products } from '../../catalog/model/data';
 import { PANEL_SIZES, BASE_PANEL_PRICES, DESIGN_OVERLAY_PRICE } from '../../../shared/config/constants';
+import { useShopSettings } from '../../../shared/hooks/useShopSettings';
 import { useSubscriptionStore } from '../../subscription/model/subscriptionStore';
 import { useCartStore } from '../../order/model/cartStore';
 import { useAccountStore } from '../model/accountStore';
@@ -143,6 +144,10 @@ export default function AccountConstructorSection() {
   const wallHeightPx = wallRows * (CELL_PX + GAP_PX) + GAP_PX;
 
   const isSubscriber = hasSub();
+  // Phase 8D — admin-editable overlay price; falls back to the constants
+  // bundle when the API hasn't responded yet so initial render still
+  // prices accurately.
+  const { designOverlayPrice } = useShopSettings();
 
   // ─── Calculations ──────────────────────────────────────────────────────────
 
@@ -152,7 +157,7 @@ export default function AccountConstructorSection() {
     for (const p of placedPanels) {
       const baseKey = p.sizeMm === '30x30 см' ? '300x300' : p.sizeMm === '30x60 см' ? '300x600' : '600x600';
       totalBase += BASE_PANEL_PRICES[baseKey] || 0;
-      totalOverlay += isSubscriber ? 0 : DESIGN_OVERLAY_PRICE;
+      totalOverlay += isSubscriber ? 0 : designOverlayPrice;
     }
     const totalArea = placedPanels.reduce((sum, p) => {
       const w = p.widthCells * CELL_SIZE_MM;
@@ -161,7 +166,7 @@ export default function AccountConstructorSection() {
     }, 0);
     const wallArea = (wallWidthMm * wallHeightMm) / 1_000_000;
     return { panelCount: placedPanels.length, totalBase, totalOverlay, total: totalBase + totalOverlay, totalArea, wallArea };
-  }, [placedPanels, wallWidthMm, wallHeightMm, isSubscriber]);
+  }, [placedPanels, wallWidthMm, wallHeightMm, isSubscriber, designOverlayPrice]);
 
   // ─── Grid occupancy ────────────────────────────────────────────────────────
 
@@ -268,7 +273,7 @@ export default function AccountConstructorSection() {
     }
     groups.forEach(({ panel, count }) => {
       const sizeKey = panel.sizeMm === '30x30 см' ? '300x300' : panel.sizeMm === '30x60 см' ? '300x600' : '600x600';
-      const unitPrice = (BASE_PANEL_PRICES[sizeKey] || 0) + DESIGN_OVERLAY_PRICE;
+      const unitPrice = (BASE_PANEL_PRICES[sizeKey] || 0) + designOverlayPrice;
       const w = panel.widthCells * CELL_SIZE_MM;
       const h = panel.heightCells * CELL_SIZE_MM;
       addItem({
@@ -454,7 +459,7 @@ export default function AccountConstructorSection() {
             <div style={{ borderRadius: 12, overflow: 'hidden', height: 100, marginBottom: 10, background: '#eee', position: 'relative' }}>
               <img src={selectedDesign.image} alt={selectedDesign.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               <div style={{ position: 'absolute', bottom: 6, right: 6, background: 'rgba(0,0,0,0.7)', color: '#fff', borderRadius: 5, padding: '2px 6px', fontSize: 10, fontWeight: 600 }}>
-                {DESIGN_OVERLAY_PRICE.toLocaleString('ru-RU')} ₽
+                {designOverlayPrice.toLocaleString('ru-RU')} ₽
               </div>
             </div>
             <div style={{ marginBottom: 8 }}>

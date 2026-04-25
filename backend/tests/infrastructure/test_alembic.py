@@ -124,10 +124,12 @@ def test_upgrade_head_creates_all_core_tables(alembic_cfg):
         "orders",                  # 001 (+ 002 adds installation_date col)
         "subscriptions",           # 001 (+ 003 swaps overlays→area_used)
         "visualization_projects",  # 004 — Phase 5A new
+        "banners",                 # 016 — Phase 8B
+        "subscription_plans",      # 017 — Phase 8C
     ):
         assert _table_exists(db_path, table), f"{table} should exist after upgrade head"
-    # head revision must equal the latest migration id (currently 015 — Phase 7A is_published).
-    assert _current_revision(db_path) == "015"
+    # head revision must equal the latest migration id (currently 017 — Phase 8C subscription_plans).
+    assert _current_revision(db_path) == "017"
     # 006 adds `role` to users.
     assert "role" in _column_names(db_path, "users")
     # 007 adds order list filter indexes.
@@ -265,7 +267,7 @@ def test_full_round_trip_head_base_head(alembic_cfg):
     alembic_cmd.downgrade(cfg, "base")
     assert _current_revision(db_path) is None
     alembic_cmd.upgrade(cfg, "head")
-    assert _current_revision(db_path) == "015"
+    assert _current_revision(db_path) == "017"
     for table in ("users", "designs", "subscriptions", "visualization_projects"):
         assert _table_exists(db_path, table), f"{table} should be re-created at head"
     # Phase 5B columns must be present at head after the full round-trip.

@@ -11,6 +11,7 @@ from fastapi import APIRouter
 
 from . import audit as _audit
 from . import auth as _auth
+from . import banners as _banners
 from . import catalog as _catalog
 from . import dashboard as _dashboard
 from . import media as _media
@@ -18,6 +19,7 @@ from . import orders as _orders
 from . import panels as _panels
 from . import recommendations as _recommendations
 from . import shop_settings as _shop_settings
+from . import subscription_plans as _subscription_plans
 from . import users as _users
 
 router = APIRouter()
@@ -29,6 +31,10 @@ router.include_router(_media.router, prefix="", tags=["admin-media"])
 router.include_router(_panels.router, prefix="", tags=["admin-panels"])
 router.include_router(_catalog.router, prefix="", tags=["admin-catalog"])
 router.include_router(_shop_settings.router, prefix="", tags=["admin-shop"])
+router.include_router(_banners.router, prefix="", tags=["admin-shop-banners"])
+router.include_router(
+    _subscription_plans.router, prefix="", tags=["admin-subscription-plans"],
+)
 router.include_router(_audit.router, prefix="", tags=["admin-audit"])
 router.include_router(
     _recommendations.router, prefix="", tags=["admin-recommendations"],

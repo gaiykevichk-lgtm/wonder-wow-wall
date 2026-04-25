@@ -263,6 +263,11 @@ class ListPanelsAdmin:
     `include_inactive=False`. Splitting the two use cases (rather than a
     single one with a flag) means a public endpoint cannot accidentally
     expose hidden panels by passing the wrong query string.
+
+    Phase 7B remediation 2 (FE-B) — accepts `is_active` and `search`
+    filters so the admin table can scale past in-page client filtering.
+    Both `None` keeps the legacy "show everything" behavior (back-
+    compat with first-cut tests).
     """
 
     def __init__(self, repo: PanelRepository):
@@ -271,11 +276,17 @@ class ListPanelsAdmin:
     async def execute(
         self,
         *,
+        is_active: bool | None = None,
+        search: str | None = None,
         offset: int = 0,
         limit: int = 100,
     ) -> tuple[list[Panel], int]:
         return await self.repo.list_panels(
-            include_inactive=True, offset=offset, limit=limit,
+            include_inactive=True,
+            is_active=is_active,
+            search=search,
+            offset=offset,
+            limit=limit,
         )
 
 

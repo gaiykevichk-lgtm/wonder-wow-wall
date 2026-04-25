@@ -4,7 +4,8 @@ import { PageMeta } from '../../../shared/ui/PageMeta';
 import { CheckOutlined, ArrowRightOutlined, CrownOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { BASE_PANEL_PRICES, DESIGN_OVERLAY_PRICE } from '../../../shared/config/constants';
+import { BASE_PANEL_PRICES } from '../../../shared/config/constants';
+import { useShopSettings } from '../../../shared/hooks/useShopSettings';
 import { useSubscriptionStore, SUBSCRIPTION_PLANS } from '../model/subscriptionStore';
 
 const ACCENT = '#4CAF50';
@@ -26,11 +27,19 @@ const stagger = {
   visible: { transition: { staggerChildren: 0.1 } },
 };
 
-const panelPricing = [
-  { size: '30×30 см', basePrice: BASE_PANEL_PRICES['300x300'], overlayPrice: DESIGN_OVERLAY_PRICE, desc: 'Компактная панель — идеально для акцентов и небольших зон' },
-  { size: '30×60 см', basePrice: BASE_PANEL_PRICES['300x600'], overlayPrice: DESIGN_OVERLAY_PRICE, desc: 'Самый популярный размер — баланс эстетики и покрытия' },
-  { size: '60×60 см', basePrice: BASE_PANEL_PRICES['600x600'], overlayPrice: DESIGN_OVERLAY_PRICE, desc: 'Крупный формат — для максимального эффекта, меньше стыков' },
-];
+// Phase 8D — `panelPricing` is now built per-render from the live overlay
+// price (`useShopSettings`) so admin price changes propagate without a
+// redeploy. The base panel prices still come from constants — Phase 7B
+// already pipes those through `useEffectivePanelPrices` for the
+// constructor; PricingPage's marketing display is a separate consumer
+// and migrating it is out of Phase 8 scope.
+function buildPanelPricing(overlayPrice: number) {
+  return [
+    { size: '30×30 см', basePrice: BASE_PANEL_PRICES['300x300'], overlayPrice, desc: 'Компактная панель — идеально для акцентов и небольших зон' },
+    { size: '30×60 см', basePrice: BASE_PANEL_PRICES['300x600'], overlayPrice, desc: 'Самый популярный размер — баланс эстетики и покрытия' },
+    { size: '60×60 см', basePrice: BASE_PANEL_PRICES['600x600'], overlayPrice, desc: 'Крупный формат — для максимального эффекта, меньше стыков' },
+  ];
+}
 
 // ─── PlanCard ────────────────────────────────────────────────────────────────
 
@@ -115,6 +124,8 @@ const PricingPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'purchase' | 'subscription'>('purchase');
   const navigate = useNavigate();
   const { openModal, activePlanId, hasSubscription, getActivePlan, cancelSubscription } = useSubscriptionStore();
+  const { designOverlayPrice } = useShopSettings();
+  const panelPricing = buildPanelPricing(designOverlayPrice);
 
   const tabBtn = (key: 'purchase' | 'subscription', label: string) => (
     <button
@@ -151,7 +162,7 @@ const PricingPage: React.FC = () => {
             </motion.h1>
             <motion.p variants={fadeUp} custom={2} style={{ fontSize: 17, color: GRAY_TEXT, margin: 0, maxWidth: 560, lineHeight: 1.65 }}>
               Базовая панель крепится на стену. Сверху — магнитная накладка с любым дизайном.
-              Стоимость всех дизайнов одинакова: {DESIGN_OVERLAY_PRICE.toLocaleString('ru-RU')} ₽ за накладку.
+              Стоимость всех дизайнов одинакова: {designOverlayPrice.toLocaleString('ru-RU')} ₽ за накладку.
             </motion.p>
 
             <motion.div variants={fadeUp} custom={3} style={{ display: 'flex', gap: 8, marginTop: 8 }}>

@@ -132,6 +132,13 @@ class PanelUpdate(BaseModel):
 async def list_panels_admin(
     offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
+    # Phase 7B remediation 2 (FE-B) — server-side filters. `is_active`
+    # is `bool | None` so explicit `?is_active=false` can narrow on
+    # hidden SKUs without losing the include_inactive default of the
+    # admin endpoint. `search` is capped at 200 to mirror the cap on
+    # the orders/users admin filters.
+    is_active: bool | None = Query(None),
+    search: str | None = Query(None, max_length=200),
     _admin_id: str = Depends(get_current_admin_id),
     panel_repo=Depends(get_panel_repo),
 ):
@@ -142,7 +149,10 @@ async def list_panels_admin(
     leaking hidden SKUs by URL fiddling.
     """
     items, total = await ListPanelsAdmin(panel_repo).execute(
-        offset=offset, limit=limit,
+        is_active=is_active,
+        search=search,
+        offset=offset,
+        limit=limit,
     )
     return PanelListResponse(
         items=[_to_response(p) for p in items],

@@ -15,10 +15,11 @@
  * `uploadFile.test.ts`; here it would just bring in unrelated XHR setup.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+import { ApiError } from '../../../shared/api';
 import type {
   ApiAdminCategory,
   ApiAdminCategoryListResponse,
@@ -147,12 +148,31 @@ function setupQueries(
   });
 }
 
+// `LocationProbe` exposes the current URL into the DOM so a test can
+// pin assertions on URL transitions (tab-switch, deep-link round-trip).
+function LocationProbe() {
+  const loc = useLocation();
+  return (
+    <span data-testid="loc-search">{loc.search}</span>
+  );
+}
+
 function renderPage(initialUrl = '/admin/catalog') {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={[initialUrl]}>
-        <AdminCatalogPage />
+        <Routes>
+          <Route
+            path="/admin/catalog"
+            element={
+              <>
+                <AdminCatalogPage />
+                <LocationProbe />
+              </>
+            }
+          />
+        </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -266,5 +286,97 @@ describe('<AdminCatalogPage>', () => {
     renderPage();
     expect(screen.getByText('Не удалось загрузить категории')).toBeInTheDocument();
     expect(screen.getByText('Категории недоступны')).toBeInTheDocument();
+  });
+
+  // ─── N4 follow-ups (post-audit) ─────────────────────────────────────
+
+  it('renders the empty-state for the categories tab without crashing (N4)', () => {
+    setupQueries([], []);
+    const { container } = renderPage();
+    expect(screen.getByText('Категории')).toBeInTheDocument();
+    // Zero rows under tbody — AntD shows a placeholder, but no data rows.
+    const dataRows = container.querySelectorAll(
+      'tbody.ant-table-tbody tr.ant-table-row',
+    );
+    expect(dataRows.length).toBe(0);
+  });
+
+  it('renders the empty-state for the designs tab without crashing (N4)', () => {
+    setupQueries([], []);
+    const { container } = renderPage('/admin/catalog?tab=designs');
+    // The designs tab is active — its bespoke «Добавить дизайн» button
+    // is in the DOM, and the table renders zero data rows.
+    expect(
+      screen.getByRole('button', { name: /Добавить дизайн/i }),
+    ).toBeInTheDocument();
+    const dataRows = container.querySelectorAll(
+      'tbody.ant-table-tbody tr.ant-table-row',
+    );
+    expect(dataRows.length).toBe(0);
+  });
+
+  it('preserves designs filters in the URL across tab=designs deep-link (N4 tab-persistence)', async () => {
+    setupQueries([makeCategory({ id: 'cat-9', name: 'Море' })], [makeDesign()]);
+    renderPage('/admin/catalog?tab=designs&category_id=cat-9&search=forest&page=2');
+    // Filters survive F5 — the URL we landed on is reflected in the
+    // location probe verbatim.
+    const probe = await screen.findByTestId('loc-search');
+    expect(probe.textContent).toContain('tab=designs');
+    expect(probe.textContent).toContain('category_id=cat-9');
+    expect(probe.textContent).toContain('search=forest');
+    expect(probe.textContent).toContain('page=2');
+  });
+
+  it('strips designs-only params when switching back to the categories tab (N1)', async () => {
+    setupQueries([makeCategory()], [makeDesign()]);
+    renderPage('/admin/catalog?tab=designs&page=3&category_id=cat-1');
+    fireEvent.click(screen.getByRole('tab', { name: 'Категории' }));
+    await waitFor(() => {
+      const probe = screen.getByTestId('loc-search');
+      // After the switch the URL is bare — no `?tab`, `?page`,
+      // `?category_id`, `?search`, `?sort` left over.
+      expect(probe.textContent).toBe('');
+    });
+  });
+
+  it('renders an inline slug error on slug_conflict 409 (N4)', async () => {
+    setupQueries([], []);
+    // Make the create-category mutation reject with the API error
+    // envelope shape the page branches on.
+    mockCreateCategoryMutate.mockImplementation((_payload, opts) => {
+      opts?.onError?.(
+        new ApiError(409, 'Slug taken', { code: 'category_slug_conflict' }),
+      );
+    });
+    renderPage();
+    fireEvent.click(
+      screen.getByRole('button', { name: /Добавить категорию/i }),
+    );
+    fireEvent.change(screen.getByLabelText('Название'), {
+      target: { value: 'Природа' },
+    });
+    fireEvent.change(screen.getByLabelText('Slug'), {
+      target: { value: 'nature' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Создать/i }));
+    expect(await screen.findByText('Slug уже занят')).toBeInTheDocument();
+  });
+
+  it('disables the Popconfirm OK button on a category with attached designs (N4)', async () => {
+    setupQueries([makeCategory({ designs_count: 4 })], []);
+    renderPage();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Удалить категорию' }),
+    );
+    // Description renders the count + the «удаление запрещено» message.
+    expect(
+      await screen.findByText(/К категории привязано дизайнов: 4/),
+    ).toBeInTheDocument();
+    // The OK button (label «Удалить» inside the popconfirm) is disabled.
+    const popconfirmOk = screen
+      .getAllByRole('button', { name: 'Удалить' })
+      .find((b) => b.classList.contains('ant-btn-dangerous'));
+    expect(popconfirmOk).toBeDefined();
+    expect(popconfirmOk).toBeDisabled();
   });
 });

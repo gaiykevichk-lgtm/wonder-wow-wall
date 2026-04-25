@@ -33,6 +33,12 @@ from app.domain.catalog.panel_exceptions import (
     PanelNotFoundError,
     PanelSlugConflictError,
 )
+from app.domain.shop.banner_exceptions import BannerNotFoundError
+from app.domain.subscription.plan_exceptions import (
+    SubscriptionPlanIdConflictError,
+    SubscriptionPlanInUseError,
+    SubscriptionPlanNotFoundError,
+)
 from app.domain.catalog.recommendation import (
     DuplicateRecommendationTargetError,
     RecommendationLimitExceededError,
@@ -43,6 +49,7 @@ from app.domain.catalog.recommendation import (
 from app.infrastructure.api import auth, catalog, orders, shop, subscriptions, projects, contacts, visualizer
 from app.infrastructure.api import admin as admin_api
 from app.infrastructure.api.error_handlers import (
+    banner_not_found_handler,
     category_in_use_handler,
     category_not_found_handler,
     category_slug_conflict_handler,
@@ -66,6 +73,9 @@ from app.infrastructure.api.error_handlers import (
     recommendation_target_not_found_handler,
     self_recommendation_handler,
     stale_scene_version_handler,
+    subscription_plan_id_conflict_handler,
+    subscription_plan_in_use_handler,
+    subscription_plan_not_found_handler,
     user_blocked_handler,
 )
 from app.infrastructure.security.middleware import SecurityHeadersMiddleware
@@ -118,6 +128,19 @@ app.add_exception_handler(DesignSlugConflictError, design_slug_conflict_handler)
 app.add_exception_handler(CategoryNotFoundError, category_not_found_handler)
 app.add_exception_handler(CategorySlugConflictError, category_slug_conflict_handler)
 app.add_exception_handler(CategoryInUseError, category_in_use_handler)
+# Phase 8B — admin banner CRUD: 404 on unknown id.
+app.add_exception_handler(BannerNotFoundError, banner_not_found_handler)
+# Phase 8C — admin subscription plan CRUD: 404 on unknown id, 409 on
+# id conflict / in-use guard.
+app.add_exception_handler(
+    SubscriptionPlanNotFoundError, subscription_plan_not_found_handler,
+)
+app.add_exception_handler(
+    SubscriptionPlanIdConflictError, subscription_plan_id_conflict_handler,
+)
+app.add_exception_handler(
+    SubscriptionPlanInUseError, subscription_plan_in_use_handler,
+)
 # Phase 10 — admin recommendations: split between 422 (semantic invariants
 # the editor surfaces inline) and 404 (missing rows the admin can refresh).
 app.add_exception_handler(SelfRecommendationError, self_recommendation_handler)

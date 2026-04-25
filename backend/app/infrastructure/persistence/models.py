@@ -390,10 +390,106 @@ class ShopSettingsModel(Base):
     )
 
 
-# ─── Banners (Phase 8B) — pending; the draft model was removed
-# 2026-04-25 because shipping it without alembic migration `013` and
-# container wiring caused schema-divergence between dev (Base.metadata
-# create_all) and prod (alembic). Re-add with migration in the same PR.
+# ─── Banners (Phase 8B) ─────────────────────────────────────────────
+
+
+class BannerModel(Base):
+    """Phase 8B — homepage promo rotation.
+
+    `position` is stored as the literal enum string (`homepage_hero`,
+    `catalog_top`, `footer`) so DB rows stay human-readable and a
+    future enum reorder doesn't shuffle FKs (there are none — banners
+    aren't referenced by any other entity).
+
+    `image_path` is a soft pointer to `media_assets.path` (no FK) —
+    same trade-off as `Panel.photo_path`. A deleted MediaAsset 404s
+    in the public preview but doesn't cascade-null the banner row.
+
+    Composite index `(position, is_active, priority)` covers the public
+    list query `WHERE position = ? AND is_active = TRUE ORDER BY
+    priority` — single index scan instead of a sort over the table.
+    """
+
+    __tablename__ = "banners"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=gen_uuid)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    subtitle: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    image_path: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    cta_label: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    cta_url: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    position: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="homepage_hero",
+    )
+    priority: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0",
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=true(),
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow,
+    )
+
+    __table_args__ = (
+        Index(
+            "idx_banners_position_active_priority",
+            "position", "is_active", "priority",
+        ),
+    )
+
+
+# ─── Subscription Plans (Phase 8C) ──────────────────────────────────
+
+
+class SubscriptionPlanModel(Base):
+    """Phase 8C — admin-editable subscription tariffs.
+
+    Replaces the hardcoded `SUBSCRIPTION_PLANS` module-level list. The
+    domain entity (`app/domain/subscription/entities.SubscriptionPlan`)
+    keeps its shape; only the source-of-truth moves to the DB so an
+    admin can adjust prices without a deploy.
+
+    `id` is a slug-style string (`starter`, `popular`, `business`)
+    rather than a UUID because:
+      * existing `Subscription.plan_id` rows reference `"starter"` etc.
+        — a UUID migration would require a backfill,
+      * the public catalog URL `/subscription/{plan_id}` reads better
+        with `starter` than with a UUID.
+
+    `features` is JSON because the list shape is stable and we never
+    query INTO it. `is_active` lets the admin retire a plan without
+    breaking historic `Subscription` rows that reference it.
+    """
+
+    __tablename__ = "subscription_plans"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    price: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0",
+    )
+    period: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="мес",
+    )
+    area_limit_m2: Mapped[float] = mapped_column(
+        Float, nullable=False, default=0.0, server_default="0",
+    )
+    popular: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false(),
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=true(),
+    )
+    sort_order: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0",
+    )
+    features: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow,
+    )
 
 
 # ─── Audit log (Phase 9) ────────────────────────────────────────────

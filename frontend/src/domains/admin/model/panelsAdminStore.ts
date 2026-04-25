@@ -6,9 +6,9 @@
  * survive F5. No zustand here — `useSearchParams` round-trips through the
  * helpers below.
  *
- * Filter axes (client-side — backend admin/panels endpoint takes only
- * offset/limit; filters are applied to the fetched page in the page
- * component):
+ * Filter axes (Phase 7B remediation 2 — pushed to the backend, see
+ * `panelsAdminApi.buildListQueryString` and `app/infrastructure/api/admin/
+ * panels.py`):
  *   * isActive — true / false / null = all
  *   * search   — substring on name/slug
  *

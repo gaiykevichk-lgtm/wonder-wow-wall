@@ -44,6 +44,12 @@ from app.domain.catalog.panel_exceptions import (
     PanelNotFoundError,
     PanelSlugConflictError,
 )
+from app.domain.shop.banner_exceptions import BannerNotFoundError
+from app.domain.subscription.plan_exceptions import (
+    SubscriptionPlanIdConflictError,
+    SubscriptionPlanInUseError,
+    SubscriptionPlanNotFoundError,
+)
 from app.domain.catalog.recommendation import (
     DuplicateRecommendationTargetError,
     RecommendationLimitExceededError,
@@ -370,4 +376,50 @@ async def recommendation_not_found_handler(
     return JSONResponse(
         status_code=404,
         content={"detail": str(exc), "code": "recommendation_not_found"},
+    )
+
+
+# ─── Phase 8B — banner CRUD ──────────────────────────────────────────
+
+
+async def banner_not_found_handler(request: Request, exc: BannerNotFoundError):
+    return JSONResponse(
+        status_code=404,
+        content={"detail": str(exc), "code": "banner_not_found"},
+    )
+
+
+# ─── Phase 8C — subscription plan CRUD ───────────────────────────────
+
+
+async def subscription_plan_not_found_handler(
+    request: Request, exc: SubscriptionPlanNotFoundError,
+):
+    return JSONResponse(
+        status_code=404,
+        content={"detail": str(exc), "code": "subscription_plan_not_found"},
+    )
+
+
+async def subscription_plan_id_conflict_handler(
+    request: Request, exc: SubscriptionPlanIdConflictError,
+):
+    return JSONResponse(
+        status_code=409,
+        content={"detail": str(exc), "code": "subscription_plan_id_conflict"},
+    )
+
+
+async def subscription_plan_in_use_handler(
+    request: Request, exc: SubscriptionPlanInUseError,
+):
+    """Refusal to delete a plan with active subscriptions → 409.
+
+    Distinct `code` from the `id_conflict` so the admin UI can render
+    the precise message ("В тарифе N активных подписок") and suggest
+    soft-disabling via `is_active=False` instead.
+    """
+    return JSONResponse(
+        status_code=409,
+        content={"detail": str(exc), "code": "subscription_plan_in_use"},
     )

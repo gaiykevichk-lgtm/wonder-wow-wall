@@ -328,6 +328,48 @@ class TestToggleDesignVisibilityAdmin:
         with pytest.raises(DesignNotFoundError):
             await ToggleDesignVisibilityAdmin(design_repo).execute("missing")
 
+    @pytest.mark.asyncio
+    async def test_audit_recorded_with_diff_payload(
+        self, design_repo, category_repo, audit_repo,
+    ):
+        c = await CreateCategoryAdmin(category_repo).execute(name="x", slug="x")
+        d = await CreateDesignAdmin(design_repo, category_repo).execute(
+            name="A", slug="aud-toggle", category_id=c.id, price=100,
+        )
+        assert d.is_published is True
+        await ToggleDesignVisibilityAdmin(
+            design_repo,
+            audit_recorder=RecordAuditEntry(audit_repo),
+        ).execute(d.id, actor_id="admin-1")
+        assert len(audit_repo._entries) == 1
+        entry = audit_repo._entries[0]
+        assert entry.actor_id == "admin-1"
+        assert entry.action == AuditAction.DESIGN_VISIBILITY_TOGGLE
+        assert entry.target_type == AuditTargetType.DESIGN
+        assert entry.target_id == d.id
+        # Diff payload — pin the shape so a future field rename is caught.
+        assert entry.payload["from"] is True
+        assert entry.payload["to"] is False
+        assert entry.payload["name"] == "A"
+        assert entry.payload["slug"] == "aud-toggle"
+
+    @pytest.mark.asyncio
+    async def test_audit_skipped_without_actor(
+        self, design_repo, category_repo, audit_repo,
+    ):
+        # CLI seeder / legacy callers without actor context: action runs,
+        # audit row is skipped (entry would fail invariant). Same posture
+        # as `DeleteDesignAdmin.test_audit_skipped_without_actor`.
+        c = await CreateCategoryAdmin(category_repo).execute(name="x", slug="x")
+        d = await CreateDesignAdmin(design_repo, category_repo).execute(
+            name="A", slug="na-toggle", category_id=c.id, price=100,
+        )
+        await ToggleDesignVisibilityAdmin(
+            design_repo,
+            audit_recorder=RecordAuditEntry(audit_repo),
+        ).execute(d.id)
+        assert audit_repo._entries == []
+
 
 # ═══════════════════════════════════════════════════════════════════════
 # Designs — Delete + cascade + audit

@@ -20,6 +20,14 @@ from app.main import app
 
 @pytest.fixture(autouse=True)
 def _reset_repos():
+    # Snapshot seed-state of singleton in-memory repos so the suite does
+    # not lose the container-level seed (`SEED_DESIGNS`, `SEED_CATEGORIES`)
+    # for tests that rely on it (`tests/api/test_api.py::TestCatalog`).
+    # Mutating in-place (clear+extend) preserves the list identity so
+    # the `designs_source=lambda: _mem_design_repo._designs` callback
+    # wired in `app/container.py` continues to see live writes.
+    saved_designs = list(_mem_design_repo._designs)
+    saved_categories = list(_mem_category_repo._categories)
     _mem_user_repo._users.clear()
     _mem_design_repo._designs.clear()
     _mem_category_repo._categories.clear()
@@ -31,6 +39,8 @@ def _reset_repos():
     _mem_category_repo._categories.clear()
     _mem_audit_repo._entries.clear()
     _mem_recommendation_repo._recs.clear()
+    _mem_design_repo._designs.extend(saved_designs)
+    _mem_category_repo._categories.extend(saved_categories)
 
 
 @pytest.fixture

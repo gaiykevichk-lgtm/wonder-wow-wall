@@ -21,6 +21,8 @@ from app.infrastructure.persistence.repositories.memory import (
     InMemoryMediaAssetRepository,
     InMemoryPanelRepository,
     InMemoryShopSettingsRepository,
+    InMemoryBannerRepository,
+    InMemorySubscriptionPlanRepository,
     InMemoryAuditEntryRepository,
     InMemoryRecommendationRepository,
 )
@@ -72,6 +74,37 @@ _mem_panel_repo = InMemoryPanelRepository()
 # the repo wraps it so tests can poke `_mem_shop_settings_repo._settings
 # = ShopSettings(...)` between cases without rebuilding the container.
 _mem_shop_settings_repo = InMemoryShopSettingsRepository()
+# Phase 8B — admin-curated homepage promo rotation. Singleton so admin
+# CRUD writes are visible to the public listing across requests in the
+# in-memory test rig (mirrors `_mem_panel_repo`).
+_mem_banner_repo = InMemoryBannerRepository()
+# Phase 8C — admin-editable subscription tariffs. Seeded with the same
+# 3 baseline plans the legacy hardcoded `SUBSCRIPTION_PLANS` constant
+# carried, so existing `Subscription.plan_id` rows continue to resolve.
+def _seed_plans() -> list:
+    """Build the 3 baseline plans for the in-memory repo.
+
+    Lazy because importing `SUBSCRIPTION_PLANS` from the entities module
+    at container-import time created a circular dep when the entities
+    module also imported from `value_objects`. Calling at construction
+    time sidesteps the import order issue.
+    """
+    from app.domain.subscription.entities import (
+        SUBSCRIPTION_PLANS as _LEGACY,
+        SubscriptionPlan,
+    )
+    return [
+        SubscriptionPlan(
+            id=p.id, name=p.name, price=p.price, period=p.period,
+            area_limit_m2=p.area_limit_m2, popular=p.popular,
+            is_active=True, sort_order=i,
+            features=list(p.features),
+        )
+        for i, p in enumerate(_LEGACY)
+    ]
+
+
+_mem_subscription_plan_repo = InMemorySubscriptionPlanRepository(_seed_plans())
 # Phase 9 — append-only admin audit log. Singleton so retrofitted
 # admin use cases (BlockUserAdmin etc.) writing through the
 # `RecordAuditEntry` collaborator land in the same list the
@@ -116,6 +149,8 @@ def _get_sql_repo_classes() -> dict:
             SqlMediaAssetRepository,
             SqlPanelRepository,
             SqlShopSettingsRepository,
+            SqlBannerRepository,
+            SqlSubscriptionPlanRepository,
             SqlAuditEntryRepository,
             SqlRecommendationRepository,
         )
@@ -135,6 +170,8 @@ def _get_sql_repo_classes() -> dict:
             "media": SqlMediaAssetRepository,
             "panel": SqlPanelRepository,
             "shop_settings": SqlShopSettingsRepository,
+            "banner": SqlBannerRepository,
+            "subscription_plan": SqlSubscriptionPlanRepository,
             "audit": SqlAuditEntryRepository,
             "recommendation": SqlRecommendationRepository,
         }
@@ -246,6 +283,30 @@ def get_shop_settings_repo(session=Depends(get_db_session)):
     if settings.USE_MEMORY_REPOS:
         return _mem_shop_settings_repo
     return _get_sql_repo_classes()["shop_settings"](session)
+
+
+def get_banner_repo(session=Depends(get_db_session)):
+    """Phase 8B — homepage promo banners.
+
+    Same shape as `get_panel_repo`: process-singleton in-memory repo so
+    admin CRUD and the public listing share state in tests, per-request
+    SQL repo in production.
+    """
+    if settings.USE_MEMORY_REPOS:
+        return _mem_banner_repo
+    return _get_sql_repo_classes()["banner"](session)
+
+
+def get_subscription_plan_repo(session=Depends(get_db_session)):
+    """Phase 8C — admin-editable tariff catalog.
+
+    The in-memory variant is seeded with the legacy 3 plans at container
+    import (`_seed_plans()`) so existing `Subscription.plan_id` rows
+    resolve without a separate seed step in tests.
+    """
+    if settings.USE_MEMORY_REPOS:
+        return _mem_subscription_plan_repo
+    return _get_sql_repo_classes()["subscription_plan"](session)
 
 
 def get_audit_repo(session=Depends(get_db_session)):

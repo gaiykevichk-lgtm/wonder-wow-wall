@@ -100,13 +100,18 @@ export const panelsAdminKeys = {
 };
 
 function buildListQueryString(q: PanelsAdminQuery): string {
-  // Backend only supports offset/limit; filters happen client-side. We
-  // still translate page/size → offset/limit so the URL contract matches
-  // the FastAPI signature without intermediate adapters.
+  // Phase 7B remediation 2 (FE-B) — filters now travel to the backend
+  // (`is_active`, `search`) so paginated `total` reflects the visible
+  // set and we don't burn bandwidth re-fetching the same page for each
+  // filter combination. The query DTO still drives the React Query
+  // cache key, so the cache layer behaves identically (one entry per
+  // unique filter combo) while the wire payload is smaller.
   const params = new URLSearchParams();
   const offset = (q.page - 1) * q.size;
   params.set('offset', String(offset));
   params.set('limit', String(q.size));
+  if (q.isActive !== null) params.set('is_active', String(q.isActive));
+  if (q.search) params.set('search', q.search);
   return params.toString();
 }
 

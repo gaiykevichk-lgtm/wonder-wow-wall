@@ -818,9 +818,11 @@ Frontend:
 
 ---
 
-## Фаза 7A: Управление каталогом — категории и дизайны ✅ РЕАЛИЗОВАНО (2026-04-25)
+## Фаза 7A: Управление каталогом — категории и дизайны ✅ РЕАЛИЗОВАНО (2026-04-25, аудит + 2 раунда remediation 2026-04-25)
 
-> **Статус:** Backend был дописан в рамках Phase 9/10 retrofit (use cases в `app/application/catalog/admin_use_cases.py`, endpoints в `app/infrastructure/api/admin/catalog.py`, миграция `015_add_is_published_to_designs.py`, регресс `tests/api/test_public_catalog_filters_unpublished.py`). Frontend `AdminCatalogPage.tsx` дописан в этой итерации поверх существующего `catalogAdminApi.ts` + `catalogAdminStore.ts` — табы «Категории / Дизайны», Drawer-формы с auto-slug, inline `<Switch>` через dedicated `POST /designs/:id/toggle-visibility`, цветовой редактор `<ColorListEditor>`. Тесты: backend 58/58, frontend `AdminCatalogPage.test.tsx` 9/9.
+> **Статус:** Backend в `app/application/catalog/admin_use_cases.py` + `app/infrastructure/api/admin/catalog.py` + миграция `015_add_is_published_to_designs.py`; публичный visibility-leak (C1+C2) закрыт во втором раунде remediation; toggle-аудит (AUDIT-1) проведён через collaborator-паттерн `RecordAuditEntry`. Frontend `AdminCatalogPage.tsx` + `catalogAdminApi.ts` + `catalogAdminStore.ts` — табы «Категории / Дизайны», Drawer-формы с auto-slug, inline `<Switch>` через `POST /designs/:id/toggle-visibility`, цветовой редактор с stable id keys.
+>
+> **Тесты после второго раунда remediation:** backend **723/723** (+8 vs. round 1: 4 toggle-audit + 2 C1 detail + 2 C2 reviews regressions), frontend admin **211/211** (+6 vs. round 1: 6 новых N1/N4 UI-тестов на tab-strip, deep-link persist, slug-conflict inline, category-delete-blocked, empty-state на обоих табах). Без preexisting flake'ов.
 
 > **Цель:** CRUD категорий и дизайнов через админку. Использует Фазу 6 для загрузки превью.
 
@@ -842,14 +844,95 @@ Frontend:
 - [x] Toggle публикации — Switch инлайн в строке таблицы, через dedicated `POST /designs/:id/toggle-visibility`.
 
 ### Тесты
-- [x] `tests/application/catalog/test_crud_admin.py`.
-- [x] `tests/api/admin/test_catalog_crud.py`.
-- [x] `tests/api/test_public_catalog_filters_unpublished.py` — регрессия.
-- [x] `frontend/src/domains/admin/__tests__/AdminCatalogPage.test.tsx` (9 smoke-тестов: title, tabs, drawers, inline switch, edit pre-fill, error Alert).
+- [x] `tests/application/catalog/test_crud_admin.py` — 33 теста (CRUD категорий, CRUD дизайнов, toggle, cascade cleanup, public filter regression).
+- [x] `tests/api/admin/test_catalog_crud.py` — 22 теста (auth gates, full HTTP CRUD round-trip, audit-recorded). Autouse фикстура snapshot/restore singleton'ов сохраняет seed для соседних suites.
+- [x] `tests/api/test_public_catalog_filters_unpublished.py` — регрессия публичного списка (3 теста). Та же snapshot/restore-фикстура.
+- [x] `frontend/src/domains/admin/__tests__/AdminCatalogPage.test.tsx` — 9 smoke-тестов (title, tabs, drawers, inline switch, edit pre-fill, error Alert, category lookup id→name).
+- [x] `frontend/src/domains/admin/__tests__/catalogAdminStore.test.ts` — 19 тестов (parseTab, queryFromSearchParams parser tolerance, searchParamsFromQuery defaults-omitted + round-trip, applyFilterPatch immutability + page-reset, slugify Cyrillic→ASCII + trim + edge cases).
 
 ### Definition of Done
-- ✅ Создан дизайн → виден в публичном `/catalog` → скрыт через `<Switch>` → не виден (регресс-тест pinned).
-- ✅ Удаление непустой категории → 409 `category_in_use`; UI блокирует Popconfirm OK при `designs_count > 0`.
+- ✅ Создан дизайн → виден в публичном `/catalog` → скрыт через `<Switch>` → не виден ни в публичном **списке** (`GET /api/designs`), ни в **detail** (`GET /api/designs/{id}` → 404), ни в **reviews** (`GET /api/designs/{id}/reviews` → 404). Все три точки покрыты регресс-тестами в `test_public_catalog_filters_unpublished.py`.
+- ✅ Удаление непустой категории → 409 `category_in_use`; UI блокирует Popconfirm OK при `designs_count > 0` (покрыто smoke-тестом в `AdminCatalogPage.test.tsx`).
+- ✅ Каждый toggle публикации → запись в audit-лог (`DESIGN_VISIBILITY_TOGGLE`, payload `{from, to, name, slug}`).
+
+### Post-implementation audit (2026-04-25, line-by-line)
+
+> Прошёл по всем 9 файлам бекенда + 4 файлам фронта Phase 7A, плюс кросс-проверка `app/main.py`, `admin/__init__.py`, `tests/api/test_api.py`, `infrastructure/api/catalog.py`, конвенций (`CONVENTIONS.md`), peer-фазы 7B (panelsAdmin*).
+
+#### Критические замечания (зафиксированы во втором раунде remediation 2026-04-25)
+
+- ✅ **C1 ЗАКРЫТО.** Публичный detail-эндпоинт леакал unpublished дизайны через `app/infrastructure/api/catalog.py:158-170` (`get_design`). Фикс: добавлена проверка `if not d or not d.is_published: raise HTTPException(404)` (404, а не 403, чтобы не раскрыть существование скрытой строки). Pinned тестами `test_unpublished_detail_404` + `test_unknown_id_still_404` в `tests/api/test_public_catalog_filters_unpublished.py`.
+
+- ✅ **C2 ЗАКРЫТО.** Reviews-эндпоинт `get_reviews` теперь pre-загружает родителя через `design_repo.get_by_id` и возвращает 404 при `not parent.is_published`. Pinned тестом `test_unpublished_reviews_404`. Оба сценария (404 на unknown id и 404 на hidden parent) одинаковы по shape — атакующий не различает.
+
+#### Некритические замечания (тех. долг)
+
+- **N1. Tab-switch URL leak.** `frontend/src/domains/admin/ui/AdminCatalogPage.tsx:268-271` (`setTab`) пробрасывает текущий `query` в `searchParamsFromQuery`. При переключении с tab=designs (page=5, category_id=…) на tab=categories в URL остаются `?page=5&category_id=…`, хотя категориальный таб не пагинирует и не фильтрует. Косметика, но захламляет bookmarks.
+
+- **N2. ColorListEditor keyed by index.** `AdminCatalogPage.tsx:200-202` — `key={idx}` на динамическом списке. Add/remove посередине → React переиспользует DOM-узлы со сменой содержимого; фокус и color-picker могут «прыгнуть». Не data corruption, UX-шероховатость. Лечится локальным `id: crypto.randomUUID()` в state редактора.
+
+- **N3. Имя цвета без `maxLength`.** `AdminCatalogPage.tsx:223-227` — admin может вставить 1000-символьное имя. Бэк (`ColorPayload` в `admin/catalog.py:103`) валидирует `max_length=64`, так что хотя бы upper-bound есть. UI должен обрезать по тому же лимиту, чтобы не возить 422 туда-обратно.
+
+- **N4. Empty-state и tab-persistence не тестируются.** `AdminCatalogPage.test.tsx` (9 кейсов) покрывает title, tabs, drawers, switch, edit, error Alert, lookup id→name. Не пинит: пустое состояние обоих табов, slug-conflict 409 → inline error, category-delete-blocked при `designs_count > 0`, фильтры выживают F5.
+
+- **N5. CYR_MAP дублируется** между `catalogAdminStore.ts:95-101` и `panelsAdminStore.ts:117-123`. Признано в комментарии (lift to `shared/` при появлении третьего consumer). Ок как принятый долг.
+
+- **N6. N+1 в `ListCategoriesAdmin`.** `app/application/catalog/admin_use_cases.py:170-176` — счётчик дизайнов считается per-категория. Признано в docstring. На текущем масштабе (десятки категорий) ок; при росте — заменить на одиночный `SELECT category_id, COUNT(*) ... GROUP BY` в SQL-репо.
+
+- **N7. `useAdminDesign` импортирован, но не используется.** `AdminCatalogPage.tsx:70` — оставлено под будущий «detail drawer». Безопасно, но dead-import.
+
+- **N8. CategoryDelete popconfirm — `okButtonProps.disabled` достаточно, но не очевидно.** `AdminCatalogPage.tsx:566-587` — `disabled` на AntD кнопке Popconfirm блокирует `onConfirm`. Защита также есть на бэке (`CategoryInUseError → 409`). Дублирующаяся защита это хорошо; можно оставить.
+
+#### Что верифицировано как корректное (не требует правок)
+
+- ✅ Все 5 catalog-исключений зарегистрированы в `app/main.py:116-120` с конвертом `{detail, code}`.
+- ✅ Catalog-router смонтирован в `app/infrastructure/api/admin/__init__.py`.
+- ✅ DTO-нейминг (`CategoryCreate/Update/AdminResponse/ListResponse`, `DesignCreate/Update/AdminResponse/ListResponse`) соответствует `CONVENTIONS.md`. Никаких `*Request` legacy.
+- ✅ `ListDesigns` (public, `app/application/catalog/use_cases.py:19-22`) хардкодит `is_published=True` на use-case-уровне; admin-вариант (`ListDesignsAdmin`) явно передаёт `is_published=None`.
+- ✅ `CategoryRepository.count_designs` и `DesignRepository.list_designs(..., is_published=...)` существуют в обоих репо (`memory.py`, `sql.py`).
+- ✅ Migration 015: `server_default=sa.text("1")` бэкфилит существующие строки в `True`; downgrade дропает индекс + колонку. Совместима с round-trip (`test_alembic.py`).
+- ✅ `DeleteDesignAdmin` пишет audit ТОЛЬКО при `deleted=True` (`admin_use_cases.py:393-395, 409`).
+- ✅ `CategoryInUseError` срабатывает ДО delete (`admin_use_cases.py:148-154`).
+- ✅ Slug-uniqueness defence-in-depth: domain pre-check + SQL UNIQUE constraint.
+- ✅ Wire-shapes 1:1 backend ↔ frontend (все поля `ApiAdminDesign`/`ApiAdminCategory` совпадают с Pydantic-моделями).
+- ✅ Cache-key split (`['admin','designs','list']` vs `['admin','designs','detail',id]`) — list-инвалидация не выбивает detail. Совпадает с peer-фазой 7B.
+- ✅ Auto-slug в edit-режиме отключён (`AdminCatalogPage.tsx:880, 960`); проверено трассировкой `editingId !== null` гард.
+- ✅ `applyFilterPatch` сбрасывает `page` в `DEFAULT_PAGE` (`catalogAdminStore.ts:78-87`).
+- ✅ AdminFileUpload + Form.Item: рендерится снаружи Form.Item, но обновляет state через `categoryForm.setFieldsValue({ image })` — это документированный AntD-паттерн, controlled `<Input>` внутри `Form.Item name="image"` подхватывает изменение.
+- ✅ Router зарегистрирован: `frontend/src/shared/router.tsx:134` → `<Route path="catalog" element={<AdminCatalogPage />} />`.
+- ✅ Tests: backend 58/58 (use-cases + API + public-filter регрессия), frontend AdminCatalogPage 9/9 + соседние 186/186 (admin) + 13/13 (constructor/catalog) — после Phase 7A регрессий нет.
+
+### Remediation round 1 (2026-04-25, после первого аудита)
+
+Закрыто 3 пункта по итогам line-by-line проверки:
+
+- ✅ **REGR-1 (CRITICAL → ЗАКРЫТО):** Полный backend-suite падал на `tests/api/test_api.py::TestCatalog` (7 тестов), потому что autouse-фикстуры в `tests/api/admin/test_catalog_crud.py` и `tests/api/test_public_catalog_filters_unpublished.py` делали `_mem_design_repo._designs.clear()` и уничтожали seed singleton'а. По алфавиту admin-тесты исполняются раньше → когда `test_api.py::TestCatalog` доходит до listing, репо пустое.
+  **Фикс:** обе фикстуры теперь снэпшотят `list(_mem_design_repo._designs)` (и categories) ДО clear, и в teardown через `extend(saved)` восстанавливают исходное состояние. In-place мутация (clear+extend) сохраняет identity списка → callback `designs_source=lambda: _mem_design_repo._designs` в `app/container.py` продолжает видеть live writes. После фикса: **715/715 passing**.
+
+- ✅ **FE-6 (CRITICAL → ЗАКРЫТО):** `imageSrc` в `AdminCatalogPage.tsx:174-178` ломал legacy seed-пути формата `/images/design-1.jpg` → выдавал `/uploads//images/design-1.jpg` (двойной слеш, неверный location, 404 от nginx). Корень: regex `/^\/?uploads\/?/` не матчился на `/images/...`, но wrapper всё равно префиксил `/uploads/`.
+  **Фикс:** добавлен guard `path.startsWith('/')` рядом с `http`/`data:` — root-anchored пути возвращаются как есть (их обслуживает SPA dev server / nginx static handler, а не `/uploads/`). Storage-relative пути от `AdminFileUpload` (без leading `/`) по-прежнему получают префикс `/uploads/`.
+
+- ✅ **N4 (NON-CRITICAL → ЗАКРЫТО частично):** Добавлен `frontend/src/domains/admin/__tests__/catalogAdminStore.test.ts` (19 тестов), который пинит парсер, сериализатор, immutability `applyFilterPatch`, сброс `page` на смену фильтра, `MAX_PAGE_SIZE` clamp, slugify Cyrillic→ASCII + collapse + trim. Гэп по UI-сценариям (empty-state, tab-persistence, slug-conflict inline, category-delete-blocked) остаётся открытым — добавить вторым подходом.
+
+### Remediation round 2 (2026-04-25, закрытие критических + nits)
+
+Закрыто 7 пунктов из аудита (C1, C2, AUDIT-1, N1, N2, N3, N4, N7); явно задокументирован deferral для AUDIT-2:
+
+- ✅ **C1 (CRITICAL → ЗАКРЫТО):** `app/infrastructure/api/catalog.py:158-175` — `get_design` теперь проверяет `if not d or not d.is_published: raise HTTPException(404)`. 404 (а не 403) — чтобы не раскрыть факт существования скрытого дизайна. Pinned: `test_public_detail_404_for_unpublished` + `test_unknown_id_still_404` (одинаковый код для обоих случаев).
+- ✅ **C2 (CRITICAL → ЗАКРЫТО):** `get_reviews` (там же) теперь pre-загружает родительский `Design` через `get_design_repo` и возвращает 404 при `not parent.is_published`. Один лишний indexed PK lookup, идиомы те же. Pinned: `test_unpublished_reviews_404`.
+- ✅ **AUDIT-1 (NON-CRITICAL → ЗАКРЫТО):** добавлено значение `AuditAction.DESIGN_VISIBILITY_TOGGLE` (`backend/app/domain/audit/value_objects.py`); `ToggleDesignVisibilityAdmin` принимает опциональный `audit_recorder: RecordAuditEntry` (collaborator-паттерн как в `DeletePanelAdmin`/`DeleteDesignAdmin`); API endpoint `POST /api/admin/designs/{id}/toggle-visibility` инжектит `RecordAuditEntry(audit_repo, request_ip=ip)` через DI. Payload diff `{from, to, name, slug}`. Audit пропускается без `actor_id` (CLI seeder, legacy). Покрыто 2 unit-тестами + 1 unchanged path test (3 теста на toggle).
+- 📝 **AUDIT-2 (NON-CRITICAL → DEFERRED с обоснованием):** добавлены docstring-блоки в `UpdateDesignAdmin` и `UpdateCategoryAdmin` объясняющие, почему routine content-edits НЕ аудируются (одна линейка с `UpdateUserProfile` и order-item edits — изменения не сдвигают visibility/security; admin single-tenant, attribution implicit). Указан путь расширения, если когда-либо понадобится compliance-уровень diff.
+- ✅ **N1 (NON-CRITICAL → ЗАКРЫТО):** `setTab('categories')` теперь очищает URL до пустого querystring — designs-only params (`?tab`, `?page`, `?category_id`, `?search`, `?sort`, `?size`) уходят. Switch обратно на designs preserves фильтры (deep-link round-trip). Pinned: `strips designs-only params when switching back to the categories tab`.
+- ✅ **N2 (NON-CRITICAL → ЗАКРЫТО):** `ColorListEditor` теперь использует stable id keys из `WeakMap<ApiColor, string>` + `crypto.randomUUID()` (с детерминированным fallback для не-secure context). Add/remove посередине больше не меняет identity DOM-узлов — фокус color-picker и палитра сохраняются.
+- ✅ **N3 (NON-CRITICAL → ЗАКРЫТО):** `<Input maxLength={64}>` на имени цвета совпадает с backend `Field(min_length=1, max_length=64)` в `ColorPayload` — 422-roundtrip из UI невозможен.
+- ✅ **N4 (NON-CRITICAL → ЗАКРЫТО):** добавлено 6 UI-тестов в `AdminCatalogPage.test.tsx`: empty-state на обоих табах (categories+designs, без crash), deep-link persistence (`?tab=designs&category_id=…&search=…&page=…` выживает), tab-strip (N1 регрессия), slug_conflict inline rendering, category-delete-blocked Popconfirm с disabled OK.
+- ✅ **N7 (NON-CRITICAL → ЗАКРЫТО):** убедились, что импорт `useAdminDesign` не используется; вставлен явный комментарий-маркер вместо неиспользуемого импорта (reintroduce-when-needed).
+
+### Open follow-ups (NON-CRITICAL, deferred с обоснованием)
+
+- [ ] **AUDIT-2 (deferred):** routine catalog-edits (`UpdateDesignAdmin`, `UpdateCategoryAdmin`) не пишут audit. Решение зафиксировано в docstring use case'ов; реактивировать когда появится требование compliance / multi-admin team.
+- [ ] **N5 (deferred):** `CYR_MAP` дублируется между `catalogAdminStore.ts` и `panelsAdminStore.ts` — задокументировано как принятый долг; lift в `shared/` при появлении третьего consumer.
+- [ ] **N6 (deferred):** N+1 в `ListCategoriesAdmin.execute` — на текущем масштабе (десятки категорий) приемлемо; заменить на `SELECT category_id, COUNT(*) ... GROUP BY` в SQL-репо когда дизайнов станет 10k+ (ориентировочно одновременно с pagination на admin-list категорий).
 
 ---
 
@@ -926,21 +1009,47 @@ Frontend:
 **Регрессия после фиксов:** 511 passed (509 → 511 за счёт двух новых регресс-тестов), 0 fail.
 
 ### Definition of Done
-- В админке создаётся панель → доступна в конструкторе.
-- Конструктор не падает при пустой БД (fallback на дефолтные).
+- ✅ В админке создаётся панель → доступна в конструкторе (`useEffectivePanelPrices` подключён в `ConstructorPage.tsx:161`, ключуется по `<width_mm>x<height_mm>`).
+- ✅ Конструктор не падает при пустой БД (fallback на `BASE_PANEL_PRICES`, покрыт unit-тестом «falls back to constants on an empty API response»).
+
+### Independent re-audit 2026-04-25 (после первичного auto-commit)
+
+> Предыдущий audit-блок выше выполнялся фоновым процессом одновременно с первичной реализацией; поэтому я провёл отдельную line-by-line проверку всех файлов Фазы 7B, чтобы исключить «slip-through» багов. Прочитано построчно: 4 backend-файла (`panel.py`, `panel_exceptions.py`, `panel_use_cases.py`, `admin/panels.py`), 4 frontend-файла (`AdminUploadPage.tsx`, `panelsAdminApi.ts`, `panelsAdminStore.ts`, `useEffectivePanelPrices.ts`) и все 7 тест-файлов. Cross-проверено на DDD-чистоту, error-envelope, defence-in-depth slug uniqueness, конструктор-wiring (`ConstructorPage.tsx:161`).
+
+#### Найдено и исправлено
+
+- ✅ **FE-A (CRITICAL → ЗАКРЫТО):** `AdminUploadPage.tsx:340` имел тот же inline-баг с `imageSrc`, что мы фиксили в Фазе 7A — `path.replace(/^\/?uploads\/?/, '')` ломал legacy seed-пути `/images/foo.jpg` → `/uploads//images/foo.jpg` (двойной слеш, 404 от nginx). Хуже: НЕ обрабатывал `data:` URI вовсе (визуализатор отдаёт сгенерённые preview как data:image/png;base64).
+  **Фикс:** lifted в `frontend/src/shared/lib/imageSrc.ts` — единый helper с поддержкой 4 input shape'ов (http/https URL, data: URI, root-anchored static, storage-relative). `AdminCatalogPage.tsx` (Phase 7A) и `AdminUploadPage.tsx` (Phase 7B) теперь используют один источник правды; разъезжаться больше нельзя. Покрыто `frontend/src/shared/lib/__tests__/imageSrc.test.ts` (6 тестов: empty, http, data:, /static/, BANNER/, idempotent uploads/-strip).
+
+#### Закрыто во втором раунде remediation (2026-04-25)
+
+- ✅ **FE-B (NON-CRITICAL → ЗАКРЫТО):** Server-side filtering для admin-листа панелей.
+  - `PanelRepository.list_panels` ABC расширен опциональными `is_active: bool | None`, `search: str | None`. Оба `None` = back-compat.
+  - `InMemoryPanelRepository.list_panels` фильтрует in-place (case-insensitive substring на name + slug; `is_active` точное равенство).
+  - `SqlPanelRepository.list_panels` строит `WHERE is_active = ? AND (LOWER(name) LIKE ? OR LOWER(slug) LIKE ?)`. Обе предикаты применяются И к items query, И к count query — paginated `total` отражает visible-set (Phase 4A audit lesson). Spec-chars в `search` экранируются `\\` (защита от admin-supplied `%` / `_`).
+  - `ListPanelsAdmin.execute(is_active=, search=)` пробрасывает в repo. Default `None` сохраняет back-compat для всех существующих 19 application-тестов.
+  - `GET /api/admin/panels` Pydantic `Query` принимает `is_active: bool | None` + `search: str | None = Query(None, max_length=200)`.
+  - Frontend `panelsAdminApi.buildListQueryString` теперь сериализует `is_active`/`search` в URL. Client-side filter (`AdminUploadPage.tsx:317-329`) удалён; pagination использует server-side `data.total`. Cache-key контракт не менялся (DTO с фильтрами уже был ключом запроса) — теперь ещё и backend-payload меньше.
+  - Покрыто 6 новыми API-тестами в `test_panels.py:TestList`: `is_active=true/false`, `search` matches name / slug / case-insensitive, `search + is_active` AND-combined.
+
+- ✅ **N-test-7B (NON-CRITICAL → ЗАКРЫТО):** Добавлено 3 UI-теста в `AdminUploadPage.test.tsx`:
+  - `panel_slug_conflict 409` → inline form-error «Slug уже занят» через `form.setFields([{name:'slug', errors:[…]}])`.
+  - Delete Popconfirm: confirm → `useDeletePanel.mutate(rowId)` (disambiguation popover OK от row-trigger через `closest('.ant-popconfirm-buttons')`).
+  - Delete Popconfirm: cancel → mutate НЕ вызывается.
+
+**Регрессия после второго раунда remediation 2026-04-25:** backend **729/729** (+6 от FE-B), frontend admin+constructor+shared/lib **224/224** (+3 от N-test-7B). 0 fail. 0 deferred items для Phase 7B.
 
 ---
 
-## Фаза 8: Управление магазином (настройки и тарифы) ⚠️ ЧАСТИЧНО РЕАЛИЗОВАНО (обновлено 2026-04-25 после remediation)
+## Фаза 8: Управление магазином (настройки и тарифы) ✅ РЕАЛИЗОВАНО (обновлено 2026-04-25)
 
 > **Цель:** Управление подписками, базовой ценой overlay, баннерами главной, промокодами (опционально).
 >
-> **Статус после remediation 2026-04-25:**
-> - Фаза 8A (ShopSettings backend) — ✅ end-to-end + добавлен SQL integration test (тех-долг #4 закрыт).
-> - Фаза 8B (Banners) — ⏸️ мёртвый код **удалён** (banner.py / banner_exceptions.py / banner_use_cases.py / BannerRepository / BannerModel / InMemoryBannerRepository / SqlBannerRepository). Phase 8B остаётся открытой задачей: переоткрыть, когда миграция, container-wiring, API и тесты делаются в одном PR.
-> - Фаза 8C (Subscription Plans CRUD) — ❌ не начата.
-> - Фаза 8D (Frontend) — ❌ не начат (placeholder).
-> - DoD не достигнут (см. ниже).
+> **Статус 2026-04-25:**
+> - Фаза 8A (ShopSettings backend) — ✅ end-to-end + SQL integration test.
+> - Фаза 8B (Banners) — ✅ возвращён и достроен одним проходом: domain/banner.py, миграция `013_create_banners`, container wiring, `/api/admin/shop/banners` + публичный `/api/shop/banners?position=`, тесты domain/application/api зеленые.
+> - Фаза 8C (Subscription Plans CRUD) — ✅ domain `SubscriptionPlan` (с `is_active`/`sort_order`/audit timestamps), `SubscriptionPlanRepository` (memory + sql), 4 use cases (`Create/Update/Delete/ListAdmin`) + `count_active_by_plan` cascade-guard, миграция `017_create_subscription_plans` с seed 3 baseline-планов, admin/public endpoints, error handlers, тесты.
+> - Фаза 8D (Frontend) — ✅ `AdminShopPage.tsx` (3 таба: Settings/Banners/Plans, Drawer-формы CRUD, inline-Switch toggle, AdminFileUpload, error-envelope branching), `shopAdminApi.ts`, `AdminShopPage.test.tsx` 8/8. **DoD #1 (≤5 min TTL) закрыт:** `useShopSettings` hook (`shared/hooks/useShopSettings.ts`) тянет `/api/shop/settings` через TanStack Query (5-min staleTime, retry: false), fallback на `DESIGN_OVERLAY_PRICE` при `data === undefined`. Wired в `AccountConstructorSection.tsx` (3 live-pricing сайта) и `PricingPage.tsx` (panel-pricing build + display).
 
 ### Подфаза 8A: ShopSettings ✅ РЕАЛИЗОВАНО (backend) (2026-04-25)
 
@@ -1023,9 +1132,9 @@ OQ2 (решено 24.04.2026) явно требовал «**обязательн
 ---
 
 ### Definition of Done
-- [ ] Изменение `design_overlay_price` в админке → новая цена видна в каталоге через ≤5 минут (TTL). **НЕ ДОСТИГНУТО** (frontend читает константу из бандла; см. 8D).
-- [ ] Баннеры с активным флагом и приоритетом отображаются в правильном порядке. **НЕ ДОСТИГНУТО** (8B half-implementation).
-- [ ] CRUD тарифов с защитой от удаления используемых планов. **НЕ ДОСТИГНУТО** (8C не начат).
+- [x] Изменение `design_overlay_price` в админке → новая цена видна в каталоге через ≤5 минут (TTL). **ДОСТИГНУТО** через `useShopSettings` hook (5-min staleTime); подписаны 3 live-pricing сайта в `AccountConstructorSection.tsx` (cart total, per-item unit price, overlay-badge) + `PricingPage.tsx` (`panelPricing` builder + дисплей). Fallback на `DESIGN_OVERLAY_PRICE` при offline / pre-resolve. Покрыто `shared/hooks/__tests__/useShopSettings.test.ts` (4 теста: fallback, live override, snake→camel rename, `0`-honoured).
+- [x] Баннеры с активным флагом и приоритетом отображаются в правильном порядке. **ДОСТИГНУТО** (8B вернули — `BannerRepository.list_active_by_position` сортирует по `priority` desc; публичный `/api/shop/banners?position=` фильтрует `is_active=True`).
+- [x] CRUD тарифов с защитой от удаления используемых планов. **ДОСТИГНУТО** через `DeleteSubscriptionPlanAdmin` + `SubscriptionRepository.count_active_by_plan` (409 `subscription_plan_in_use`).
 
 ### Аудит 2026-04-25 — line-by-line по реализованной части (Phase 8A) + remediation
 

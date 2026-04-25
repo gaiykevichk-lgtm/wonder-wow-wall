@@ -29,8 +29,14 @@ from app.domain.user.repositories import UserRepository
 from app.domain.user.value_objects import UserRole
 from app.domain.media.entities import MediaAsset
 from app.domain.media.repositories import MediaAssetRepository
-from app.domain.shop.repositories import ShopSettingsRepository
+from app.domain.shop.banner import Banner, BannerPosition
+from app.domain.shop.repositories import (
+    BannerRepository,
+    ShopSettingsRepository,
+)
 from app.domain.shop.settings import ShopSettings
+from app.domain.subscription.entities import SubscriptionPlan
+from app.domain.subscription.repositories import SubscriptionPlanRepository
 from app.domain.audit.entities import AuditEntry
 from app.domain.audit.filters import AuditFilters
 from app.domain.audit.repositories import AuditEntryRepository
@@ -267,6 +273,14 @@ class InMemorySubscriptionRepository(SubscriptionRepository):
         self._subs = [s if s.id != subscription.id else subscription for s in self._subs]
         return subscription
 
+    async def count_active_by_plan(self, plan_id: str) -> int:
+        # Phase 8C — `DeleteSubscriptionPlanAdmin` cascade-guard.
+        # Mirrors the SQL `SELECT COUNT(*) WHERE plan_id = ? AND status = 'active'`.
+        return sum(
+            1 for s in self._subs
+            if s.plan_id == plan_id and s.status.value == "active"
+        )
+
 
 # ─── User ────────────────────────────────────────────────────────────
 
@@ -375,12 +389,26 @@ class InMemoryPanelRepository(PanelRepository):
         self,
         *,
         include_inactive: bool = False,
+        is_active: bool | None = None,
+        search: str | None = None,
         offset: int = 0,
         limit: int = 100,
     ) -> tuple[list[Panel], int]:
         rows = self._panels if include_inactive else [
             p for p in self._panels if p.is_active
         ]
+        # Phase 7B remediation 2 (FE-B) — explicit `is_active=True/False`
+        # narrows further on top of `include_inactive`. Mutually consistent:
+        # the admin's «Inactive only» tab passes `include_inactive=True`
+        # (use case keeps that hard-coded) AND `is_active=False`.
+        if is_active is not None:
+            rows = [p for p in rows if p.is_active == is_active]
+        if search:
+            needle = search.lower()
+            rows = [
+                p for p in rows
+                if needle in p.name.lower() or needle in p.slug.lower()
+            ]
         # Newest-first matches the admin table default sort. Stable sort
         # preserves insertion order for ties.
         ordered = sorted(rows, key=lambda p: p.created_at, reverse=True)
@@ -446,7 +474,99 @@ class InMemoryShopSettingsRepository(ShopSettingsRepository):
         return self._settings
 
 
-# ─── Banners (Phase 8B) — pending; see app/domain/shop/__init__.py.
+# ─── Banners (Phase 8B) ─────────────────────────────────────────────
+
+
+class InMemoryBannerRepository(BannerRepository):
+    """List-backed mirror of `SqlBannerRepository`.
+
+    Uses a singleton `_banners` list (mutated in place) so test fixtures
+    can poke `_mem_banner_repo._banners.append(...)` and the API sees
+    the new row — same pattern as `_mem_panel_repo`.
+    """
+
+    def __init__(self, banners: list[Banner] | None = None):
+        self._banners: list[Banner] = banners or []
+
+    async def list_banners(
+        self,
+        *,
+        position: BannerPosition | None = None,
+        active_only: bool = False,
+    ) -> list[Banner]:
+        rows = list(self._banners)
+        if position is not None:
+            rows = [b for b in rows if b.position == position]
+        if active_only:
+            rows = [b for b in rows if b.is_active]
+        # Stable sort: priority asc, then created_at asc (insertion order
+        # for ties). Matches the SQL `ORDER BY priority, created_at`.
+        rows.sort(key=lambda b: (b.priority, b.created_at))
+        return rows
+
+    async def get_by_id(self, banner_id: str) -> Banner | None:
+        return next((b for b in self._banners if b.id == banner_id), None)
+
+    async def create(self, banner: Banner) -> Banner:
+        self._banners.append(banner)
+        return banner
+
+    async def update(self, banner: Banner) -> Banner:
+        for i, b in enumerate(self._banners):
+            if b.id == banner.id:
+                self._banners[i] = banner
+                return banner
+        raise LookupError(f"Banner {banner.id} not found")
+
+    async def delete(self, banner_id: str) -> bool:
+        before = len(self._banners)
+        self._banners = [b for b in self._banners if b.id != banner_id]
+        return len(self._banners) != before
+
+
+# ─── Subscription plans (Phase 8C) ──────────────────────────────────
+
+
+class InMemorySubscriptionPlanRepository(SubscriptionPlanRepository):
+    """List-backed mirror of `SqlSubscriptionPlanRepository`.
+
+    Defends the SQL `PRIMARY KEY (id)` with an explicit collision check
+    in `create` so test seeding cannot surprise postgres. Same posture
+    as `InMemoryPanelRepository.create` (Phase 7B).
+    """
+
+    def __init__(self, plans: list[SubscriptionPlan] | None = None):
+        self._plans: list[SubscriptionPlan] = plans or []
+
+    async def list_plans(
+        self, *, active_only: bool = False,
+    ) -> list[SubscriptionPlan]:
+        rows = list(self._plans)
+        if active_only:
+            rows = [p for p in rows if p.is_active]
+        rows.sort(key=lambda p: p.sort_order)
+        return rows
+
+    async def get_by_id(self, plan_id: str) -> SubscriptionPlan | None:
+        return next((p for p in self._plans if p.id == plan_id), None)
+
+    async def create(self, plan: SubscriptionPlan) -> SubscriptionPlan:
+        if any(p.id == plan.id for p in self._plans):
+            raise ValueError(f"SubscriptionPlan id collision: {plan.id}")
+        self._plans.append(plan)
+        return plan
+
+    async def update(self, plan: SubscriptionPlan) -> SubscriptionPlan:
+        for i, p in enumerate(self._plans):
+            if p.id == plan.id:
+                self._plans[i] = plan
+                return plan
+        raise LookupError(f"SubscriptionPlan {plan.id} not found")
+
+    async def delete(self, plan_id: str) -> bool:
+        before = len(self._plans)
+        self._plans = [p for p in self._plans if p.id != plan_id]
+        return len(self._plans) != before
 
 
 # ─── Audit log (Phase 9) ────────────────────────────────────────────

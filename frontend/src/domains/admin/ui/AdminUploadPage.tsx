@@ -55,6 +55,7 @@ import { motion } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 
 import { ApiError } from '../../../shared/api';
+import { imageSrc } from '../../../shared/lib/imageSrc';
 import { AdminFileUpload } from '../../../shared/ui/AdminFileUpload';
 import {
   type ApiPanel,
@@ -309,24 +310,12 @@ export default function AdminUploadPage() {
     });
   }
 
-  // ─── Client-side filtering of the fetched page ─────────────────────
-  // The backend returns the whole page; we narrow by isActive/search here.
-  // For 100s of SKUs this is fine. When the catalogue grows past ~thousands
-  // we'd push the filter to the backend (`?is_active=&search=`) — flagged
-  // in Phase 7B audit.
-  const visibleItems = useMemo<ApiPanel[]>(() => {
-    const items = data?.items ?? [];
-    return items.filter((p) => {
-      if (query.isActive !== null && p.is_active !== query.isActive) return false;
-      if (query.search) {
-        const needle = query.search.toLowerCase();
-        const inName = p.name.toLowerCase().includes(needle);
-        const inSlug = p.slug.toLowerCase().includes(needle);
-        if (!inName && !inSlug) return false;
-      }
-      return true;
-    });
-  }, [data?.items, query.isActive, query.search]);
+  // Phase 7B remediation 2 (FE-B) — filters now happen server-side.
+  // `panelsAdminApi.buildListQueryString` forwards `is_active`/`search`
+  // to `GET /api/admin/panels`, so the response is already narrowed and
+  // `data.total` reflects the visible set. We just hand the items
+  // through unchanged.
+  const visibleItems: ApiPanel[] = data?.items ?? [];
 
   const columns: TableProps<ApiPanel>['columns'] = [
     {
@@ -337,7 +326,11 @@ export default function AdminUploadPage() {
       render: (path: string) =>
         path ? (
           <img
-            src={path.startsWith('http') ? path : `/uploads/${path.replace(/^\/?uploads\/?/, '')}`}
+            // Phase 7A/7B audit fix — single shared `imageSrc` helper.
+            // Previously inline ternary doubled the `/uploads/` prefix
+            // for legacy seed paths (`/images/...`) and dropped `data:`
+            // URIs entirely. See `shared/lib/imageSrc.ts`.
+            src={imageSrc(path)}
             alt=""
             style={{
               width: 56,
@@ -532,9 +525,10 @@ export default function AdminUploadPage() {
           pagination={{
             current: query.page,
             pageSize: query.size,
-            // We hand the backend `total` to AntD so the pager shows the
-            // real page count; client-side filtering only narrows the
-            // current page, not the total.
+            // Server-side `total` (post-filter) — Phase 7B remediation 2
+            // (FE-B) moved the `is_active`/`search` predicates to the
+            // backend, so this number now accurately reflects the
+            // narrowed set across all pages, not just the current one.
             total: data?.total ?? 0,
             showSizeChanger: true,
             pageSizeOptions: [25, 50, 100, 200],

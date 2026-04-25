@@ -199,6 +199,131 @@ class TestList:
         slugs = {item["slug"] for item in body["items"]}
         assert slugs == {"a", "h"}
 
+    # Phase 7B remediation 2 (FE-B) — server-side filters.
+
+    @pytest.mark.asyncio
+    async def test_list_filter_is_active_true(self, client):
+        token = await _admin_token(client)
+        await client.post(
+            "/api/admin/panels",
+            headers={"Authorization": f"Bearer {token}"},
+            json=_create_payload(slug="visible", is_active=True),
+        )
+        await client.post(
+            "/api/admin/panels",
+            headers={"Authorization": f"Bearer {token}"},
+            json=_create_payload(slug="hidden", is_active=False),
+        )
+        resp = await client.get(
+            "/api/admin/panels?is_active=true",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        # Total reflects the filtered set, not the full count.
+        assert body["total"] == 1
+        assert {item["slug"] for item in body["items"]} == {"visible"}
+
+    @pytest.mark.asyncio
+    async def test_list_filter_is_active_false(self, client):
+        token = await _admin_token(client)
+        await client.post(
+            "/api/admin/panels",
+            headers={"Authorization": f"Bearer {token}"},
+            json=_create_payload(slug="visible", is_active=True),
+        )
+        await client.post(
+            "/api/admin/panels",
+            headers={"Authorization": f"Bearer {token}"},
+            json=_create_payload(slug="hidden", is_active=False),
+        )
+        resp = await client.get(
+            "/api/admin/panels?is_active=false",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        body = resp.json()
+        assert body["total"] == 1
+        assert body["items"][0]["slug"] == "hidden"
+
+    @pytest.mark.asyncio
+    async def test_list_search_matches_name(self, client):
+        token = await _admin_token(client)
+        await client.post(
+            "/api/admin/panels",
+            headers={"Authorization": f"Bearer {token}"},
+            json=_create_payload(slug="alpha", name="Alpha 30"),
+        )
+        await client.post(
+            "/api/admin/panels",
+            headers={"Authorization": f"Bearer {token}"},
+            json=_create_payload(slug="bravo", name="Bravo 60"),
+        )
+        resp = await client.get(
+            "/api/admin/panels?search=alpha",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        body = resp.json()
+        assert body["total"] == 1
+        assert body["items"][0]["slug"] == "alpha"
+
+    @pytest.mark.asyncio
+    async def test_list_search_matches_slug(self, client):
+        token = await _admin_token(client)
+        await client.post(
+            "/api/admin/panels",
+            headers={"Authorization": f"Bearer {token}"},
+            json=_create_payload(slug="custom-30x60", name="Foo"),
+        )
+        await client.post(
+            "/api/admin/panels",
+            headers={"Authorization": f"Bearer {token}"},
+            json=_create_payload(slug="bar-60x60", name="Bar"),
+        )
+        resp = await client.get(
+            "/api/admin/panels?search=30x60",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        body = resp.json()
+        assert body["total"] == 1
+        assert body["items"][0]["slug"] == "custom-30x60"
+
+    @pytest.mark.asyncio
+    async def test_list_search_case_insensitive(self, client):
+        token = await _admin_token(client)
+        await client.post(
+            "/api/admin/panels",
+            headers={"Authorization": f"Bearer {token}"},
+            json=_create_payload(slug="a", name="MyPanel"),
+        )
+        resp = await client.get(
+            "/api/admin/panels?search=mypanel",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        body = resp.json()
+        assert body["total"] == 1
+
+    @pytest.mark.asyncio
+    async def test_list_search_combined_with_is_active(self, client):
+        # Defence-in-depth: filters are AND-combined, not OR.
+        token = await _admin_token(client)
+        await client.post(
+            "/api/admin/panels",
+            headers={"Authorization": f"Bearer {token}"},
+            json=_create_payload(slug="active-foo", name="Foo", is_active=True),
+        )
+        await client.post(
+            "/api/admin/panels",
+            headers={"Authorization": f"Bearer {token}"},
+            json=_create_payload(slug="hidden-foo", name="Foo", is_active=False),
+        )
+        resp = await client.get(
+            "/api/admin/panels?search=foo&is_active=true",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        body = resp.json()
+        assert body["total"] == 1
+        assert body["items"][0]["slug"] == "active-foo"
+
 
 # ─── Detail ──────────────────────────────────────────────────────────
 

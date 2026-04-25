@@ -343,10 +343,19 @@ async def update_design_admin(
 )
 async def toggle_design_visibility_admin(
     design_id: str,
-    _admin_id: str = Depends(get_current_admin_id),
+    admin_id: str = Depends(get_current_admin_id),
     design_repo=Depends(get_design_repo),
+    audit_repo=Depends(get_audit_repo),
+    ip: str | None = Depends(get_request_ip),
 ):
-    design = await ToggleDesignVisibilityAdmin(design_repo).execute(design_id)
+    # Phase 9 — audit toggles (publish/unpublish) but NOT routine
+    # content edits (handled separately in `UpdateDesignAdmin` if ever
+    # extended). The diff payload `{from, to, name, slug}` is built
+    # inside the use case; we just hand it the recorder.
+    design = await ToggleDesignVisibilityAdmin(
+        design_repo,
+        audit_recorder=RecordAuditEntry(audit_repo, request_ip=ip),
+    ).execute(design_id, actor_id=admin_id)
     return _design_to_response(design)
 
 

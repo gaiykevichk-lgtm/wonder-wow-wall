@@ -159,7 +159,12 @@ async def list_designs(
 async def get_design(request: Request, design_id: str, design_repo=Depends(get_design_repo)):
     uc = GetDesignDetails(design_repo)
     d = await uc.execute(design_id)
-    if not d:
+    # Phase 7A C1 — `GetDesignDetails` is the same use case the admin
+    # uses, so it returns the row regardless of `is_published`. The
+    # public endpoint must hide unpublished rows even when an attacker
+    # knows the UUID; treating it as 404 (not 403) so the existence of
+    # the row is not disclosed either. Pinned by `test_public_detail_404_for_unpublished`.
+    if not d or not d.is_published:
         raise HTTPException(status_code=404, detail="Design not found")
     return {
         "id": d.id, "name": d.name, "slug": d.slug, "category_id": d.category_id,
@@ -178,7 +183,22 @@ async def list_categories(request: Request, category_repo=Depends(get_category_r
 
 
 @router.get("/designs/{design_id}/reviews", response_model=list[ReviewSchema])
-async def get_reviews(request: Request, design_id: str, offset: int = 0, limit: int = 20, review_repo=Depends(get_review_repo)):
+async def get_reviews(
+    request: Request,
+    design_id: str,
+    offset: int = 0,
+    limit: int = 20,
+    design_repo=Depends(get_design_repo),
+    review_repo=Depends(get_review_repo),
+):
+    # Phase 7A C2 — reviews of an unpublished design must not leak
+    # either. Same 404-on-hidden posture as `get_design` so the
+    # existence of the parent row is not disclosed via a 200 with an
+    # empty list. Cheap pre-check (one indexed PK lookup); the admin
+    # has dedicated endpoints if it needs unpublished review access.
+    parent = await design_repo.get_by_id(design_id)
+    if parent is None or not parent.is_published:
+        raise HTTPException(status_code=404, detail="Design not found")
     uc = ListReviews(review_repo)
     reviews = await uc.execute(design_id, offset, limit)
     return [

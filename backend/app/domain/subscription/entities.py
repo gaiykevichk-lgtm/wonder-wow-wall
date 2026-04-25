@@ -7,13 +7,36 @@ from .value_objects import SubscriptionTier, SubscriptionStatus
 
 @dataclass
 class SubscriptionPlan:
+    """Phase 8C — admin-editable tariff.
+
+    Lives in the `subscription` bounded context (not `shop`) because
+    the existing `Subscription` aggregate already references it via
+    `plan_id` and the legacy `SUBSCRIPTION_PLANS` constant. Phase 8C
+    adds `is_active` + `sort_order` + audit timestamps so the admin
+    can retire / reorder plans without breaking historic subscriptions.
+
+    Invariants in `__post_init__`:
+      * `price >= 0`, `area_limit_m2 >= 0` (0 is "unlimited").
+      * `id` non-empty (slug-style; PK in DB).
+    """
+
     id: str = ""
     name: str = ""
     price: int = 0
     period: str = "мес"
     area_limit_m2: float = 0  # 0 = unlimited
     popular: bool = False
+    is_active: bool = True
+    sort_order: int = 0
     features: list[str] = field(default_factory=list)
+    created_at: datetime = field(default_factory=datetime.utcnow)
+    updated_at: datetime = field(default_factory=datetime.utcnow)
+
+    def __post_init__(self) -> None:
+        if self.price < 0:
+            raise ValueError("SubscriptionPlan.price cannot be negative")
+        if self.area_limit_m2 < 0:
+            raise ValueError("SubscriptionPlan.area_limit_m2 cannot be negative")
 
 
 SUBSCRIPTION_PLANS: list[SubscriptionPlan] = [

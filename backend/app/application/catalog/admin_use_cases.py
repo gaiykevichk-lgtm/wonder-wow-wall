@@ -91,6 +91,10 @@ class UpdateCategoryAdmin:
     for `image`). Slug uniqueness is re-checked if `slug` changed; we
     compare against the *current* row's slug to avoid a false 409 when
     the admin saves the modal without touching the slug.
+
+    Audit posture: NOT audited — same rationale as `UpdateDesignAdmin`
+    above. Categories are content scaffolding; their delete IS guarded
+    by `CategoryInUseError` (cascade refusal), not auditing.
     """
 
     def __init__(self, repo: CategoryRepository):
@@ -261,6 +265,19 @@ class UpdateDesignAdmin:
     the new `category_id` exists when supplied. `is_published` is
     patched here too — the dedicated `ToggleDesignVisibilityAdmin` is
     a convenience wrapper for the inline switch in the admin table.
+
+    Audit posture (Phase 9 design decision):
+      Routine content edits (name/slug/category/style/image/description/
+      price/colors/is_new/is_popular) are NOT audited. Rationale: same
+      class as `UpdateUserProfile` and order-item edits — content
+      changes that don't shift visibility or security posture, on a
+      single-tenant admin where attribution is implicit (one or two
+      admins, git-blame-style). The destructive action `DESIGN_DELETE`
+      and the public-facing flip `DESIGN_VISIBILITY_TOGGLE` ARE audited
+      because they change the public catalog surface. If a future ticket
+      requires field-level diffs (compliance, multi-admin teams), add
+      an `audit_recorder` collaborator here matching the Phase 8A
+      `UpdateShopSettingsAdmin` diff-payload pattern.
     """
 
     def __init__(
@@ -343,17 +360,48 @@ class ToggleDesignVisibilityAdmin:
     endpoint. The full PATCH path (`UpdateDesignAdmin`) still works for
     callers that want explicit value control. Returns the updated
     domain entity so the caller can re-render the row immediately.
+
+    Phase 9 — when an `audit_recorder` collaborator is wired in, every
+    successful flip records a `DESIGN_VISIBILITY_TOGGLE` audit entry
+    with the diff (`{from, to}` booleans, plus `name` / `slug` for
+    forensics). Unlike the generic `UpdateDesignAdmin` (routine content
+    edit, not audited), publish/unpublish changes the public catalog
+    surface and warrants a record. Audit is skipped when `actor_id` is
+    None (CLI seeder, legacy tests) — same posture as `DeleteDesignAdmin`.
     """
 
-    def __init__(self, repo: DesignRepository):
+    def __init__(
+        self,
+        repo: DesignRepository,
+        audit_recorder: RecordAuditEntry | None = None,
+    ):
         self.repo = repo
+        self.audit_recorder = audit_recorder
 
-    async def execute(self, design_id: str) -> Design:
+    async def execute(
+        self, design_id: str, *, actor_id: str | None = None,
+    ) -> Design:
         design = await self.repo.get_by_id(design_id)
         if design is None:
             raise DesignNotFoundError(f"Design {design_id} not found")
-        design.is_published = not design.is_published
-        return await self.repo.update(design)
+        was = design.is_published
+        design.is_published = not was
+        updated = await self.repo.update(design)
+
+        if self.audit_recorder is not None and actor_id:
+            await self.audit_recorder.execute(
+                actor_id=actor_id,
+                action=AuditAction.DESIGN_VISIBILITY_TOGGLE,
+                target_type=AuditTargetType.DESIGN,
+                target_id=design_id,
+                payload={
+                    "from": was,
+                    "to": updated.is_published,
+                    "name": updated.name,
+                    "slug": updated.slug,
+                },
+            )
+        return updated
 
 
 class DeleteDesignAdmin:

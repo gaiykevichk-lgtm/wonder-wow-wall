@@ -11,10 +11,11 @@
  * `uploadFile.test.ts`; here it would just bring in unrelated XHR setup.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+import { ApiError } from '../../../shared/api';
 import type {
   ApiPanel,
   ApiPanelListResponse,
@@ -181,5 +182,62 @@ describe('<AdminUploadPage>', () => {
     expect(screen.getByText('Редактировать панель')).toBeInTheDocument();
     // Form should be pre-populated with the panel's name.
     expect(screen.getByDisplayValue('Уникальное Имя 42')).toBeInTheDocument();
+  });
+
+  // ─── N-test-7B follow-ups (post-audit) ──────────────────────────────
+
+  it('renders inline slug error on panel_slug_conflict 409 (N-test-7B)', async () => {
+    renderPage([]);
+    // Make the create-panel mutation reject with the API error envelope
+    // shape the page branches on (`code: panel_slug_conflict`).
+    mockCreateMutate.mockImplementation((_payload, opts) => {
+      opts?.onError?.(
+        new ApiError(409, 'Slug taken', { code: 'panel_slug_conflict' }),
+      );
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Добавить панель/i }));
+    fireEvent.change(screen.getByLabelText('Название'), {
+      target: { value: 'Test' },
+    });
+    fireEvent.change(screen.getByLabelText('Slug'), {
+      target: { value: 'taken' },
+    });
+    // Drawer's primary button is «Сохранить» in edit mode; «Создать»
+    // in create mode. Match by exact text inside the drawer.
+    fireEvent.click(screen.getByRole('button', { name: /Создать/i }));
+    expect(await screen.findByText('Slug уже занят')).toBeInTheDocument();
+  });
+
+  it('delete Popconfirm: confirm fires useDeletePanel with row id (N-test-7B)', async () => {
+    renderPage([makePanel({ id: 'p-del' })]);
+    // Trigger: row's icon-only «Удалить» button (aria-label).
+    fireEvent.click(screen.getByRole('button', { name: 'Удалить' }));
+    // Popover OK: a NEW button with name «Удалить» appears inside the
+    // `.ant-popover` overlay. We disambiguate from the trigger by
+    // requiring the parent `.ant-popconfirm-buttons` container.
+    const popconfirmOk = await waitFor(() => {
+      const candidates = screen.getAllByRole('button', { name: 'Удалить' });
+      const inPopover = candidates.find((b) =>
+        b.closest('.ant-popconfirm-buttons') !== null,
+      );
+      expect(inPopover).toBeDefined();
+      return inPopover!;
+    });
+    fireEvent.click(popconfirmOk);
+    await waitFor(() => {
+      expect(mockDeleteMutate).toHaveBeenCalledTimes(1);
+    });
+    expect(mockDeleteMutate.mock.calls[0][0]).toBe('p-del');
+  });
+
+  it('delete Popconfirm: cancel does NOT fire delete (N-test-7B)', async () => {
+    renderPage([makePanel({ id: 'p-del' })]);
+    fireEvent.click(screen.getByRole('button', { name: 'Удалить' }));
+    const cancelBtn = await screen.findByRole('button', { name: 'Отмена' });
+    fireEvent.click(cancelBtn);
+    // Allow microtask flush so an erroneous mutate call would land.
+    await waitFor(() => {
+      expect(mockDeleteMutate).not.toHaveBeenCalled();
+    });
   });
 });

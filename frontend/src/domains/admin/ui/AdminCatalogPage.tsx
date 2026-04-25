@@ -56,6 +56,7 @@ import { motion } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 
 import { ApiError } from '../../../shared/api';
+import { imageSrc } from '../../../shared/lib/imageSrc';
 import { AdminFileUpload } from '../../../shared/ui/AdminFileUpload';
 import {
   type ApiAdminCategory,
@@ -75,6 +76,9 @@ import {
   useToggleDesignVisibility,
   useUpdateCategory,
   useUpdateDesign,
+  // `useAdminDesign` (single-row fetch) intentionally NOT imported —
+  // the page builds the form from the table row directly. Reintroduce
+  // when (and if) a deep-link `/admin/catalog/designs/:id` route lands.
 } from '../api/catalogAdminApi';
 import {
   type CatalogTab,
@@ -171,17 +175,34 @@ function formatDate(iso: string): string {
   return dayjs(iso).format('DD.MM.YYYY');
 }
 
-function imageSrc(path: string): string {
-  if (!path) return '';
-  if (path.startsWith('http') || path.startsWith('data:')) return path;
-  return `/uploads/${path.replace(/^\/?uploads\/?/, '')}`;
-}
+// `imageSrc` is now lifted to `shared/lib/imageSrc.ts` so this page and
+// `AdminUploadPage` (Phase 7B) share one canonical implementation —
+// previously each had a divergent inline copy. See module docstring.
 
 // ─── Color editor ──────────────────────────────────────────────────────
 
 interface ColorListEditorProps {
   value?: ApiColor[];
   onChange?: (next: ApiColor[]) => void;
+}
+
+// Stable per-row id keyed in a parallel `WeakMap` so React's reconciler
+// doesn't reuse DOM nodes across add/remove (which made the native color
+// picker focus jump and palette reset — N2 follow-up from Phase 7A audit).
+// `WeakMap<ApiColor, string>` because the underlying objects are stable
+// references inside `value` until the parent rebuilds them; the `update`
+// helper passes a NEW object so a fresh id is allocated automatically.
+const colorRowId = new WeakMap<ApiColor, string>();
+function getColorRowKey(color: ApiColor, fallbackIdx: number): string {
+  let id = colorRowId.get(color);
+  if (id === undefined) {
+    id =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `c-${Date.now()}-${fallbackIdx}-${Math.random().toString(36).slice(2)}`;
+    colorRowId.set(color, id);
+  }
+  return id;
 }
 
 function ColorListEditor({ value = [], onChange }: ColorListEditorProps) {
@@ -199,7 +220,7 @@ function ColorListEditor({ value = [], onChange }: ColorListEditorProps) {
     <div>
       {value.map((color, idx) => (
         <div
-          key={idx}
+          key={getColorRowKey(color, idx)}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -223,6 +244,10 @@ function ColorListEditor({ value = [], onChange }: ColorListEditorProps) {
           <Input
             placeholder="Название цвета"
             value={color.name}
+            // Bound to the same hard cap as backend `ColorPayload.name`
+            // (`Field(min_length=1, max_length=64)` in `admin/catalog.py`)
+            // so 422 round-trips are impossible from the UI. (N3.)
+            maxLength={64}
             onChange={(e) => update(idx, { name: e.target.value })}
           />
           <Button
@@ -265,7 +290,19 @@ export default function AdminCatalogPage() {
   const toggleVisibility = useToggleDesignVisibility();
 
   // ── Tab state ─────────────────────────────────────────────────────
+  // Switching to «categories» strips designs-only params (`page`,
+  // `category_id`, `search`, `sort`, `size`) — the categories tab has
+  // no pagination and no filters, so leaving them in the URL would
+  // pollute bookmarks. Switching to «designs» preserves the current
+  // query so a deep-link back-and-forth round-trips. (N1 follow-up
+  // from the Phase 7A audit.)
   function setTab(next: CatalogTab): void {
+    if (next === 'categories') {
+      const params = new URLSearchParams();
+      // No `tab` param either — categories is the default.
+      setSearchParams(params, { replace: false });
+      return;
+    }
     const nextParams = searchParamsFromQuery(query, next);
     setSearchParams(nextParams, { replace: false });
   }

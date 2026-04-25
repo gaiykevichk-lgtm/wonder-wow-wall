@@ -35,8 +35,14 @@ from app.domain.user.value_objects import UserRole
 from app.domain.media.entities import MediaAsset
 from app.domain.media.repositories import MediaAssetRepository
 from app.domain.media.value_objects import MediaPurpose
-from app.domain.shop.repositories import ShopSettingsRepository
+from app.domain.shop.banner import Banner, BannerPosition
+from app.domain.shop.repositories import (
+    BannerRepository,
+    ShopSettingsRepository,
+)
 from app.domain.shop.settings import SHOP_SETTINGS_SINGLETON_ID, ShopSettings
+from app.domain.subscription.entities import SubscriptionPlan
+from app.domain.subscription.repositories import SubscriptionPlanRepository
 from app.domain.audit.entities import AuditEntry
 from app.domain.audit.filters import AuditFilters
 from app.domain.audit.repositories import AuditEntryRepository
@@ -50,12 +56,14 @@ from app.infrastructure.persistence.models import (
     OrderItemModel,
     OrderNoteModel,
     SubscriptionModel,
+    SubscriptionPlanModel,
     UserModel,
     UserAddressModel,
     ProjectModel,
     MediaAssetModel,
     PanelModel,
     ShopSettingsModel,
+    BannerModel,
     AuditEntryModel,
     RecommendationModel,
     RecommendationTargetModel,
@@ -602,6 +610,18 @@ class SqlSubscriptionRepository(SubscriptionRepository):
         await self._session.flush()
         return subscription
 
+    async def count_active_by_plan(self, plan_id: str) -> int:
+        # Phase 8C — `DeleteSubscriptionPlanAdmin` cascade-guard.
+        result = await self._session.execute(
+            select(func.count())
+            .select_from(SubscriptionModel)
+            .where(
+                SubscriptionModel.plan_id == plan_id,
+                SubscriptionModel.status == "active",
+            )
+        )
+        return int(result.scalar_one())
+
 
 class SqlUserRepository(UserRepository):
 
@@ -839,6 +859,8 @@ class SqlPanelRepository(PanelRepository):
         self,
         *,
         include_inactive: bool = False,
+        is_active: bool | None = None,
+        search: str | None = None,
         offset: int = 0,
         limit: int = 100,
     ) -> tuple[list[Panel], int]:
@@ -847,6 +869,26 @@ class SqlPanelRepository(PanelRepository):
         if not include_inactive:
             query = query.where(PanelModel.is_active.is_(True))
             count_query = count_query.where(PanelModel.is_active.is_(True))
+        # Phase 7B remediation 2 (FE-B) — explicit `is_active`/`search`
+        # filters. Both predicates are applied to BOTH the items query
+        # and the count query so paginated `total` matches the visible
+        # set (Phase 4A audit lesson — count must mirror filter).
+        if is_active is not None:
+            query = query.where(PanelModel.is_active.is_(is_active))
+            count_query = count_query.where(PanelModel.is_active.is_(is_active))
+        if search:
+            # Escape SQL LIKE wildcards in the user input to avoid an
+            # admin-supplied `%` matching unintended rows. Same
+            # `\\` escape posture as `SqlDesignRepository.list_designs`
+            # (color filter) — keeps the dialect quirk consistent.
+            safe = search.lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            pattern = f"%{safe}%"
+            search_predicate = or_(
+                func.lower(PanelModel.name).like(pattern, escape="\\"),
+                func.lower(PanelModel.slug).like(pattern, escape="\\"),
+            )
+            query = query.where(search_predicate)
+            count_query = count_query.where(search_predicate)
         total = int((await self._session.execute(count_query)).scalar_one())
         query = (
             query.order_by(desc(PanelModel.created_at))
@@ -1297,3 +1339,145 @@ class SqlRecommendationRepository(RecommendationRepository):
             )
         ).scalars().all()
         return [_recommendation_to_domain(r) for r in rows]
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Banners (Phase 8B)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def _banner_to_domain(m: BannerModel) -> Banner:
+    return Banner(
+        id=m.id, title=m.title, subtitle=m.subtitle,
+        image_path=m.image_path, cta_label=m.cta_label, cta_url=m.cta_url,
+        position=BannerPosition(m.position),
+        priority=m.priority, is_active=bool(m.is_active),
+        created_at=m.created_at, updated_at=m.updated_at,
+    )
+
+
+class SqlBannerRepository(BannerRepository):
+    """SQLAlchemy mirror of `InMemoryBannerRepository`."""
+
+    def __init__(self, session: AsyncSession):
+        self._session = session
+
+    async def list_banners(self, *, position: BannerPosition | None = None, active_only: bool = False) -> list[Banner]:
+        query = select(BannerModel)
+        if position is not None:
+            query = query.where(BannerModel.position == position.value)
+        if active_only:
+            query = query.where(BannerModel.is_active.is_(True))
+        query = query.order_by(asc(BannerModel.priority), asc(BannerModel.created_at))
+        rows = (await self._session.execute(query)).scalars().all()
+        return [_banner_to_domain(r) for r in rows]
+
+    async def get_by_id(self, banner_id: str) -> Banner | None:
+        row = await self._session.get(BannerModel, banner_id)
+        return _banner_to_domain(row) if row else None
+
+    async def create(self, banner: Banner) -> Banner:
+        model = BannerModel(
+            id=banner.id, title=banner.title, subtitle=banner.subtitle,
+            image_path=banner.image_path, cta_label=banner.cta_label,
+            cta_url=banner.cta_url, position=banner.position.value,
+            priority=banner.priority, is_active=banner.is_active,
+            created_at=banner.created_at, updated_at=banner.updated_at,
+        )
+        self._session.add(model)
+        await self._session.flush()
+        return banner
+
+    async def update(self, banner: Banner) -> Banner:
+        row = await self._session.get(BannerModel, banner.id)
+        if row is None:
+            raise LookupError(f"Banner {banner.id} not found")
+        row.title = banner.title
+        row.subtitle = banner.subtitle
+        row.image_path = banner.image_path
+        row.cta_label = banner.cta_label
+        row.cta_url = banner.cta_url
+        row.position = banner.position.value
+        row.priority = banner.priority
+        row.is_active = banner.is_active
+        row.updated_at = banner.updated_at
+        await self._session.flush()
+        return banner
+
+    async def delete(self, banner_id: str) -> bool:
+        row = await self._session.get(BannerModel, banner_id)
+        if row is None:
+            return False
+        await self._session.delete(row)
+        await self._session.flush()
+        return True
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Subscription plans (Phase 8C)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def _plan_to_domain(m: SubscriptionPlanModel) -> SubscriptionPlan:
+    features = list(m.features) if isinstance(m.features, list) else []
+    return SubscriptionPlan(
+        id=m.id, name=m.name, price=m.price, period=m.period,
+        area_limit_m2=m.area_limit_m2, popular=bool(m.popular),
+        is_active=bool(m.is_active), sort_order=m.sort_order,
+        features=features, created_at=m.created_at, updated_at=m.updated_at,
+    )
+
+
+class SqlSubscriptionPlanRepository(SubscriptionPlanRepository):
+    """SQLAlchemy mirror of `InMemorySubscriptionPlanRepository`."""
+
+    def __init__(self, session: AsyncSession):
+        self._session = session
+
+    async def list_plans(self, *, active_only: bool = False) -> list[SubscriptionPlan]:
+        query = select(SubscriptionPlanModel)
+        if active_only:
+            query = query.where(SubscriptionPlanModel.is_active.is_(True))
+        query = query.order_by(asc(SubscriptionPlanModel.sort_order))
+        rows = (await self._session.execute(query)).scalars().all()
+        return [_plan_to_domain(r) for r in rows]
+
+    async def get_by_id(self, plan_id: str) -> SubscriptionPlan | None:
+        row = await self._session.get(SubscriptionPlanModel, plan_id)
+        return _plan_to_domain(row) if row else None
+
+    async def create(self, plan: SubscriptionPlan) -> SubscriptionPlan:
+        model = SubscriptionPlanModel(
+            id=plan.id, name=plan.name, price=plan.price, period=plan.period,
+            area_limit_m2=plan.area_limit_m2, popular=plan.popular,
+            is_active=plan.is_active, sort_order=plan.sort_order,
+            features=list(plan.features),
+            created_at=plan.created_at, updated_at=plan.updated_at,
+        )
+        self._session.add(model)
+        await self._session.flush()
+        return plan
+
+    async def update(self, plan: SubscriptionPlan) -> SubscriptionPlan:
+        row = await self._session.get(SubscriptionPlanModel, plan.id)
+        if row is None:
+            raise LookupError(f"SubscriptionPlan {plan.id} not found")
+        row.name = plan.name
+        row.price = plan.price
+        row.period = plan.period
+        row.area_limit_m2 = plan.area_limit_m2
+        row.popular = plan.popular
+        row.is_active = plan.is_active
+        row.sort_order = plan.sort_order
+        row.features = list(plan.features)
+        row.updated_at = plan.updated_at
+        await self._session.flush()
+        return plan
+
+    async def delete(self, plan_id: str) -> bool:
+        row = await self._session.get(SubscriptionPlanModel, plan_id)
+        if row is None:
+            return False
+        await self._session.delete(row)
+        await self._session.flush()
+        return True

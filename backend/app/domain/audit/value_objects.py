@@ -42,6 +42,11 @@ class AuditAction(str, Enum):
     ORDER_NOTE_ADD = "order_note_add"
 
     DESIGN_DELETE = "design_delete"
+    # Phase 7A — publish/unpublish toggle. Tracked separately from
+    # generic edits because flipping `is_published` changes the public
+    # catalog surface; future incident review needs to attribute who
+    # hid/showed which design and when.
+    DESIGN_VISIBILITY_TOGGLE = "design_visibility_toggle"
     PANEL_DELETE = "panel_delete"
     RECOMMENDATION_UPSERT = "recommendation_upsert"
     RECOMMENDATION_DELETE = "recommendation_delete"

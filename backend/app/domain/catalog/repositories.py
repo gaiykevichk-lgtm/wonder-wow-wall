@@ -105,6 +105,14 @@ class PanelRepository(ABC):
         self,
         *,
         include_inactive: bool = False,
+        # Phase 7B remediation 2 — server-side filters added so the admin
+        # table can scale past the in-page client filter (FE-B audit).
+        # `is_active`: explicit True/False narrows further on top of
+        # `include_inactive` (admin chose «Inactive only» tab).
+        # `search`: case-insensitive substring on name + slug.
+        # Both `None` keep legacy behavior.
+        is_active: bool | None = None,
+        search: str | None = None,
         offset: int = 0,
         limit: int = 100,
     ) -> tuple[list[Panel], int]:
