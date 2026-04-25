@@ -90,8 +90,11 @@ class UploadMedia:
         data = stream.read()
         size = len(data)
         if size == 0:
-            # Empty file — let Pillow's verify catch it as corrupt; we
-            # don't need a separate exception class for this.
+            # Empty file — short-circuit to MediaCorruptError. Pillow on
+            # zero bytes raises UnidentifiedImageError which would map to
+            # the same domain exception two steps later, but rejecting
+            # here means we don't bother importing Pillow for a request
+            # that's obviously broken.
             raise MediaCorruptError("Uploaded file is empty")
         if size > GLOBAL_MAX_SIZE_BYTES:
             raise MediaTooLargeError(

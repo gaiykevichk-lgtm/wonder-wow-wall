@@ -723,6 +723,8 @@ Frontend:
 - Backend alembic-suite отдельно: **6/6 passed** (1.1s) — без флейка от Phase 4B/5 (alembic запускается на временном SQLite).
 - Frontend admin-suite: **105/105 passed** (10 файлов).
 
+> ⚠️ **Поправка от 2026-04-25, follow-up 3:** изначально alembic-suite запускался отдельно — это маскировало test-pollution от `test_security.py::test_default_secret_rejected_in_production` (importlib.reload). При полном single-shot прогоне `pytest -q` фактически было 464 passed + 6 alembic failed. Закрыто фиксом TP1 (см. таблицу ниже). Текущий полный прогон: **470/470 passed**.
+
 **Бизнес-логика — что проверено вручную:**
 - Порядок валидации в `UploadMedia.execute` (`use_cases.py:86-178`): empty→global cap→per-purpose cap→declared MIME→Pillow `verify()` + re-open→format whitelist→dimensions→`storage.save`→`repo.create`. Все ветки покрыты тестами; критичный инвариант «storage.save не вызывается на rejected» закреплён в `TestTooLarge.test_per_purpose_cap_rejects_design_preview` (assertion `storage.saved == []`).
 - Порядок удаления в `DeleteMedia.execute` (`use_cases.py:192-201`): `repo.get_by_id` → `repo.delete` → `storage.delete`. Соответствует module docstring («row first, then file» — обратный порядок оставил бы dangling references).
@@ -771,6 +773,20 @@ Frontend:
 - Frontend: `src/domains/admin/__tests__/uploadFile.test.ts` — **14/14 зелёные** (no regression на helper-контракте).
 - TypeScript: `tsc --noEmit` в `AdminFileUpload.tsx`/`uploadFile.ts` — без новых ошибок (pre-existing TS-warning'и в visualizer/api/client — не фаза 6).
 
+#### Применённые фиксы (2026-04-25, follow-up 3)
+
+При попытке начать Фазу 7A полный backend-suite показал 6 фейлов в `test_alembic.py` (asyncpg connect refused 127.0.0.1:5432). Проведена бисекция — фейлы воспроизводятся минимально на `pytest tests/api/test_security.py tests/infrastructure/test_alembic.py` (12+6, 6 фейлят). Файлы по отдельности проходят. Найдены 2 проблемы в Phase 6 cleanup-хвосте:
+
+| # | Файл | Что изменилось |
+|---|------|----------------|
+| N4-dup | `backend/tests/api/admin/test_media_upload.py:166-177` | Удалён дубликат `test_constraints_requires_admin_role` (вторая копия 167-177 шадовила первую 134-144 в том же `TestAuthGuard`-классе — pytest молча использовал второе определение, тестовый счёт не менялся, но это dead code). Файл: 16 уникальных тестов. |
+| TP1 | `backend/tests/infrastructure/test_alembic.py:46-65` (фикстура `alembic_cfg`) | `monkeypatch.setattr(settings, "DATABASE_URL", …)` → `monkeypatch.setattr("app.config.settings.DATABASE_URL", …)`. Корень — pre-existing test-pollution: `tests/api/test_security.py::test_default_secret_rejected_in_production` делает `importlib.reload(app.config)`, что заменяет `app.config.settings` на новый Settings-инстанс. Top-of-module `from app.config import settings` в test_alembic.py держал stale-указатель на старый инстанс; monkeypatch патчил старый, а alembic env.py делал свой `from app.config import settings` и видел новый (с дефолтным postgres URL → connect refused). Dotted-path в monkeypatch ре-резолвит атрибут на текущем модуле. Поведение env.py не менялось. Эта regression лежала латентно с Phase 9 (когда добавили security guard tests с reload); проявлялась только при определённом порядке файлов в pytest-сессии. |
+
+**Регрессионная проверка после фиксов (follow-up 3):**
+- Backend full-suite: **470/470 passed** (было 464 + 6 fail). Раньше прогон врал зелёным потому что Phase 6 audit запускал alembic-suite отдельно — бисекция показала, что в реальной CI они бы упали при single-shot run.
+- Минимальный repro `tests/api/test_security.py + tests/infrastructure/test_alembic.py`: 18/18 passed.
+- Все остальные тесты не тронуты — изменения 2 строки в фикстуре + удаление дубликата.
+
 ### Файлы, добавленные/изменённые в Фазе 6 (для archeology)
 
 Добавлены:
@@ -803,6 +819,8 @@ Frontend:
 ---
 
 ## Фаза 7A: Управление каталогом — категории и дизайны
+
+> **Статус (2026-04-25):** ⏳ НЕ НАЧАТА. Реализации нет ни на бекенде (нет use cases `*Admin`, нет endpoints `admin/categories|designs`, нет поля `Design.is_published`, нет миграции `add_is_published_to_designs`), ни на фронте (`AdminCatalogPage.tsx` — placeholder из Фазы 2, 11 строк). Все чекбоксы ниже корректно отмечены как `[ ]`. Зависимости (Фаза 6) закрыты, можно стартовать.
 
 > **Цель:** CRUD категорий и дизайнов через админку. Использует Фазу 6 для загрузки превью.
 

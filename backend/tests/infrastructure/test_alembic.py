@@ -49,10 +49,20 @@ def alembic_cfg(tmp_path, monkeypatch):
     `env.py` re-reads `settings.DATABASE_URL` and overrides the cfg's URL
     on every invocation, so we mutate the live `settings` singleton — that
     is the only knob `env.py` consults.
+
+    NB: we resolve the attribute via dotted-path (`"app.config.settings.…"`)
+    rather than the locally-imported `settings` reference. `tests/api/
+    test_security.py::test_default_secret_rejected_in_production` does
+    `importlib.reload(app.config)`, which replaces `app.config.settings`
+    with a brand-new instance. Our top-of-module `from app.config import
+    settings` still points at the OLD pre-reload instance, but `env.py`
+    does its own `from app.config import settings` at execution time and
+    sees the NEW instance — so patching the stale local reference would
+    silently no-op and alembic would fall through to the postgres default.
     """
     db_path = tmp_path / "alembic_test.db"
     sqlite_url = f"sqlite+aiosqlite:///{db_path}"
-    monkeypatch.setattr(settings, "DATABASE_URL", sqlite_url)
+    monkeypatch.setattr("app.config.settings.DATABASE_URL", sqlite_url)
 
     cfg = alembic_cfg_mod.Config(str(BACKEND_ROOT / "alembic.ini"))
     cfg.set_main_option("script_location", str(BACKEND_ROOT / "alembic"))

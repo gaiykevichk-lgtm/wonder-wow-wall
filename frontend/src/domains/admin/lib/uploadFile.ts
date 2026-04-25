@@ -130,7 +130,7 @@ export function uploadFile({
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           resolve(JSON.parse(xhr.responseText) as MediaAssetResponse);
-        } catch (e) {
+        } catch {
           reject(new UploadError(xhr.status, 'Invalid JSON in response', null));
         }
         return;
