@@ -1173,7 +1173,15 @@ OQ2 (решено 24.04.2026) явно требовал «**обязательн
 
 ---
 
-## Фаза 10: Управление рекомендациями («с этим покупают»)
+## Фаза 10: Управление рекомендациями («с этим покупают») ⚠️ ЧАСТИЧНО РЕАЛИЗОВАНО (line-by-line review 2026-04-25)
+
+**Статус по итогам ревью 2026-04-25:**
+- ✅ Backend полностью готов (домен → application → infrastructure → API), 653 теста проходят, alembic head=014.
+- ⚠️ Каскадная чистка через collaborator подключена ТОЛЬКО к `DeletePanelAdmin` — `DeleteDesignAdmin` (Фаза 7A) ещё не существует, поэтому R9 закрыт частично.
+- ⚠️ Frontend admin: API-клиент (`recommendationsAdminApi.ts`) и URL-store (`recommendationsAdminStore.ts`) собраны, но `AdminRecommendationsPage.tsx` остался заглушкой `AdminSectionPlaceholder` — **редактор не реализован**.
+- ✅ Frontend public: `usePublicRecommendations` + рефакторинг `ProductPage.tsx` с двойным fallback готовы (tsc проходит).
+- ❌ Frontend tests Фазы 10 отсутствуют целиком (store / editor / ProductPage regression).
+- ⚠️ `recommendations_limit_per_source` пробит до `UpdateShopSettingsAdmin`, но **не выставлен в HTTP API** (`shop_settings.py` PATCH/GET и публичный `shop.py` GET) — админ не может настроить лимит без прямого UPDATE в БД.
 
 > **Цель:** Админ вручную задаёт, какие дизайны/панели рекомендовать в карточке товара. Заменяет текущую клиентскую эвристику (`ProductPage.tsx:96–107` — фильтр по `category_id`, `slice(0, 3)`, fallback на `mockProducts`) на админ-управляемые связи. При отсутствии ручных связей — fallback на ту же эвристику (старое поведение не ломается).
 
@@ -1192,63 +1200,111 @@ OQ2 (решено 24.04.2026) явно требовал «**обязательн
 
 ### Backend
 
-- [ ] Domain: новый агрегат `Recommendation` в `domain/catalog/` (рекомендации — часть catalog bounded context).
-- [ ] Domain: VO `RecommendationSourceType`, `RecommendationTargetType` (Enum), `RecommendationTarget` (`@dataclass(frozen=True)`).
-- [ ] Domain: методы `Recommendation.add_target(target)`, `remove_target(target_id)`, `reorder([target_ids])`, `replace_all([targets])`.
-- [ ] Domain: исключения `SelfRecommendationError`, `DuplicateRecommendationTargetError`, `RecommendationLimitExceededError`, `RecommendationTargetNotFoundError`.
-- [ ] Domain: интерфейс `RecommendationRepository` (ABC) — `find_by_source(source_type, source_id) -> Recommendation | None`, `save(rec)`, `delete(source_type, source_id)`, `find_all_paginated(filters, page, size)`, `find_by_target(target_type, target_id) -> list[Recommendation]` (для каскадной чистки при удалении товара).
-- [ ] Application: use cases `GetRecommendationAdmin`, `UpsertRecommendationAdmin.execute(actor_id, source_type, source_id, targets)`, `DeleteRecommendationAdmin`, `ListRecommendationsAdmin` (для общей таблицы со статусом покрытия), `GetPublicRecommendations.execute(source_type, source_id, limit) -> list[ProductSummaryDTO]` — публичный read-use case с автоматическим fallback на эвристику «по категории».
-- [ ] Application: доменный сервис `RecommendationFallbackService` — содержит эвристику (по категории, последним просмотрам, популярности). Используется только когда ручной `Recommendation` отсутствует или содержит < N targets (доборка).
-- [ ] Application: при удалении дизайна (Фаза 7A) и панели (Фаза 7B) — каскадно удалять `Recommendation` где этот товар — `source` ИЛИ `target`. Реализуется через domain event `DesignDeleted`/`PanelDeleted` + handler `CleanupRecommendationsOnDelete`. **Регрессия Фаз 7A/7B**, см. [R8].
-- [ ] Infrastructure: миграция `create_recommendations` (таблица `recommendations` + `recommendation_targets`):
-  - `recommendations(id PK, source_type VARCHAR(16), source_id VARCHAR(36), updated_at, UNIQUE(source_type, source_id))`
-  - `recommendation_targets(recommendation_id FK, target_type, target_id, position, UNIQUE(recommendation_id, target_type, target_id))` с индексом `(target_type, target_id)` для каскадной чистки.
-  - Обязательный `downgrade()`.
-- [ ] Infrastructure: ORM-модели `RecommendationModel`, `RecommendationTargetModel` + `SqlRecommendationRepository`.
-- [ ] Infrastructure: Pydantic DTO `RecommendationTargetCreate`, `RecommendationUpsert`, `RecommendationResponse`, `RecommendationListItemResponse`, `PublicRecommendationsResponse`.
-- [ ] Infrastructure: эндпоинты:
-  - `GET /api/admin/recommendations?source_type=&search=&has_manual=&page=&size=` — таблица всех источников (со статусом «настроено / fallback / нет товара»).
-  - `GET /api/admin/recommendations/:source_type/:source_id` — текущие связи + предложения от fallback-сервиса (для UI с кнопкой «Принять авто-предложение»).
-  - `PUT /api/admin/recommendations/:source_type/:source_id` — upsert полной коллекции targets (idempotent).
-  - `DELETE /api/admin/recommendations/:source_type/:source_id` — сброс к fallback.
-  - `GET /api/recommendations/:source_type/:source_id?limit=` — публичный (без auth), используется фронтом-каталогом; кеш `Cache-Control: max-age=300, public`.
-- [ ] Infrastructure: маппинг ошибок в `error_handlers.py`:
-  - `SelfRecommendationError` → 422 `RECOMMENDATION_SELF`
-  - `DuplicateRecommendationTargetError` → 422 `RECOMMENDATION_DUPLICATE`
-  - `RecommendationLimitExceededError` → 422 `RECOMMENDATION_LIMIT_EXCEEDED`
-  - `RecommendationTargetNotFoundError` → 404 `RECOMMENDATION_TARGET_NOT_FOUND`
-- [ ] Infrastructure: `ShopSettings` (Фаза 8) расширить полем `recommendations_limit_per_source: int = 12`.
-- [ ] Audit (Фаза 9): action `RECOMMENDATION_UPSERT`, `RECOMMENDATION_DELETE`. Декоратор `@audited` на admin use cases.
+- [x] Domain: агрегат `Recommendation` в `app/domain/catalog/recommendation.py` (256 строк, AR с 4 мутаторами + защитой инвариантов).
+- [x] Domain: VO `RecommendationSourceType`, `RecommendationTargetType` (Enum, str-mixin), `RecommendationTarget` (`@dataclass(frozen=True)`).
+- [x] Domain: методы `add_target` / `remove_target` / `reorder` / `replace_all` (`recommendation.py:131–218`).
+- [x] Domain: исключения `SelfRecommendationError`, `DuplicateRecommendationTargetError`, `RecommendationLimitExceededError`, `RecommendationTargetNotFoundError`, `RecommendationNotFoundError` (`recommendation.py:235–255`).
+- [x] Domain: `RecommendationRepository` ABC + `RecommendationFilters` dataclass (`app/domain/catalog/repositories.py`). Подписи: `find_by_source`, `save`, `delete`, `list_paginated`, `find_by_target`.
+- [x] Application: use cases в `app/application/catalog/recommendation_use_cases.py` — `GetRecommendationAdmin`, `ListRecommendationsAdmin`, `UpsertRecommendationAdmin`, `DeleteRecommendationAdmin`, `GetPublicRecommendations`, `CleanupRecommendationsOnDelete` (377 строк).
+- [x] Application: `RecommendationFallbackProvider` Protocol + production-реализация `DesignSimilarityFallback` (`app/application/catalog/recommendation_fallback.py`) — повторяет старую client-эвристику (same-category by rating + popular-fill).
+- [x] Application: каскадная чистка реализована через collaborator-паттерн (`CleanupRecommendationsOnDelete`), подключена к `DeletePanelAdmin` (`app/infrastructure/api/admin/panels.py`). **⚠ DeleteDesignAdmin не существует** — Фаза 7A не реализована, поэтому ветка R9 для DESIGN закроется только в Фазе 7A.
+- [x] Infrastructure: миграция `alembic/versions/014_create_recommendations.py`:
+  - `recommendations(id PK, source_type, source_id, updated_at, UQ(source_type, source_id))`.
+  - `recommendation_targets(id PK, recommendation_id FK ON DELETE CASCADE, target_type, target_id, position, UQ(recommendation_id, target_type, target_id))` + индексы `ix_recommendation_targets_recommendation_id` и `ix_recommendation_targets_target` для каскадной чистки.
+  - Колонка `shop_settings.recommendations_limit_per_source NOT NULL DEFAULT 12` добавлена в той же ревизии.
+  - `downgrade()` чистит обе таблицы и колонку.
+- [x] Infrastructure: ORM `RecommendationModel`, `RecommendationTargetModel` (с `cascade="all, delete-orphan"`, `order_by=position`) + `SqlRecommendationRepository` + `InMemoryRecommendationRepository` (`models.py`, `repositories/sql.py`, `repositories/memory.py`). Сейв read-modify-write со сбросом target-коллекции; флаш между clear и re-insert защищает UNIQUE.
+- [x] Infrastructure: Pydantic DTO `RecommendationTargetResponse`, `RecommendationResponse`, `RecommendationListResponse`, `RecommendationUpsertBody`, `RecommendationTargetInput` (`app/infrastructure/api/admin/recommendations.py`).
+- [x] Infrastructure: эндпоинты подняты:
+  - `GET /api/admin/recommendations?source_type=&has_manual=&page=&size=` — пагинированный список. **⚠ `search` фильтр не реализован** (план перечислял его).
+  - `GET /api/admin/recommendations/:source_type/:source_id` — возвращает 200 + пустой агрегат при отсутствии. **⚠ Список fallback-предложений в payload отсутствует** (план обещал «предложения от fallback-сервиса для UI с кнопкой "Принять авто-предложение"») — заблокировано отсутствием редактора.
+  - `PUT /api/admin/recommendations/:source_type/:source_id` — идемпотентный upsert.
+  - `DELETE /api/admin/recommendations/:source_type/:source_id` — 204 + 404 на повторе.
+  - `GET /api/recommendations/:source_type/:source_id?limit=` — публичный (`app/infrastructure/api/catalog.py:227–279`). **⚠ HTTP-заголовок `Cache-Control: max-age=300, public` не выставлен** (план обещал кеш).
+- [x] Infrastructure: handlers в `error_handlers.py`:
+  - `SelfRecommendationError` → 422 `code: "self_reference"`
+  - `DuplicateRecommendationTargetError` → 422 `code: "duplicate_target"`
+  - `RecommendationLimitExceededError` → 422 `code: "limit_exceeded"`
+  - `RecommendationTargetNotFoundError` → 404 `code: "target_not_found"`
+  - `RecommendationNotFoundError` → 404 `code: "recommendation_not_found"`
+  - Зарегистрированы в `app/main.py:104–115`. **Расхождение с планом по именам кодов** — в плане `RECOMMENDATION_SELF` / `RECOMMENDATION_DUPLICATE` / `RECOMMENDATION_LIMIT_EXCEEDED` / `RECOMMENDATION_TARGET_NOT_FOUND` (UPPER_SNAKE), фактически использованы `snake_case` без префикса `recommendation_` — соответствует стилю Фаз 5/9 (`stale_version`, `last_admin`). Стиль кодов унифицирован, план разойдётся по терминологии.
+- [x] Infrastructure: `ShopSettings.recommendations_limit_per_source: int = 12` добавлено (домен `app/domain/shop/settings.py` + миграция 014 + repos). **⚠ Поле НЕ выставлено через HTTP API** — `app/infrastructure/api/admin/shop_settings.py` (`ShopSettingsResponse`, `ShopSettingsUpdate`, `_to_response`, PATCH-handler) и публичный `app/infrastructure/api/shop.py` его не возвращают и не принимают. Use case `UpdateShopSettingsAdmin.execute(...)` поле принимает, но никто не передаёт.
+- [x] Audit (Фаза 9): `AuditAction.RECOMMENDATION_UPSERT` и `RECOMMENDATION_DELETE`, `AuditTargetType.RECOMMENDATION` (`app/domain/audit/value_objects.py`). Использован collaborator-паттерн (без `@audited`-декоратора, как и в Фазах 5/9). Композитный `target_id` = `f"{source_type}:{source_id}"` для forensics-поиска.
 
 ### Frontend
 
-- [ ] `domains/admin/api/recommendationsAdminApi.ts` — fetch list / get one / upsert / delete (TanStack Query mutations с invalidate).
-- [ ] `domains/admin/model/recommendationsAdminStore.ts` — фильтры / source_type taб / current draft (для несохранённых изменений в редакторе).
-- [ ] `domains/admin/ui/AdminRecommendationsPage.tsx` — таб «Дизайны» / «Панели»; таблица: превью source, имя, категория, статус («настроено вручную: N / fallback: K / пусто»), кнопка «Настроить».
-- [ ] `domains/admin/ui/AdminRecommendationEditor.tsx` (модалка/боковая панель):
-  - Слева: карточка source-товара.
-  - Справа: текущий список targets (drag-to-reorder через `react-dnd` или Ant Design `<Sortable>`-обёртка), кнопка «Удалить» на каждом, индикатор позиции.
-  - Снизу: блок «Добавить рекомендацию» — селектор типа (Design/Panel) + `<Select showSearch>` с поиском по имени с дебаунсом 300мс.
-  - Блок «Авто-предложения» — chips-список target-кандидатов от fallback-сервиса с кнопкой «+» для каждого.
-  - Кнопки «Сохранить» (PUT) / «Отмена» / «Сбросить к авто» (DELETE).
-- [ ] **Bulk actions:** в таблице — чекбоксы + кнопка «Скопировать рекомендации с другого товара» (выбор source-донора + confirm) — частый кейс при добавлении новых коллекций.
-- [ ] Публично: `domains/catalog/api/recommendationsApi.ts` — `fetchRecommendations(source_type, source_id, limit)` через TanStack Query.
-- [ ] **Refactor `ProductPage.tsx:96–107`:**
-  - Заменить `useMemo(relatedProducts)` на `useQuery(['recommendations', 'DESIGN', product.id])`.
-  - При ошибке/отсутствии данных — оставить старую эвристику как client-side fallback (двойная защита: бэкенд тоже подмешивает fallback, но если API упал, фронт не пуст).
-  - Сохранить визуальный дизайн блока (строки 821–860) — изменить только источник данных.
+- [x] `frontend/src/domains/admin/api/recommendationsAdminApi.ts` — wire-types + 5 хуков (`useRecommendationsAdminList`, `useRecommendationDetail`, `useUpsertRecommendation`, `useDeleteRecommendation`) с invalidate prefix `lists` и priming `detail` после save/delete.
+- [x] `frontend/src/domains/admin/model/recommendationsAdminStore.ts` — URL ↔ DTO round-trip (`queryFromSearchParams`, `searchParamsFromQuery`, `applyFilterPatch`). Источник истины — URL, F5 переживает фильтры и пагинацию. **⚠ Local draft state для несохранённых изменений редактора отсутствует** (план обещал) — заблокировано отсутствием самого редактора.
+- [ ] `frontend/src/domains/admin/ui/AdminRecommendationsPage.tsx` — **СЕЙЧАС ЗАГЛУШКА** `<AdminSectionPlaceholder phase="Фаза 10" .../>`. Таблица «настроено / fallback» с кнопкой «Настроить» не реализована.
+- [ ] `frontend/src/domains/admin/ui/AdminRecommendationEditor.tsx` — **НЕ СОЗДАН**. Drag-to-reorder, селектор «Добавить», блок «Авто-предложения», кнопки Сохранить / Отмена / Сбросить — всё это TODO.
+- [ ] **Bulk actions** «Скопировать рекомендации с другого товара» — TODO.
+- [x] Публичный API-хук: `usePublicRecommendations` добавлен напрямую в `frontend/src/domains/catalog/api/catalogApi.ts:41–58` (отдельный модуль `recommendationsApi.ts` не создан — тип-маленький, держим рядом с `useDesigns` чтобы catalog-домен оставался связным).
+- [x] **Refactor `ProductPage.tsx:96–137`** выполнен:
+  - `useMemo(relatedProducts)` теперь сначала маппит ответ `usePublicRecommendations` через кеш `useDesigns()` (только `target_type === 'design'`, `slice(0, 3)`), при пустом mapped fallback на legacy same-category эвристику, при отсутствии `allDesigns` — на `mockProducts`.
+  - Визуальный JSX блока не тронут.
+  - **⚠ Известная проблема:** `useDesigns()` без параметров тянет первые 20 дизайнов; если admin курирует id, который не попал в кеш (пагинация или фильтр), `mapped.length === 0` → молча упадёт в legacy heuristic. Корректно для дев-данных (~10 дизайнов), но при росте каталога нужно либо тянуть полный список, либо вернуть с публичного эндпоинта enriched-DTO с именем/превью/ценой.
 
 ### Тесты
 
-- [ ] `tests/domain/catalog/test_recommendation.py` — все инварианты (self, duplicate, limit, reorder).
-- [ ] `tests/application/catalog/test_upsert_recommendation_admin.py` — happy path, ошибки, идемпотентность PUT.
-- [ ] `tests/application/catalog/test_get_public_recommendations.py` — fallback ветка (нет manual → эвристика), доборка (manual < limit → добор fallback-ом без дубликатов).
-- [ ] `tests/application/catalog/test_cleanup_on_delete.py` — удаление дизайна чистит связи как source И как target. **Регрессия Фазы 7A.**
-- [ ] `tests/api/admin/test_recommendations_crud.py` — 200/422/404/403, контракт DTO.
-- [ ] `tests/api/catalog/test_public_recommendations.py` — публичный эндпоинт, заголовки кеша, отсутствие auth.
-- [ ] `frontend/src/domains/admin/__tests__/recommendationsAdminStore.test.ts`.
-- [ ] `frontend/src/domains/admin/__tests__/AdminRecommendationEditor.test.tsx` — drag-reorder, добавление, удаление, дисабл «Сохранить» при отсутствии изменений.
-- [ ] `frontend/src/domains/catalog/__tests__/ProductPage.recommendations.test.tsx` — показывает данные из API; при ошибке — fallback на старую эвристику; **регрессия:** визуально блок не изменился.
+- [x] `tests/domain/test_recommendation.py` (22 теста) — все инварианты на всех 4 мутаторах + конструкторе. Граничные кейсы (length 0/1/limit) явные.
+- [x] `tests/application/test_recommendation_use_cases.py` (19 тестов) — `Get/List/Upsert/Delete*` use cases, `GetPublicRecommendations` (manual-only / fallback-fill / no-curation / limit=0), `CleanupRecommendationsOnDelete` (drops source / prunes target / idempotent miss). Аудит: emission + skip-без-actor_id + skip-on-delete-miss.
+- [x] `tests/api/admin/test_recommendations.py` (22 теста) — auth gate (401/403), GET detail (empty / after-PUT / 422 bad type), PUT (fresh/overwrite/idempotent/self-ref/dup/limit/422 bad target_type), DELETE (204/404/double-delete), List (pagination + source_type + has_manual filters), Audit retrofit.
+- [x] `tests/api/test_recommendations_public.py` (8 тестов) — нет auth required, curation-first, fallback-only, unknown source_id, 422 bad source_type, dedup self, payload shape, curation-already-enough. **⚠ Тест на `Cache-Control: max-age=300` отсутствует** — заголовок не выставлен (см. backend гэп).
+- [x] `tests/application/test_panel_use_cases.py` (2 новых теста) — cascade payload landing in audit + opt-out path без collaborator.
+- [x] `tests/api/admin/test_audit.py` — релаксирована equality-проверка payload PANEL_DELETE: subset assertion на `name`/`slug` + явная проверка `recommendations_cleanup`.
+- [x] `tests/infrastructure/test_alembic.py` — head bumped до `"014"`.
+- [ ] `frontend/src/domains/admin/__tests__/recommendationsAdminStore.test.ts` — **НЕ НАПИСАН**.
+- [ ] `frontend/src/domains/admin/__tests__/AdminRecommendationEditor.test.tsx` — **НЕ НАПИСАН** (нет редактора).
+- [ ] `frontend/src/domains/catalog/__tests__/ProductPage.recommendations.test.tsx` — **НЕ НАПИСАН**. Регрессия рекомендательного блока пока не зафиксирована тестом.
+
+### Регрессии после ревью (2026-04-25)
+
+```
+backend: pytest tests/  → 653 passed, 13 warnings (alembic deprecated)
+frontend: npx tsc --noEmit  → clean
+```
+
+### Гэпы под закрытие (по приоритету)
+
+1. **HIGH — `recommendations_limit_per_source` через HTTP API.** Достаточно расширить `ShopSettingsResponse`/`ShopSettingsUpdate`/`_to_response`/`patch_shop_settings_admin` в `backend/app/infrastructure/api/admin/shop_settings.py` + публичный `backend/app/infrastructure/api/shop.py`. Use case уже принимает поле — последняя миля.
+2. **HIGH — Frontend admin editor.** Без него админ физически не может курировать связи через UI. План на 4 файла: `AdminRecommendationsPage.tsx` (таблица), `AdminRecommendationEditor.tsx` (модалка/drawer), draft-store в `recommendationsAdminStore.ts`, регистрация в admin-роутере.
+3. **MEDIUM — Frontend tests Фазы 10.** Минимум: store round-trip, ProductPage regression (показ admin-кураций → fallback при ошибке).
+4. **MEDIUM — Stale-cache в `ProductPage`.** При `useDesigns()` с дефолтным limit=20 рекомендация на 21-й дизайн молча падает в legacy. Фикс: либо `useDesigns({ limit: 200 })`, либо enriched-DTO с публичного эндпоинта.
+5. **LOW — `Cache-Control: max-age=300, public`** на публичном `GET /api/recommendations/...` (план обещал кеш для 5-минутной задержки до пользователя).
+6. **LOW — `search` фильтр на `GET /api/admin/recommendations`** (план перечислял).
+7. **LOW — Fallback-предложения в admin GET detail** (план обещал, но без редактора UI бессмысленно).
+8. **LOW — Cascade cleanup для DESIGN.** Как только Фаза 7A построит `DeleteDesignAdmin`, подключить `CleanupRecommendationsOnDelete` тем же collaborator-паттерном (см. R9).
+
+### Что было проверено в ревью (line-by-line, 25 файлов)
+
+Backend:
+- `app/domain/catalog/recommendation.py` (256 строк) — агрегат, VO, инварианты, исключения.
+- `app/domain/catalog/repositories.py` — `RecommendationFilters` + `RecommendationRepository` ABC.
+- `app/domain/audit/value_objects.py` — `RECOMMENDATION_UPSERT/DELETE` + `RECOMMENDATION` target type.
+- `app/domain/shop/settings.py` — `recommendations_limit_per_source: int = 12` invariant `>= 1`.
+- `app/application/shop/settings_use_cases.py` — параметр в `UpdateShopSettingsAdmin.execute`.
+- `app/application/catalog/recommendation_use_cases.py` (377 строк) — 6 use-cases.
+- `app/application/catalog/recommendation_fallback.py` — `DesignSimilarityFallback`.
+- `app/application/catalog/panel_use_cases.py` — необязательный collaborator + audit-fold.
+- `app/infrastructure/persistence/models.py` — `RecommendationModel` + child + новая колонка settings.
+- `app/infrastructure/persistence/repositories/sql.py:976–1198` — `SqlRecommendationRepository`.
+- `app/infrastructure/persistence/repositories/memory.py:436–548` — in-memory mirror.
+- `app/infrastructure/api/admin/recommendations.py` — 4 admin endpoint.
+- `app/infrastructure/api/admin/__init__.py` — router включён.
+- `app/infrastructure/api/admin/panels.py` — DELETE с cascade.
+- `app/infrastructure/api/catalog.py:227–279` — публичный GET.
+- `app/infrastructure/api/error_handlers.py:246–314` — 5 handlers.
+- `app/main.py:102–115` — регистрация handlers.
+- `app/container.py` — singleton + factory.
+- `alembic/versions/014_create_recommendations.py` — миграция.
+- 4 теста + 2 модифицированных + alembic head bump.
+
+Frontend:
+- `frontend/src/domains/admin/api/recommendationsAdminApi.ts` (NEW).
+- `frontend/src/domains/admin/model/recommendationsAdminStore.ts` (NEW).
+- `frontend/src/domains/admin/ui/AdminRecommendationsPage.tsx` — заглушка.
+- `frontend/src/domains/catalog/api/catalogApi.ts:7–58` — `usePublicRecommendations`.
+- `frontend/src/domains/catalog/ui/ProductPage.tsx:96–137` — рефактор `relatedProducts`.
 
 ### Definition of Done
 

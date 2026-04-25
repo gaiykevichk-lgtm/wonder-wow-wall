@@ -61,6 +61,7 @@ class UpdateShopSettingsAdmin:
         design_overlay_price: int | None = None,
         installation_price: int | None = None,
         min_order_amount: int | None = None,
+        recommendations_limit_per_source: int | None = None,
     ) -> ShopSettings:
         current = await self.repo.get()
         # Snapshot the before-values so the audit payload can record only
@@ -70,6 +71,7 @@ class UpdateShopSettingsAdmin:
             "design_overlay_price": current.design_overlay_price,
             "installation_price": current.installation_price,
             "min_order_amount": current.min_order_amount,
+            "recommendations_limit_per_source": current.recommendations_limit_per_source,
         }
         if design_overlay_price is not None:
             if design_overlay_price < 0:
@@ -89,6 +91,12 @@ class UpdateShopSettingsAdmin:
                     "ShopSettings.min_order_amount cannot be negative"
                 )
             current.min_order_amount = min_order_amount
+        if recommendations_limit_per_source is not None:
+            if recommendations_limit_per_source < 1:
+                raise ValueError(
+                    "ShopSettings.recommendations_limit_per_source must be >= 1"
+                )
+            current.recommendations_limit_per_source = recommendations_limit_per_source
         current.updated_at = datetime.utcnow()
         updated = await self.repo.update(current)
 

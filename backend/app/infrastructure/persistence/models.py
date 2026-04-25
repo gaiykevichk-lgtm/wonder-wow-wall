@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import String, Integer, Float, Boolean, DateTime, Text, ForeignKey, JSON, false, true
+from sqlalchemy import String, Integer, Float, Boolean, DateTime, Text, ForeignKey, JSON, UniqueConstraint, Index, false, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -374,6 +374,12 @@ class ShopSettingsModel(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.utcnow,
     )
+    # Phase 10 — admin-tunable cap on the «с этим покупают» rail. Default
+    # mirrors `ShopSettings.recommendations_limit_per_source` (12); the
+    # migration `014` backfills existing rows via `server_default="12"`.
+    recommendations_limit_per_source: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=12, server_default="12",
+    )
 
 
 # ─── Banners (Phase 8B) — pending; the draft model was removed
@@ -417,4 +423,86 @@ class AuditEntryModel(Base):
     ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.utcnow, index=True,
+    )
+
+
+# ─── Recommendations (Phase 10) ─────────────────────────────────────
+
+
+class RecommendationModel(Base):
+    """Phase 10 — admin-curated «с этим покупают» rail per source product.
+
+    Identity is the natural key `(source_type, source_id)` enforced by a
+    UNIQUE constraint; the `id` (uuid) is kept so child rows in
+    `recommendation_targets` can FK back without resolving the composite
+    key. `source_id` is a soft pointer (no FK) — Designs and Panels live
+    in different tables so a single FK cannot cover both, and cascade
+    cleanup is handled at the application layer
+    (`CleanupRecommendationsOnDelete`) which has the cross-aggregate
+    visibility required.
+    """
+
+    __tablename__ = "recommendations"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=gen_uuid)
+    source_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    source_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.utcnow,
+    )
+
+    targets: Mapped[list["RecommendationTargetModel"]] = relationship(
+        back_populates="recommendation",
+        cascade="all, delete-orphan",
+        order_by="RecommendationTargetModel.position",
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "source_type", "source_id",
+            name="uq_recommendations_source",
+        ),
+    )
+
+
+class RecommendationTargetModel(Base):
+    """Phase 10 — child row inside a `Recommendation` aggregate.
+
+    `position` is the canonical display order (0-based). The application
+    layer (`Recommendation.replace_all`) treats the list index as the
+    authoritative position; the persistence layer translates that into
+    `position = index` on save.
+
+    UNIQUE on `(recommendation_id, target_type, target_id)` mirrors the
+    aggregate's no-duplicate-targets invariant. Index on
+    `(target_type, target_id)` covers the cascade-cleanup query
+    `find_by_target` — a deleted product needs to find every aggregate
+    that lists it.
+    """
+
+    __tablename__ = "recommendation_targets"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=gen_uuid)
+    recommendation_id: Mapped[str] = mapped_column(
+        ForeignKey("recommendations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    target_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    target_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    recommendation: Mapped["RecommendationModel"] = relationship(
+        back_populates="targets",
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "recommendation_id", "target_type", "target_id",
+            name="uq_recommendation_targets_unique",
+        ),
+        Index(
+            "ix_recommendation_targets_target",
+            "target_type", "target_id",
+        ),
     )

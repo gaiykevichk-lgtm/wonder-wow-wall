@@ -381,7 +381,17 @@ class TestEndToEnd:
         assert entry["actor_id"] == admin_id
         assert entry["target_type"] == "panel"
         assert entry["target_id"] == "p-77"
-        assert entry["payload"] == {"name": "Brick", "slug": "brick"}
+        # Phase 10 — DELETE wires `CleanupRecommendationsOnDelete`, so
+        # the payload also carries a `recommendations_cleanup` cascade
+        # report (zero-effect here because no curation references this
+        # panel). Assert subset on the original keys + presence of the
+        # cascade report rather than full equality.
+        assert entry["payload"]["name"] == "Brick"
+        assert entry["payload"]["slug"] == "brick"
+        assert entry["payload"]["recommendations_cleanup"] == {
+            "source_dropped": False,
+            "targets_pruned": 0,
+        }
 
     @pytest.mark.asyncio
     async def test_x_forwarded_for_lands_in_audit_ip(self, client):

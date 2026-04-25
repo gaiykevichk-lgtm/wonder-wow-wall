@@ -126,8 +126,8 @@ def test_upgrade_head_creates_all_core_tables(alembic_cfg):
         "visualization_projects",  # 004 — Phase 5A new
     ):
         assert _table_exists(db_path, table), f"{table} should exist after upgrade head"
-    # head revision must equal the latest migration id (currently 013 — Phase 9 audit_entries).
-    assert _current_revision(db_path) == "013"
+    # head revision must equal the latest migration id (currently 014 — Phase 10 recommendations).
+    assert _current_revision(db_path) == "014"
     # 006 adds `role` to users.
     assert "role" in _column_names(db_path, "users")
     # 007 adds order list filter indexes.
@@ -156,6 +156,18 @@ def test_upgrade_head_creates_all_core_tables(alembic_cfg):
     assert _index_exists(db_path, "ix_audit_entries_action")
     assert _index_exists(db_path, "ix_audit_entries_created_at")
     assert _index_exists(db_path, "ix_audit_entries_target")
+    # 014 adds recommendations + recommendation_targets tables and the
+    # recommendations_limit_per_source column on shop_settings — Phase 10.
+    assert _table_exists(db_path, "recommendations")
+    assert _table_exists(db_path, "recommendation_targets")
+    assert _index_exists(db_path, "ix_recommendation_targets_target")
+    assert _index_exists(
+        db_path, "ix_recommendation_targets_recommendation_id",
+    )
+    assert (
+        "recommendations_limit_per_source"
+        in _column_names(db_path, "shop_settings")
+    )
 
 
 def test_phase5b_columns_added_by_005(alembic_cfg):
@@ -253,7 +265,7 @@ def test_full_round_trip_head_base_head(alembic_cfg):
     alembic_cmd.downgrade(cfg, "base")
     assert _current_revision(db_path) is None
     alembic_cmd.upgrade(cfg, "head")
-    assert _current_revision(db_path) == "013"
+    assert _current_revision(db_path) == "014"
     for table in ("users", "designs", "subscriptions", "visualization_projects"):
         assert _table_exists(db_path, table), f"{table} should be re-created at head"
     # Phase 5B columns must be present at head after the full round-trip.
@@ -268,3 +280,10 @@ def test_full_round_trip_head_base_head(alembic_cfg):
     assert _table_exists(db_path, "panels")
     # Phase 8A — shop_settings singleton table must round-trip cleanly.
     assert _table_exists(db_path, "shop_settings")
+    # Phase 10 — recommendations + targets tables must round-trip cleanly.
+    assert _table_exists(db_path, "recommendations")
+    assert _table_exists(db_path, "recommendation_targets")
+    assert (
+        "recommendations_limit_per_source"
+        in _column_names(db_path, "shop_settings")
+    )

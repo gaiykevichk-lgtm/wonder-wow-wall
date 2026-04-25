@@ -9,8 +9,14 @@ from uuid import uuid4
 
 from app.domain.catalog.entities import Design, Category, DesignReview
 from app.domain.catalog.panel import Panel
+from app.domain.catalog.recommendation import (
+    Recommendation,
+    RecommendationSourceType,
+    RecommendationTargetType,
+)
 from app.domain.catalog.repositories import (
     DesignRepository, CategoryRepository, ReviewRepository, PanelRepository,
+    RecommendationFilters, RecommendationRepository,
 )
 from app.domain.order.entities import Order, OrderNote
 from app.domain.order.filters import OrderFilters
@@ -422,3 +428,121 @@ class InMemoryAuditEntryRepository(AuditEntryRepository):
         rows.sort(key=lambda r: r.created_at, reverse=True)
         total = len(rows)
         return rows[offset:offset + limit], total
+
+
+# ─── Recommendations (Phase 10) ─────────────────────────────────────
+
+
+class InMemoryRecommendationRepository(RecommendationRepository):
+    """List-backed mirror of `SqlRecommendationRepository`.
+
+    Holds full `Recommendation` aggregates (parent + targets) in a
+    single list so filter/find calls don't have to reassemble across
+    structures the way the SQL layer does. Mutations replace the entry
+    by id (the natural-key uniqueness check happens before the swap).
+
+    Defends the SQL UNIQUE(source_type, source_id) constraint with an
+    explicit collision check in `save` so a test passing in-memory
+    cannot surprise the postgres deployment — same defence-in-depth
+    pattern as `InMemoryPanelRepository.create`.
+    """
+
+    def __init__(self, recommendations: list[Recommendation] | None = None):
+        self._recs: list[Recommendation] = recommendations or []
+
+    async def find_by_source(
+        self,
+        source_type: RecommendationSourceType,
+        source_id: str,
+    ) -> Recommendation | None:
+        return next(
+            (
+                r for r in self._recs
+                if r.source_type == source_type and r.source_id == source_id
+            ),
+            None,
+        )
+
+    async def save(self, recommendation: Recommendation) -> Recommendation:
+        # Upsert by (source_type, source_id). The aggregate carries its
+        # own uuid which we keep stable across saves so any external
+        # holder of the id (e.g., audit log) keeps resolving.
+        for i, r in enumerate(self._recs):
+            if (
+                r.source_type == recommendation.source_type
+                and r.source_id == recommendation.source_id
+            ):
+                # Same row — replace in place. Defend the natural-key
+                # uniqueness against any *other* row having sneaked in
+                # under the same key (shouldn't happen but cheap).
+                if any(
+                    other is not r
+                    and other.source_type == recommendation.source_type
+                    and other.source_id == recommendation.source_id
+                    for other in self._recs
+                ):
+                    raise ValueError(
+                        "Recommendation source uniqueness violated"
+                    )
+                self._recs[i] = recommendation
+                return recommendation
+        # Fresh insert — pre-check natural-key uniqueness across all
+        # existing rows.
+        if any(
+            r.source_type == recommendation.source_type
+            and r.source_id == recommendation.source_id
+            for r in self._recs
+        ):
+            raise ValueError("Recommendation source uniqueness violated")
+        self._recs.append(recommendation)
+        return recommendation
+
+    async def delete(
+        self,
+        source_type: RecommendationSourceType,
+        source_id: str,
+    ) -> bool:
+        before = len(self._recs)
+        self._recs = [
+            r for r in self._recs
+            if not (r.source_type == source_type and r.source_id == source_id)
+        ]
+        return len(self._recs) != before
+
+    async def list_paginated(
+        self,
+        filters: RecommendationFilters,
+        *,
+        offset: int = 0,
+        limit: int = 50,
+    ) -> tuple[list[Recommendation], int]:
+        rows = list(self._recs)
+        if filters.source_type is not None:
+            rows = [r for r in rows if r.source_type == filters.source_type]
+        if filters.has_manual is not None:
+            if filters.has_manual:
+                rows = [r for r in rows if len(r.targets) > 0]
+            else:
+                rows = [r for r in rows if len(r.targets) == 0]
+        # Newest-first matches the SQL repo's ORDER BY updated_at DESC —
+        # keeps the admin table consistent across implementations.
+        rows.sort(key=lambda r: r.updated_at, reverse=True)
+        total = len(rows)
+        return rows[offset:offset + limit], total
+
+    async def find_by_target(
+        self,
+        target_type: RecommendationTargetType,
+        target_id: str,
+    ) -> list[Recommendation]:
+        # Cascade-cleanup hook — return every aggregate that lists this
+        # (target_type, target_id) among its targets. Returning a list
+        # (not an iterator) so the caller can see len() upfront for
+        # report-building.
+        return [
+            r for r in self._recs
+            if any(
+                t.target_type == target_type and t.target_id == target_id
+                for t in r.targets
+            )
+        ]

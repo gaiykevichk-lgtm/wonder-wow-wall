@@ -10,8 +10,15 @@ from sqlalchemy.orm import selectinload
 
 from app.domain.catalog.entities import Design, Category, DesignReview
 from app.domain.catalog.panel import Panel
+from app.domain.catalog.recommendation import (
+    Recommendation,
+    RecommendationSourceType,
+    RecommendationTarget,
+    RecommendationTargetType,
+)
 from app.domain.catalog.repositories import (
     DesignRepository, CategoryRepository, ReviewRepository, PanelRepository,
+    RecommendationFilters, RecommendationRepository,
 )
 from app.domain.catalog.value_objects import Color, PanelSize
 from app.domain.order.entities import Order, OrderItem, OrderNote
@@ -50,6 +57,8 @@ from app.infrastructure.persistence.models import (
     PanelModel,
     ShopSettingsModel,
     AuditEntryModel,
+    RecommendationModel,
+    RecommendationTargetModel,
 )
 
 
@@ -821,6 +830,7 @@ def _shop_settings_to_domain(m: ShopSettingsModel) -> ShopSettings:
         design_overlay_price=m.design_overlay_price,
         installation_price=m.installation_price,
         min_order_amount=m.min_order_amount,
+        recommendations_limit_per_source=m.recommendations_limit_per_source,
         updated_at=m.updated_at,
     )
 
@@ -865,6 +875,7 @@ class SqlShopSettingsRepository(ShopSettingsRepository):
         row.design_overlay_price = settings.design_overlay_price
         row.installation_price = settings.installation_price
         row.min_order_amount = settings.min_order_amount
+        row.recommendations_limit_per_source = settings.recommendations_limit_per_source
         row.updated_at = settings.updated_at
         await self._session.flush()
         return settings
@@ -960,3 +971,227 @@ class SqlAuditEntryRepository(AuditEntryRepository):
         )
         rows = (await self._session.execute(query)).scalars().all()
         return [_audit_entry_to_domain(r) for r in rows], total
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Recommendations (Phase 10)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def _recommendation_to_domain(m: RecommendationModel) -> Recommendation:
+    """Reconstruct the aggregate from the eager-loaded ORM rows.
+
+    `targets` are already ordered by `position` thanks to the
+    relationship's `order_by=` declaration; the list index in the
+    domain object becomes the new authoritative position on the next
+    save (no in-domain `position` field — see recommendation.py
+    docstring on why).
+    """
+    return Recommendation(
+        id=m.id,
+        source_type=RecommendationSourceType(m.source_type),
+        source_id=m.source_id,
+        targets=[
+            RecommendationTarget(
+                target_type=RecommendationTargetType(t.target_type),
+                target_id=t.target_id,
+            )
+            for t in m.targets
+        ],
+        updated_at=m.updated_at,
+    )
+
+
+class SqlRecommendationRepository(RecommendationRepository):
+    """SQLAlchemy mirror of `InMemoryRecommendationRepository`.
+
+    Uses `selectinload(targets)` on every read so the aggregate comes
+    out of the session fully populated — the domain layer never lazy-
+    loads. The natural-key UNIQUE constraint
+    (`uq_recommendations_source`) is enforced at the DB level; the use
+    case pre-checks for a friendlier 409 path, but a concurrent insert
+    races into the constraint as the last line of defence.
+
+    Saves are read-modify-write — `save()` either updates the existing
+    parent + child rows (replacing the target set) or inserts both
+    fresh. Replacing the target set instead of computing a diff keeps
+    the code path identical to the aggregate's `replace_all` semantics
+    and matches what the admin UI sends (the editor PUTs a full list).
+    """
+
+    def __init__(self, session: AsyncSession):
+        self._session = session
+
+    async def find_by_source(
+        self,
+        source_type: RecommendationSourceType,
+        source_id: str,
+    ) -> Recommendation | None:
+        result = await self._session.execute(
+            select(RecommendationModel)
+            .options(selectinload(RecommendationModel.targets))
+            .where(
+                RecommendationModel.source_type == source_type.value,
+                RecommendationModel.source_id == source_id,
+            )
+        )
+        row = result.scalar_one_or_none()
+        return _recommendation_to_domain(row) if row else None
+
+    async def save(self, recommendation: Recommendation) -> Recommendation:
+        # Look up by natural key — `recommendation.id` may differ from
+        # the persisted row's id when a use case constructs a fresh
+        # aggregate over an existing source. The natural key is the
+        # contract; the surrogate uuid is opaque.
+        existing = (
+            await self._session.execute(
+                select(RecommendationModel)
+                .options(selectinload(RecommendationModel.targets))
+                .where(
+                    RecommendationModel.source_type == recommendation.source_type.value,
+                    RecommendationModel.source_id == recommendation.source_id,
+                )
+            )
+        ).scalar_one_or_none()
+
+        if existing is None:
+            model = RecommendationModel(
+                id=recommendation.id,
+                source_type=recommendation.source_type.value,
+                source_id=recommendation.source_id,
+                updated_at=recommendation.updated_at,
+            )
+            for index, t in enumerate(recommendation.targets):
+                model.targets.append(
+                    RecommendationTargetModel(
+                        target_type=t.target_type.value,
+                        target_id=t.target_id,
+                        position=index,
+                    )
+                )
+            self._session.add(model)
+            await self._session.flush()
+            # Mirror the persisted id back into the returned aggregate
+            # so the caller (the use case) can read it.
+            return _recommendation_to_domain(model)
+
+        # Update path — replace the target set wholesale. Clearing the
+        # list relies on `cascade="all, delete-orphan"` to issue the
+        # deletes; SQLAlchemy then tracks the freshly-appended rows.
+        existing.updated_at = recommendation.updated_at
+        existing.targets.clear()
+        # Flush the deletes before re-inserting so the UNIQUE
+        # `(recommendation_id, target_type, target_id)` constraint
+        # doesn't trip on a same-key insert that would technically
+        # collide with the row about to be deleted.
+        await self._session.flush()
+        for index, t in enumerate(recommendation.targets):
+            existing.targets.append(
+                RecommendationTargetModel(
+                    target_type=t.target_type.value,
+                    target_id=t.target_id,
+                    position=index,
+                )
+            )
+        await self._session.flush()
+        return _recommendation_to_domain(existing)
+
+    async def delete(
+        self,
+        source_type: RecommendationSourceType,
+        source_id: str,
+    ) -> bool:
+        result = await self._session.execute(
+            select(RecommendationModel).where(
+                RecommendationModel.source_type == source_type.value,
+                RecommendationModel.source_id == source_id,
+            )
+        )
+        row = result.scalar_one_or_none()
+        if row is None:
+            return False
+        # `ON DELETE CASCADE` on the FK handles the child rows. We
+        # still go through the ORM so the unit-of-work tracks the
+        # change — a future caller in the same session sees the row
+        # gone on a follow-up query.
+        await self._session.delete(row)
+        await self._session.flush()
+        return True
+
+    async def list_paginated(
+        self,
+        filters: RecommendationFilters,
+        *,
+        offset: int = 0,
+        limit: int = 50,
+    ) -> tuple[list[Recommendation], int]:
+        query = (
+            select(RecommendationModel)
+            .options(selectinload(RecommendationModel.targets))
+        )
+        count_query = select(func.count()).select_from(RecommendationModel)
+
+        if filters.source_type is not None:
+            query = query.where(
+                RecommendationModel.source_type == filters.source_type.value
+            )
+            count_query = count_query.where(
+                RecommendationModel.source_type == filters.source_type.value
+            )
+        if filters.has_manual is not None:
+            # `has_manual` filters by "at least one target row exists for
+            # this aggregate". A correlated EXISTS keeps the parent-row
+            # count accurate even when the same aggregate has many
+            # targets (a JOIN would multiply rows pre-DISTINCT).
+            sub = (
+                select(RecommendationTargetModel.recommendation_id)
+                .where(
+                    RecommendationTargetModel.recommendation_id
+                    == RecommendationModel.id
+                )
+                .exists()
+            )
+            if filters.has_manual:
+                query = query.where(sub)
+                count_query = count_query.where(sub)
+            else:
+                query = query.where(~sub)
+                count_query = count_query.where(~sub)
+
+        total = int((await self._session.execute(count_query)).scalar_one())
+        query = (
+            query.order_by(desc(RecommendationModel.updated_at))
+            .offset(offset)
+            .limit(limit)
+        )
+        rows = (await self._session.execute(query)).scalars().all()
+        return [_recommendation_to_domain(r) for r in rows], total
+
+    async def find_by_target(
+        self,
+        target_type: RecommendationTargetType,
+        target_id: str,
+    ) -> list[Recommendation]:
+        # Two-step: first find the parent ids whose target rows match
+        # the (target_type, target_id), then load the parents with their
+        # full target collections eagerly — the cleanup caller needs the
+        # complete aggregate to call `remove_target` on it.
+        parent_ids = (
+            await self._session.execute(
+                select(RecommendationTargetModel.recommendation_id)
+                .where(
+                    RecommendationTargetModel.target_type == target_type.value,
+                    RecommendationTargetModel.target_id == target_id,
+                )
+            )
+        ).scalars().all()
+        if not parent_ids:
+            return []
+        rows = (
+            await self._session.execute(
+                select(RecommendationModel)
+                .options(selectinload(RecommendationModel.targets))
+                .where(RecommendationModel.id.in_(parent_ids))
+            )
+        ).scalars().all()
+        return [_recommendation_to_domain(r) for r in rows]

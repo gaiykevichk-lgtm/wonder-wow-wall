@@ -33,7 +33,10 @@ from app.application.catalog.panel_use_cases import (
     ListPanelsAdmin,
     UpdatePanelAdmin,
 )
-from app.container import get_audit_repo, get_panel_repo
+from app.application.catalog.recommendation_use_cases import (
+    CleanupRecommendationsOnDelete,
+)
+from app.container import get_audit_repo, get_panel_repo, get_recommendation_repo
 from app.domain.catalog.panel import Panel
 from app.domain.catalog.panel_exceptions import PanelNotFoundError
 from app.domain.catalog.value_objects import PanelSize
@@ -225,11 +228,17 @@ async def delete_panel_admin(
     admin_id: str = Depends(get_current_admin_id),
     panel_repo=Depends(get_panel_repo),
     audit_repo=Depends(get_audit_repo),
+    rec_repo=Depends(get_recommendation_repo),
     ip: str | None = Depends(get_request_ip),
 ):
+    # Phase 10 — wire the recommendation cleanup so a deleted panel
+    # cannot leave orphan rows in `recommendations` (as source) or
+    # `recommendation_targets` (as target). The cascade report is
+    # folded into the PANEL_DELETE audit entry by the use case.
     deleted = await DeletePanelAdmin(
         panel_repo,
         audit_recorder=RecordAuditEntry(audit_repo, request_ip=ip),
+        recommendation_cleanup=CleanupRecommendationsOnDelete(rec_repo),
     ).execute(panel_id, actor_id=admin_id)
     if not deleted:
         # Defer the envelope shape to the global PanelNotFoundError

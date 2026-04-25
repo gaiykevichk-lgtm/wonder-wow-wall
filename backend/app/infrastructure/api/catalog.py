@@ -3,7 +3,23 @@ from pydantic import BaseModel, Field
 
 from app.application.catalog.use_cases import ListDesigns, GetDesignDetails, ListCategories, AddReview, ListReviews
 from app.application.catalog.panel_use_cases import ListPanelsPublic
-from app.container import get_design_repo, get_category_repo, get_review_repo, get_panel_repo
+from app.application.catalog.recommendation_fallback import (
+    DesignSimilarityFallback,
+)
+from app.application.catalog.recommendation_use_cases import (
+    GetPublicRecommendations,
+)
+from app.container import (
+    get_design_repo,
+    get_category_repo,
+    get_review_repo,
+    get_panel_repo,
+    get_recommendation_repo,
+)
+from app.domain.catalog.recommendation import (
+    DEFAULT_RECOMMENDATIONS_LIMIT,
+    RecommendationSourceType,
+)
 from app.utils.dependencies import get_current_user_id, get_optional_user_id
 
 router = APIRouter()
@@ -81,6 +97,27 @@ class PanelSchema(BaseModel):
 class PanelListResponse(BaseModel):
     items: list[PanelSchema] = Field(default_factory=list)
     total: int
+
+
+class RecommendationTargetSchema(BaseModel):
+    """Phase 10 — public recommendation target.
+
+    Flat shape (`target_type`/`target_id`) so the frontend can map
+    directly to its existing `Design`/`Panel` query keys without
+    re-derivation. The catalog UI does the lookup against its already
+    cached entities (TanStack Query) — the API stays minimal.
+    """
+    target_type: str
+    target_id: str
+
+
+class RecommendationListResponse(BaseModel):
+    """Always returns `items` — possibly empty, never null.
+
+    The consumer renders the rail unconditionally; an empty list means
+    "show nothing" rather than triggering a hard error in the UI.
+    """
+    items: list[RecommendationTargetSchema] = Field(default_factory=list)
 
 
 # ─── Endpoints ───────────────────────────────────────────────────────
@@ -185,6 +222,61 @@ async def list_panels_public(
         ],
         "total": total,
     }
+
+
+@router.get(
+    "/recommendations/{source_type}/{source_id}",
+    response_model=RecommendationListResponse,
+)
+async def get_public_recommendations(
+    source_type: str,
+    source_id: str,
+    limit: int = Query(
+        DEFAULT_RECOMMENDATIONS_LIMIT, ge=1, le=50,
+        description="Cap on returned items; clamped against the admin "
+                    "limit by the use case as well.",
+    ),
+    rec_repo=Depends(get_recommendation_repo),
+    design_repo=Depends(get_design_repo),
+):
+    """Public read for the «с этим покупают» rail on a product page.
+
+    Composition: admin curated targets first (in admin order), then the
+    `DesignSimilarityFallback` heuristic tops the list up to `limit`.
+    Always returns 200 + a list — a missing source returns the
+    fallback-only list rather than 404 so the catalog UI renders the
+    rail uniformly.
+
+    `source_type` validation maps a bad value to a uniform 422 via the
+    same `_parse_source_type` pattern used by the admin route.
+    """
+    try:
+        st = RecommendationSourceType(source_type)
+    except ValueError:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Unknown source_type {source_type!r}; "
+                f"expected one of "
+                f"{[s.value for s in RecommendationSourceType]}"
+            ),
+        )
+
+    fallback = DesignSimilarityFallback(design_repo)
+    targets = await GetPublicRecommendations(rec_repo, fallback).execute(
+        source_type=st,
+        source_id=source_id,
+        limit=limit,
+    )
+    return RecommendationListResponse(
+        items=[
+            RecommendationTargetSchema(
+                target_type=t.target_type.value,
+                target_id=t.target_id,
+            )
+            for t in targets
+        ],
+    )
 
 
 @router.post("/designs/{design_id}/reviews", response_model=ReviewSchema, status_code=201)

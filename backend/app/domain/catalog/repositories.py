@@ -1,7 +1,13 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
 from .entities import Design, Category, DesignReview
 from .panel import Panel
+from .recommendation import (
+    Recommendation,
+    RecommendationSourceType,
+    RecommendationTargetType,
+)
 
 
 class DesignRepository(ABC):
@@ -83,4 +89,74 @@ class PanelRepository(ABC):
 
     @abstractmethod
     async def delete(self, panel_id: str) -> bool:
+        ...
+
+
+@dataclass(frozen=True)
+class RecommendationFilters:
+    """Phase 10 — server-side filter bag for the admin list endpoint.
+
+    Mirrored on the API layer's query-string parameters. `None` means
+    "no filter on this axis"; explicit values are AND-combined.
+    """
+
+    source_type: RecommendationSourceType | None = None
+    has_manual: bool | None = None  # True → only sources with at least 1 target
+
+
+class RecommendationRepository(ABC):
+    """Phase 10 — admin-curated recommendations rail.
+
+    Lookup is by `(source_type, source_id)` (the natural key), not by
+    `id` — the aggregate's uuid is used only for cascade FK deletes. A
+    UNIQUE constraint on the pair lives in the SQL migration; the
+    in-memory repo enforces it via an explicit pre-check.
+
+    `find_by_target` is required for cascade cleanup when a panel or
+    design is deleted: every aggregate that *recommends* the deleted
+    item must be re-saved without the orphan target. Returns the list
+    so the caller (the cleanup use case) can decide how to apply the
+    fix without leaking the iteration into the repo.
+    """
+
+    @abstractmethod
+    async def find_by_source(
+        self,
+        source_type: RecommendationSourceType,
+        source_id: str,
+    ) -> Recommendation | None:
+        ...
+
+    @abstractmethod
+    async def save(self, recommendation: Recommendation) -> Recommendation:
+        """Upsert by (source_type, source_id). Returns the persisted entity."""
+        ...
+
+    @abstractmethod
+    async def delete(
+        self,
+        source_type: RecommendationSourceType,
+        source_id: str,
+    ) -> bool:
+        """Returns True if a row was deleted, False if missing."""
+        ...
+
+    @abstractmethod
+    async def list_paginated(
+        self,
+        filters: RecommendationFilters,
+        *,
+        offset: int = 0,
+        limit: int = 50,
+    ) -> tuple[list[Recommendation], int]:
+        ...
+
+    @abstractmethod
+    async def find_by_target(
+        self,
+        target_type: RecommendationTargetType,
+        target_id: str,
+    ) -> list[Recommendation]:
+        """Cascade-cleanup hook — return every aggregate that lists
+        `(target_type, target_id)` among its targets."""
         ...

@@ -193,6 +193,121 @@ class TestDeletePanelAdmin:
         # Same shape as DeleteMedia — API turns False into 404.
         assert await DeletePanelAdmin(repo).execute("missing") is False
 
+    @pytest.mark.asyncio
+    async def test_cascade_report_lands_in_audit_payload(self, repo):
+        """Phase 10 — when `recommendation_cleanup` is wired in, the
+        cascade `(source_dropped, targets_pruned)` report MUST be
+        folded into the PANEL_DELETE audit payload under the
+        `recommendations_cleanup` key. A forensics search by panel id
+        sees the cascade footprint without a separate event.
+        """
+        from app.application.audit.use_cases import RecordAuditEntry
+        from app.application.catalog.recommendation_use_cases import (
+            CleanupRecommendationsOnDelete,
+        )
+        from app.domain.audit.value_objects import AuditAction
+        from app.domain.catalog.recommendation import (
+            Recommendation,
+            RecommendationSourceType,
+            RecommendationTarget,
+            RecommendationTargetType,
+        )
+        from app.infrastructure.persistence.repositories.memory import (
+            InMemoryAuditEntryRepository,
+            InMemoryRecommendationRepository,
+        )
+
+        # Seed a panel and recommendation aggregates that list it both
+        # as a source AND as a target (in another aggregate).
+        panel = await CreatePanelAdmin(repo).execute(
+            name="Doomed", slug="doomed", size=_size(), base_price=100,
+        )
+        rec_repo = InMemoryRecommendationRepository()
+        # Source-side: panel `doomed` recommends design d-1.
+        await rec_repo.save(Recommendation(
+            source_type=RecommendationSourceType.PANEL,
+            source_id=panel.id,
+            targets=[RecommendationTarget(
+                target_type=RecommendationTargetType.DESIGN,
+                target_id="d-1",
+            )],
+        ))
+        # Target-side: design d-2 recommends panel `doomed` (and d-3,
+        # which must survive the prune).
+        await rec_repo.save(Recommendation(
+            source_type=RecommendationSourceType.DESIGN,
+            source_id="d-2",
+            targets=[
+                RecommendationTarget(
+                    target_type=RecommendationTargetType.PANEL,
+                    target_id=panel.id,
+                ),
+                RecommendationTarget(
+                    target_type=RecommendationTargetType.DESIGN,
+                    target_id="d-3",
+                ),
+            ],
+        ))
+
+        audit_repo = InMemoryAuditEntryRepository()
+        ok = await DeletePanelAdmin(
+            repo,
+            audit_recorder=RecordAuditEntry(audit_repo),
+            recommendation_cleanup=CleanupRecommendationsOnDelete(rec_repo),
+        ).execute(panel.id, actor_id="admin-1")
+        assert ok is True
+
+        # Audit row exists and carries the cascade report.
+        entries = [
+            e for e in audit_repo._entries
+            if e.action == AuditAction.PANEL_DELETE
+        ]
+        assert len(entries) == 1
+        payload = entries[0].payload
+        assert payload["slug"] == "doomed"
+        assert "recommendations_cleanup" in payload
+        cascade = payload["recommendations_cleanup"]
+        assert cascade["source_dropped"] is True
+        assert cascade["targets_pruned"] == 1
+
+        # Aggregate state confirms cleanup ran.
+        assert await rec_repo.find_by_source(
+            RecommendationSourceType.PANEL, panel.id,
+        ) is None
+        survivor = await rec_repo.find_by_source(
+            RecommendationSourceType.DESIGN, "d-2",
+        )
+        assert survivor is not None
+        assert [t.target_id for t in survivor.targets] == ["d-3"]
+
+    @pytest.mark.asyncio
+    async def test_cascade_skipped_when_collaborator_absent(self, repo):
+        """Pre-Phase-10 callers (CLI seeder, legacy tests) construct
+        `DeletePanelAdmin` without the cleanup collaborator. The audit
+        payload then has NO `recommendations_cleanup` key — keeps the
+        forensics row minimal for callers that don't care about the rail.
+        """
+        from app.application.audit.use_cases import RecordAuditEntry
+        from app.domain.audit.value_objects import AuditAction
+        from app.infrastructure.persistence.repositories.memory import (
+            InMemoryAuditEntryRepository,
+        )
+
+        panel = await CreatePanelAdmin(repo).execute(
+            name="Solo", slug="solo", size=_size(), base_price=100,
+        )
+        audit_repo = InMemoryAuditEntryRepository()
+        await DeletePanelAdmin(
+            repo,
+            audit_recorder=RecordAuditEntry(audit_repo),
+        ).execute(panel.id, actor_id="admin-1")
+
+        entry = next(
+            e for e in audit_repo._entries
+            if e.action == AuditAction.PANEL_DELETE
+        )
+        assert "recommendations_cleanup" not in entry.payload
+
 
 # ─── List ────────────────────────────────────────────────────────────
 

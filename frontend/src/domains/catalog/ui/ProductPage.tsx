@@ -5,7 +5,7 @@ import { PageMeta } from '../../../shared/ui/PageMeta';
 import { ShoppingCartOutlined, HeartOutlined, LeftOutlined, StarFilled, UserOutlined, CameraOutlined, LayoutOutlined } from '@ant-design/icons';
 import { motion, useScroll, useMotionValueEvent, AnimatePresence } from 'framer-motion';
 import { products as mockProducts } from '../model/data';
-import { useDesign, useDesigns, useDesignReviews, useAddReview } from '../api/catalogApi';
+import { useDesign, useDesigns, useDesignReviews, useAddReview, usePublicRecommendations } from '../api/catalogApi';
 import { apiDesignToProduct, apiReviewToReview } from '../api/adapters';
 import { useCartStore } from '../../order/model/cartStore';
 import { useAuthStore } from '../../auth/model/authStore';
@@ -93,8 +93,38 @@ export default function ProductPage() {
     setStickyVisible(y > 480);
   });
 
+  // Phase 10 — admin-curated «с этим покупают» rail. The public endpoint
+  // always returns 200 + a (possibly empty) list with the manual targets
+  // first and a heuristic fallback filling the tail. We still keep the
+  // local same-category heuristic as a hard fallback for the case where
+  // the API is unreachable (network error, dev offline) so the page
+  // never renders without a rail.
+  const { data: recsData, isError: recsError } = usePublicRecommendations({
+    sourceType: 'design',
+    sourceId: id || '',
+    limit: 3,
+    enabled: !!id,
+  });
+
   const relatedProducts = useMemo(() => {
     if (!product) return [];
+    // Prefer server-side recommendations when available — admin curation
+    // wins over client-side same-category guessing. Only DESIGN targets
+    // are mappable here (a product page renders designs, not panels).
+    if (recsData?.items?.length && allDesigns?.items) {
+      const byId = new Map(allDesigns.items.map((d) => [d.id, d]));
+      const mapped = recsData.items
+        .filter((t) => t.target_type === 'design')
+        .map((t) => byId.get(t.target_id))
+        .filter((d): d is NonNullable<typeof d> => !!d)
+        .slice(0, 3)
+        .map(apiDesignToProduct);
+      if (mapped.length > 0) return mapped;
+    }
+    // Fallback path — used when the API errored OR the catalog cache
+    // doesn't have an entry for the recommended id (stale cache, etc.).
+    // Same heuristic the page used pre-Phase-10 so the rail keeps the
+    // historical "looks reasonable" behavior.
     if (allDesigns?.items) {
       return allDesigns.items
         .filter((d) => d.category_id === product.category && d.id !== product.id)
@@ -104,7 +134,7 @@ export default function ProductPage() {
     return mockProducts
       .filter((p) => p.category === product.category && p.id !== product.id)
       .slice(0, 3);
-  }, [allDesigns, product]);
+  }, [recsData, recsError, allDesigns, product]);
 
   /* ─── Loading ─── */
   if (isLoading && !isError && !product) {

@@ -9,7 +9,53 @@ export const catalogKeys = {
   design: (id: string) => ['designs', id] as const,
   categories: () => ['categories'] as const,
   reviews: (designId: string) => ['reviews', designId] as const,
+  // Phase 10 — public «с этим покупают» rail. Keyed by the natural source
+  // pair so the same product page survives a navigation round-trip without
+  // refetching from scratch.
+  recommendations: (sourceType: 'design' | 'panel', sourceId: string) =>
+    ['recommendations', sourceType, sourceId] as const,
 };
+
+// ─── Phase 10 — public recommendations ────────────────────────────────────
+
+export type RecommendationTargetTypeKey = 'design' | 'panel';
+
+export interface ApiPublicRecommendationTarget {
+  target_type: RecommendationTargetTypeKey;
+  target_id: string;
+}
+
+export interface ApiPublicRecommendationListResponse {
+  items: ApiPublicRecommendationTarget[];
+}
+
+/**
+ * `GET /api/recommendations/{source_type}/{source_id}` — admin-curated
+ * targets first, fallback heuristic fills the tail up to `limit`.
+ *
+ * Always returns 200 + a list (never null, never 404) so callers can
+ * render the rail unconditionally. `retry: false` because the endpoint
+ * is non-essential — a transient 5xx should fall back to the page's
+ * client-side heuristic, not retry-storm.
+ */
+export function usePublicRecommendations(params: {
+  sourceType: 'design' | 'panel';
+  sourceId: string;
+  limit?: number;
+  enabled?: boolean;
+}) {
+  const { sourceType, sourceId, limit = 12, enabled = true } = params;
+  return useQuery({
+    queryKey: catalogKeys.recommendations(sourceType, sourceId),
+    queryFn: () =>
+      api.get<ApiPublicRecommendationListResponse>(
+        `/recommendations/${sourceType}/${sourceId}?limit=${limit}`,
+      ),
+    enabled: enabled && !!sourceId,
+    retry: false,
+    staleTime: 60_000,
+  });
+}
 
 // ─── Queries ────────────────────────────────────────────────────────────────
 

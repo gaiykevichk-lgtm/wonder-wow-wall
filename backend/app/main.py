@@ -26,11 +26,19 @@ from app.domain.catalog.panel_exceptions import (
     PanelNotFoundError,
     PanelSlugConflictError,
 )
+from app.domain.catalog.recommendation import (
+    DuplicateRecommendationTargetError,
+    RecommendationLimitExceededError,
+    RecommendationNotFoundError,
+    RecommendationTargetNotFoundError,
+    SelfRecommendationError,
+)
 from app.infrastructure.api import auth, catalog, orders, shop, subscriptions, projects, contacts, visualizer
 from app.infrastructure.api import admin as admin_api
 from app.infrastructure.api.error_handlers import (
     collinear_corners_handler,
     depth_estimation_handler,
+    duplicate_recommendation_target_handler,
     invalid_order_transition_handler,
     last_admin_removal_handler,
     media_corrupt_handler,
@@ -41,6 +49,10 @@ from app.infrastructure.api.error_handlers import (
     panel_not_found_handler,
     panel_slug_conflict_handler,
     plane_fitting_handler,
+    recommendation_limit_exceeded_handler,
+    recommendation_not_found_handler,
+    recommendation_target_not_found_handler,
+    self_recommendation_handler,
     stale_scene_version_handler,
     user_blocked_handler,
 )
@@ -87,6 +99,21 @@ app.add_exception_handler(MediaCorruptError, media_corrupt_handler)
 # Phase 7B — admin panel CRUD: 404 on unknown id, 409 on slug conflict.
 app.add_exception_handler(PanelNotFoundError, panel_not_found_handler)
 app.add_exception_handler(PanelSlugConflictError, panel_slug_conflict_handler)
+# Phase 10 — admin recommendations: split between 422 (semantic invariants
+# the editor surfaces inline) and 404 (missing rows the admin can refresh).
+app.add_exception_handler(SelfRecommendationError, self_recommendation_handler)
+app.add_exception_handler(
+    DuplicateRecommendationTargetError, duplicate_recommendation_target_handler,
+)
+app.add_exception_handler(
+    RecommendationLimitExceededError, recommendation_limit_exceeded_handler,
+)
+app.add_exception_handler(
+    RecommendationTargetNotFoundError, recommendation_target_not_found_handler,
+)
+app.add_exception_handler(
+    RecommendationNotFoundError, recommendation_not_found_handler,
+)
 
 # ─── Security Headers ──────────────────────────────────────────────
 app.add_middleware(SecurityHeadersMiddleware)

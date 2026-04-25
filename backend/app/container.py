@@ -22,6 +22,7 @@ from app.infrastructure.persistence.repositories.memory import (
     InMemoryPanelRepository,
     InMemoryShopSettingsRepository,
     InMemoryAuditEntryRepository,
+    InMemoryRecommendationRepository,
 )
 from app.infrastructure.persistence.repositories.project_repo import (
     InMemoryProjectRepository,
@@ -70,6 +71,10 @@ _mem_shop_settings_repo = InMemoryShopSettingsRepository()
 # `RecordAuditEntry` collaborator land in the same list the
 # `/api/admin/audit` route reads from in tests.
 _mem_audit_repo = InMemoryAuditEntryRepository()
+# Phase 10 — admin-curated «с этим покупают». Singleton so editor PUT
+# requests and the public catalog read see the same list across requests
+# in the in-memory test rig (mirrors `_mem_panel_repo`).
+_mem_recommendation_repo = InMemoryRecommendationRepository()
 
 
 # ─── Backward-compatible aliases (used by existing tests) ────────────
@@ -106,6 +111,7 @@ def _get_sql_repo_classes() -> dict:
             SqlPanelRepository,
             SqlShopSettingsRepository,
             SqlAuditEntryRepository,
+            SqlRecommendationRepository,
         )
         from app.infrastructure.persistence.repositories.project_repo import SqlProjectRepository
         from app.infrastructure.persistence.repositories.visualization_repo import SqlVisualizationProjectRepository
@@ -124,6 +130,7 @@ def _get_sql_repo_classes() -> dict:
             "panel": SqlPanelRepository,
             "shop_settings": SqlShopSettingsRepository,
             "audit": SqlAuditEntryRepository,
+            "recommendation": SqlRecommendationRepository,
         }
     return _sql_repo_classes
 
@@ -248,6 +255,23 @@ def get_audit_repo(session=Depends(get_db_session)):
     if settings.USE_MEMORY_REPOS:
         return _mem_audit_repo
     return _get_sql_repo_classes()["audit"](session)
+
+
+def get_recommendation_repo(session=Depends(get_db_session)):
+    """Phase 10 — admin-curated «с этим покупают» rail.
+
+    Same shape as `get_panel_repo`: process-singleton in-memory repo
+    so the admin editor and public catalog read from the same store
+    in tests, per-request SQL repo in production. The cascade-cleanup
+    use case (`CleanupRecommendationsOnDelete`, wired into
+    `DeletePanelAdmin`) injects this dependency too — the in-memory
+    singleton means a delete that prunes recommendation rows is
+    visible to the next admin list call without any cross-fixture
+    plumbing.
+    """
+    if settings.USE_MEMORY_REPOS:
+        return _mem_recommendation_repo
+    return _get_sql_repo_classes()["recommendation"](session)
 
 
 # ─── Phase 6 (admin panel) — file storage singleton ──────────────────

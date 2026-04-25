@@ -43,6 +43,8 @@ class AuditAction(str, Enum):
 
     DESIGN_DELETE = "design_delete"
     PANEL_DELETE = "panel_delete"
+    RECOMMENDATION_UPSERT = "recommendation_upsert"
+    RECOMMENDATION_DELETE = "recommendation_delete"
 
     SETTINGS_UPDATE = "settings_update"
 
@@ -64,3 +66,4 @@ class AuditTargetType(str, Enum):
     PANEL = "panel"
     SETTINGS = "settings"
     MEDIA = "media"
+    RECOMMENDATION = "recommendation"

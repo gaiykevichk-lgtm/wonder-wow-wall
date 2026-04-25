@@ -23,12 +23,16 @@ Validation strategy:
 from __future__ import annotations
 
 from app.application.audit.use_cases import RecordAuditEntry
+from app.application.catalog.recommendation_use_cases import (
+    CleanupRecommendationsOnDelete,
+)
 from app.domain.audit.value_objects import AuditAction, AuditTargetType
 from app.domain.catalog.panel import Panel
 from app.domain.catalog.panel_exceptions import (
     PanelNotFoundError,
     PanelSlugConflictError,
 )
+from app.domain.catalog.recommendation import RecommendationSourceType
 from app.domain.catalog.repositories import PanelRepository
 from app.domain.catalog.value_objects import PanelSize
 
@@ -182,6 +186,15 @@ class DeletePanelAdmin:
     logged because there is nothing to attribute the event to — same
     rule as the idempotent no-ops in `BlockUserAdmin`.
 
+    Phase 10 — when a `recommendation_cleanup` collaborator is wired in,
+    a successful delete also prunes every `Recommendation` row that
+    references this panel (as source OR as target). The cleanup result
+    `(source_dropped, targets_pruned)` is folded into the PANEL_DELETE
+    audit payload so a forensics search shows the cascade footprint
+    without a separate event. Cleanup is *optional* to preserve the
+    pre-Phase-10 constructor signature for the CLI seeder and legacy
+    tests that don't care about the rail.
+
     `actor_id` is optional to preserve the original signature for
     callers that don't run under an admin context (the CLI seeder, the
     deprecated test path that pre-dates Phase 9). When the audit
@@ -193,9 +206,11 @@ class DeletePanelAdmin:
         self,
         repo: PanelRepository,
         audit_recorder: RecordAuditEntry | None = None,
+        recommendation_cleanup: CleanupRecommendationsOnDelete | None = None,
     ):
         self.repo = repo
         self.audit_recorder = audit_recorder
+        self.recommendation_cleanup = recommendation_cleanup
 
     async def execute(
         self, panel_id: str, *, actor_id: str | None = None,
@@ -208,15 +223,37 @@ class DeletePanelAdmin:
         if panel is None:
             return False
         deleted = await self.repo.delete(panel_id)
-        if deleted and self.audit_recorder is not None and actor_id:
+        if not deleted:
+            return False
+
+        # Cascade — runs AFTER the panel row is gone so a foreign-key
+        # cycle (panel A recommends panel B, panel B recommends panel
+        # A — both deleted in sequence) cannot resurrect the row. The
+        # cleanup is *not* idempotent against the panel itself (the
+        # row doesn't exist anymore to re-check) but IS idempotent
+        # against the recommendation aggregates — calling it twice
+        # finds nothing to prune.
+        cascade_report: dict | None = None
+        if self.recommendation_cleanup is not None:
+            cascade_report = await self.recommendation_cleanup.execute(
+                RecommendationSourceType.PANEL, panel_id,
+            )
+
+        if self.audit_recorder is not None and actor_id:
+            payload: dict = {"name": panel.name, "slug": panel.slug}
+            # Only attach the cascade keys when cleanup actually ran;
+            # keeps the audit payload minimal for callers that didn't
+            # wire the cleanup collaborator.
+            if cascade_report is not None:
+                payload["recommendations_cleanup"] = cascade_report
             await self.audit_recorder.execute(
                 actor_id=actor_id,
                 action=AuditAction.PANEL_DELETE,
                 target_type=AuditTargetType.PANEL,
                 target_id=panel_id,
-                payload={"name": panel.name, "slug": panel.slug},
+                payload=payload,
             )
-        return deleted
+        return True
 
 
 class ListPanelsAdmin:

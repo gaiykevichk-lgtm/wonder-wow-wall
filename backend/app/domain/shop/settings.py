@@ -41,12 +41,16 @@ class ShopSettings:
       * `installation_price  = 0`    — feature is admin-toggleable;
                                        disabled by default
       * `min_order_amount    = 0`    — no minimum until admin sets one
+      * `recommendations_limit_per_source = 12` — Phase 10. Cap on
+                                       admin-curated «с этим
+                                       покупают» targets per source.
     """
 
     id: str = SHOP_SETTINGS_SINGLETON_ID
     design_overlay_price: int = 1200
     installation_price: int = 0
     min_order_amount: int = 0
+    recommendations_limit_per_source: int = 12
     updated_at: datetime = field(default_factory=datetime.utcnow)
 
     def __post_init__(self) -> None:
@@ -61,4 +65,8 @@ class ShopSettings:
         if self.min_order_amount < 0:
             raise ValueError(
                 "ShopSettings.min_order_amount cannot be negative"
+            )
+        if self.recommendations_limit_per_source < 1:
+            raise ValueError(
+                "ShopSettings.recommendations_limit_per_source must be >= 1"
             )
