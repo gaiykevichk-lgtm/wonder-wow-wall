@@ -21,6 +21,15 @@ export default function LoginPage() {
       message.success('Добро пожаловать!');
       navigate(redirect);
     } catch (err) {
+      // Phase 5 — backend distinguishes blocked accounts (403 + code:
+      // "user_blocked") from invalid creds (422 + plain detail). Surface
+      // a dedicated message so the user knows it's not a typo and stops
+      // retrying — the corresponding handler is in
+      // backend/app/infrastructure/api/error_handlers.py:user_blocked_handler.
+      if (err instanceof ApiError && err.body?.code === 'user_blocked') {
+        message.error('Аккаунт заблокирован, обратитесь к поддержке');
+        return;
+      }
       const detail = err instanceof ApiError ? err.detail : 'Ошибка входа';
       message.error(detail);
     }

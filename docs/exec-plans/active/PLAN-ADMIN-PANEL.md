@@ -579,34 +579,76 @@
 
 ---
 
-## Фаза 5: Управление пользователями
+## Фаза 5: Управление пользователями ✅ ВЫПОЛНЕНО (2026-04-25)
 
 > **Цель:** Список / поиск / просмотр профиля; назначение роли admin; блокировка.
+>
+> **Статус (2026-04-25, follow-up audit):** Backend — DONE. Frontend — **DONE**
+> (предыдущая запись «не выполнено / orphan-модуль» устарела: `AdminUsersPage`,
+> `AdminUserDetailPage`, `usersAdminStore` и три тест-файла фактически
+> существуют и интегрированы в роутер; `LoginPage` уже ветвится на
+> `code: "user_blocked"`). Зачищены 3 фейла в `__tests__`, см. секцию аудита
+> ниже. Фаза закрыта.
 
 ### Backend
-- [ ] Domain: добавить `User.is_blocked: bool = False`. Методы `User.block()`, `User.unblock()`. Заблокированный — не может логиниться (`Login.execute` кидает `UserBlockedError`).
-- [ ] Application: use cases `ListUsersAdmin.execute(filters, page, size)`, `GetUserAdmin.execute(user_id)`, `BlockUserAdmin`, `UnblockUserAdmin`. Use cases `GrantAdminRole`/`RevokeAdminRole` уже из Фазы 1.
-- [ ] Infrastructure: миграция `add_is_blocked_to_users`.
-- [ ] Infrastructure: эндпоинты `GET /api/admin/users`, `GET /api/admin/users/:id`, `POST /api/admin/users/:id/block`, `POST /api/admin/users/:id/unblock`, `POST /api/admin/users/:id/grant-admin`, `POST /api/admin/users/:id/revoke-admin`.
-- [ ] `Login.execute` обновить — отказ при `is_blocked`.
-- [ ] Mapping: `UserBlockedError` → 403 с код `USER_BLOCKED`.
+- [x] Domain: `User.is_blocked: bool = False`, методы `User.block()` / `User.unblock()`. `Login.execute` кидает `UserBlockedError` ПОСЛЕ verify_password (защита от email-enumeration).
+- [x] Application: `ListUsersAdmin`, `GetUserAdmin`, `BlockUserAdmin`, `UnblockUserAdmin`, `UserNotFoundError`. `RevokeAdminRole` обновлён — использует `count_active_admins` (заблокированный админ не учитывается в квоте).
+- [x] Infrastructure: миграция `009_add_is_blocked_to_users` с `server_default=false()`.
+- [x] Infrastructure: все эндпоинты — `GET /users`, `GET /:id`, `POST /:id/block`, `/unblock`, `/grant-admin`, `/revoke-admin`.
+- [x] Mapping: `UserBlockedError` → 403 + `code: "user_blocked"`. `LastAdminRemovalError` (handler из Фазы 1) переиспользуется и для block-last-admin.
+- [x] **Тех-фикс попутно**: `SqlUserRepository.update` теперь использует `selectinload(addresses)` — обнаруженный новыми тестами pre-existing MissingGreenlet (см. также Phase 4B C1).
 
 ### Frontend
-- [ ] `domains/admin/ui/AdminUsersPage.tsx` — таблица: имя, email, телефон, роль (`<Tag>`), статус (active/blocked), дата регистрации.
-- [ ] Фильтр по роли + поиск по email/имени/телефону.
-- [ ] `domains/admin/ui/AdminUserDetailPage.tsx` — профиль + история заказов (переиспользует `ListOrdersAdmin` с `user_id`).
-- [ ] Действия: «Сделать админом» / «Снять админа» / «Заблокировать» / «Разблокировать» — каждое через `<Popconfirm>`.
+- [x] `domains/admin/api/usersAdminApi.ts` — wire-типы, query-keys (`lists` / `detail` без префикс-перекрытия из Phase 4B audit), хуки `useUsersAdminList` / `useUserDetail` / `useBlockUser` / `useUnblockUser` / `useGrantAdmin` / `useRevokeAdmin`. Импортируется из `AdminUsersPage`/`AdminUserDetailPage`/тестов — orphan-статус снят.
+- [x] `domains/admin/model/usersAdminStore.ts` — URL ↔ DTO helpers (`queryFromSearchParams` / `searchParamsFromQuery` / `applyFilterPatch` / `ROLE_OPTIONS` / `BLOCKED_OPTIONS` / `MAX_PAGE_SIZE=200`/`parseClampedInt`).
+- [x] `domains/admin/ui/AdminUsersPage.tsx` — таблица: имя, email, телефон, роль (`<Tag>`), статус (active/blocked), дата регистрации; URL — единственный source of truth (паттерн `AdminOrdersPage`); `searchDraft`-state для controlled `Input.Search`.
+- [x] Фильтр по роли + по `is_blocked` (tri-state через string-mapped `<Select allowClear>`) + поиск по email/имени/телефону + кнопка «Сбросить» при активных фильтрах.
+- [x] `domains/admin/ui/AdminUserDetailPage.tsx` — header + action-row + 2-колонный grid (Профиль / Адреса) + блок «Последние заказы» с переходом в `/admin/orders/:id` и кнопкой «Все заказы пользователя» (`/admin/orders?user_id=...`).
+- [x] Действия: «Сделать админом» / «Снять админа» / «Заблокировать» / «Разблокировать» — каждое через `<Popconfirm>`; 409 `code: "last_admin"` → дедик-toast «Нельзя — это последний активный администратор»; 403 `code: "not_authorized"` → toast «Недостаточно прав»; mutation-pending дисаблит весь action-row (защита от двойного клика).
+- [x] `shared/router.tsx:132-133` — `<Route path="users" element={<AdminUsersPage />} />` + `<Route path="users/:id" element={<AdminUserDetailPage />} />`.
+- [x] `domains/auth/ui/LoginPage.tsx:29-31` — ветка по `code: "user_blocked"` показывает «Аккаунт заблокирован, обратитесь к поддержке»; остальные ошибки идут через `err.detail` fallback.
 
 ### Тесты
-- [ ] `tests/domain/user/test_block_unblock.py`.
-- [ ] `tests/application/user/test_block_user_admin.py`.
-- [ ] `tests/application/user/test_login_blocked.py` — `Login` отказ.
-- [ ] `tests/api/admin/test_users_list.py`.
-- [ ] `frontend/src/domains/admin/__tests__/AdminUsersPage.test.tsx`.
+- [x] `tests/domain/test_user_block.py` — 6 тестов (default/block/unblock/idempotency/role-preserved).
+- [x] `tests/application/test_block_user_admin.py` — 12 тестов (auth, идемпотентность, last-active-admin, blocking blocked admin не съедает квоту, SYSTEM-actor).
+- [x] `tests/application/test_login_blocked.py` — 4 теста (включая критичный `test_wrong_password_on_blocked_account_returns_invalid_creds` против email-enumeration).
+- [x] `tests/infrastructure/test_user_repo_sql.py` — 8 aiosqlite-интеграционных (фильтры `find_paginated`, lazy-load регрессия `addresses`, пагинация, `count_active_admins`, round-trip `is_blocked`).
+- [x] `tests/api/admin/test_users.py` — 16 интеграционных (auth-guard, list-фильтры + 422, detail, block/unblock + 409 last_admin, grant/revoke, login-blocked HTTP-маппинг 403).
+- [x] `tests/infrastructure/test_alembic.py` — поднят pinned head с `008` до `009`, добавлены проверки `is_blocked` после upgrade и full round-trip head→base→head.
+- [x] `frontend/src/domains/admin/__tests__/AdminUsersPage.test.tsx` — 5 тестов: title, контракт колонок (имя/email/phone/role/status), empty-state (`ant-empty-description`), row-click navigates to `/admin/users/:id`, dash-fallback в пустой колонке «Телефон».
+- [x] `frontend/src/domains/admin/__tests__/AdminUserDetailPage.test.tsx` — 7 тестов: header (имя+роль+статус), email-fallback при пустом name, 404-alert через `ApiError`, recent_orders + клик-навигация, action-видимость по 3 состояниям (CUSTOMER active / ADMIN active / CUSTOMER blocked), маппинг 409 `code: "last_admin"` через mock-message.
+- [x] `frontend/src/domains/admin/__tests__/usersAdminStore.test.ts` — 19 тестов: round-trip URL↔DTO, отказ от unknown role, tri-state `is_blocked` (`true`/`false`/`null`), clamp `size` до `MAX_PAGE_SIZE=200` (drift-detector против Pydantic `le=200`), pageReset на смене фильтра, неизменяемость patch'a, ROLE/BLOCKED-OPTIONS канон.
+
+### Регрессия (на 2026-04-25)
+- Backend: 46 новых тестов + 292 (domain/app/infra) + 129 (api) — все зелёные локально.
+- Frontend admin-suite: **91/91** зелёные (`src/domains/admin/__tests__`, 9 файлов) после фикса 3 фейлов в Phase 5 user-тестах (см. аудит ниже).
 
 ### Definition of Done
-- Заблокированный юзер получает 403 при попытке логина.
-- Последнего админа нельзя ни заблокировать, ни снять с роли.
+- [x] Заблокированный юзер получает 403 при попытке логина (бэкенд + тесты).
+- [x] Последнего админа нельзя ни заблокировать, ни снять с роли (бэкенд + тесты).
+- [x] Админ может зайти в раздел «Пользователи» и реально воспользоваться UI (страница, фильтры, пагинация, действия — все на месте; smoke-тесты зелёные).
+- [x] Заблокированный юзер видит дружелюбное сообщение в LoginPage (`LoginPage.tsx:29-31` ветвится на `code: "user_blocked"`).
+
+### Аудит 2026-04-25 — follow-up
+
+Перепроверено пофайлово после устаревшей записи «frontend не выполнен». Найдено: вся frontend-часть Phase 5 фактически реализована (`AdminUsersPage`/`AdminUserDetailPage`/`usersAdminStore` + 3 тест-файла, маршруты добавлены, `LoginPage` ветвится). Запуск `vitest run src/domains/admin/__tests__/{AdminUsersPage,AdminUserDetailPage,usersAdminStore}.test.tsx` показал **3 фейла из 31** — все три из-за `getByText`-уникальности для текста, который легитимно рендерится в двух местах (`<Tag>` в шапке + значение `<Descriptions>` в карточке профиля).
+
+**Применённые фиксы (тесты, не код продукта):**
+
+| # | Файл | Что изменилось |
+|---|------|----------------|
+| F1 | `__tests__/AdminUsersPage.test.tsx` | Тест «renders one row per user…»: второму пользователю заданы уникальные `name='Админка Петрова'` и `phone='+7 911 111 11 11'`, чтобы `getByText` для phone/role/имени резолвил один матч. Заодно расширили проверку: оба email и оба phone присутствуют. |
+| F2 | `__tests__/AdminUserDetailPage.test.tsx` | Тест «renders the header with user name and role tag»: `getByText('Покупатель')`/`getByText('Активен')` → `getAllByText(...).length >= 1` (роль/статус на странице рендерятся дважды — header Tag + Descriptions value, это by-design). |
+| F3 | `__tests__/AdminUserDetailPage.test.tsx` | Тест «CUSTOMER, blocked: shows unblock instead of block»: `getByText('Заблокирован')` → `getAllByText(...).length >= 1` (та же причина — статус-Tag в шапке + «Статус» в Descriptions). |
+
+**Результат:** `vitest run src/domains/admin` — 91/91 зелёные (9 файлов). Регрессий в смежных доменах нет.
+
+**Замечания / некритичный тех-долг Phase 5:**
+1. **Дублирование label-словарей:** `ROLE_TAG_LABEL`/`ROLE_TAG_COLOR` объявлены и в `AdminUsersPage.tsx`, и в `AdminUserDetailPage.tsx` (одинаковые объекты). Не блокер — те же файлы повторяют паттерн `STATUS_TAG_COLOR` из `AdminOrdersPage`/`AdminOrderDetailPage`. Объединять в Phase 6+ при первом сторонннем потребителе. Закрывается тем же общим backlog-item, что Phase 4B N7 (single source `domain/order/model/statusLabels.ts` + аналог для users).
+2. **Прямой `getByText('Покупатель'/'Заблокирован')` ушёл в `getAllByText` для двух кейсов** — это «релаксация» проверки уникальности рендера. Альтернатива (более строгая) — заменить на `within(headerSection).getByText(...)`, но потребует data-testid на header-Space, что мешает «inline styles»-конвенции. Текущий компромисс задокументирован комментарием в обоих тестах.
+3. **Phase 4B N4 (отсутствие `version`/optimistic-lock)** распространяется и на user mutation'ы — два параллельных PATCH `block`/`grant_admin` с двух вкладок: last-writer-wins. Бэкенд не падает, но порядок результата зависит от гонки. Для admin-only сценария некритично, see Phase 4B audit.
+4. **`recent_orders` контракт в `ApiUserDetail`** — фронт ожидает `{id, number, status, status_label, total, created_at}`. Если бэкенд позже добавит поля (e.g. `currency`), TS пройдёт через `...over` spread в тестах, но прод-парсер должен оставаться лояльным к лишним полям. Сейчас `usersAdminApi.ts` использует прямой JSON-cast — не строгое чтение. Это общая черта проекта (см. `ordersAdminApi.ts`), не Phase 5.
+5. **Пагинация AntD `pageSizeOptions: [25, 50, 100, 200]`** — синхронизирована с `MAX_PAGE_SIZE=200` (test-drift-detector в `usersAdminStore.test.ts` пинит совпадение). При изменении лимита — править все три точки (Pydantic Query, store константа, AntD options).
 
 ---
 

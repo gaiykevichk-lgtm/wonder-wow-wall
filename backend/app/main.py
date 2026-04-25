@@ -8,6 +8,7 @@ from app.domain.order.exceptions import InvalidOrderTransitionError
 from app.domain.user.exceptions import (
     LastAdminRemovalError,
     NotAuthorizedError,
+    UserBlockedError,
 )
 from app.domain.visualizer.exceptions import (
     CollinearCornersError,
@@ -25,6 +26,7 @@ from app.infrastructure.api.error_handlers import (
     not_authorized_handler,
     plane_fitting_handler,
     stale_scene_version_handler,
+    user_blocked_handler,
 )
 from app.infrastructure.security.middleware import SecurityHeadersMiddleware
 from app.infrastructure.security.rate_limit import limiter
@@ -53,6 +55,9 @@ app.add_exception_handler(PlaneFittingError, plane_fitting_handler)
 # registering here keeps `main.py` stable across follow-up phases.
 app.add_exception_handler(LastAdminRemovalError, last_admin_removal_handler)
 app.add_exception_handler(NotAuthorizedError, not_authorized_handler)
+# Phase 5 — blocked account login refusal. Plain `Login` ValueError stays
+# 422 (wrong creds), only this maps to 403 + USER_BLOCKED.
+app.add_exception_handler(UserBlockedError, user_blocked_handler)
 # Phase 4B — admin order status transitions. Subclasses (e.g.
 # OrderAlreadyCancelledError) match the same handler so they all map to 409.
 app.add_exception_handler(InvalidOrderTransitionError, invalid_order_transition_handler)

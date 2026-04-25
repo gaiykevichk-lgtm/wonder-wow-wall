@@ -45,6 +45,9 @@ const AdminOrderDetailPage = lazy(
   () => import('../domains/admin/ui/AdminOrderDetailPage'),
 );
 const AdminUsersPage = lazy(() => import('../domains/admin/ui/AdminUsersPage'));
+const AdminUserDetailPage = lazy(
+  () => import('../domains/admin/ui/AdminUserDetailPage'),
+);
 const AdminCatalogPage = lazy(() => import('../domains/admin/ui/AdminCatalogPage'));
 const AdminShopPage = lazy(() => import('../domains/admin/ui/AdminShopPage'));
 const AdminUploadPage = lazy(() => import('../domains/admin/ui/AdminUploadPage'));
@@ -127,6 +130,7 @@ export function AppRouter() {
           <Route path="orders" element={<AdminOrdersPage />} />
           <Route path="orders/:id" element={<AdminOrderDetailPage />} />
           <Route path="users" element={<AdminUsersPage />} />
+          <Route path="users/:id" element={<AdminUserDetailPage />} />
           <Route path="catalog" element={<AdminCatalogPage />} />
           <Route path="shop" element={<AdminShopPage />} />
           <Route path="upload" element={<AdminUploadPage />} />

@@ -30,6 +30,13 @@ class UserModel(Base):
     role: Mapped[str] = mapped_column(
         String(16), nullable=False, default="CUSTOMER", server_default="CUSTOMER"
     )
+    # Phase 5 — admin can disable an account without deleting it.
+    # `server_default=false()` backfills existing rows on `alembic upgrade`
+    # so the NOT NULL constraint stays satisfied; `default=False` covers
+    # the SQLite test rig that uses `Base.metadata.create_all()`.
+    is_blocked: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
 
     addresses: Mapped[list["UserAddressModel"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     orders: Mapped[list["OrderModel"]] = relationship(back_populates="user")

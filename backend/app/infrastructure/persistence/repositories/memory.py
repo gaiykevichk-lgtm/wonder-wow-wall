@@ -15,6 +15,7 @@ from app.domain.order.repositories import OrderRepository
 from app.domain.subscription.entities import Subscription
 from app.domain.subscription.repositories import SubscriptionRepository
 from app.domain.user.entities import User
+from app.domain.user.filters import UserFilters
 from app.domain.user.repositories import UserRepository
 from app.domain.user.value_objects import UserRole
 
@@ -210,3 +211,34 @@ class InMemoryUserRepository(UserRepository):
 
     async def count_admins(self):
         return sum(1 for u in self._users if u.role == UserRole.ADMIN)
+
+    # ─── Phase 5 — admin user list ───────────────────────────────────
+
+    async def count_active_admins(self):
+        # `is_blocked` defaults to False on legacy seeded users so the
+        # count stays accurate even before the migration runs in tests.
+        return sum(
+            1 for u in self._users
+            if u.role == UserRole.ADMIN and not u.is_blocked
+        )
+
+    async def find_paginated(self, filters: UserFilters, page: int = 1, size: int = 50):
+        result = list(self._users)
+        if filters.role is not None:
+            result = [u for u in result if u.role == filters.role]
+        if filters.is_blocked is not None:
+            result = [u for u in result if u.is_blocked == filters.is_blocked]
+        if filters.search is not None:
+            q = filters.search.lower()
+            result = [
+                u for u in result
+                if q in u.email.lower()
+                or q in u.name.lower()
+                or q in (u.phone or "").lower()
+            ]
+        # Newest-first — matches orders. Stable sort preserves insertion
+        # order for ties (test fixtures usually use distinct timestamps).
+        result.sort(key=lambda u: u.created_at, reverse=True)
+        total = len(result)
+        offset = (page - 1) * size
+        return result[offset:offset + size], total

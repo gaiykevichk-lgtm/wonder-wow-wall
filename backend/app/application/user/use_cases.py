@@ -1,5 +1,10 @@
 from app.domain.user.entities import User
-from app.domain.user.exceptions import LastAdminRemovalError, NotAuthorizedError
+from app.domain.user.exceptions import (
+    LastAdminRemovalError,
+    NotAuthorizedError,
+    UserBlockedError,
+)
+from app.domain.user.filters import UserFilters
 from app.domain.user.repositories import UserRepository
 from app.domain.user.value_objects import Email, UserRole
 from app.infrastructure.security.jwt import hash_password, verify_password, create_access_token
@@ -37,6 +42,14 @@ class Login:
         user = await self.repo.get_by_email(email)
         if not user or not verify_password(password, user.password_hash):
             raise ValueError("Invalid email or password")
+
+        # Phase 5 — refuse blocked accounts. Checked AFTER the password
+        # verification so a wrong password on a blocked account still
+        # returns "Invalid email or password" instead of leaking that
+        # the address exists. The error itself surfaces only on the
+        # successful-auth path and the API maps it to 403 + USER_BLOCKED.
+        if user.is_blocked:
+            raise UserBlockedError("Account is blocked")
 
         token = create_access_token(user.id, user.role.value)
         return {"user": user, "token": token}
@@ -156,8 +169,19 @@ class RevokeAdminRole:
             # Idempotent no-op — consistent with GrantAdminRole for already-ADMIN.
             return target
 
-        admin_count = await self.repo.count_admins()
-        if admin_count <= 1:
+        # Phase 5 — guard against removing the last *active* admin. A
+        # blocked admin can't reach `/api/admin/*`, so the operational
+        # last-admin invariant is "active admins ≥ 1" rather than
+        # "rows with ADMIN role ≥ 1". For a target that's already blocked
+        # this means demoting them is a no-op for active count, so the
+        # guard correctly blocks demoting the only remaining admin even
+        # if they're currently active.
+        active_admins = await self.repo.count_active_admins()
+        # If the target is the active admin we're about to demote, removing
+        # them drops the active count to zero. Block.
+        target_is_active_admin = not target.is_blocked
+        remaining_after = active_admins - (1 if target_is_active_admin else 0)
+        if remaining_after < 1:
             raise LastAdminRemovalError(
                 "Cannot demote the last remaining admin — the system would become unmanageable."
             )
@@ -192,3 +216,109 @@ async def _ensure_actor_is_admin(repo: UserRepository, actor_id: str) -> None:
     actor = await repo.get_by_id(actor_id)
     if actor is None or actor.role != UserRole.ADMIN:
         raise NotAuthorizedError("Admin role required to manage roles")
+
+
+# ─── Phase 5: User-management admin use cases ────────────────────────
+
+
+class UserNotFoundError(LookupError):
+    """Use case asked for a user that does not exist.
+
+    Subclasses `LookupError` so callers can use a generic `except` if they
+    don't care about the bounded context — same convention as
+    `OrderNotFoundError` (Phase 4B).
+    """
+
+
+class ListUsersAdmin:
+    """Paginated list with optional role/status/search filters. Pure read.
+
+    Auth check is handled by the API layer's `get_current_admin_id`
+    dependency; replicating it here would double the DB round-trip on
+    every list request. Mutating use cases (block / role change) DO
+    re-check via `_ensure_actor_is_admin` because they're rarer and the
+    safety margin is worth it.
+    """
+
+    def __init__(self, repo: UserRepository):
+        self.repo = repo
+
+    async def execute(
+        self, filters: UserFilters, page: int = 1, size: int = 50,
+    ) -> tuple[list[User], int]:
+        return await self.repo.find_paginated(filters, page=page, size=size)
+
+
+class GetUserAdmin:
+    def __init__(self, repo: UserRepository):
+        self.repo = repo
+
+    async def execute(self, user_id: str) -> User:
+        user = await self.repo.get_by_id(user_id)
+        if user is None:
+            raise UserNotFoundError(f"User {user_id} not found")
+        return user
+
+
+class BlockUserAdmin:
+    """Block an account. Last-active-admin protection mirrors `RevokeAdminRole`
+    because functionally a blocked admin and a demoted admin have the
+    same operational effect (no `/api/admin/*` access).
+
+    Self-block is allowed unless the actor is the only active admin —
+    same guard as `RevokeAdminRole.execute(actor_id, actor_id)`.
+    """
+
+    def __init__(self, repo: UserRepository):
+        self.repo = repo
+
+    async def execute(self, actor_id: str, target_user_id: str) -> User:
+        await _ensure_actor_is_admin(self.repo, actor_id)
+
+        target = await self.repo.get_by_id(target_user_id)
+        if target is None:
+            raise UserNotFoundError(f"User {target_user_id} not found")
+
+        if target.is_blocked:
+            # Idempotent — same pattern as `promote_to_admin` on an
+            # already-admin user.
+            return target
+
+        if target.role == UserRole.ADMIN:
+            # Blocking the last active admin would brick the panel —
+            # see RevokeAdminRole's notes. Use the same exception so the
+            # frontend's existing 409 + last_admin handler works for both
+            # "demote" and "block" without a new toast.
+            active_admins = await self.repo.count_active_admins()
+            # `target` is currently active (not blocked), so blocking them
+            # decrements active_admins by exactly 1.
+            if active_admins - 1 < 1:
+                raise LastAdminRemovalError(
+                    "Cannot block the last remaining admin — the system "
+                    "would become unmanageable."
+                )
+
+        target.block()
+        return await self.repo.update(target)
+
+
+class UnblockUserAdmin:
+    """Restore an account's ability to log in. No special invariants — the
+    last-admin guard only triggers on the *removal* direction.
+    """
+
+    def __init__(self, repo: UserRepository):
+        self.repo = repo
+
+    async def execute(self, actor_id: str, target_user_id: str) -> User:
+        await _ensure_actor_is_admin(self.repo, actor_id)
+
+        target = await self.repo.get_by_id(target_user_id)
+        if target is None:
+            raise UserNotFoundError(f"User {target_user_id} not found")
+
+        if not target.is_blocked:
+            return target  # idempotent no-op
+
+        target.unblock()
+        return await self.repo.update(target)

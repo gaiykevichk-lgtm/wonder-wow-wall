@@ -19,6 +19,7 @@ from app.domain.subscription.entities import Subscription
 from app.domain.subscription.repositories import SubscriptionRepository
 from app.domain.subscription.value_objects import SubscriptionStatus
 from app.domain.user.entities import User, UserAddress
+from app.domain.user.filters import UserFilters
 from app.domain.user.repositories import UserRepository
 from app.domain.user.value_objects import UserRole
 
@@ -140,6 +141,9 @@ def _user_to_domain(m: UserModel) -> User:
         id=m.id, email=m.email, password_hash=m.password_hash,
         name=m.name, phone=m.phone, addresses=addresses, created_at=m.created_at,
         role=role,
+        # Phase 5 — `is_blocked` defaults to False at the column level so
+        # existing rows remain unblocked after the migration backfills.
+        is_blocked=bool(m.is_blocked),
     )
 
 
@@ -482,6 +486,7 @@ class SqlUserRepository(UserRepository):
             id=user.id, email=user.email, password_hash=user.password_hash,
             name=user.name, phone=user.phone, created_at=user.created_at,
             role=user.role.value,
+            is_blocked=user.is_blocked,
         )
         self._session.add(model)
         for addr in user.addresses:
@@ -513,12 +518,21 @@ class SqlUserRepository(UserRepository):
         return _user_to_domain(row) if row else None
 
     async def update(self, user: User) -> User:
-        model = await self._session.get(UserModel, user.id)
+        # Eager-load addresses so the `for old_addr in list(model.addresses)`
+        # iteration below doesn't trigger a lazy SELECT under async (the
+        # MissingGreenlet trap that bit us in Phase 4B with `notes`).
+        result = await self._session.execute(
+            select(UserModel)
+            .options(selectinload(UserModel.addresses))
+            .where(UserModel.id == user.id)
+        )
+        model = result.scalar_one_or_none()
         if model:
             model.name = user.name
             model.phone = user.phone
             model.email = user.email
             model.role = user.role.value
+            model.is_blocked = user.is_blocked
             # Sync addresses: delete all, re-create
             for old_addr in list(model.addresses):
                 await self._session.delete(old_addr)
@@ -543,3 +557,51 @@ class SqlUserRepository(UserRepository):
             .where(UserModel.role == UserRole.ADMIN.value)
         )
         return int(result.scalar_one())
+
+    # ─── Phase 5 — admin user list ───────────────────────────────────
+
+    async def count_active_admins(self) -> int:
+        # `NOT is_blocked` mirrors the in-memory variant. A blocked admin
+        # cannot log in, so functionally there's no admin presence; the
+        # last-active-admin guard treats them the same as a CUSTOMER.
+        result = await self._session.execute(
+            select(func.count())
+            .select_from(UserModel)
+            .where(
+                UserModel.role == UserRole.ADMIN.value,
+                UserModel.is_blocked.is_(False),
+            )
+        )
+        return int(result.scalar_one())
+
+    async def find_paginated(
+        self, filters: UserFilters, page: int = 1, size: int = 50,
+    ) -> tuple[list[User], int]:
+        # `selectinload(addresses)` matches `get_by_id` so the mapper's
+        # iteration over `m.addresses` doesn't trigger lazy IO under
+        # async (same MissingGreenlet trap as Phase 4B's order notes).
+        query = select(UserModel).options(selectinload(UserModel.addresses))
+        count_query = select(func.count()).select_from(UserModel)
+
+        if filters.role is not None:
+            query = query.where(UserModel.role == filters.role.value)
+            count_query = count_query.where(UserModel.role == filters.role.value)
+        if filters.is_blocked is not None:
+            query = query.where(UserModel.is_blocked.is_(filters.is_blocked))
+            count_query = count_query.where(UserModel.is_blocked.is_(filters.is_blocked))
+        if filters.search is not None:
+            pattern = f"%{filters.search.lower()}%"
+            search_filter = or_(
+                func.lower(UserModel.email).like(pattern),
+                func.lower(UserModel.name).like(pattern),
+                func.lower(UserModel.phone).like(pattern),
+            )
+            query = query.where(search_filter)
+            count_query = count_query.where(search_filter)
+
+        total = int((await self._session.execute(count_query)).scalar_one())
+
+        offset = (page - 1) * size
+        query = query.order_by(desc(UserModel.created_at)).offset(offset).limit(size)
+        rows = (await self._session.execute(query)).scalars().all()
+        return [_user_to_domain(r) for r in rows], total

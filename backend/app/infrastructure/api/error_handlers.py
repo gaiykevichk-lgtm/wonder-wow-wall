@@ -19,6 +19,7 @@ from app.domain.order.exceptions import InvalidOrderTransitionError
 from app.domain.user.exceptions import (
     LastAdminRemovalError,
     NotAuthorizedError,
+    UserBlockedError,
 )
 from app.domain.visualizer.exceptions import (
     CollinearCornersError,
@@ -130,4 +131,22 @@ async def not_authorized_handler(request: Request, exc: NotAuthorizedError):
     return JSONResponse(
         status_code=403,
         content={"detail": str(exc), "code": "not_authorized"},
+    )
+
+
+# ─── Phase 5 — blocked accounts cannot log in ────────────────────────
+
+
+async def user_blocked_handler(request: Request, exc: UserBlockedError):
+    """Login attempt on a blocked account → 403 + `code: "user_blocked"`.
+
+    The frontend's login form branches on `code` to show "Аккаунт
+    заблокирован, обратитесь к поддержке" instead of the generic
+    "Неверный email или пароль" — different UX because the user *is*
+    valid, just disabled. 403 (not 401) signals "request understood,
+    refused" rather than "credentials missing/invalid".
+    """
+    return JSONResponse(
+        status_code=403,
+        content={"detail": str(exc), "code": "user_blocked"},
     )
