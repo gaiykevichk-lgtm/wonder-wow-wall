@@ -64,7 +64,6 @@ import {
   isTerminal,
   REQUIRES_REASON,
   TRANSITION_LABEL,
-  TRANSITIONS,
 } from '../model/orderTransitions';
 
 const { Title, Text, Paragraph } = Typography;
@@ -243,27 +242,24 @@ export default function AdminOrderDetailPage() {
 
       <motion.div variants={fadeUpVariants} custom={1} style={{ marginTop: 16 }}>
         <Space wrap>
-          {(Object.keys(TRANSITIONS) as OrderStatusUpdateKey[])
-            // Render only the buttons relevant to *some* status (skip
-            // the `placed` key in the LHS map — actions are values).
-            .filter(
-              (key): key is OrderStatusUpdateKey =>
-                key !== 'placed' && key in TRANSITION_LABEL,
-            )
-            .map((target) => {
-              const enabled = canTransition(order.status, target);
-              return (
-                <Button
-                  key={target}
-                  type={target === 'cancelled' ? 'default' : 'primary'}
-                  danger={target === 'cancelled' || target === 'refunded'}
-                  disabled={!enabled || updateStatus.isPending}
-                  onClick={() => handleQuickAction(target)}
-                >
-                  {TRANSITION_LABEL[target]}
-                </Button>
-              );
-            })}
+          {/* Iterate the action map directly — its key set IS the set of
+              admin-settable target statuses (PLACED is excluded by type).
+              Using `Object.keys(TRANSITIONS)` here would mistype 'placed'
+              as a target and require a runtime filter. */}
+          {(Object.keys(TRANSITION_LABEL) as OrderStatusUpdateKey[]).map((target) => {
+            const enabled = canTransition(order.status, target);
+            return (
+              <Button
+                key={target}
+                type={target === 'cancelled' ? 'default' : 'primary'}
+                danger={target === 'cancelled' || target === 'refunded'}
+                disabled={!enabled || updateStatus.isPending}
+                onClick={() => handleQuickAction(target)}
+              >
+                {TRANSITION_LABEL[target]}
+              </Button>
+            );
+          })}
         </Space>
         {isTerminal(order.status) && (
           <Paragraph type="secondary" style={{ marginTop: 12 }}>

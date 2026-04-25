@@ -321,11 +321,17 @@ class SqlOrderRepository(OrderRepository):
     async def list_by_user(
         self, user_id: str, offset: int = 0, limit: int = 20,
     ) -> list[Order]:
-        # Customer-facing list intentionally does NOT load notes — notes
-        # are admin-internal and the mapper falls back to an empty list.
+        # Phase 4B — `_order_to_domain` iterates `m.notes` unconditionally;
+        # without selectinload here the customer's order history endpoint
+        # raises `MissingGreenlet` on the first row (lazy load forbidden in
+        # async). `notes` is admin-internal data the customer never sees,
+        # but loading it keeps the mapper a single code path.
         result = await self._session.execute(
             select(OrderModel)
-            .options(selectinload(OrderModel.items))
+            .options(
+                selectinload(OrderModel.items),
+                selectinload(OrderModel.notes),
+            )
             .where(OrderModel.user_id == user_id)
             .order_by(desc(OrderModel.created_at))
             .offset(offset).limit(limit)
@@ -382,7 +388,14 @@ class SqlOrderRepository(OrderRepository):
 
         items_query = (
             select(OrderModel)
-            .options(selectinload(OrderModel.items))
+            # Phase 4B — selectinload(notes) is required because the mapper
+            # iterates `m.notes` unconditionally; without it any row from
+            # the admin list endpoint would trigger `MissingGreenlet` on
+            # the first lazy-load attempt under AsyncSession.
+            .options(
+                selectinload(OrderModel.items),
+                selectinload(OrderModel.notes),
+            )
         )
         count_query = select(func.count()).select_from(OrderModel)
 

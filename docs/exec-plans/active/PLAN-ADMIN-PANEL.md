@@ -491,6 +491,92 @@
 - ✅ Полный жизненный цикл заказа кликается из UI: PLACED → CONFIRMED → IN_PROGRESS → DELIVERED → INSTALLED, плюс cancel из любой не-терминальной точки и refund из DELIVERED/INSTALLED.
 - ✅ Запрещённые переходы дают toast «Переход недоступен — заказ изменился», 409 + `code: "invalid_transition"` с бэка; страница автоматически делает `refetch()` чтобы синхронизировать disabled-матрицу.
 
+### Phase 4B post-implementation audit (2026-04-25, line-by-line)
+
+> Зелёный CI ≠ зелёная прод-сборка. Все 93 backend-теста использовали `InMemoryOrderRepository`, поэтому SQL-сторону покрыл отдельной репликой через aiosqlite (см. C1 ниже).
+
+#### Критические (блокировали работу фичи) — ✅ ИСПРАВЛЕНЫ
+
+1. ~~**`SqlOrderRepository.list_by_user` и `find_paginated` падают с `MissingGreenlet`**~~ — ✅ **Исправлено 2026-04-25**.
+   `_order_to_domain` безусловно итерирует `m.notes` (`sql.py:77-82`), но в `list_by_user` (`sql.py:321-333`) и `find_paginated` (`sql.py:368-421`) `selectinload(OrderModel.notes)` НЕ был добавлен. На production-asyncpg/aiosqlite доступ к unloaded relationship из async-контекста бросает `MissingGreenlet`. Воспроизведено за 30 секунд на in-memory SQLite:
+   ```
+   list_by_user CRASH: MissingGreenlet greenlet_spawn has not been called …
+   find_paginated CRASH: MissingGreenlet greenlet_spawn has not been called …
+   get_by_id OK, notes= []   # этот путь корректен — selectinload(notes) есть
+   ```
+   **Эффект до фикса:** ломались `GET /api/orders` (история клиента) и `GET /api/admin/orders` (Phase 4A admin-список) — Phase 4B регрессировала и customer-flow, и саму Phase 4A.
+   **Почему не поймали изначально:** все Phase 4B-тесты используют `InMemoryOrderRepository` (нет lazy-loading). `tests/infrastructure/test_alembic.py` на этой машине падает по другой причине (сеть до postgres:5432).
+   **Применённый фикс:**
+   - `selectinload(OrderModel.notes)` добавлен в `list_by_user` (`sql.py:328`) и `find_paginated` (`sql.py:386`).
+   - Создан `tests/infrastructure/test_order_repo_sql.py` (3 теста через aiosqlite): `test_list_by_user_does_not_trigger_lazy_load`, `test_find_paginated_does_not_trigger_lazy_load`, `test_add_note_persists_and_reloads`. Тест бьёт реальный async-engine, что закрывает blind-spot на InMemory.
+   После фикса повтор показывает `list_by_user OK / find_paginated OK / get_by_id OK`.
+
+#### Некритические (тех-долг) — частично исправлены
+
+2. **План завышает покрытие тестов** — 7 расхождений `план vs реальность`:
+   - `test_status_transitions.py` — план: «`OrderAlreadyCancelledError` подкласс `InvalidOrderTransitionError`». Файл этого утверждения явно НЕ проверяет (есть только `test_invalid_transition_is_value_error_subclass` через `pytest.raises(ValueError)`). Связь между `OrderAlreadyCancelledError` и `InvalidOrderTransitionError` гарантируется только реализацией.
+   - `test_order_notes.py` — план: «`updated_at` дёргается». Соответствующего теста нет (5/5 теста в файле проверяют другое).
+   - `test_update_order_status_admin.py` — план: «happy для каждого target» и «repo.update вызывается ровно раз». В файле есть `test_update_status_full_happy_chain` (CONFIRMED→…→INSTALLED), но `refund` happy-path use-case-уровня отсутствует (есть только domain-уровень в `test_status_transitions.py`); call-count на `repo.update` тоже не пинется.
+   - `test_orders_detail.py` — план: «PATCH happy для каждого target». В реальности есть один happy-PATCH (`test_legal_transition_returns_updated_detail` для `confirmed`); `in_progress`/`delivered`/`installed`/`refunded` API-уровнем не покрыты. План также упоминает «403 (non-admin)» — теста нет.
+   - `AdminOrderDetailPage.test.tsx` — план: «open cancel-modal требует reason / валидация пустой заметки / error-states (404, 409 → refetch + toast)». Эти три блока в файле явно вынесены в `What this test deliberately does NOT cover` и не написаны.
+   **Почему некритично:** ничего не падает, но «28/28 зелёные» в плане звучит как «всё проверено» — не соответствует. Привести список в `### Тесты` в соответствие реальному файлу либо дописать недостающие.
+
+3. ~~**`UpdateOrderStatusAdmin.execute` использует inline `import`**~~ — ✅ **Исправлено 2026-04-25**.
+   `from app.domain.order.exceptions import InvalidOrderTransitionError` вынесен из тела метода в шапку файла (`use_cases.py:7`). Inline import удалён.
+
+4. **`SqlOrderRepository.update` после переноса `cancel_reason` не пинит `version`/optimistic-lock** —
+   В отличие от `SqlVisualizationProjectRepository` (Phase 5C), у Order нет `version`-колонки. Для PATCH `/status` с двух вкладок одновременно last-writer-wins: первая cancel перепишет статус, вторая cancel поверх. `InvalidOrderTransitionError` рассчитан как раз на этот случай, но если оба админа жмут «Подтвердить» из PLACED — они оба пройдут. Не блокер для MVP (admin-only сценарий), но оставить как backlog-item на случай ошибочного двойного клика.
+
+5. ~~**AdminOrderDetailPage: render-цикл по `Object.keys(TRANSITIONS)`**~~ — ✅ **Исправлено 2026-04-25**.
+   `AdminOrderDetailPage.tsx:246-263` теперь итерирует `Object.keys(TRANSITION_LABEL)` — ключи map'a IS набор `OrderStatusUpdateKey`, поэтому cast больше не лжёт TS-у и runtime-фильтр `key !== 'placed' && key in TRANSITION_LABEL` снят. Импорт `TRANSITIONS` из этого файла удалён (использовались только `canTransition`/`isTerminal`/`REQUIRES_REASON`/`TRANSITION_LABEL`).
+
+8. **`useUpdateOrderStatus.onSuccess` слишком широкая инвалидация** — ✅ **Исправлено 2026-04-25**.
+   `qc.invalidateQueries({queryKey: ordersAdminKeys.all})` (`['admin', 'orders']`) — префиксное совпадение, накрывало и `orderDetailKeys.detail` (`['admin', 'orders', 'detail', id]`). Это сразу после `setQueryData` для detail вызывало refetch, перезаписывающий оптимистичный апдейт. Введён `ordersAdminKeys.lists = ['admin', 'orders', 'list']` и инвалидация перенаправлена на него — список инвалидируется, detail остаётся доверенным.
+
+6. **Прямой доступ к `_orders` в Phase 4B-тестах** —
+   `tests/api/admin/test_orders_detail.py:28-32, 85` и `tests/application/order/test_update_order_status_admin.py:30` лезут в `_mem_order_repo._orders.append/clear`. Уже учтено как backlog-item #7 в Phase 4A audit (вынести `clear()`/seed-helper в публичный API InMemory*). Добавляются новые точки лазя — boilerplate растёт.
+
+7. **`STATUS_OPTIONS` дубликат расширен дважды** — Phase 4A backlog #2 говорил «вынести `STATUS_LABELS` в `domain/order/model/statusLabels.ts` в Phase 4B». В реальности расширили оба места (`STATUS_OPTIONS` в `ordersAdminStore.ts` И `STATUS_TAG_COLOR` в `AdminOrdersPage.tsx`/`AdminOrderDetailPage.tsx`) на новые два значения, но рефакторинг single-source НЕ сделан. Backlog продолжает действовать; добавить сюда же `OrderStatusKey` (3 места: api, store, AdminDashboardPage).
+
+#### Что было проверено (line-by-line)
+
+- `backend/app/domain/order/entities.py` — все новые методы (`mark_delivered`, `mark_installed`, `cancel`, `refund`, `add_note`) + `OrderNote` dataclass + `_TERMINAL_STATUSES` frozenset. Гард-условия и валидация reason/text — корректны.
+- `backend/app/domain/order/exceptions.py` — `InvalidOrderTransitionError(ValueError)`, `OrderAlreadyCancelledError(InvalidOrderTransitionError)`. Backwards-compat с `pytest.raises(ValueError)` сохранена.
+- `backend/app/domain/order/value_objects.py` — `OrderStatus.CANCELLED/REFUNDED` + `label_ru` для обоих.
+- `backend/app/domain/order/repositories.py` — ABC `add_note(...)`.
+- `backend/app/application/order/use_cases.py` — `GetOrderAdmin`, `UpdateOrderStatusAdmin` (dispatch table + cancel/refund/PLACED ветки), `AddOrderNoteAdmin`, `OrderNotFoundError`. Логика корректна; см. некритичный N3 про inline import.
+- `backend/app/infrastructure/api/admin/orders.py` — `OrderDetailResponse`, `_resolve_users`, три новых route, `StatusUpdateLiteral`. Обработка `ValueError` vs `InvalidOrderTransitionError` (подклассовый каскад) — корректна, см. подробный коммент в `update_order_status_admin:246-247`.
+- `backend/app/infrastructure/api/error_handlers.py` + `app/main.py` — handler зарегистрирован после `LastAdminRemovalError`; работает на подклассах (`OrderAlreadyCancelledError`).
+- `backend/app/infrastructure/persistence/models.py` — `OrderModel.cancel_reason` (Text, nullable), `OrderNoteModel` с FK `ondelete="CASCADE"`, индексом и `relationship(cascade="all, delete-orphan", order_by=...)`.
+- `backend/app/infrastructure/persistence/repositories/sql.py` — мэппер + `get_by_id` (selectinload notes — ОК), `update` (cancel_reason пишется), `add_note` (отдельный insert без переписывания parent). **C1: `list_by_user` и `find_paginated` НЕ селект-инлоудят notes.**
+- `backend/app/infrastructure/persistence/repositories/memory.py` — `add_note` с дедупом по id (корректно учитывает, что `Order.add_note` уже добавил в `parent.notes`).
+- `backend/alembic/versions/008_add_order_notes_and_cancel_reason.py` — `add_column orders.cancel_reason` + `create_table order_notes` (FK CASCADE) + индекс. Симметричный `downgrade`. `test_alembic.py` обновлён под revision="008".
+- Frontend: `orderTransitions.ts` (table + `canTransition`/`isTerminal` + `REQUIRES_REASON` + `TRANSITION_LABEL`), `AdminOrderDetailPage.tsx` (header + actions + 2-col grid + cancel/refund modal с `Form`-валидацией + notes block), `ordersAdminApi.ts` (новые типы + три хука с правильной кэш-инвалидацией), `ordersAdminStore.ts` + `AdminOrdersPage.tsx` (расширены на 2 терминальных статуса), `router.tsx` (lazy-маршрут `orders/:id`), `test/setup.ts` (полифилл `ResizeObserver` для AntD `<List>`).
+- Все 93 backend-теста и 41 frontend-теста (`AdminOrderDetailPage` + `orderTransitions` + `ordersAdminStore`) — зелёные. Преекзистенный фейл `test_alembic.py` про postgres:5432 — не Phase 4B.
+
+#### Применённые фиксы (2026-04-25, post-audit)
+
+| # | Файл | Что изменилось |
+|---|------|----------------|
+| C1 | `infrastructure/persistence/repositories/sql.py:321-339, 383-396` | `selectinload(OrderModel.notes)` добавлен в `list_by_user` и `find_paginated`. Без этого мэппер падает с `MissingGreenlet` под AsyncSession — ломая customer order history и Phase 4A admin-список. |
+| C1-test | `tests/infrastructure/test_order_repo_sql.py` (новый) | 3 теста через aiosqlite: list_by_user / find_paginated не триггерят lazy-load + add_note round-trip через get_by_id. Закрывает blind-spot на InMemory. |
+| 3 | `application/order/use_cases.py:7, 130-134` | Inline `import InvalidOrderTransitionError` поднят в шапку файла. |
+| 5 | `domains/admin/ui/AdminOrderDetailPage.tsx:62-67, 246-263` | Цикл по action-кнопкам теперь итерирует `Object.keys(TRANSITION_LABEL)` напрямую — корректный TS-cast, без runtime-фильтра. Импорт `TRANSITIONS` удалён. |
+| 8 | `domains/admin/api/ordersAdminApi.ts:77-83, 201-209` | Введён `ordersAdminKeys.lists`; `useUpdateOrderStatus.onSuccess` инвалидирует только список, detail-кеш не сбрасывается после `setQueryData`. |
+
+**Регрессионная проверка после фиксов:**
+- Backend: **115/115** зелёные (`tests/domain/order tests/application/order tests/api/admin tests/domain/test_order.py tests/infrastructure/test_order_repo_sql.py`) — было 112, +3 новых SQL-теста.
+- Frontend admin-домен: **60/60** зелёные (`src/domains/admin/__tests__`).
+- TypeScript: `tsc --noEmit` exit 0.
+- Полный frontend run: **364/364** зелёные (workers timeout-warnings — env-noise при 512MB cap, не падения).
+
+#### Что осталось в backlog (по итогам аудита)
+
+- **N2 — расхождения «план vs реальность» в покрытии тестов**: дописать недостающие assertions (`OrderAlreadyCancelledError` is `InvalidOrderTransitionError`, `updated_at` дёргается на `add_note`, happy-PATCH для `in_progress`/`delivered`/`installed`/`refunded` API-уровнем, 403 non-admin для PATCH/POST, cancel-modal/notes-validation/409-toast в `AdminOrderDetailPage.test.tsx`). Не блокер — функционал работает, но «28/28 зелёные» в плане раньше звучало как «всё проверено».
+- **N4 — отсутствие `version`/optimistic-lock на Order**: при двух параллельных PATCH из двух вкладок last-writer-wins. Для admin-only сценария некритично, но запомнить на случай ошибочного двойного клика.
+- **N6 — прямой `_orders.append/clear` в Phase 4B-тестах**: ещё одна точка лазя в `_mem_order_repo._orders` (`test_orders_detail.py`, `test_update_order_status_admin.py`). Закрывается общей задачей #7 из Phase 4A audit (публичный `clear()`/seed-helper).
+- **N7 — `STATUS_OPTIONS`/`STATUS_TAG_COLOR` дубликат расширен дважды**: backlog #2 из Phase 4A («single source в `domain/order/model/statusLabels.ts`») всё ещё открыт; теперь к нему добавились 2 новых значения в обоих файлах.
+
 ---
 
 ## Фаза 5: Управление пользователями

@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from app.domain.order.entities import Order, OrderItem, OrderNote
+from app.domain.order.exceptions import InvalidOrderTransitionError
 from app.domain.order.filters import OrderFilters
 from app.domain.order.repositories import OrderRepository
 from app.domain.order.value_objects import Address, OrderStatus
@@ -133,7 +134,6 @@ class UpdateOrderStatusAdmin:
         elif new_status is OrderStatus.PLACED:
             # PLACED is the initial state; transitioning *back* to it would
             # mean "un-do the order" which is not a valid business action.
-            from app.domain.order.exceptions import InvalidOrderTransitionError
             raise InvalidOrderTransitionError(
                 "Cannot transition back to PLACED"
             )

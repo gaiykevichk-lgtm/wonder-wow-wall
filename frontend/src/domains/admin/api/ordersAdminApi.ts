@@ -76,6 +76,10 @@ export interface OrdersAdminQuery extends OrdersAdminFilters {
 
 export const ordersAdminKeys = {
   all: ['admin', 'orders'] as const,
+  // List queries share this prefix so a single `invalidateQueries({queryKey: lists})`
+  // reaches every paginated/filtered variant without also invalidating the
+  // detail cache (which lives under `['admin', 'orders', 'detail', id]`).
+  lists: ['admin', 'orders', 'list'] as const,
   list: (q: OrdersAdminQuery) => ['admin', 'orders', 'list', q] as const,
 };
 
@@ -200,10 +204,10 @@ export function useUpdateOrderStatus() {
       }),
     onSuccess: (data) => {
       qc.setQueryData(orderDetailKeys.detail(data.id), data);
-      // Also invalidate the list so the table reflects the new status
-      // when the admin navigates back. We don't know which page they
-      // were on, so a coarse `all` invalidation is the safe choice.
-      qc.invalidateQueries({ queryKey: ordersAdminKeys.all });
+      // Invalidate ONLY the list queries — using `all` here would also
+      // invalidate the detail cache prefix and trigger an immediate
+      // refetch that overwrites the optimistic `setQueryData` above.
+      qc.invalidateQueries({ queryKey: ordersAdminKeys.lists });
     },
   });
 }
