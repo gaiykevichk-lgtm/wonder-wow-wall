@@ -23,7 +23,11 @@ from app.domain.user.repositories import UserRepository
 from app.domain.user.value_objects import UserRole
 from app.domain.media.entities import MediaAsset
 from app.domain.media.repositories import MediaAssetRepository
-from app.domain.shop.repositories import ShopSettingsRepository
+from app.domain.shop.banner import Banner, BannerPosition
+from app.domain.shop.repositories import (
+    BannerRepository,
+    ShopSettingsRepository,
+)
 from app.domain.shop.settings import ShopSettings
 
 
@@ -372,3 +376,54 @@ class InMemoryShopSettingsRepository(ShopSettingsRepository):
         # the single source of truth).
         self._settings = settings
         return self._settings
+
+
+# ─── Banners (Phase 8B) ─────────────────────────────────────────────
+
+class InMemoryBannerRepository(BannerRepository):
+    """List-backed mirror of `SqlBannerRepository`.
+
+    Sorting is `(priority desc, created_at desc)` — explicit admin
+    priority wins, recency breaks ties.
+    """
+
+    def __init__(self, banners: list[Banner] | None = None):
+        self._banners: list[Banner] = banners or []
+
+    async def list_banners(
+        self,
+        *,
+        position: BannerPosition | None = None,
+        include_inactive: bool = False,
+        offset: int = 0,
+        limit: int = 100,
+    ) -> tuple[list[Banner], int]:
+        rows = list(self._banners)
+        if position is not None:
+            rows = [b for b in rows if b.position == position]
+        if not include_inactive:
+            rows = [b for b in rows if b.is_active]
+        ordered = sorted(
+            rows, key=lambda b: (b.priority, b.created_at), reverse=True,
+        )
+        total = len(ordered)
+        return ordered[offset:offset + limit], total
+
+    async def get_by_id(self, banner_id: str) -> Banner | None:
+        return next((b for b in self._banners if b.id == banner_id), None)
+
+    async def create(self, banner: Banner) -> Banner:
+        self._banners.append(banner)
+        return banner
+
+    async def update(self, banner: Banner) -> Banner:
+        for i, b in enumerate(self._banners):
+            if b.id == banner.id:
+                self._banners[i] = banner
+                return banner
+        raise LookupError(f"Banner {banner.id} not found")
+
+    async def delete(self, banner_id: str) -> bool:
+        before = len(self._banners)
+        self._banners = [b for b in self._banners if b.id != banner_id]
+        return len(self._banners) != before

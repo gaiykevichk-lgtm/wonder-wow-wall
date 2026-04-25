@@ -929,36 +929,149 @@ Frontend:
 
 ---
 
-## Фаза 8: Управление магазином (настройки и тарифы)
+## Фаза 8: Управление магазином (настройки и тарифы) ⚠️ ЧАСТИЧНО РЕАЛИЗОВАНО (2026-04-25)
 
 > **Цель:** Управление подписками, базовой ценой overlay, баннерами главной, промокодами (опционально).
+>
+> **Статус по итогам аудита 2026-04-25:** Реализована **только Фаза 8A (ShopSettings backend)** end-to-end.
+> Фаза 8B (Banners) — half-implementation: код есть, но НЕ wired (нет миграции, нет container,
+> нет API, нет тестов). Фаза 8C (Subscription Plans CRUD) — не начата. Frontend — не начат
+> (placeholder). DoD не достигнут.
 
-### Backend
-- [ ] Domain: `SubscriptionPlan` приводится к виду entity с CRUD (решение OQ2). Если по итогам Фазы 0 — хардкод, миграция `create_subscription_plans` + seed существующих планов идёт первой задачей фазы. Если уже entity — переходим сразу к use cases.
-- [ ] Domain: новый агрегат `ShopSettings` (singleton-row): `design_overlay_price`, `installation_price`, `min_order_amount`, etc.
-- [ ] Domain: новый агрегат `Banner`: `id`, `image_path`, `title`, `cta_text`, `cta_link`, `position`, `is_active`, `priority`.
-- [ ] Application: use cases `UpdateShopSettings`, CRUD баннеров, **CRUD планов подписок (обязательно, см. OQ2)** — `CreateSubscriptionPlanAdmin`, `UpdateSubscriptionPlanAdmin`, `DeleteSubscriptionPlanAdmin`, `ListSubscriptionPlansAdmin`. Удаление плана с активными подписками → `SubscriptionPlanInUseError` (409).
-- [ ] Infrastructure: миграции `create_shop_settings`, `create_banners`, `create_subscription_plans` (последняя — обязательна, если в Фазе 0 выяснилось, что планы хардкод; включает seed существующих планов).
-- [ ] Infrastructure: эндпоинты `/api/admin/shop/settings`, `/api/admin/shop/banners`, `/api/admin/subscription-plans`.
-- [ ] Публичный `GET /api/shop/settings` (без auth) — фронт берёт цены оттуда.
-- [ ] Публичный `GET /api/shop/banners?position=` — для главной.
+### Подфаза 8A: ShopSettings ✅ РЕАЛИЗОВАНО (backend) (2026-04-25)
 
-### Frontend
-- [ ] `domains/admin/ui/AdminShopPage.tsx` — табы «Настройки» / «Баннеры» / «Тарифы».
-- [ ] Форма настроек (Ant Design Form) с InputNumber для цен.
-- [ ] Список баннеров с drag-to-reorder (приоритет), upload изображений.
-- [ ] CRUD тарифов — модалка с полями: name, price, billing_period (enum), features-массив (динамический список), is_active. Запрет удаления плана с активными подписками — toast «есть N активных подписок».
-- [ ] **Frontend публично**: `shared/config/constants.ts` → постепенный refactor. Цены приходят из `/api/shop/settings` (TanStack Query, кеш 5 мин). Fallback на константы при offline.
+#### Backend
+- [x] Domain: новый агрегат `ShopSettings` (singleton-row): `design_overlay_price`, `installation_price`, `min_order_amount` — `app/domain/shop/settings.py` (PK `"singleton"`, invariants ≥0 в `__post_init__`).
+- [x] Domain: ABC `ShopSettingsRepository` — `app/domain/shop/repositories.py`.
+- [x] Application: `GetShopSettings`, `UpdateShopSettingsAdmin` — `app/application/shop/settings_use_cases.py` (PATCH-семантика: `None` = не трогать; `0` валиден; `updated_at` обновляется на use-case-уровне).
+- [x] Infrastructure: миграция `012_create_shop_settings` (создание таблицы + seed singleton-row значениями `1200/0/0`).
+- [x] Infrastructure: `ShopSettingsModel` (`models.py:348-376`), `SqlShopSettingsRepository` + `InMemoryShopSettingsRepository` (`memory.py:358-378`, `sql.py:813-870`).
+- [x] Infrastructure: admin-endpoint `GET/PATCH /api/admin/shop/settings` (`admin/shop_settings.py`), wired в `admin/__init__.py:17,27`.
+- [x] Infrastructure: публичный `GET /api/shop/settings` (`api/shop.py`), wired в `main.py:29,111`.
+- [x] Container: `_mem_shop_settings_repo`, `get_shop_settings_repo` (`container.py:23,66,218-227`); SQL-маппинг через `_get_sql_repo_classes()` (`container.py:101,118`).
 
-### Тесты
-- [ ] `tests/domain/shop/test_settings.py`.
-- [ ] `tests/application/shop/test_update_settings.py`.
-- [ ] `tests/api/admin/test_shop.py`.
-- [ ] `frontend/src/shared/__tests__/useShopSettings.test.ts`.
+#### Тесты Phase 8A
+- [x] `backend/tests/domain/shop/test_settings.py` — 5 тестов (defaults + invariants).
+- [x] `backend/tests/application/shop/test_settings_use_cases.py` — 6 тестов (PATCH-семантика, `0`-valid, `updated_at` advances).
+- [x] `backend/tests/api/admin/test_shop_settings.py` — 8 тестов (auth gates 401/403, GET, PATCH, 422 negative).
+- [x] `backend/tests/api/test_shop_public.py` — 3 теста (no-auth, payload shape pin, отражает admin-patch).
+- [x] `backend/tests/infrastructure/test_alembic.py:151-152` обновлён — `head == "012"` + `shop_settings` table check.
+- [ ] **Не реализовано:** SQL-репо integration тест (`tests/infrastructure/test_shop_settings_repo_sql.py`) — `SqlShopSettingsRepository.update()` ловится только косвенно через alembic-suite. Phase 6/7B такие тесты добавляли (`test_panel_repo_sql.py` pattern).
+
+#### Регрессия Phase 8A
+- Backend full-suite (без alembic): **527/527 passed** (3.4s по файлам Phase 8 + 54s по всему).
+- Alembic suite: **6/6 passed** — `test_upgrade_head_creates_all_core_tables` корректно проверяет `shop_settings` и `head == "012"`.
+- Аддитивные изменения в `container.py` — существующие репо не задеты (proven: 521 тестов за пределами Phase 8 зелёные).
+- Имена роутов уникальны: `/api/admin/shop/settings` (admin) vs `/api/shop/settings` (public) — не пересекаются с Phase 7B `/api/admin/panels`.
+- Frontend `DESIGN_OVERLAY_PRICE` (`shared/config/constants.ts`) до сих пор pin-импортируется в **14 местах** (catalog/data.ts:22-261, account/AccountConstructorSection.tsx:19-457, catalog/api/adapters.ts:14, catalog/__tests__/adapters.test.ts:35-41) — поведение Phase 8A не меняет, регрессии нет; но и DoD не выполнен (см. ниже).
+
+---
+
+### Подфаза 8B: Banners ❌ HALF-IMPLEMENTED (мёртвый код в репозитории)
+
+**Что есть:**
+- Domain: `Banner` entity + `BannerPosition` enum (`app/domain/shop/banner.py`).
+- Domain: `BannerNotFoundError` (`banner_exceptions.py`).
+- Domain: `BannerRepository` ABC (`repositories.py:33-64`).
+- Application: `CreateBannerAdmin`, `UpdateBannerAdmin`, `DeleteBannerAdmin`, `GetBannerAdmin`, `ListBannersAdmin`, `ListBannersPublic` (`banner_use_cases.py` — все 6 use cases).
+- Infrastructure: `InMemoryBannerRepository` (`memory.py:383-429`).
+- Infrastructure: `BannerModel` (`models.py:381-417`) — **зарегистрирован в `Base.metadata`**.
+- Infrastructure: `SqlBannerRepository` (`sql.py:896-985`).
+
+**Чего нет (блокирует продакшен):**
+- [ ] **C1 — Миграция `013_create_banners` отсутствует.** `alembic upgrade head` не создаст таблицу `banners` в prod-БД, но `BannerModel` зарегистрирован в `Base.metadata`. Любая попытка вызвать `SqlBannerRepository.list_banners()` упадёт `relation "banners" does not exist`.
+- [ ] **C2 — `_mem_banner_repo` не создан в `container.py`.** Импорта `InMemoryBannerRepository` нет в `container.py:14-24`.
+- [ ] **C3 — `get_banner_repo()` Depends не определён.** Никакой код не может получить репо.
+- [ ] **C4 — `SqlBannerRepository` не подключён в `_get_sql_repo_classes()`** (`container.py:88-120`).
+- [ ] **C5 — Нет admin-роута `/api/admin/shop/banners`** и нет публичного `GET /api/shop/banners?position=`.
+- [ ] **C6 — Ноль тестов:** `tests/domain/shop/test_banner.py`, `tests/application/shop/test_banner_use_cases.py`, `tests/api/admin/test_banners.py`, `tests/api/test_banners_public.py` — все отсутствуют.
+- [ ] **C7 — `test_alembic.py` НЕ проверяет таблицу `banners`** — отсутствие миграции «не пойдено» именно потому, что spot-check список не обновлён.
+
+**Action:** либо удалить весь мёртвый код 8B (банер-домен/use cases/sql/memory/model) до момента полной реализации, либо добрать остальные пункты и засеять тестами. Сейчас репозиторий содержит untestable, unreachable код — худший из вариантов.
+
+---
+
+### Подфаза 8C: Subscription Plans CRUD ❌ НЕ НАЧАТО
+
+- [ ] `SUBSCRIPTION_PLANS` (`app/domain/subscription/entities.py:19-55`) — до сих пор хардкод module-level constant.
+- [ ] Нет `SubscriptionPlanRepository` ABC.
+- [ ] Нет `CreateSubscriptionPlanAdmin`/`UpdateSubscriptionPlanAdmin`/`DeleteSubscriptionPlanAdmin`/`ListSubscriptionPlansAdmin` use cases.
+- [ ] Нет `SubscriptionPlanInUseError` (409 при удалении плана с активными подписками).
+- [ ] Нет миграции `create_subscription_plans` + seed существующих 3 планов (starter/popular/business).
+- [ ] Нет `/api/admin/subscription-plans` (CRUD) и публичного `/api/subscription-plans`.
+- [ ] Нет frontend-CRUD модалки тарифов.
+
+OQ2 (решено 24.04.2026) явно требовал «**обязательную часть**» Phase 8.
+
+---
+
+### Подфаза 8D: Frontend ❌ НЕ НАЧАТО (placeholder)
+
+- [ ] `domains/admin/ui/AdminShopPage.tsx` — до сих пор stub `AdminSectionPlaceholder` (`AdminShopPage.tsx:1-12`). Нет табов «Настройки/Баннеры/Тарифы».
+- [ ] Нет Ant Design формы настроек с InputNumber.
+- [ ] Нет списка баннеров с drag-to-reorder + upload.
+- [ ] Нет CRUD тарифов модалки.
+- [ ] Нет `useShopSettings` хука (TanStack Query, 5-min cache, fallback на `DESIGN_OVERLAY_PRICE`).
+- [ ] Нет `frontend/src/shared/__tests__/useShopSettings.test.ts`.
+- [ ] **Регрессия по DoD:** все 14 callsites `DESIGN_OVERLAY_PRICE` (catalog/account) до сих пор читают из JS-бандла. Изменение `design_overlay_price` в админке **не видно в каталоге** — DoD «≤5 минут (TTL)» не достигнут.
+
+---
 
 ### Definition of Done
-- Изменение `design_overlay_price` в админке → новая цена видна в каталоге через ≤5 минут (TTL).
-- Баннеры с активным флагом и приоритетом отображаются в правильном порядке.
+- [ ] Изменение `design_overlay_price` в админке → новая цена видна в каталоге через ≤5 минут (TTL). **НЕ ДОСТИГНУТО** (frontend читает константу из бандла; см. 8D).
+- [ ] Баннеры с активным флагом и приоритетом отображаются в правильном порядке. **НЕ ДОСТИГНУТО** (8B half-implementation).
+- [ ] CRUD тарифов с защитой от удаления используемых планов. **НЕ ДОСТИГНУТО** (8C не начат).
+
+### Аудит 2026-04-25 — line-by-line по реализованной части (Phase 8A)
+
+**Прочитано построчно:**
+1. `backend/app/domain/shop/settings.py` (65 строк) — корректно: singleton ID, дефолты совпадают с `frontend/src/shared/config/constants.ts:DESIGN_OVERLAY_PRICE`, инварианты в `__post_init__`.
+2. `backend/app/domain/shop/repositories.py` (65 строк) — две ABC: `ShopSettingsRepository`, `BannerRepository`. Контракты тонкие, докстринги объясняют raises.
+3. `backend/app/domain/shop/banner.py` (68 строк) — корректный entity, но не wired (см. 8B C1-C7).
+4. `backend/app/domain/shop/banner_exceptions.py` (16 строк) — `BannerNotFoundError(LookupError)`. ОК, но висит без потребителя в API.
+5. `backend/app/application/shop/settings_use_cases.py` (77 строк) — `Get`/`Update` с правильной PATCH-семантикой. `0`-valid обработан явно.
+6. `backend/app/application/shop/banner_use_cases.py` (171 строка) — корректные use cases, но недостижимы (см. 8B).
+7. `backend/app/infrastructure/persistence/repositories/memory.py:355-429` — `InMemoryShopSettingsRepository` корректен; `InMemoryBannerRepository` корректен (но не wired).
+8. `backend/app/infrastructure/persistence/repositories/sql.py:813-985` — корректные SQL-репо; `SqlBannerRepository` опирается на отсутствующую таблицу.
+9. `backend/app/infrastructure/persistence/models.py:346-417` — `ShopSettingsModel` + `BannerModel`. Последний создаст schema-divergence: метаданные знают о таблице `banners`, alembic — нет.
+10. `backend/app/infrastructure/api/admin/shop_settings.py` (87 строк) — корректные DTO с `Field(ge=0)`, оба эндпоинта под `Depends(get_current_admin_id)`.
+11. `backend/app/infrastructure/api/shop.py` (57 строк) — публичный read; DTO продублирован (по docstring — намеренно).
+12. `backend/app/infrastructure/api/admin/__init__.py` — sub-router `_shop_settings` подключён одной строкой (Phase 1 паттерн соблюдён).
+13. `backend/app/main.py:29,111` — `shop.router` подключён правильно.
+14. `backend/app/container.py:23,66,101,118,218-227` — `_mem_shop_settings_repo` singleton + `get_shop_settings_repo` dependency. `_get_sql_repo_classes()["shop_settings"]` корректен.
+15. `backend/alembic/versions/012_create_shop_settings.py` (81 строка) — `upgrade()` создаёт таблицу + `bulk_insert` seed; `downgrade()` `drop_table`. Без issue.
+16. `backend/tests/domain/shop/test_settings.py` (47 строк) — 5 тестов, **PASS**.
+17. `backend/tests/application/shop/test_settings_use_cases.py` (97 строк) — 6 тестов, **PASS**.
+18. `backend/tests/api/admin/test_shop_settings.py` (190 строк) — 8 тестов, **PASS**.
+19. `backend/tests/api/test_shop_public.py` (60 строк) — 3 теста, **PASS**.
+20. `backend/tests/infrastructure/test_alembic.py:117-152` — расширен на shop_settings + `head == "012"` assert. **PASS**.
+21. `frontend/src/domains/admin/ui/AdminShopPage.tsx` (12 строк) — placeholder, не реализован.
+
+**Запущенные тесты:**
+- `pytest tests/domain/shop/ tests/application/shop/ tests/api/admin/test_shop_settings.py tests/api/test_shop_public.py -v` → **22/22 passed** (3.4s).
+- `pytest tests/ -x --ignore=tests/infrastructure/test_alembic.py -q` → **527/527 passed** (54.5s) — никаких регрессий вне Phase 8.
+- `pytest tests/infrastructure/test_alembic.py -v` → **6/6 passed** (1.2s).
+- Frontend Phase 8 тестов нет — соответственно, не запускались.
+
+### Найденные проблемы
+
+#### Критические (блокируют закрытие фазы):
+1. **8B-C1 — Отсутствует миграция `013_create_banners`** при наличии `BannerModel` в `Base.metadata` (`backend/app/infrastructure/persistence/models.py:381-417`). Schema-divergence: dev (через `metadata.create_all()` в `tests/infrastructure/test_*_repo_sql.py`) ≠ prod (alembic).
+2. **8B-C2/C3/C4 — Banner-репо не wired в `container.py`**: нет `_mem_banner_repo` (`container.py:14-24, 38-66`), нет `get_banner_repo()` Depends, нет `SqlBannerRepository` в `_get_sql_repo_classes()` (`container.py:88-120`).
+3. **8B-C5 — Нет admin/public API для banners** — use cases (`banner_use_cases.py`) недостижимы.
+4. **8B-C6 — Ноль тестов** для всего banner-домена (entity invariants, use cases, sql/memory repos, route).
+5. **8B-C7 — `test_alembic.py` НЕ проверяет таблицу `banners`** — отсутствие миграции скрыто слепым пятном теста.
+6. **8C — Subscription Plans CRUD не начат** (явное требование OQ2). `SUBSCRIPTION_PLANS` остаётся хардкодом в `backend/app/domain/subscription/entities.py:19-55`.
+7. **8D — Frontend не начат**: `AdminShopPage.tsx` placeholder, нет `useShopSettings` хука, нет `frontend/src/shared/__tests__/useShopSettings.test.ts`. **DoD «≤5 минут TTL» провален** — все 14 callsites `DESIGN_OVERLAY_PRICE` (catalog/data.ts:22-261, account/AccountConstructorSection.tsx:19-457, catalog/api/adapters.ts:14) читают из JS-бандла.
+
+#### Некритические (тех-долг по 8A):
+1. **`datetime.utcnow()` deprecation** — Python 3.12+ предупреждение. Используется в `domain/shop/settings.py:50`, `application/shop/settings_use_cases.py:75`, `models.py:343,375,416`, `alembic/versions/012_create_shop_settings.py:76`. Project-wide tech-debt (открыт ещё в Phase 3 audit).
+2. **Дубликат `ShopSettingsResponse`** в `admin/shop_settings.py:33-38` и `api/shop.py:24-36`. По докстрингу — намеренно (защита от утечки admin-полей через transitive type sharing); pattern совпадает с Phase 7B `PanelSchema` vs `PanelResponse`. ОК, но удвоенный maintenance.
+3. **Двойная валидация `ge=0`** — Pydantic в DTO + `__post_init__` в use case. Docstring говорит «defence-in-depth». ОК.
+4. **Нет SQL-репо integration теста** для `SqlShopSettingsRepository` (паттерн `tests/infrastructure/test_panel_repo_sql.py`/`test_media_repo_sql.py` из Phase 6/7B). `SqlShopSettingsRepository.update()` ловится только косвенно через alembic-suite.
+5. **Лазание в `_mem_shop_settings_repo._settings`** в тестах (`tests/api/admin/test_shop_settings.py:23,26`, `tests/api/test_shop_public.py:17,19,54`) — тот же открытый backlog #7 из Phase 4A audit (публичный `clear()`/seed-helper для всех InMemory* репозиториев).
+6. **Чек-лист Phase 8A не отмечен `[x]`** в самом плане — устранено этим audit-апдейтом.
+7. **Нумерация миграции для `subscription_plans`** в исходном плане (`create_subscription_plans`) пересечётся со следующим свободным `013` если `banners` отдельно мигрировать. Решить: `013_create_banners` + `014_create_subscription_plans` либо объединить.
 
 ---
 

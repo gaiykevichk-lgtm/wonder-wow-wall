@@ -1,20 +1,16 @@
-"""Phase 8A — repository ABC for `ShopSettings`.
+"""Phase 8 — repository ABCs for the Shop bounded context.
 
-Singleton repo, hence the slim interface:
-  * `get()` always returns the row (the migration seeds it; the repo
-    must never need to "create" it at runtime). If a deployment ever
-    finds the row missing, that is a configuration error, not a domain
-    state — the SQL implementation raises rather than synthesizing.
-  * `update(settings)` writes the row back. Returns the persisted entity
-    so the caller can rely on `updated_at` being refreshed by the repo.
-
-`Banner` and `SubscriptionPlanRepository` will land in this module in
-Phase 8B / 8C.
+`ShopSettingsRepository` (8A) is a singleton-row repo with a slim
+interface (`get`/`update`). `BannerRepository` (8B) is a regular CRUD
+repo; the `list_banners` signature accepts an optional position filter
++ `include_inactive` flag (the public endpoint hard-codes `False`).
+`SubscriptionPlanRepository` lands here in Phase 8C.
 """
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+from .banner import Banner, BannerPosition
 from .settings import ShopSettings
 
 
@@ -32,3 +28,37 @@ class ShopSettingsRepository(ABC):
     @abstractmethod
     async def update(self, settings: ShopSettings) -> ShopSettings:
         """Persist the patched settings, refresh `updated_at`."""
+
+
+class BannerRepository(ABC):
+    @abstractmethod
+    async def list_banners(
+        self,
+        *,
+        position: BannerPosition | None = None,
+        include_inactive: bool = False,
+        offset: int = 0,
+        limit: int = 100,
+    ) -> tuple[list[Banner], int]:
+        """List banners filtered by position + activity.
+
+        Sort order is `(priority desc, created_at desc)` — admin's
+        explicit `priority` wins, ties broken by recency. Same posture
+        as `InMemoryPanelRepository.list_panels` (newest-first).
+        """
+
+    @abstractmethod
+    async def get_by_id(self, banner_id: str) -> Banner | None:
+        ...
+
+    @abstractmethod
+    async def create(self, banner: Banner) -> Banner:
+        ...
+
+    @abstractmethod
+    async def update(self, banner: Banner) -> Banner:
+        ...
+
+    @abstractmethod
+    async def delete(self, banner_id: str) -> bool:
+        """Returns True on success, False if the id was unknown."""
