@@ -194,6 +194,19 @@ describe('<AdminAuditPage>', () => {
     expect(emDashes.length).toBeGreaterThanOrEqual(1);
   });
 
+  it('renders the originating IP in its own column', () => {
+    renderPage([makeEntry({ ip: '203.0.113.42' })]);
+    expect(screen.getByText('203.0.113.42')).toBeInTheDocument();
+  });
+
+  it('renders em-dash placeholder when ip is null', () => {
+    renderPage([makeEntry({ ip: null })]);
+    // At least one em-dash cell exists (target+ip both fall back to —
+    // when missing, but here target is present so this dash must come
+    // from the ip column).
+    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(1);
+  });
+
   it('renders Russian filter placeholders', () => {
     renderPage([]);
     // The action / target-type Select placeholders ("Действие" / "Тип

@@ -20,7 +20,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
-from app.application.audit.use_cases import ListAuditEntries
+from app.application.audit.use_cases import MAX_PAGE_SIZE, ListAuditEntries
 from app.container import get_audit_repo
 from app.domain.audit.entities import AuditEntry
 from app.domain.audit.filters import AuditFilters
@@ -76,7 +76,7 @@ async def list_audit_entries(
     date_from: datetime | None = Query(default=None, alias="from"),
     date_to: datetime | None = Query(default=None, alias="to"),
     page: int = Query(default=1, ge=1),
-    size: int = Query(default=50, ge=1, le=200),
+    size: int = Query(default=50, ge=1, le=MAX_PAGE_SIZE),
     _admin_id: str = Depends(get_current_admin_id),
     repo=Depends(get_audit_repo),
 ):

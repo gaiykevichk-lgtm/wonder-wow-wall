@@ -32,7 +32,9 @@ from app.domain.audit.value_objects import AuditAction, AuditTargetType
 
 # Hard cap mirrors `ListUsersAdmin` / `ListOrdersAdmin` — keeps a
 # pathological `?limit=999999` from materialising a giant page.
-_MAX_PAGE_SIZE = 200
+# Public so the API layer can pin its `Query(le=...)` to the same value
+# (avoids the magic-number drift the post-impl audit flagged).
+MAX_PAGE_SIZE = 200
 
 
 class RecordAuditEntry:
@@ -108,7 +110,7 @@ class ListAuditEntries:
         size: int = 50,
     ) -> tuple[list[AuditEntry], int]:
         page = max(page, 1)
-        size = max(1, min(size, _MAX_PAGE_SIZE))
+        size = max(1, min(size, MAX_PAGE_SIZE))
         offset = (page - 1) * size
         return await self.repo.find_paginated(
             filters, offset=offset, limit=size,

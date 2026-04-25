@@ -267,6 +267,22 @@ export default function AdminAuditPage() {
         );
       },
     },
+    {
+      // Phase 9 follow-up — surface the originating IP so admins can
+      // cross-reference an audit entry with access logs / abuse reports.
+      // Backend already returns it; was hidden from the table on the
+      // first cut.
+      title: 'IP',
+      dataIndex: 'ip',
+      key: 'ip',
+      width: 140,
+      render: (ip: string | null) =>
+        ip ? (
+          <Text code style={{ fontSize: 12 }}>{ip}</Text>
+        ) : (
+          <span style={{ color: '#9CA3AF' }}>—</span>
+        ),
+    },
   ];
 
   const hasActiveFilters =

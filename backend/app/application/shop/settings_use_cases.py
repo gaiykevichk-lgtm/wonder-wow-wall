@@ -13,6 +13,7 @@ absent" shortcut some PATCH styles take.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from app.application.audit.use_cases import RecordAuditEntry
 from app.domain.audit.value_objects import AuditAction, AuditTargetType
@@ -95,7 +96,7 @@ class UpdateShopSettingsAdmin:
             # Diff: report only fields whose value changed so the audit
             # payload stays informative even when the admin sends the full
             # settings object back unchanged (frontend convenience).
-            changes: dict = {}
+            changes: dict[str, dict[str, Any]] = {}
             for key, old in before.items():
                 new = getattr(updated, key)
                 if old != new:

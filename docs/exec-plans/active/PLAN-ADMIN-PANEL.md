@@ -1143,30 +1143,30 @@ OQ2 (решено 24.04.2026) явно требовал «**обязательн
 
 #### Некритические наблюдения (technical debt / стилевое)
 
-1. **Магическое число `200` дублируется в 4 местах**:
-   - `app/application/audit/use_cases.py:35` (`_MAX_PAGE_SIZE = 200`)
-   - `app/infrastructure/api/admin/audit.py:79` (FastAPI `Query(le=200)`)
-   - `frontend/src/domains/admin/model/auditStore.ts:51` (`MAX_PAGE_SIZE = 200`)
-   - то же значение неявно в `MAX_PAGE_SIZE` других admin-сторов.
-   *Действие:* допустимо, фича admin-only; если возникнет 5-я копия — выносить в shared constant.
+1. ~~**Магическое число `200` дублируется в 4 местах**.~~ ✅ **ИСПРАВЛЕНО (remediation 2026-04-25):** `_MAX_PAGE_SIZE` переименован в публичный `MAX_PAGE_SIZE` в `app/application/audit/use_cases.py:37`, `app/infrastructure/api/admin/audit.py` теперь импортирует константу и пинит `Query(le=MAX_PAGE_SIZE)`. Фронтовая `MAX_PAGE_SIZE` оставлена локально (отдельный процесс, не разделяет рантайм с бекендом) — пинится тестом `auditStore.test.ts` («clamps oversized page size»).
 
-2. **Belt-and-braces page-size clamp**: API ставит `Query(ge=1, le=200)`, use case затем повторно делает `max(1, min(size, _MAX_PAGE_SIZE))`. Защита от non-API caller (CLI, тест), tolerable.
+2. **Belt-and-braces page-size clamp**: API ставит `Query(ge=1, le=MAX_PAGE_SIZE)`, use case затем повторно делает `max(1, min(size, MAX_PAGE_SIZE))`. Защита от non-API caller (CLI, тест), tolerable. *Не исправлять — defence-in-depth осознан.*
 
-3. **Колонка `ip` не отображается в `AdminAuditPage`**: backend всегда возвращает `ip` (тесты пинят `entry["ip"] == "203.0.113.42"`), но в `AdminAuditPage.tsx` IP в таблице не показан. Может быть осознанное UX-решение (admin не нужны IP в основной строке), но если потребуется forensics — данные есть, потребуется только новая колонка/expandable row.
+3. ~~**Колонка `ip` не отображается в `AdminAuditPage`**.~~ ✅ **ИСПРАВЛЕНО (remediation 2026-04-25):** добавлена колонка «IP» (140 px, `Text code`, em-dash на null) в `AdminAuditPage.tsx` после «Подробности». Покрыта двумя новыми smoke-тестами в `AdminAuditPage.test.tsx` (`renders the originating IP in its own column`, `renders em-dash placeholder when ip is null`).
 
-4. **`payload` тип `dict` вместо `dict[str, Any]`** в `app/application/shop/settings_use_cases.py:98`. Мелкая стилевая неточность; mypy-strict в проекте не включён, FastAPI/Pydantic не ругается.
+4. ~~**`payload` тип `dict` вместо `dict[str, Any]`**.~~ ✅ **ИСПРАВЛЕНО (remediation 2026-04-25):** `app/application/shop/settings_use_cases.py:99` теперь `changes: dict[str, dict[str, Any]] = {}` (импортирован `Any` из typing). Зеркалит сигнатуру `RecordAuditEntry.execute(payload=...)`.
 
-5. **`RecordAuditEntry.execute(payload=None)` коллапсирует `None` и `{}` в один и тот же entry** (`payload or {}`). Семантически эквивалентно для аудита, но если в будущем понадобится отличить «явный пустой dict» от «не передал» — нужна отдельная sentinel.
+5. **`RecordAuditEntry.execute(payload=None)` коллапсирует `None` и `{}` в один и тот же entry** (`payload or {}`). Семантически эквивалентно для аудита, если в будущем понадобится отличить «явный пустой dict» от «не передал» — нужна отдельная sentinel. *Не исправлять — нет реального use case.*
 
-6. **План говорил «декоратор `@audited`», реализован collaborator-injection.** Это **более удачное** решение (тестируемость без monkeypatching, явный DI-граф, нет проблемы с извлечением `actor_id` через context-magic) — обоснование задокументировано в `use_cases.py:7-22`. План выше актуализирован.
+6. **План говорил «декоратор `@audited`», реализован collaborator-injection.** Это **более удачное** решение (тестируемость без monkeypatching, явный DI-граф, нет проблемы с извлечением `actor_id` через context-magic) — обоснование задокументировано в `use_cases.py:7-22`. План выше актуализирован. *Не исправлять — реализация лучше плана.*
 
-7. **План говорил индексы `(actor_id, created_at)` + `(target_type, target_id)`**, реализованы 3 single-column (`actor_id`, `action`, `created_at`) + 1 композитный `(target_type, target_id, created_at)`. Реальная схема **лучше** для типичных запросов (filter by action, deep-link по `target_*` с DESC по времени).
+7. **План говорил индексы `(actor_id, created_at)` + `(target_type, target_id)`**, реализованы 3 single-column (`actor_id`, `action`, `created_at`) + 1 композитный `(target_type, target_id, created_at)`. Реальная схема **лучше** для типичных запросов (filter by action, deep-link по `target_*` с DESC по времени). *Не исправлять — реализация лучше плана.*
 
-8. **`design_delete` action key зарезервирован, но use-case не существует** (нет ещё DeleteDesignAdmin). Безвредно — enum-значение пригодится в Фазе 7A.
+8. **`design_delete` action key зарезервирован, но use-case не существует** (нет ещё DeleteDesignAdmin). Безвредно — enum-значение пригодится в Фазе 7A. *Не исправлять — намеренно зарезервировано под Фазу 7A.*
 
-9. **`ListAuditEntries` берёт `page=0` и поднимает до 1** (`max(page, 1)`), но FastAPI на API-слое уже бракует через `ge=1`. См. (2) — defence-in-depth.
+9. **`ListAuditEntries` берёт `page=0` и поднимает до 1** (`max(page, 1)`), но FastAPI на API-слое уже бракует через `ge=1`. См. (2) — defence-in-depth. *Не исправлять — то же обоснование что и (2).*
 
-10. **Конфиденциальность payload**: `SETTINGS_UPDATE` пишет цены в `changes.{field}.{from,to}`, `ORDER_NOTE_ADD` пишет первые 200 символов заметки. Никаких PII (паролей/токенов) ни одна retrofitted use case в payload не пишет. ✅
+10. **Конфиденциальность payload**: `SETTINGS_UPDATE` пишет цены в `changes.{field}.{from,to}`, `ORDER_NOTE_ADD` пишет первые 200 символов заметки. Никаких PII (паролей/токенов) ни одна retrofitted use case в payload не пишет. ✅ *Действий не требуется.*
+
+#### Remediation re-run (2026-04-25, после фиксов 1/3/4)
+- **Backend pytest:** `580 passed` за 62 с (без регрессий).
+- **Frontend tsc --noEmit:** exit 0.
+- **Frontend vitest** (audit модуль): `30 passed` (+2 новых на IP-колонку).
 
 #### Регрессии — не найдены
 Все 547 тестов до Фазы 9 продолжают проходить. `tests/infrastructure/test_alembic.py` обновлён под `head=013` и включает round-trip миграции. `tests/application/audit/test_retrofitted_use_cases.py:test_use_cases_work_without_audit_recorder` явно пинит, что use cases без `audit_recorder` остаются backward-compatible (их вызывают в Phase 1/4B/5/7B/8A тестах без коллабораторa — все зелёные).
