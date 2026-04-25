@@ -249,7 +249,7 @@
 
 ---
 
-## Фаза 3: Дашборд статистики ⚠️ РЕАЛИЗОВАНО С ЗАМЕЧАНИЯМИ (2026-04-24)
+## Фаза 3: Дашборд статистики ✅ РЕАЛИЗОВАНО (2026-04-24, follow-up audit 2026-04-25)
 
 > **Цель:** Главный экран `/admin` с ключевыми метриками. **Только агрегаты — без drill-down.**
 
@@ -287,17 +287,51 @@
 **Критические:** нет.
 
 **Некритические (tech-debt):**
-1. **`conversion_funnel` не реализован** — заменён на `totals`. Либо добавить funnel в Фазе 3.x, либо обновить контракт в REQUIREMENTS.
-2. **Перф-тест отсутствует** — `test_dashboard_perf.py` не создан. Перенести в бэклог tech-debt.
-3. **`DashboardDTO.range_start/range_end: str`** (`use_cases.py:23-24`) — HTTP-формат в application-слое. Заменить на `date` + форматирование в API-схеме.
-4. **`_mem_analytics_repo` читает приватные `_orders`/`_users`** (`container.py:46-47`) — инкапсуляция нарушена. Добавить публичные `orders()`/`users()` на in-memory репо.
-5. **`_order_total` дублирует `Order.total`** (`analytics_repo.py:55`) — использовать property.
-6. **Readonly-сессия не реализована** — `SqlAnalyticsRepository` берёт обычную `AsyncSession`. Приемлемо для MVP.
-7. **`test_admin_gets_full_payload` сидирует общий `_mem_order_repo`** (`test_dashboard.py:139-152`) без отката. Assertion `revenue == 3000` хрупок: любой будущий тест, создающий CONFIRMED/DELIVERED заказ до него, сломает кейс. Добавить `_mem_order_repo._orders.clear()` в setup кейса.
-8. **`top_designs` SQL: `func.max(design_name)`** (`analytics_repo.py:226`) — выбор имени при переименовании дизайна недетерминирован. Минорно.
-9. **`datetime.utcnow()`** в `DateRange.last_n_days` (`value_objects.py:73`) — deprecation warning на Python 3.12+. Общая проблема проекта, не Phase 3.
-10. **Нет UI-теста** на `AdminDashboardPage.tsx` (plan не требовал, но 420 строк с условной отрисовкой — покрытие тонкое). Tech-debt.
-11. **Cache key `(days,)` агрегирует все SQL-сессии** в один бакет — сегодня безвредно (данные глобальные, TTL короткий), но поведение имплицитное. Добавить комментарий в `cache.py`.
+1. **`conversion_funnel` не реализован** — заменён на `totals`. Либо добавить funnel в Фазе 3.x, либо обновить контракт в REQUIREMENTS. — *оставлено в backlog*
+2. **Перф-тест отсутствует** — `test_dashboard_perf.py` не создан. Перенести в бэклог tech-debt. — *backlog (нужен seed-генератор; объединить с Phase 4A)*
+3. **`DashboardDTO.range_start/range_end: str`** (`use_cases.py:23-24`) — HTTP-формат в application-слое. Заменить на `date` + форматирование в API-схеме. — *оставлено в backlog (минорно, низкий ROI)*
+4. **`_mem_analytics_repo` читает приватные `_orders`/`_users`** (`container.py:46-47`) — инкапсуляция нарушена. Добавить публичные `orders()`/`users()` на in-memory репо. — *оставлено в backlog: расширение публичного интерфейса репо ради единственного клиента (YAGNI)*
+5. ✅ **`_order_total` дублирует `Order.total`** (`analytics_repo.py:55`) — *закрыто 2026-04-25:* helper удалён, в `revenue_by_day` и `totals` используется `o.total` напрямую.
+6. **Readonly-сессия не реализована** — `SqlAnalyticsRepository` берёт обычную `AsyncSession`. — *backlog: refactor `get_readonly_session` имеет смысл, когда появится >1 read-only клиента*
+7. ✅ **`test_admin_gets_full_payload` сидирует общий `_mem_order_repo`** без отката — *закрыто 2026-04-25:* autouse-фикстура переименована в `_reset_cache_and_repos`, очищает `_mem_order_repo._orders` и `_counter` до и после каждого теста. Assertion ужесточён: `orders["value"] == 1` (раньше `>= 1`).
+8. **`top_designs` SQL: `func.max(design_name)`** (`analytics_repo.py:226`) — недетерминированный выбор имени при rename. — *оставлено в backlog (минорно)*
+9. **`datetime.utcnow()`** в `DateRange.last_n_days` (`value_objects.py:73`) — deprecation warning на Python 3.12+. — *общая проблема проекта, не Phase 3*
+10. **Нет UI-теста** на `AdminDashboardPage.tsx` — *оставлено в backlog (store покрыт, добавить при первой регрессии)*
+11. **Cache key `(days,)` агрегирует все SQL-сессии в один бакет** — сегодня безвредно. — *оставлено в backlog (поведение задокументировано в `cache.py:32-43` через `skip_self`)*
+
+### Аудит 2026-04-25 — follow-up
+
+Повторно прочитан построчно: все 16 файлов Фазы 3 + контейнер + admin/__init__. Запущены 21/21 Phase 3 тестов и полный backend-suite 290/290 (исключая 6 alembic — pre-existing).
+
+**Критические:** не найдено.
+
+**Дополнительно найдено и закрыто 2026-04-25:**
+- ✅ **`value_objects.py:35` — устаревший docstring `DateRange`**: пример `DateRange(today - 7d, today)` противоречил пост-fix реализации `last_n_days`. Заменён на `DateRange.last_n_days(7)` → `[today - 6d, today + 1d)` с пояснением, почему сегодняшние события попадают в окно.
+- ✅ **`AdminDashboardPage.tsx` — STATUS_LABELS["placed"]** был "Размещён" вместо канонического "Оформлен" из `OrderStatus.label_ru` (бэкенд `app/domain/order/value_objects.py:15`). Синхронизировано + добавлен комментарий о Phase 4 как точке централизации общего dictionary.
+- ✅ **Tech-debt #5 (дублирование `_order_total`)** и **#7 (хрупкость seed-теста)** — закрыты в этой же ревизии (см. список выше).
+
+**Что было разобрано в каждом файле:**
+- `app/domain/analytics/value_objects.py` — VOs frozen-dataclasses, `DateRange` half-open `[start, end)`, `last_n_days(n)` даёт ровно n дней (start=today-(n-1), end=today+1). `MetricSeries.__post_init__` строго возрастающий порядок дней. `Metric.delta_pct` опциональный — для будущего сравнения периодов без contract change. `InvalidDateRangeError` ← `ValueError` (FastAPI default 400 mapping).
+- `app/domain/analytics/repositories.py` — ABC из 5 методов, docstring-контракт gap-filling и стабильности ключей `totals`. Один client (`GetDashboardSnapshot`) — fat-repo обоснован YAGNI.
+- `app/utils/cache.py` — async-only `@cached(ttl)`, `_make_key` через `repr()` (нужны hashable args), `_LOCK` защищает запись, `skip_self=True` стрипит первый аргумент, `clear_cache()` для тестов.
+- `app/application/analytics/use_cases.py` — `GetDashboardSnapshot.execute()` оркестрирует 5 await'ов и оборачивает scalar totals в `Metric` VOs в **явном порядке** `revenue → orders → new_users → avg_order_value` (контракт UI). `_LABELS` локализованы в application — i18n без правки infra.
+- `app/infrastructure/persistence/repositories/analytics_repo.py` — `_REVENUE_STATUSES` явный frozenset (новые статусы default not-counted). `_fill_gaps` материализует один point/день из `iter_days`. InMemoryRepo через callable-аксессоры (репо `update()` переприсваивает list — без callable ссылка устарела бы). SqlRepo: `case((status.in_(...), total), else_=0)` — портируется SQLite/Postgres. `top_designs` — single GROUP BY без N+1, `func.max(design_name)` для агрегата имени (минорный недетерминизм при rename — backlog #8). После 2026-04-25 fix: `o.total` вместо локального `_order_total`.
+- `app/infrastructure/api/admin/dashboard.py` — `DaysWindow` IntEnum (а не `Literal[int]` — Pydantic v2 strict, не coerce'ит "7" в 7). `_snapshot(repo, days)` под `@cached(60)` (`skip_self=True` → ключ только `days`, общий между request-instance'ами). Pydantic-модели зеркалят DTO 1:1.
+- `app/infrastructure/api/admin/__init__.py` — sub-router pattern (Фаза 1 review): новые админ-области добавляются одной строкой, `main.py` не трогается.
+- `app/container.py` — `_mem_analytics_repo` через лямбды-callables (читают `_mem_order_repo._orders`/`_mem_user_repo._users` — leaky abstraction, backlog #4), `analytics_repo` alias, `get_analytics_repo` с lazy SQL-импортом.
+- Тесты domain (7) — все инварианты `DateRange` + `last_n_days`. После 2026-04-24 fix `start = today - (n-1)`, тест обновлён под новые значения.
+- Тесты application (7) — full coverage use-case через in-memory repo с лямбдами и `today`/`anchor`/`rng` фикстурами. Покрыты: пустые данные + gap-fill, фильтрация по status (PLACED исключён из revenue), out-of-range, enum-порядок статусов, top-N по quantity, бакетирование двух заказов в один день.
+- Тесты api (7) — guard chain (401/403), validation (422 на 500/0/abc), happy-path с DELIVERED заказом, default `days=30` → 30 точек. После 2026-04-25 fix: фикстура очищает `_mem_order_repo` до/после каждого теста.
+- `frontend/.../analyticsApi.ts` — wire-types зеркалят Pydantic, `useDashboardSnapshot(days)` с `staleTime: 30s`, `retry: false` (бэк cache 60s, нет смысла в client retry).
+- `frontend/.../dashboardStore.ts` — минимальный store: `range/setRange`. Не persisted (дефолт 30 — sensible default). `DASHBOARD_RANGE_OPTIONS` — канон 7/30/90 с лейблами.
+- `frontend/.../AdminDashboardPage.tsx` — селектор `Segmented`, 4 `MetricCard` (Row 24/12/6 responsive), `RevenueChart` (LineChart с monotone, `ResponsiveContainer`), `StatusPie` (donut с `paddingAngle`), `TopDesignsList`. Empty/loading/error states для каждого блока. Метрики ренжатся по фиксированному `metricOrder` — устойчиво к перестановкам в backend response. `STATUS_LABELS` синхронизирован с `OrderStatus.label_ru`.
+- `frontend/.../dashboardStore.test.ts` — дефолт, setRange, subscribe, OPTIONS canon. `setState` reset в beforeEach (zustand singleton).
+
+**Отсутствие регрессий подтверждено:**
+- Backend full-suite (исключая alembic-тесты, требующие Postgres): 290/290 passed.
+- Phase 3 tests (domain + application + api): 21/21 passed.
+- Frontend dashboardStore: 4/4 passed.
+- Изменения в `analytics_repo.py` (удаление `_order_total`) затронули только Phase 3 — `o.total` уже существовал как property в `Order` (`order/entities.py:39-41`), backwards-compatible.
 
 ### Файлы, добавленные/изменённые в Фазе 3
 

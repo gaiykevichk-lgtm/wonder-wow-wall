@@ -25,6 +25,9 @@ from app.infrastructure.persistence.repositories.project_repo import (
 from app.infrastructure.persistence.repositories.visualization_repo import (
     InMemoryVisualizationProjectRepository,
 )
+from app.infrastructure.persistence.repositories.analytics_repo import (
+    InMemoryAnalyticsRepository,
+)
 
 
 # ─── In-Memory Singletons (used when USE_MEMORY_REPOS=true or for tests) ──
@@ -37,6 +40,12 @@ _mem_subscription_repo = InMemorySubscriptionRepository()
 _mem_user_repo = InMemoryUserRepository()
 _mem_project_repo = InMemoryProjectRepository()
 _mem_visualization_repo = InMemoryVisualizationProjectRepository()
+# Phase 3 — analytics is a READ-ONLY projection over orders + users; it
+# shares the underlying lists so test writes become immediately visible.
+_mem_analytics_repo = InMemoryAnalyticsRepository(
+    orders=lambda: _mem_order_repo._orders,
+    users=lambda: _mem_user_repo._users,
+)
 
 
 # ─── Backward-compatible aliases (used by existing tests) ────────────
@@ -49,6 +58,7 @@ subscription_repo = _mem_subscription_repo
 user_repo = _mem_user_repo
 project_repo = _mem_project_repo
 visualization_repo = _mem_visualization_repo
+analytics_repo = _mem_analytics_repo
 
 
 # ─── FastAPI Dependencies ────────────────────────────────────────────
@@ -70,6 +80,7 @@ def _get_sql_repo_classes() -> dict:
         )
         from app.infrastructure.persistence.repositories.project_repo import SqlProjectRepository
         from app.infrastructure.persistence.repositories.visualization_repo import SqlVisualizationProjectRepository
+        from app.infrastructure.persistence.repositories.analytics_repo import SqlAnalyticsRepository
         _sql_repo_classes = {
             "design": SqlDesignRepository,
             "category": SqlCategoryRepository,
@@ -79,6 +90,7 @@ def _get_sql_repo_classes() -> dict:
             "user": SqlUserRepository,
             "project": SqlProjectRepository,
             "visualization": SqlVisualizationProjectRepository,
+            "analytics": SqlAnalyticsRepository,
         }
     return _sql_repo_classes
 
@@ -145,6 +157,12 @@ def get_visualization_repo(session=Depends(get_db_session)):
     if settings.USE_MEMORY_REPOS:
         return _mem_visualization_repo
     return _get_sql_repo_classes()["visualization"](session)
+
+
+def get_analytics_repo(session=Depends(get_db_session)):
+    if settings.USE_MEMORY_REPOS:
+        return _mem_analytics_repo
+    return _get_sql_repo_classes()["analytics"](session)
 
 
 # ─── Phase 6 — Depth Estimator (singleton across the process) ──────────

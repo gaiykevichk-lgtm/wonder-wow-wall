@@ -10,6 +10,8 @@ touched again.
 from fastapi import APIRouter
 
 from . import auth as _auth
+from . import dashboard as _dashboard
 
 router = APIRouter()
 router.include_router(_auth.router, prefix="", tags=["admin"])
+router.include_router(_dashboard.router, prefix="", tags=["admin-analytics"])
