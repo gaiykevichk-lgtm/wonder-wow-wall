@@ -143,6 +143,37 @@ class TestUpdatePanelAdmin:
                 panel_id=a.id, base_price=-5,
             )
 
+    @pytest.mark.asyncio
+    async def test_partial_size_patch_composes_from_current(self, repo):
+        # Regression: API used to pre-load the row to compose PanelSize
+        # (N+1). Now the use case takes individual patch components and
+        # fills the missing ones from the current row itself.
+        a = await CreatePanelAdmin(repo).execute(
+            name="A", slug="ps", size=_size(w=300, h=400, label="orig"),
+            base_price=100,
+        )
+        # Patch only width — height + label come from the existing row.
+        updated = await UpdatePanelAdmin(repo).execute(
+            panel_id=a.id, width_mm=500,
+        )
+        assert updated.size.width_mm == 500
+        assert updated.size.height_mm == 400
+        assert updated.size.label == "orig"
+
+    @pytest.mark.asyncio
+    async def test_partial_size_label_only_patch(self, repo):
+        # Same regression coverage for the size_label-only branch.
+        a = await CreatePanelAdmin(repo).execute(
+            name="A", slug="psl", size=_size(w=300, h=400, label="orig"),
+            base_price=100,
+        )
+        updated = await UpdatePanelAdmin(repo).execute(
+            panel_id=a.id, size_label="renamed",
+        )
+        assert updated.size.width_mm == 300
+        assert updated.size.height_mm == 400
+        assert updated.size.label == "renamed"
+
 
 # ─── Delete ──────────────────────────────────────────────────────────
 

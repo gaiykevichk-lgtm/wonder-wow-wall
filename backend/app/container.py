@@ -73,7 +73,6 @@ project_repo = _mem_project_repo
 visualization_repo = _mem_visualization_repo
 analytics_repo = _mem_analytics_repo
 media_repo = _mem_media_repo
-panel_repo = _mem_panel_repo
 
 
 # ─── FastAPI Dependencies ────────────────────────────────────────────

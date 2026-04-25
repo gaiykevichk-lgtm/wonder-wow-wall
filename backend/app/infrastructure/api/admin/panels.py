@@ -34,6 +34,7 @@ from app.application.catalog.panel_use_cases import (
 )
 from app.container import get_panel_repo
 from app.domain.catalog.panel import Panel
+from app.domain.catalog.panel_exceptions import PanelNotFoundError
 from app.domain.catalog.value_objects import PanelSize
 from app.utils.dependencies import get_current_admin_id
 
@@ -57,7 +58,7 @@ class PanelResponse(BaseModel):
     created_at: str
 
 
-class PanelsListResponse(BaseModel):
+class PanelListResponse(BaseModel):
     items: list[PanelResponse] = Field(default_factory=list)
     total: int
     offset: int
@@ -83,7 +84,7 @@ def _to_response(p: Panel) -> PanelResponse:
 # ─── Request shapes ──────────────────────────────────────────────────
 
 
-class CreatePanelRequest(BaseModel):
+class PanelCreate(BaseModel):
     """Pydantic-side input shape for `POST /api/admin/panels`.
 
     `slug` length cap matches `PanelModel.slug` (120) so an oversize
@@ -102,7 +103,7 @@ class CreatePanelRequest(BaseModel):
     is_active: bool = True
 
 
-class UpdatePanelRequest(BaseModel):
+class PanelUpdate(BaseModel):
     """PATCH semantics — `None` means "don't touch".
 
     To *clear* an optional string field (description / photo_path) the
@@ -123,7 +124,7 @@ class UpdatePanelRequest(BaseModel):
 # ─── List ────────────────────────────────────────────────────────────
 
 
-@router.get("/panels", response_model=PanelsListResponse)
+@router.get("/panels", response_model=PanelListResponse)
 async def list_panels_admin(
     offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
@@ -139,7 +140,7 @@ async def list_panels_admin(
     items, total = await ListPanelsAdmin(panel_repo).execute(
         offset=offset, limit=limit,
     )
-    return PanelsListResponse(
+    return PanelListResponse(
         items=[_to_response(p) for p in items],
         total=total,
         offset=offset,
@@ -165,7 +166,7 @@ async def get_panel_admin(
 
 @router.post("/panels", response_model=PanelResponse, status_code=201)
 async def create_panel_admin(
-    body: CreatePanelRequest,
+    body: PanelCreate,
     _admin_id: str = Depends(get_current_admin_id),
     panel_repo=Depends(get_panel_repo),
 ):
@@ -192,34 +193,20 @@ async def create_panel_admin(
 @router.patch("/panels/{panel_id}", response_model=PanelResponse)
 async def update_panel_admin(
     panel_id: str,
-    body: UpdatePanelRequest,
+    body: PanelUpdate,
     _admin_id: str = Depends(get_current_admin_id),
     panel_repo=Depends(get_panel_repo),
 ):
-    # Recompose size only if at least one of its three components is
-    # present in the patch — passing one field alone (e.g. just
-    # width_mm) requires loading the current row to fill the others, so
-    # we delegate that to the use case which already does `get_by_id`.
-    size: PanelSize | None = None
-    if (
-        body.width_mm is not None
-        or body.height_mm is not None
-        or body.size_label is not None
-    ):
-        # Load current to fill any unspecified component. Keeps the
-        # admin UI free to update just `size_label` without re-sending
-        # dimensions.
-        current = await GetPanelAdmin(panel_repo).execute(panel_id)
-        size = PanelSize(
-            width_mm=body.width_mm if body.width_mm is not None else current.size.width_mm,
-            height_mm=body.height_mm if body.height_mm is not None else current.size.height_mm,
-            label=body.size_label if body.size_label is not None else current.size.label,
-        )
+    # Size patch fields pass through individually — the use case already
+    # loads the row for `get_by_id` and composes the new `PanelSize` from
+    # current + patch components, so we don't pre-load here (was an N+1).
     panel = await UpdatePanelAdmin(panel_repo).execute(
         panel_id=panel_id,
         name=body.name,
         slug=body.slug,
-        size=size,
+        width_mm=body.width_mm,
+        height_mm=body.height_mm,
+        size_label=body.size_label,
         base_price=body.base_price,
         description=body.description,
         photo_path=body.photo_path,
@@ -239,11 +226,8 @@ async def delete_panel_admin(
 ):
     deleted = await DeletePanelAdmin(panel_repo).execute(panel_id)
     if not deleted:
-        # 404 with the same envelope shape the global handler emits —
-        # keeps the frontend's branching uniform.
-        from fastapi.responses import JSONResponse
-        return JSONResponse(
-            status_code=404,
-            content={"detail": f"Panel {panel_id} not found", "code": "panel_not_found"},
-        )
+        # Defer the envelope shape to the global PanelNotFoundError
+        # handler — keeps the frontend's branching uniform and avoids
+        # duplicating the {detail, code} payload here.
+        raise PanelNotFoundError(f"Panel {panel_id} not found")
     return Response(status_code=204)

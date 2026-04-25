@@ -698,7 +698,7 @@ def _panel_to_domain(m: PanelModel) -> Panel:
         base_price=m.base_price,
         description=m.description or "",
         photo_path=m.photo_path or "",
-        is_active=bool(m.is_active),
+        is_active=m.is_active,
         created_at=m.created_at,
     )
 

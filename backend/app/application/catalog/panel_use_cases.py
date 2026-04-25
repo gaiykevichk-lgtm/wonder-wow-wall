@@ -84,6 +84,12 @@ class UpdatePanelAdmin:
     used by `users.py` and `orders.py` — the API layer's Pydantic model
     must use `Optional[T] = None` for every patchable field.
 
+    Size patch fields (`width_mm`, `height_mm`, `size_label`) are passed
+    individually so we can compose `PanelSize` from current + patch
+    without forcing the API layer to pre-load the row (was an N+1 in the
+    first cut). For backward compatibility callers MAY still pass a
+    pre-composed `size` — if both are given, `size` wins.
+
     Slug uniqueness is re-checked if `slug` changed; same race caveat as
     Create. We compare against the *current* row's slug to avoid a false
     409 when the admin saves the modal without touching the slug.
@@ -99,6 +105,9 @@ class UpdatePanelAdmin:
         name: str | None = None,
         slug: str | None = None,
         size: PanelSize | None = None,
+        width_mm: int | None = None,
+        height_mm: int | None = None,
+        size_label: str | None = None,
         base_price: int | None = None,
         description: str | None = None,
         photo_path: str | None = None,
@@ -122,6 +131,20 @@ class UpdatePanelAdmin:
 
         if name is not None:
             panel.name = name
+        # Compose size from individual patch components if any provided —
+        # current row supplies the untouched ones. A pre-composed `size`
+        # arg overrides this branch (kept for symmetry with other use
+        # cases that take VOs directly).
+        if size is None and (
+            width_mm is not None
+            or height_mm is not None
+            or size_label is not None
+        ):
+            size = PanelSize(
+                width_mm=width_mm if width_mm is not None else panel.size.width_mm,
+                height_mm=height_mm if height_mm is not None else panel.size.height_mm,
+                label=size_label if size_label is not None else panel.size.label,
+            )
         if size is not None:
             if size.width_mm <= 0 or size.height_mm <= 0:
                 raise ValueError("Panel.size dimensions must be positive")

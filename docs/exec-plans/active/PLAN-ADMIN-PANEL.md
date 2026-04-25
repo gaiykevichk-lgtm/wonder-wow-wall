@@ -887,10 +887,10 @@ Frontend:
 - [ ] `frontend/src/domains/constructor/__tests__/usePanels.test.ts` — fallback на константы при ошибке API. *(Фронт-задача.)*
 
 ### Backend regression
-- ✅ 509 passed (было 470 после Фазы 6 + 7A пропущена), +39 новых тестов от Phase 7B.
+- ✅ **511 passed** (509 после Phase 7B + 2 регресс-теста за audit-cleanup), +41 новых тестов от Phase 7B.
 
 ### Audit findings (2026-04-25)
-> Детальный line-by-line обзор всех файлов фазы. **0 критических**, 6 пунктов техдолга.
+> Детальный line-by-line обзор всех файлов фазы. **0 критических**, 6 пунктов техдолга — **все 6 исправлены в том же дне**.
 
 **Проверено:**
 - Domain: `panel.py`, `panel_exceptions.py`, `repositories.py` (Panel ABC).
@@ -913,13 +913,15 @@ Frontend:
 - Lazy-импорт `SqlPanelRepository` в container — циркулярных импортов нет.
 - Alembic 011 повторяет паттерн 010 (UniqueConstraint + `if_not_exists=True` + `server_default` для портируемости).
 
-**Технический долг (не блокирует фичу):**
-1. `infrastructure/api/admin/panels.py:212` — N+1 в PATCH-эндпоинте: `GetPanelAdmin` грузит панель, затем `UpdatePanelAdmin.execute()` снова делает `get_by_id`. Два хита БД на один PATCH с size-полями. Решение: убрать предварительный `GetPanelAdmin` и переложить композицию `PanelSize` внутрь use case.
-2. `infrastructure/api/admin/panels.py:244` — Inline-импорт `from fastapi.responses import JSONResponse` внутри `delete_panel_admin`. Поднять наверх.
-3. `infrastructure/api/admin/panels.py:86,105` — DTO названы `CreatePanelRequest`/`UpdatePanelRequest`. CONVENTIONS.md предписывает `*Create`/`*Update`, но в коде доминирует суффикс `*Request` (RegisterRequest, LoginRequest, AddReviewRequest, ContactRequest). Решение: либо переименовать ради конвенции, либо обновить CONVENTIONS.md под фактику.
-4. `infrastructure/persistence/repositories/sql.py:701` — Лишний `bool(m.is_active)` cast, SQLAlchemy уже возвращает native bool. Косметика.
-5. `app/container.py:76` — Backward-compat alias `panel_repo = _mem_panel_repo` не используется (Phase 7B новая, legacy-вызовов нет). Удалить.
-6. `infrastructure/api/admin/panels.py` (delete-ветка) — Возвращает локальный `JSONResponse(404)` вместо `raise PanelNotFoundError`. Технически работает (явный `status_code` overrides декоратор), но дублирует логику глобального handler'а. Тот же trade-off, что и в `DeleteMedia` Phase 6.
+**Найденные и исправленные пункты техдолга:**
+1. ✅ **N+1 в PATCH-эндпоинте устранён.** `infrastructure/api/admin/panels.py` больше не делает `GetPanelAdmin` перед `UpdatePanelAdmin`. Сигнатура `UpdatePanelAdmin.execute` расширена опциональными `width_mm`/`height_mm`/`size_label`; use case сам композирует `PanelSize` из current row + patch (тот же `get_by_id`, что был всегда). Pre-composed `size: PanelSize` оставлен для symmetry с другими use cases (если передан — выигрывает). Регресс-тесты: `test_partial_size_patch_composes_from_current` + `test_partial_size_label_only_patch` (`tests/application/test_panel_use_cases.py`). API-уровень покрыт уже существовавшим `test_patch_size_label_only`.
+2. ✅ **Inline-импорт `JSONResponse` удалён** — вместе с самой веткой (см. п. 6).
+3. ✅ **DTO переименованы под CONVENTIONS.md.** `CreatePanelRequest` → `PanelCreate`, `UpdatePanelRequest` → `PanelUpdate`, `PanelsListResponse` → `PanelListResponse`. Внешних потребителей не было (Phase 7B frontend ещё не начат) — переименование безопасно. Legacy mismatch (`*Request` в users/orders/reviews/contacts) — отдельный долг, фиксится при следующем касании этих файлов.
+4. ✅ **Лишний `bool(m.is_active)` cast убран** в `_panel_to_domain` (`infrastructure/persistence/repositories/sql.py:701`).
+5. ✅ **Backward-compat alias `panel_repo = _mem_panel_repo` удалён** из `app/container.py` — был неиспользуем (Phase 7B новая, legacy-вызовов нет).
+6. ✅ **Delete-ветка теперь `raise PanelNotFoundError`** вместо локального `JSONResponse(404)` — конверт `{detail, code}` отдаёт глобальный handler, тест `test_delete_unknown_id_404` (требующий `code == "panel_not_found"`) продолжает проходить.
+
+**Регрессия после фиксов:** 511 passed (509 → 511 за счёт двух новых регресс-тестов), 0 fail.
 
 ### Definition of Done
 - В админке создаётся панель → доступна в конструкторе.
