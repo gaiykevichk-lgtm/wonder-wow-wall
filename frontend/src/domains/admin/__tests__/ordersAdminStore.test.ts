@@ -14,6 +14,7 @@ import {
   DEFAULT_PAGE,
   DEFAULT_SIZE,
   EMPTY_FILTERS,
+  MAX_PAGE_SIZE,
   queryFromSearchParams,
   searchParamsFromQuery,
   STATUS_OPTIONS,
@@ -64,6 +65,19 @@ describe('queryFromSearchParams', () => {
     const result = queryFromSearchParams(params);
     expect(result.page).toBe(DEFAULT_PAGE);
     expect(result.size).toBe(DEFAULT_SIZE);
+  });
+
+  it('clamps oversized `size` to MAX_PAGE_SIZE (avoids guaranteed 422)', () => {
+    // Backend rejects size > 200 with 422; clamping client-side prevents
+    // a doomed request when a user hand-edits or pastes a stale URL.
+    const params = new URLSearchParams({ size: '9999' });
+    expect(queryFromSearchParams(params).size).toBe(MAX_PAGE_SIZE);
+  });
+
+  it('exposes MAX_PAGE_SIZE = 200 (must mirror backend Pydantic le=200)', () => {
+    // Pin the constant — if backend changes its limit, this test fails
+    // and forces a synchronised update on the frontend.
+    expect(MAX_PAGE_SIZE).toBe(200);
   });
 
   it('trims whitespace-only search to null', () => {

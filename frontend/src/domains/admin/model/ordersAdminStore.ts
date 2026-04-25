@@ -30,6 +30,9 @@ const VALID_STATUSES: ReadonlyArray<OrderStatusKey> = [
 
 export const DEFAULT_PAGE = 1;
 export const DEFAULT_SIZE = 50;
+// Mirror of backend `ListOrdersAdmin.MAX_PAGE_SIZE` / Pydantic `Query(le=200)`.
+// Kept in sync manually; the store test pins this value so drift is caught.
+export const MAX_PAGE_SIZE = 200;
 
 export const EMPTY_FILTERS: OrdersAdminFilters = {
   status: null,
@@ -51,6 +54,13 @@ function parsePositiveInt(raw: string | null, fallback: number): number {
   if (raw === null) return fallback;
   const n = Number.parseInt(raw, 10);
   return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+/** Like `parsePositiveInt`, but clamps to `[1, max]`. Prevents `?size=9999`
+ *  in URL from firing a doomed request that the backend rejects with 422. */
+function parseClampedInt(raw: string | null, fallback: number, max: number): number {
+  const n = parsePositiveInt(raw, fallback);
+  return n > max ? max : n;
 }
 
 function parseStatus(raw: string | null): OrderStatusKey | null {
@@ -77,7 +87,7 @@ export function queryFromSearchParams(params: URLSearchParams): OrdersAdminQuery
     dateTo: parseString(params.get('to')),
     userId: parseString(params.get('user_id')),
     page: parsePositiveInt(params.get('page'), DEFAULT_PAGE),
-    size: parsePositiveInt(params.get('size'), DEFAULT_SIZE),
+    size: parseClampedInt(params.get('size'), DEFAULT_SIZE, MAX_PAGE_SIZE),
   };
 }
 

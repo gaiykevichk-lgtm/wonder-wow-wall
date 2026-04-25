@@ -30,7 +30,7 @@ import {
 } from 'antd';
 import type { TablePaginationConfig, TableProps } from 'antd';
 import dayjs, { Dayjs } from 'dayjs';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import {
@@ -95,14 +95,27 @@ export default function AdminOrdersPage() {
     [searchParams],
   );
 
-  const { data, isLoading, isFetching, error } = useOrdersAdminList(query);
+  const { data, isFetching, error } = useOrdersAdminList(query);
+
+  // Local mirror of `query.search` so typing doesn't fire a request on
+  // every keystroke (URL — and therefore React Query key — only updates
+  // on explicit submit). The effect re-syncs whenever the URL changes
+  // externally (Reset button, browser back/forward, deep link).
+  const [searchDraft, setSearchDraft] = useState<string>(query.search ?? '');
+  useEffect(() => {
+    setSearchDraft(query.search ?? '');
+  }, [query.search]);
 
   function updateUrl(next: OrdersAdminQuery): void {
     setSearchParams(searchParamsFromQuery(next), { replace: false });
   }
 
-  function onStatusChange(value: OrderStatusKey | null): void {
-    updateUrl(applyFilterPatch(query, { status: value }));
+  // AntD `<Select allowClear>` passes `undefined` (not `null`) on clear, so
+  // the signature must accept it. Normalise to `null` for the URL helper
+  // so the contract `OrdersAdminFilters.status: OrderStatusKey | null`
+  // stays honest.
+  function onStatusChange(value: OrderStatusKey | null | undefined): void {
+    updateUrl(applyFilterPatch(query, { status: value ?? null }));
   }
 
   function onSearchChange(value: string): void {
@@ -259,7 +272,12 @@ export default function AdminOrdersPage() {
           <Input.Search
             placeholder="Поиск: № заказа, email, имя"
             allowClear
-            defaultValue={query.search ?? ''}
+            // Controlled by local draft state — URL (and the request) only
+            // updates on explicit submit (Enter / search button / clear).
+            // The useEffect above syncs draft ← URL so external URL
+            // changes (Reset, back/forward) clear the textbox correctly.
+            value={searchDraft}
+            onChange={(e) => setSearchDraft(e.target.value)}
             onSearch={onSearchChange}
             style={{ width: 280 }}
           />
@@ -286,7 +304,7 @@ export default function AdminOrdersPage() {
           rowKey="id"
           dataSource={data?.items ?? []}
           columns={columns}
-          loading={isLoading || isFetching}
+          loading={isFetching}
           onChange={onTableChange}
           pagination={{
             current: query.page,
