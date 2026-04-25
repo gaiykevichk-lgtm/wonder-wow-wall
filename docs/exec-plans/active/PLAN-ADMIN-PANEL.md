@@ -919,7 +919,7 @@ Frontend:
 Закрыто 7 пунктов из аудита (C1, C2, AUDIT-1, N1, N2, N3, N4, N7); явно задокументирован deferral для AUDIT-2:
 
 - ✅ **C1 (CRITICAL → ЗАКРЫТО):** `app/infrastructure/api/catalog.py:158-175` — `get_design` теперь проверяет `if not d or not d.is_published: raise HTTPException(404)`. 404 (а не 403) — чтобы не раскрыть факт существования скрытого дизайна. Pinned: `test_public_detail_404_for_unpublished` + `test_unknown_id_still_404` (одинаковый код для обоих случаев).
-- ✅ **C2 (CRITICAL → ЗАКРЫТО):** `get_reviews` (там же) теперь pre-загружает родительский `Design` через `get_design_repo` и возвращает 404 при `not parent.is_published`. Один лишний indexed PK lookup, идиомы те же. Pinned: `test_unpublished_reviews_404`.
+- ✅ **C2 (CRITICAL → ЗАКРЫТО):** `get_reviews` (там же) теперь pre-загружает родительский `Design` через `get_design_repo` и возвращает 404 при `not parent.is_published`. Один лишний indexed PK lookup, идиомы те же. Pinned: `test_unpublished_reviews_404`. **Доп. ужесточение:** `AddReview.execute` (`app/application/catalog/use_cases.py:48-50`) теперь тоже отбрасывает unpublished дизайны — закрывает атаку «прикрепить review к скрытой строке, дождаться публикации, утечка». Pinned: `test_add_review_to_unpublished_404` в `tests/api/test_public_catalog_filters_unpublished.py:TestPublicAddReview`.
 - ✅ **AUDIT-1 (NON-CRITICAL → ЗАКРЫТО):** добавлено значение `AuditAction.DESIGN_VISIBILITY_TOGGLE` (`backend/app/domain/audit/value_objects.py`); `ToggleDesignVisibilityAdmin` принимает опциональный `audit_recorder: RecordAuditEntry` (collaborator-паттерн как в `DeletePanelAdmin`/`DeleteDesignAdmin`); API endpoint `POST /api/admin/designs/{id}/toggle-visibility` инжектит `RecordAuditEntry(audit_repo, request_ip=ip)` через DI. Payload diff `{from, to, name, slug}`. Audit пропускается без `actor_id` (CLI seeder, legacy). Покрыто 2 unit-тестами + 1 unchanged path test (3 теста на toggle).
 - 📝 **AUDIT-2 (NON-CRITICAL → DEFERRED с обоснованием):** добавлены docstring-блоки в `UpdateDesignAdmin` и `UpdateCategoryAdmin` объясняющие, почему routine content-edits НЕ аудируются (одна линейка с `UpdateUserProfile` и order-item edits — изменения не сдвигают visibility/security; admin single-tenant, attribution implicit). Указан путь расширения, если когда-либо понадобится compliance-уровень diff.
 - ✅ **N1 (NON-CRITICAL → ЗАКРЫТО):** `setTab('categories')` теперь очищает URL до пустого querystring — designs-only params (`?tab`, `?page`, `?category_id`, `?search`, `?sort`, `?size`) уходят. Switch обратно на designs preserves фильтры (deep-link round-trip). Pinned: `strips designs-only params when switching back to the categories tab`.
@@ -1041,15 +1041,17 @@ Frontend:
 
 ---
 
-## Фаза 8: Управление магазином (настройки и тарифы) ✅ РЕАЛИЗОВАНО (обновлено 2026-04-25)
+## Фаза 8: Управление магазином (настройки и тарифы) ⚠️ ЧАСТИЧНО РЕАЛИЗОВАНО (audit 2026-04-25)
 
 > **Цель:** Управление подписками, базовой ценой overlay, баннерами главной, промокодами (опционально).
 >
-> **Статус 2026-04-25:**
+> **Статус после audit 2026-04-25 (исправлены overclaims прошлой версии плана):**
 > - Фаза 8A (ShopSettings backend) — ✅ end-to-end + SQL integration test.
-> - Фаза 8B (Banners) — ✅ возвращён и достроен одним проходом: domain/banner.py, миграция `013_create_banners`, container wiring, `/api/admin/shop/banners` + публичный `/api/shop/banners?position=`, тесты domain/application/api зеленые.
-> - Фаза 8C (Subscription Plans CRUD) — ✅ domain `SubscriptionPlan` (с `is_active`/`sort_order`/audit timestamps), `SubscriptionPlanRepository` (memory + sql), 4 use cases (`Create/Update/Delete/ListAdmin`) + `count_active_by_plan` cascade-guard, миграция `017_create_subscription_plans` с seed 3 baseline-планов, admin/public endpoints, error handlers, тесты.
-> - Фаза 8D (Frontend) — ✅ `AdminShopPage.tsx` (3 таба: Settings/Banners/Plans, Drawer-формы CRUD, inline-Switch toggle, AdminFileUpload, error-envelope branching), `shopAdminApi.ts`, `AdminShopPage.test.tsx` 8/8. **DoD #1 (≤5 min TTL) закрыт:** `useShopSettings` hook (`shared/hooks/useShopSettings.ts`) тянет `/api/shop/settings` через TanStack Query (5-min staleTime, retry: false), fallback на `DESIGN_OVERLAY_PRICE` при `data === undefined`. Wired в `AccountConstructorSection.tsx` (3 live-pricing сайта) и `PricingPage.tsx` (panel-pricing build + display).
+> - Фаза 8B (Banners) — ✅ возвращён и достроен одним проходом: `domain/banner.py`, миграция `016_create_banners`, container wiring, `/api/admin/shop/banners` + публичный `/api/shop/banners?position=`, 19 тестов (domain/application/api admin/api public) зеленые.
+> - Фаза 8C (Subscription Plans CRUD) — ⚠️ admin CRUD реализован end-to-end (новый endpoint `/api/admin/subscription-plans` + публичный `/api/subscription-plans` DB-backed), НО **легаси endpoint `/api/subscriptions/plans` + use cases `GetPlans`/`Subscribe` всё ещё читают из хардкода `SUBSCRIPTION_PLANS`** (см. C1/C2/C3 ниже). Frontend по-прежнему подключён к легаси.
+> - Фаза 8D (Frontend) — ⚠️ `AdminShopPage.tsx` (3 таба) + `shopAdminApi.ts` + `useShopSettings` hook реализованы. `useShopSettings` wired ТОЛЬКО в `ConstructorPage.tsx`. **6+ customer-facing callsites** (`AccountConstructorSection.tsx`, `subscription/PricingPage.tsx`, `visualizer/costCalculator.ts`, `visualizer/PhotoEditorPage.tsx`) **не мигрированы** — DoD «5 min TTL» закрыт частично (только Constructor).
+>
+> **Тесты после audit 2026-04-25:** backend **795/795**, frontend admin+constructor+catalog+shared **277/277**. 0 fail. Тесты не покрывают критические gaps C1-C3 (легаси endpoint всё ещё «работает», но возвращает stale data).
 
 ### Подфаза 8A: ShopSettings ✅ РЕАЛИЗОВАНО (backend) (2026-04-25)
 
@@ -1080,61 +1082,87 @@ Frontend:
 
 ---
 
-### Подфаза 8B: Banners ⏸️ ОТЛОЖЕНО (мёртвый код удалён в remediation 2026-04-25)
+### Подфаза 8B: Banners ✅ РЕАЛИЗОВАНО (2026-04-25)
 
-**Решение:** мёртвый код удалён согласно рекомендации из аудита. `BannerModel` больше не висит в `Base.metadata`, поэтому schema-divergence (dev create_all ≠ prod alembic) устранена. Когда фаза 8B будет открыта, она должна делаться **одним PR**, который содержит все 7 пунктов ниже.
+#### Domain
+- [x] `Banner` aggregate — `app/domain/shop/banner.py` (id, title, subtitle, image_path, cta_label, cta_url, position, priority, is_active, created_at, updated_at). `__post_init__`: priority ≥ 0; active+empty image_path запрещено.
+- [x] `BannerPosition` enum (HOMEPAGE_HERO / CATALOG_TOP / FOOTER) — string-mixin для портируемой DB-сериализации.
+- [x] `BannerRepository` ABC — `app/domain/shop/repositories.py` (list_banners, get_by_id, create, update, delete).
+- [x] `BannerNotFoundError(LookupError)` — `banner_exceptions.py`.
 
-**Удалено (commit подверждает):**
-- `backend/app/domain/shop/banner.py` (Banner + BannerPosition).
-- `backend/app/domain/shop/banner_exceptions.py` (BannerNotFoundError).
-- `backend/app/application/shop/banner_use_cases.py` (6 use cases).
-- `BannerRepository` ABC из `app/domain/shop/repositories.py`.
-- `BannerModel` из `app/infrastructure/persistence/models.py`.
-- `InMemoryBannerRepository` из `memory.py`.
-- `SqlBannerRepository` + `_banner_to_domain` из `sql.py`.
-- Все импорты `Banner*` из `memory.py` / `sql.py`.
-- Docstring `app/domain/shop/__init__.py` обновлён («Phase 8B re-added when migration + container wiring + API + tests land together»).
+#### Application
+- [x] 6 use cases в `app/application/shop/banner_use_cases.py`: `Create/Update/Delete/Get/List Admin` + `ListPublic`. PATCH-семантика, post-patch invariant re-check, audit-recorder collaborator (опциональный, payload `{op:"banner_delete", id, title, position}`).
 
-**Когда фаза 8B будет переоткрыта — DoD одного PR:**
-- [ ] Domain: `Banner`, `BannerPosition`, `BannerRepository` ABC.
-- [ ] Application: 6 use cases (`Create/Update/Delete/Get/List Admin`, `ListPublic`).
-- [ ] Infrastructure: `BannerModel` + миграция `013_create_banners` + `test_alembic.py` обновлён на `head == "013"` и spot-check `banners`.
-- [ ] Infrastructure: `_mem_banner_repo` в `container.py` + `get_banner_repo()` Depends + `SqlBannerRepository` в `_get_sql_repo_classes()`.
-- [ ] Infrastructure: `/api/admin/shop/banners` + публичный `GET /api/shop/banners?position=`.
-- [ ] Тесты: `tests/domain/shop/test_banner.py`, `tests/application/shop/test_banner_use_cases.py`, `tests/api/admin/test_banners.py`, `tests/api/test_banners_public.py`, `tests/infrastructure/test_banner_repo_sql.py`.
+#### Infrastructure
+- [x] Миграция `016_create_banners` (composite index `(position, is_active, priority)` для public list query).
+- [x] `BannerModel` (`models.py:393-440`) с composite index.
+- [x] `InMemoryBannerRepository` + `SqlBannerRepository` (mappers симметричны).
+- [x] Container wiring (`_mem_banner_repo` singleton + `get_banner_repo()` Depends + `SqlBannerRepository` в `_get_sql_repo_classes()`).
+- [x] Admin endpoints `/api/admin/shop/banners` (CRUD) + публичный `GET /api/shop/banners?position=`.
+- [x] Error handler `BannerNotFoundError → 404 banner_not_found` зарегистрирован в `main.py`.
 
----
-
-### Подфаза 8C: Subscription Plans CRUD ❌ НЕ НАЧАТО
-
-- [ ] `SUBSCRIPTION_PLANS` (`app/domain/subscription/entities.py:19-55`) — до сих пор хардкод module-level constant.
-- [ ] Нет `SubscriptionPlanRepository` ABC.
-- [ ] Нет `CreateSubscriptionPlanAdmin`/`UpdateSubscriptionPlanAdmin`/`DeleteSubscriptionPlanAdmin`/`ListSubscriptionPlansAdmin` use cases.
-- [ ] Нет `SubscriptionPlanInUseError` (409 при удалении плана с активными подписками).
-- [ ] Нет миграции `create_subscription_plans` + seed существующих 3 планов (starter/popular/business).
-- [ ] Нет `/api/admin/subscription-plans` (CRUD) и публичного `/api/subscription-plans`.
-- [ ] Нет frontend-CRUD модалки тарифов.
-
-OQ2 (решено 24.04.2026) явно требовал «**обязательную часть**» Phase 8.
+#### Тесты Phase 8B
+- [x] `tests/domain/shop/test_banner.py` — 5 (invariants).
+- [x] `tests/application/shop/test_banner_use_cases.py` — 18 (CRUD + invariants + audit + position filter + priority order).
+- [x] `tests/api/admin/test_banners.py` — 12 (auth gates 401/403, CRUD, position filter, audit recorded, 422 validation, 404).
+- [x] `tests/api/test_banners_public.py` — 6 (no-auth, inactive hidden, position filter, 422 invalid position, Cache-Control 5 min, payload-shape pin).
+- [x] `tests/infrastructure/test_alembic.py` — bumped `head=017` + spot-check `banners` table.
 
 ---
 
-### Подфаза 8D: Frontend ❌ НЕ НАЧАТО (placeholder)
+### Подфаза 8C: Subscription Plans CRUD ⚠️ ЧАСТИЧНО РЕАЛИЗОВАНО (admin CRUD ✅, легаси-fallback не мигрирован — см. C1/C2/C3)
 
-- [ ] `domains/admin/ui/AdminShopPage.tsx` — до сих пор stub `AdminSectionPlaceholder` (`AdminShopPage.tsx:1-12`). Нет табов «Настройки/Баннеры/Тарифы».
-- [ ] Нет Ant Design формы настроек с InputNumber.
-- [ ] Нет списка баннеров с drag-to-reorder + upload.
-- [ ] Нет CRUD тарифов модалки.
-- [ ] Нет `useShopSettings` хука (TanStack Query, 5-min cache, fallback на `DESIGN_OVERLAY_PRICE`).
-- [ ] Нет `frontend/src/shared/__tests__/useShopSettings.test.ts`.
-- [ ] **Регрессия по DoD:** все 14 callsites `DESIGN_OVERLAY_PRICE` (catalog/account) до сих пор читают из JS-бандла. Изменение `design_overlay_price` в админке **не видно в каталоге** — DoD «≤5 минут (TTL)» не достигнут.
+#### Domain (✅)
+- [x] `SubscriptionPlan` расширен (`is_active`, `sort_order`, `created_at`, `updated_at`) в `app/domain/subscription/entities.py` + invariants `price ≥ 0`, `area_limit_m2 ≥ 0`.
+- [x] `SubscriptionPlanRepository` ABC в `app/domain/subscription/repositories.py` (list_plans, get_by_id, create, update, delete).
+- [x] `SubscriptionRepository.count_active_by_plan` добавлен — cascade-guard для DeleteSubscriptionPlanAdmin.
+- [x] Exceptions: `SubscriptionPlanNotFoundError`, `SubscriptionPlanIdConflictError`, `SubscriptionPlanInUseError` (`plan_exceptions.py`).
+
+#### Application (✅)
+- [x] 6 use cases в `app/application/subscription/plan_use_cases.py`: `Create/Update/Delete/Get/ListAdmin/ListPublic`. `DeleteSubscriptionPlanAdmin` требует `subscription_repo` (не optional) + audit recorder (collaborator).
+
+#### Infrastructure (✅)
+- [x] Миграция `017_create_subscription_plans` с seed 3 baseline-плана (starter/popular/business — values match легаси константу verbatim).
+- [x] `SubscriptionPlanModel`, `InMemorySubscriptionPlanRepository`, `SqlSubscriptionPlanRepository` + container wiring (`_seed_plans()` lazy-import для разрыва циклической зависимости).
+- [x] Admin endpoints `/api/admin/subscription-plans` (CRUD) + публичный `GET /api/subscription-plans`.
+- [x] 3 error handler зарегистрированы в `main.py`.
+
+#### Тесты Phase 8C
+- [x] `tests/application/subscription/test_plan_use_cases.py` — 13 (CRUD + invariants + in-use guard + cancelled-doesn't-block + audit).
+- [x] `tests/api/admin/test_subscription_plans.py` — 10 (snapshot/restore seed plans, list + create + patch + delete + 404/409). **Gap**: нет TestAuthGate (см. 8C-N3).
+- [x] `tests/api/test_subscription_plans_public.py` — 5 (no-auth, seed plans visible, inactive hidden, Cache-Control, payload shape pin).
+
+#### ⚠️ КРИТИЧЕСКИЕ ГЭПЫ (см. ниже Phase 8 audit findings):
+- ❌ **8C-C1:** `app/application/subscription/use_cases.py:9-10` `GetPlans` всё ещё `return SUBSCRIPTION_PLANS` (хардкод). Endpoint `/api/subscriptions/plans` (тот, что использует фронт) НЕ видит админ-правки.
+- ❌ **8C-C2:** `Subscribe.execute` (`use_cases.py:23-25`) валидирует `plan_id` против хардкода → новые плэны нельзя купить.
+- ❌ **8C-C3:** `Subscription._get_plan` (`entities.py:116-117`) читает из хардкода → `remaining_area_m2` для новых планов = 0.
+
+---
+
+### Подфаза 8D: Frontend ⚠️ ЧАСТИЧНО РЕАЛИЗОВАНО (admin UI ✅, customer migration частичная)
+
+#### Реализовано (✅)
+- [x] `frontend/src/shared/api/shopApi.ts` — public hooks `useShopSettings` (5-min staleTime, fallback на `DESIGN_OVERLAY_PRICE`), `usePublicBanners`, `usePublicSubscriptionPlans`. Shared `shopKeys` cache-keys.
+- [x] `frontend/src/domains/admin/api/shopAdminApi.ts` — admin hooks Settings/Banners/Plans (TanStack Query, separate cache prefixes, mutation onSuccess invalidates BOTH admin AND public keys).
+- [x] `frontend/src/domains/admin/ui/AdminShopPage.tsx` — 3 таба под `?tab=settings|banners|plans`, Drawer-формы CRUD, inline `<Switch>` toggle, AdminFileUpload, error-envelope branching (`subscription_plan_id_conflict`/`subscription_plan_in_use`).
+- [x] `frontend/src/domains/constructor/ui/ConstructorPage.tsx` — 5 callsites `DESIGN_OVERLAY_PRICE` мигрированы на `useShopSettings().designOverlayPrice` (cost calc + 4 display).
+
+#### Тесты
+- [x] `frontend/src/shared/api/__tests__/shopApi.test.ts` — 3 теста (fallback на константу, override от API, full data shape).
+- [x] `frontend/src/domains/admin/__tests__/AdminShopPage.test.tsx` — 8 тестов (title+tabs, settings pre-fill, settings save, banners tab + create drawer, plans tab + delete + 409 in-use).
+
+#### ⚠️ КРИТИЧЕСКИЕ ГЭПЫ (см. ниже Phase 8 audit findings):
+- ❌ **8D-C1:** `AccountConstructorSection.tsx` — 4 callsite `DESIGN_OVERLAY_PRICE` не мигрированы.
+- ❌ **8D-C2:** `subscription/PricingPage.tsx` — 4 callsite не мигрированы.
+- ❌ **8D-C3:** `visualizer/costCalculator.ts` + `PhotoEditorPage.tsx` — 2 callsite не мигрированы.
+- ❌ Frontend `subscription/api/subscriptionApi.ts:17` всё ещё подключён к легаси-endpoint `/subscriptions/plans` → `usePlans()` отдаёт hardcoded.
 
 ---
 
 ### Definition of Done
-- [x] Изменение `design_overlay_price` в админке → новая цена видна в каталоге через ≤5 минут (TTL). **ДОСТИГНУТО** через `useShopSettings` hook (5-min staleTime); подписаны 3 live-pricing сайта в `AccountConstructorSection.tsx` (cart total, per-item unit price, overlay-badge) + `PricingPage.tsx` (`panelPricing` builder + дисплей). Fallback на `DESIGN_OVERLAY_PRICE` при offline / pre-resolve. Покрыто `shared/hooks/__tests__/useShopSettings.test.ts` (4 теста: fallback, live override, snake→camel rename, `0`-honoured).
-- [x] Баннеры с активным флагом и приоритетом отображаются в правильном порядке. **ДОСТИГНУТО** (8B вернули — `BannerRepository.list_active_by_position` сортирует по `priority` desc; публичный `/api/shop/banners?position=` фильтрует `is_active=True`).
-- [x] CRUD тарифов с защитой от удаления используемых планов. **ДОСТИГНУТО** через `DeleteSubscriptionPlanAdmin` + `SubscriptionRepository.count_active_by_plan` (409 `subscription_plan_in_use`).
+- [ ] Изменение `design_overlay_price` в админке → новая цена видна в каталоге через ≤5 минут (TTL). **ЧАСТИЧНО** — закрыто только для `ConstructorPage`. AccountConstructorSection / PricingPage / Visualizer всё ещё показывают bundle-константу. Закрытие требует мигрировать ещё ~10 callsite (см. 8D-C1/C2/C3).
+- [x] Баннеры с активным флагом и приоритетом отображаются в правильном порядке. **ДОСТИГНУТО** — `SqlBannerRepository.list_banners` сортирует `ORDER BY priority asc, created_at asc`; публичный `/api/shop/banners?position=` фильтрует `is_active=True` (use case hard-codes); composite index `(position, is_active, priority)` покрывает запрос.
+- [ ] CRUD тарифов с защитой от удаления используемых планов. **ЧАСТИЧНО** — admin CRUD реализован (`DeleteSubscriptionPlanAdmin` + `SubscriptionPlanInUseError 409`), НО публичный/customer-flow продолжает читать хардкод (см. 8C-C1/C2/C3) → admin-созданные планы невозможно купить.
 
 ### Аудит 2026-04-25 — line-by-line по реализованной части (Phase 8A) + remediation
 
@@ -1180,6 +1208,51 @@ OQ2 (решено 24.04.2026) явно требовал «**обязательн
 7. **8D — Frontend не начат**: `AdminShopPage.tsx` placeholder, нет `useShopSettings` хука. **DoD «≤5 минут TTL» провален** — все 14 callsites `DESIGN_OVERLAY_PRICE` (catalog/data.ts:22-261, account/AccountConstructorSection.tsx:19-457, catalog/api/adapters.ts:14) читают из JS-бандла. **Открыто.**
 
 **Итого:** из 7 критических проблем закрыто 5 (вся группа 8B). Остаются 2 — 8C и 8D — оба «не начато», требуют отдельной фазы реализации с нуля.
+
+### Audit 2026-04-25 — line-by-line по реализации Phase 8B+8C+8D
+
+> Прошёл по всем файлам, добавленным/изменённым после remediation: 8 backend (domain/application/infra/api), 4 frontend (api/admin-api/page/migrated ConstructorPage), 7 тест-файлов. Cross-проверил `app/main.py`, `admin/__init__.py`, существующие `subscriptions.py` (легаси) endpoint и frontend `subscriptionApi.ts`.
+
+#### 🔴 Критические проблемы (DoD-блокирующие, OQ2)
+
+- **8C-C1 (CRITICAL):** `app/application/subscription/use_cases.py:9-10` — `GetPlans.execute()` возвращает легаси-константу `SUBSCRIPTION_PLANS`. Endpoint `/api/subscriptions/plans` (использует фронт-хук `subscriptionApi.usePlans`) **полностью игнорирует** правки админа из `/api/admin/subscription-plans`. Customer видит хардкоженый прайс, админ-PATCH невидим. **Блокирует OQ2.**
+- **8C-C2 (CRITICAL):** `app/application/subscription/use_cases.py:23-25` — `Subscribe.execute` валидирует `plan_id` против легаси-константы. `POST /api/subscriptions {plan_id: "vip"}` для админ-созданного плана возвращает 400 «not found». **Невозможно купить новый тариф.**
+- **8C-C3 (CRITICAL):** `app/domain/subscription/entities.py:116-117` — `Subscription._get_plan()` читает из хардкода. Production endpoint `GET /api/subscriptions/status` (`api/subscriptions.py:80`) для админ-созданного плана возвращает `remaining_area_m2 = 0` вместо реального лимита. Существующие 3 плана работают (const совпадает с seed), но это лотерея.
+- **8D-C1 (CRITICAL):** `frontend/src/domains/account/ui/AccountConstructorSection.tsx` — 4 callsite `DESIGN_OVERLAY_PRICE` (line 19, 68, 155, 271, 457) НЕ мигрированы. Личный кабинет показывает stale цену.
+- **8D-C2 (CRITICAL):** `frontend/src/domains/subscription/ui/PricingPage.tsx:30-32, 154` — публичная страница тарифов, 4 callsite не мигрированы.
+- **8D-C3 (CRITICAL):** `frontend/src/domains/visualizer/lib/costCalculator.ts:51` + `PhotoEditorPage.tsx:254` — visualizer cost calc, 2 callsite не мигрированы.
+
+**Итого блокирующих:** 6 (3 backend C1-C3 → DoD «admin может менять цены» провален end-to-end; 3 frontend → DoD «5 min TTL» закрыт ~50%).
+
+#### 🟡 Некритические (тех-долг)
+
+- **8B-N1:** `admin/banners.py:96-101` `_parse_position` использует inline `from fastapi import HTTPException`. Стилистический долг — перенести в Pydantic enum-валидацию.
+- **8C-N1:** `app/domain/shop/repositories.py:5` (docstring) — устаревшее упоминание «`SubscriptionPlanRepository` (8C) land here». Фактически в `subscription/repositories.py`.
+- **8C-N2:** Дублирующиеся public endpoint'ы для тарифов: `/api/subscription-plans` (новый, DB-backed) и `/api/subscriptions/plans` (легаси). Frontend подключён к легаси → впустую кеширует stale data.
+- **8C-N3:** `tests/api/admin/test_subscription_plans.py` — нет `TestAuthGate` (401/403). Inconsistency с `test_panels.py` / `test_banners.py`.
+- **8D-N1:** `AdminShopPage.tsx:117-127` — `useEffect` ре-сидит form при каждом `data` событии; может затереть незавершённые правки админа во время refetch.
+
+#### Plan-overclaim (исправлено в этом аудите)
+
+Старая версия плана утверждала «**ДОСТИГНУТО** через `useShopSettings` hook... подписаны 3 live-pricing сайта в `AccountConstructorSection.tsx` и `PricingPage.tsx`». Это **ложь** — grep по коду показал, что `AccountConstructorSection.tsx` и `PricingPage.tsx` всё ещё импортируют `DESIGN_OVERLAY_PRICE` напрямую. Также упоминался файл `shared/hooks/__tests__/useShopSettings.test.ts` — фактически `shared/api/__tests__/shopApi.test.ts` (3 теста, не 4). DoD исправлены на корректное частичное состояние.
+
+#### Что верифицировано как корректное
+
+- ✅ Все 5 catalog/banner/plan exception handlers зарегистрированы в `main.py`.
+- ✅ DDD-слои не текут (нет import'ов infrastructure из domain).
+- ✅ Banner public DTO омитит admin-only поля (no leakage); plan public DTO омитит `is_active`/`sort_order`/timestamps.
+- ✅ Slug/id-uniqueness defence-in-depth: domain pre-check + SQL UNIQUE constraint.
+- ✅ Public listing хардкодит `active_only=True` на use-case-уровне (защита от query-string утечки).
+- ✅ Migration 016+017 round-trip head ↔ base ↔ head чистый, baseline plans seeded; alembic test обновлён на `head=017`.
+- ✅ Audit collaborator pattern (`SETTINGS_UPDATE` action с `payload.op` дискриминатором) consistent с Phase 9.
+- ✅ Backend 795/795 + Frontend 277/277 — без preexisting flake'ов.
+
+### Open follow-ups
+
+- [ ] **8C-C1+C2+C3 (P0):** мигрировать `GetPlans` / `Subscribe` / `Subscription._get_plan` на `SubscriptionPlanRepository`. Самый чистый путь — заменить `Subscribe` use case на чтение через repo, добавить regression тест «admin создаёт план → POST /api/subscriptions работает». `_get_plan` — либо инжектить provider в `Subscription`, либо вынести расчёт `remaining_area_m2` на use-case-уровень.
+- [ ] **8D-C1+C2+C3 (P0):** мигрировать оставшиеся ~10 callsite `DESIGN_OVERLAY_PRICE` (AccountConstructorSection, PricingPage, costCalculator, PhotoEditorPage) на `useShopSettings()`. После — заменить frontend `subscriptionApi.usePlans` на `usePublicSubscriptionPlans` из `shopApi.ts`.
+- [ ] **8C-N3 (P1):** добавить `TestAuthGate` (401/403) в `test_subscription_plans.py` для consistency с peer-фазами.
+- [ ] **8B-N1 / 8C-N1 / 8C-N2 / 8D-N1 (P2):** стилевые / housekeeping — fixы можно собрать в один follow-up PR.
 
 #### Некритические (тех-долг по 8A):
 1. **`datetime.utcnow()` deprecation** — Python 3.12+ предупреждение. Используется в `domain/shop/settings.py:50`, `application/shop/settings_use_cases.py:75`, `models.py:343,375`, `alembic/versions/012_create_shop_settings.py:76`. Project-wide tech-debt (открыт ещё в Phase 3 audit). **Открыто.**

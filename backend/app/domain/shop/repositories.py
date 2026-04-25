@@ -1,8 +1,14 @@
 """Phase 8 — repository ABCs for the Shop bounded context.
 
-`ShopSettingsRepository` (8A) is a singleton-row repo with a slim
-interface (`get`/`update`). `BannerRepository` (8B) and
-`SubscriptionPlanRepository` (8C) land here when those phases ship.
+* `ShopSettingsRepository` (8A) — singleton-row repo (`get`/`update`).
+* `BannerRepository` (8B) — homepage promo CRUD.
+
+Note: `SubscriptionPlanRepository` lives in
+`app/domain/subscription/repositories.py` (not here) because the
+existing `Subscription` aggregate already references plans by `plan_id`
+and the legacy `SUBSCRIPTION_PLANS` constant lived in the same module.
+Keeping the plan repo next to the entity preserves the bounded-context
+boundary.
 """
 from __future__ import annotations
 

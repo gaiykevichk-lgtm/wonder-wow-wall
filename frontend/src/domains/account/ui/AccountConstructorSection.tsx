@@ -16,7 +16,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import { products } from '../../catalog/model/data';
-import { PANEL_SIZES, BASE_PANEL_PRICES, DESIGN_OVERLAY_PRICE } from '../../../shared/config/constants';
+import { PANEL_SIZES, BASE_PANEL_PRICES } from '../../../shared/config/constants';
 import { useShopSettings } from '../../../shared/hooks/useShopSettings';
 import { useSubscriptionStore } from '../../subscription/model/subscriptionStore';
 import { useCartStore } from '../../order/model/cartStore';
@@ -63,9 +63,12 @@ const SIZE_OPTIONS: { key: PanelSizeKey; label: string; wCells: number; hCells: 
 const ACCENT = '#4CAF50';
 const DARK = '#2D2D2D';
 
-function getPanelPrice(sizeKey: string): number {
+// Phase 8D — accepts the live overlay price (`useShopSettings` is a
+// hook, can't be called inside this top-level helper). Callers pass
+// the value resolved at the component layer.
+function getPanelPrice(sizeKey: string, overlayPrice: number): number {
   const baseKey = sizeKey === '30x30' ? '300x300' : sizeKey === '30x60' ? '300x600' : '600x600';
-  return (BASE_PANEL_PRICES[baseKey] || 0) + DESIGN_OVERLAY_PRICE;
+  return (BASE_PANEL_PRICES[baseKey] || 0) + overlayPrice;
 }
 
 function cellsOverlap(

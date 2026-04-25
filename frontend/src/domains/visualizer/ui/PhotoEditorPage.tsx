@@ -26,7 +26,8 @@ import { segmentScene, isSegmentationSupported } from '../lib/segmentationServic
 import { createOpencvLsdProvider, prefetchOpenCV } from '../lib/opencvLsdAdapter';
 import { createOnnxReferenceDetector } from '../lib/referenceDetector';
 import { defaultCvWorkerHost } from '../lib/cvWorkerHost';
-import { BASE_PANEL_PRICES, DESIGN_OVERLAY_PRICE } from '../../../shared/config/constants';
+import { BASE_PANEL_PRICES } from '../../../shared/config/constants';
+import { useShopSettings } from '../../../shared/hooks/useShopSettings';
 import { products } from '../../catalog/model/data';
 import { PhotoUploader } from './PhotoUploader';
 import { WallCanvas } from './WallCanvas';
@@ -53,6 +54,10 @@ export default function PhotoEditorPage() {
   // stage today, so the re-render churn is not yet user-visible.
   const store = useVisualizerStore();
   const hasSubscription = useSubscriptionStore((s) => s.hasSubscription);
+  // Phase 8D — live overlay price from /api/shop/settings (5-min cache,
+  // fallback to legacy DESIGN_OVERLAY_PRICE constant). Drives both the
+  // cart-item builder and (via store.recalculateCost) the cost panel.
+  const { designOverlayPrice } = useShopSettings();
   const addCartItem = useCartStore((s) => s.addItem);
   const setCartOpen = useCartStore((s) => s.setOpen);
   const [uploading, setUploading] = useState(false);
@@ -96,11 +101,14 @@ export default function PhotoEditorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store.selectedDesignId]);
 
-  // Recalculate cost on panel changes
+  // Recalculate cost on panel changes OR when the admin-edited overlay
+  // price arrives (Phase 8D — `designOverlayPrice` is part of the
+  // dependency array so a 5-min-stale settings refetch propagates into
+  // the cost panel without a manual recalc).
   useEffect(() => {
-    store.recalculateCost(hasSubscription());
+    store.recalculateCost(hasSubscription(), designOverlayPrice);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [store.layout.panels, hasSubscription]);
+  }, [store.layout.panels, hasSubscription, designOverlayPrice]);
 
   // Handle photo upload
   const handleUpload = useCallback(
@@ -251,7 +259,7 @@ export default function PhotoEditorPage() {
     const items = placedPanelsToCartItems(
       store.layout.panels,
       BASE_PANEL_PRICES,
-      DESIGN_OVERLAY_PRICE,
+      designOverlayPrice,
       hasSubscription(),
     );
 
@@ -261,7 +269,7 @@ export default function PhotoEditorPage() {
 
     setCartOpen(true);
     message.success(`Добавлено ${items.length} позиций в корзину`);
-  }, [store.layout.panels, hasSubscription, addCartItem, setCartOpen]);
+  }, [store.layout.panels, hasSubscription, addCartItem, setCartOpen, designOverlayPrice]);
 
   // Remove panel
   const handleRemovePanel = useCallback(

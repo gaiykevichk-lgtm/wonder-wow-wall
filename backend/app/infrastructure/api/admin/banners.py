@@ -15,7 +15,7 @@ Pydantic carries shape validation; domain invariants
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
 from app.application.audit.use_cases import RecordAuditEntry
@@ -93,7 +93,6 @@ def _parse_position(raw: str) -> BannerPosition:
     try:
         return BannerPosition(raw)
     except ValueError:
-        from fastapi import HTTPException
         raise HTTPException(
             status_code=422,
             detail=(

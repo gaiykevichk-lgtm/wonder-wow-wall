@@ -46,7 +46,11 @@ class AddReview:
 
     async def execute(self, design_id: str, user_id: str, user_name: str, rating: int, text: str) -> DesignReview:
         design = await self.design_repo.get_by_id(design_id)
-        if not design:
+        # Phase 7A C2 audit follow-up — treat unpublished designs as
+        # not-found here too. Without this, an attacker who knows a
+        # hidden UUID could attach reviews to it; once republished,
+        # those reviews would surface on the public detail page.
+        if not design or not design.is_published:
             raise ValueError(f"Design {design_id} not found")
 
         review = DesignReview(

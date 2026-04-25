@@ -114,4 +114,12 @@ class Subscription:
         return max(0.0, plan.area_limit_m2 - self.area_used_this_month_m2)
 
     def _get_plan(self) -> SubscriptionPlan | None:
+        # Phase 8C deprecation note: this lookup reads the hardcoded
+        # `SUBSCRIPTION_PLANS` constant which is no longer the source of
+        # truth (admin can edit plans via `SubscriptionPlanRepository`).
+        # The HTTP layer (`api/subscriptions._sub_response`) now uses
+        # `application.subscription.use_cases.compute_remaining_area_m2`
+        # which fetches a fresh plan from the repo, so this property is
+        # kept ONLY for legacy domain tests and CLI scripts that don't
+        # have repo access. Production read paths bypass it.
         return next((p for p in SUBSCRIPTION_PLANS if p.id == self.plan_id), None)

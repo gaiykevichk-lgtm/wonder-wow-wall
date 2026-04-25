@@ -13,7 +13,7 @@
  * URL is the source of truth for `?tab` so a deep-link survives F5.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Button,
@@ -112,16 +112,23 @@ interface SettingsFormValues {
 function SettingsTab({ data }: { data: ApiAdminShopSettings | undefined }) {
   const [form] = Form.useForm<SettingsFormValues>();
   const update = useUpdateShopSettings();
+  // Phase 8D-N1 audit fix — seed the form ONCE when the first data
+  // batch arrives. Refetches (e.g., another tab edits, 30s staleTime
+  // expires) MUST NOT clobber an admin's in-progress edits in this
+  // tab. After the user submits and the cache invalidates, the
+  // component remounts (or the user navigates away), so subsequent
+  // sessions still pick up the fresh values.
+  const seededRef = useRef(false);
 
-  // Re-seed form when fresh settings arrive (e.g., from another tab edit).
   useEffect(() => {
-    if (data) {
+    if (data && !seededRef.current) {
       form.setFieldsValue({
         design_overlay_price: data.design_overlay_price,
         installation_price: data.installation_price,
         min_order_amount: data.min_order_amount,
         recommendations_limit_per_source: data.recommendations_limit_per_source,
       });
+      seededRef.current = true;
     }
   }, [data, form]);
 

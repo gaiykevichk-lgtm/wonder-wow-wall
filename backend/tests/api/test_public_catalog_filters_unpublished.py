@@ -134,3 +134,25 @@ class TestPublicReviews:
     async def test_unknown_design_404(self, client):
         resp = await client.get("/api/designs/missing-id/reviews")
         assert resp.status_code == 404
+
+
+class TestPublicAddReview:
+    """Phase 7A C2 follow-up — POST `/api/designs/{id}/reviews` must
+    refuse to attach a review to an unpublished design. Closing this
+    at the use-case level means once the row is republished, reviews
+    that the attacker pre-seeded won't surface on the catalog page.
+    """
+
+    @pytest.mark.asyncio
+    async def test_add_review_to_unpublished_404(self, client):
+        d = _seed("hidden-for-review", is_published=False)
+        # Auth is required by the endpoint; a plain anonymous POST
+        # would 401 first. We exercise the authenticated path directly
+        # at the use-case level via the `AddReview` use case to keep
+        # this test focused on the visibility check.
+        from app.application.catalog.use_cases import AddReview
+        from app.container import _mem_review_repo
+
+        uc = AddReview(_mem_design_repo, _mem_review_repo)
+        with pytest.raises(ValueError):
+            await uc.execute(d.id, "u-1", "U", 5, "leak attempt")

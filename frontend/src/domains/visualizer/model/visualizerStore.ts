@@ -143,7 +143,13 @@ interface VisualizerState {
 
   // Cost
   cost: CostBreakdown;
-  recalculateCost: (hasSubscription: boolean) => void;
+  /**
+   * Phase 8D — `overlayPrice` made optional so existing callers (tests,
+   * the legacy `recalculateCost(hasSubscription)` shape) keep working
+   * with the constants fallback. New callers in production UI pass the
+   * live value from `useShopSettings().designOverlayPrice`.
+   */
+  recalculateCost: (hasSubscription: boolean, overlayPrice?: number) => void;
 
   // Persistence (API — explicit user action)
   getProjectPayload: () => Record<string, unknown> | null;
@@ -925,9 +931,9 @@ export const useVisualizerStore = create<VisualizerState>()(
 
   // Cost
   cost: { ...EMPTY_COST },
-  recalculateCost: (hasSubscription) => {
+  recalculateCost: (hasSubscription, overlayPrice) => {
     const panels = get().layout.panels;
-    set({ cost: calculateCost(panels, hasSubscription) });
+    set({ cost: calculateCost(panels, hasSubscription, overlayPrice) });
   },
 
   // ─── Phase 5C — backend autosave wiring ───────────────────────────
