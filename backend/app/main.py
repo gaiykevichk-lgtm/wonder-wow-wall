@@ -22,6 +22,10 @@ from app.domain.media.exceptions import (
     MediaInvalidMimeError,
     MediaTooLargeError,
 )
+from app.domain.catalog.panel_exceptions import (
+    PanelNotFoundError,
+    PanelSlugConflictError,
+)
 from app.infrastructure.api import auth, catalog, orders, subscriptions, projects, contacts, visualizer
 from app.infrastructure.api import admin as admin_api
 from app.infrastructure.api.error_handlers import (
@@ -34,6 +38,8 @@ from app.infrastructure.api.error_handlers import (
     media_invalid_mime_handler,
     media_too_large_handler,
     not_authorized_handler,
+    panel_not_found_handler,
+    panel_slug_conflict_handler,
     plane_fitting_handler,
     stale_scene_version_handler,
     user_blocked_handler,
@@ -78,6 +84,9 @@ app.add_exception_handler(MediaTooLargeError, media_too_large_handler)
 app.add_exception_handler(MediaInvalidMimeError, media_invalid_mime_handler)
 app.add_exception_handler(MediaInvalidDimensionsError, media_invalid_dimensions_handler)
 app.add_exception_handler(MediaCorruptError, media_corrupt_handler)
+# Phase 7B — admin panel CRUD: 404 on unknown id, 409 on slug conflict.
+app.add_exception_handler(PanelNotFoundError, panel_not_found_handler)
+app.add_exception_handler(PanelSlugConflictError, panel_slug_conflict_handler)
 
 # ─── Security Headers ──────────────────────────────────────────────
 app.add_middleware(SecurityHeadersMiddleware)

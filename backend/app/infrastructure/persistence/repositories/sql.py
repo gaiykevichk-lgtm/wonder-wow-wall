@@ -9,8 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.domain.catalog.entities import Design, Category, DesignReview
-from app.domain.catalog.repositories import DesignRepository, CategoryRepository, ReviewRepository
-from app.domain.catalog.value_objects import Color
+from app.domain.catalog.panel import Panel
+from app.domain.catalog.repositories import (
+    DesignRepository, CategoryRepository, ReviewRepository, PanelRepository,
+)
+from app.domain.catalog.value_objects import Color, PanelSize
 from app.domain.order.entities import Order, OrderItem, OrderNote
 from app.domain.order.filters import OrderFilters
 from app.domain.order.repositories import OrderRepository
@@ -38,6 +41,7 @@ from app.infrastructure.persistence.models import (
     UserAddressModel,
     ProjectModel,
     MediaAssetModel,
+    PanelModel,
 )
 
 
@@ -664,6 +668,131 @@ class SqlMediaAssetRepository(MediaAssetRepository):
     async def delete(self, asset_id: str) -> bool:
         result = await self._session.execute(
             select(MediaAssetModel).where(MediaAssetModel.id == asset_id)
+        )
+        row = result.scalar_one_or_none()
+        if row is None:
+            return False
+        await self._session.delete(row)
+        await self._session.flush()
+        return True
+
+
+# ─── Panels (Phase 7B) ──────────────────────────────────────────────
+
+
+def _panel_to_domain(m: PanelModel) -> Panel:
+    # Reconstruct the `PanelSize` VO from the three flat columns. Keeping
+    # `width_mm`/`height_mm` separate from `size_label` (rather than e.g.
+    # storing JSON) means SQL-level filtering by dimension is trivial if
+    # we ever need it.
+    size = PanelSize(
+        width_mm=m.width_mm,
+        height_mm=m.height_mm,
+        label=m.size_label,
+    )
+    return Panel(
+        id=m.id,
+        name=m.name,
+        slug=m.slug,
+        size=size,
+        base_price=m.base_price,
+        description=m.description or "",
+        photo_path=m.photo_path or "",
+        is_active=bool(m.is_active),
+        created_at=m.created_at,
+    )
+
+
+class SqlPanelRepository(PanelRepository):
+    """SQLAlchemy mirror of `InMemoryPanelRepository`.
+
+    Slug-uniqueness is enforced at the DB level via the UNIQUE index
+    declared in `PanelModel`. The use-case layer pre-checks for a
+    friendlier 409 → `PanelSlugConflictError`; if a concurrent insert
+    races past the pre-check, the IntegrityError surfaces as a 500 — same
+    posture as the rest of the repos in this file.
+    """
+
+    def __init__(self, session: AsyncSession):
+        self._session = session
+
+    async def list_panels(
+        self,
+        *,
+        include_inactive: bool = False,
+        offset: int = 0,
+        limit: int = 100,
+    ) -> tuple[list[Panel], int]:
+        query = select(PanelModel)
+        count_query = select(func.count()).select_from(PanelModel)
+        if not include_inactive:
+            query = query.where(PanelModel.is_active.is_(True))
+            count_query = count_query.where(PanelModel.is_active.is_(True))
+        total = int((await self._session.execute(count_query)).scalar_one())
+        query = (
+            query.order_by(desc(PanelModel.created_at))
+            .offset(offset)
+            .limit(limit)
+        )
+        rows = (await self._session.execute(query)).scalars().all()
+        return [_panel_to_domain(r) for r in rows], total
+
+    async def get_by_id(self, panel_id: str) -> Panel | None:
+        result = await self._session.execute(
+            select(PanelModel).where(PanelModel.id == panel_id)
+        )
+        row = result.scalar_one_or_none()
+        return _panel_to_domain(row) if row else None
+
+    async def get_by_slug(self, slug: str) -> Panel | None:
+        result = await self._session.execute(
+            select(PanelModel).where(PanelModel.slug == slug)
+        )
+        row = result.scalar_one_or_none()
+        return _panel_to_domain(row) if row else None
+
+    async def create(self, panel: Panel) -> Panel:
+        model = PanelModel(
+            id=panel.id,
+            name=panel.name,
+            slug=panel.slug,
+            width_mm=panel.size.width_mm,
+            height_mm=panel.size.height_mm,
+            size_label=panel.size.label,
+            base_price=panel.base_price,
+            description=panel.description,
+            photo_path=panel.photo_path,
+            is_active=panel.is_active,
+            created_at=panel.created_at,
+        )
+        self._session.add(model)
+        # `flush` (not `commit`) — request-scoped session commits on
+        # success; same UoW pattern as the other repos.
+        await self._session.flush()
+        return panel
+
+    async def update(self, panel: Panel) -> Panel:
+        result = await self._session.execute(
+            select(PanelModel).where(PanelModel.id == panel.id)
+        )
+        row = result.scalar_one_or_none()
+        if row is None:
+            raise LookupError(f"Panel {panel.id} not found")
+        row.name = panel.name
+        row.slug = panel.slug
+        row.width_mm = panel.size.width_mm
+        row.height_mm = panel.size.height_mm
+        row.size_label = panel.size.label
+        row.base_price = panel.base_price
+        row.description = panel.description
+        row.photo_path = panel.photo_path
+        row.is_active = panel.is_active
+        await self._session.flush()
+        return panel
+
+    async def delete(self, panel_id: str) -> bool:
+        result = await self._session.execute(
+            select(PanelModel).where(PanelModel.id == panel_id)
         )
         row = result.scalar_one_or_none()
         if row is None:

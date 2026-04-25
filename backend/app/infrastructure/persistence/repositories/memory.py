@@ -8,7 +8,10 @@ from typing import Callable
 from uuid import uuid4
 
 from app.domain.catalog.entities import Design, Category, DesignReview
-from app.domain.catalog.repositories import DesignRepository, CategoryRepository, ReviewRepository
+from app.domain.catalog.panel import Panel
+from app.domain.catalog.repositories import (
+    DesignRepository, CategoryRepository, ReviewRepository, PanelRepository,
+)
 from app.domain.order.entities import Order, OrderNote
 from app.domain.order.filters import OrderFilters
 from app.domain.order.repositories import OrderRepository
@@ -278,3 +281,67 @@ class InMemoryMediaAssetRepository(MediaAssetRepository):
         before = len(self._assets)
         self._assets = [a for a in self._assets if a.id != asset_id]
         return len(self._assets) != before
+
+
+# ─── Panels (Phase 7B) ──────────────────────────────────────────────
+
+class InMemoryPanelRepository(PanelRepository):
+    """List-backed mirror of `SqlPanelRepository`.
+
+    Defends the SQL UNIQUE(slug) constraint with an explicit collision
+    check in `create`/`update` so a test passing in-memory does not
+    surprise the postgres deployment. Same defence-in-depth pattern as
+    `InMemoryMediaAssetRepository.create` (Phase 6).
+    """
+
+    def __init__(self, panels: list[Panel] | None = None):
+        self._panels: list[Panel] = panels or []
+
+    async def list_panels(
+        self,
+        *,
+        include_inactive: bool = False,
+        offset: int = 0,
+        limit: int = 100,
+    ) -> tuple[list[Panel], int]:
+        rows = self._panels if include_inactive else [
+            p for p in self._panels if p.is_active
+        ]
+        # Newest-first matches the admin table default sort. Stable sort
+        # preserves insertion order for ties.
+        ordered = sorted(rows, key=lambda p: p.created_at, reverse=True)
+        total = len(ordered)
+        return ordered[offset:offset + limit], total
+
+    async def get_by_id(self, panel_id: str) -> Panel | None:
+        return next((p for p in self._panels if p.id == panel_id), None)
+
+    async def get_by_slug(self, slug: str) -> Panel | None:
+        return next((p for p in self._panels if p.slug == slug), None)
+
+    async def create(self, panel: Panel) -> Panel:
+        if any(p.slug == panel.slug for p in self._panels):
+            raise ValueError(f"Panel.slug collision: {panel.slug}")
+        self._panels.append(panel)
+        return panel
+
+    async def update(self, panel: Panel) -> Panel:
+        # Replace by id; raise if not present so callers can rely on the
+        # postcondition "the row I asked to update is now stored".
+        for i, p in enumerate(self._panels):
+            if p.id == panel.id:
+                # Defend slug-uniqueness across other rows; the use case
+                # already pre-checks but the repo enforces invariantly.
+                if any(
+                    other.slug == panel.slug and other.id != panel.id
+                    for other in self._panels
+                ):
+                    raise ValueError(f"Panel.slug collision: {panel.slug}")
+                self._panels[i] = panel
+                return panel
+        raise LookupError(f"Panel {panel.id} not found")
+
+    async def delete(self, panel_id: str) -> bool:
+        before = len(self._panels)
+        self._panels = [p for p in self._panels if p.id != panel_id]
+        return len(self._panels) != before

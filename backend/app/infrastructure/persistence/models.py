@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import String, Integer, Float, Boolean, DateTime, Text, ForeignKey, JSON, false
+from sqlalchemy import String, Integer, Float, Boolean, DateTime, Text, ForeignKey, JSON, false, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -291,3 +291,53 @@ class MediaAssetModel(Base):
     uploaded_by: Mapped[str] = mapped_column(String(36), nullable=False)
     purpose: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+# ─── Panels (Phase 7B) ──────────────────────────────────────────────
+
+class PanelModel(Base):
+    """Phase 7B — physical SKU mounted on the wall.
+
+    `slug` is UNIQUE because public catalog URLs use it (`/catalog/panels/
+    small-square`) and a duplicate would silently shadow the older row.
+    `width_mm` + `height_mm` are stored as plain ints (not a composite
+    type) so adding a new size never requires an enum migration; the
+    `PanelSize` VO at the domain layer enumerates which combinations the
+    constructor actually supports.
+
+    `photo_path` is a soft pointer to `media_assets.path` — no FK so
+    deleting a `MediaAsset` doesn't cascade-null the panel column (the
+    URL would 404 instead, which the admin UI already handles for
+    optimistic-deleted assets). Same trade-off as `OrderItemModel.
+    design_image`.
+
+    `is_active` defaults to True so a fresh `PanelModel()` is publishable
+    immediately. The admin un-checks it to hide a SKU without losing the
+    row (and any stats dashboards keyed on it).
+    """
+
+    __tablename__ = "panels"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=gen_uuid)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    slug: Mapped[str] = mapped_column(
+        String(120), unique=True, nullable=False, index=True,
+    )
+    width_mm: Mapped[int] = mapped_column(Integer, nullable=False)
+    height_mm: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Display label cached on the row so the public listing endpoint can
+    # render "30×60 см" without re-deriving the cm-formatted string from
+    # mm dimensions on every request. The admin form pre-fills it from
+    # the size picker; admins can override for special-case SKUs.
+    size_label: Mapped[str] = mapped_column(String(40), nullable=False, default="")
+    base_price: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    photo_path: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    # `default=True` covers `Base.metadata.create_all()` in the SQLite
+    # test rig; `server_default=true()` backfills production rows on
+    # `alembic upgrade` so the NOT NULL constraint is satisfied. Same
+    # pattern as `UserModel.is_blocked` (Phase 5).
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=true()
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from app.application.catalog.use_cases import ListDesigns, GetDesignDetails, ListCategories, AddReview, ListReviews
-from app.container import get_design_repo, get_category_repo, get_review_repo
+from app.application.catalog.panel_use_cases import ListPanelsPublic
+from app.container import get_design_repo, get_category_repo, get_review_repo, get_panel_repo
 from app.utils.dependencies import get_current_user_id, get_optional_user_id
 
 router = APIRouter()
@@ -56,6 +57,30 @@ class ReviewSchema(BaseModel):
 class AddReviewRequest(BaseModel):
     rating: int = Field(ge=1, le=5)
     text: str = Field(min_length=1, max_length=500)
+
+
+class PanelSchema(BaseModel):
+    """Phase 7B — public catalog panel SKU.
+
+    Mirrors `PanelResponse` in `admin/panels.py` so the frontend can
+    share the type. The two endpoints differ only in scope (admin sees
+    inactive panels too) — same payload shape.
+    """
+    id: str
+    name: str
+    slug: str
+    width_mm: int
+    height_mm: int
+    size_label: str
+    base_price: int
+    description: str
+    photo_path: str
+    is_active: bool
+
+
+class PanelListResponse(BaseModel):
+    items: list[PanelSchema] = Field(default_factory=list)
+    total: int
 
 
 # ─── Endpoints ───────────────────────────────────────────────────────
@@ -124,6 +149,42 @@ async def get_reviews(request: Request, design_id: str, offset: int = 0, limit: 
          "rating": r.rating, "text": r.text, "created_at": r.created_at.isoformat()}
         for r in reviews
     ]
+
+
+@router.get("/panels", response_model=PanelListResponse)
+async def list_panels_public(
+    request: Request,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+    panel_repo=Depends(get_panel_repo),
+):
+    """Public catalog — active panels only.
+
+    Use case hard-codes `include_inactive=False`; no `include_inactive`
+    query param is accepted so this endpoint cannot be coerced into
+    leaking hidden SKUs.
+    """
+    items, total = await ListPanelsPublic(panel_repo).execute(
+        offset=offset, limit=limit,
+    )
+    return {
+        "items": [
+            {
+                "id": p.id,
+                "name": p.name,
+                "slug": p.slug,
+                "width_mm": p.size.width_mm,
+                "height_mm": p.size.height_mm,
+                "size_label": p.size.label,
+                "base_price": p.base_price,
+                "description": p.description,
+                "photo_path": p.photo_path,
+                "is_active": p.is_active,
+            }
+            for p in items
+        ],
+        "total": total,
+    }
 
 
 @router.post("/designs/{design_id}/reviews", response_model=ReviewSchema, status_code=201)

@@ -856,15 +856,21 @@ Frontend:
 ## Фаза 7B: Загрузка панелей (физических SKU)
 
 > **Цель:** Сейчас «панель» — это только размер из `constants.ts`. Превратить в полноценный товар с фото, описанием, базовой ценой.
+>
+> **Статус:** ✅ Backend готов (2026-04-25). Frontend — pending.
 
-### Backend
-- [ ] Domain: новый агрегат `Panel` (в `domain/catalog/`): `id`, `name`, `size: PanelSize` (VO), `base_price: int`, `description`, `photo_path` (MediaAsset path), `is_active: bool`.
-- [ ] Domain: VO `PanelSize` — `width_cm`, `height_cm`, `key` (например, `MEDIUM_60x40`).
-- [ ] Domain: интерфейс `PanelRepository`.
-- [ ] Application: CRUD use cases `CreatePanelAdmin`, `UpdatePanelAdmin`, `DeletePanelAdmin`, `ListPanelsAdmin`, `GetPanelAdmin`.
-- [ ] Infrastructure: миграция `create_panels` + `seed_initial_panels` (перенос текущих `PANEL_SIZES` из `constants.ts` в БД).
-- [ ] Infrastructure: эндпоинты `/api/admin/panels` CRUD + публичный `GET /api/catalog/panels` (для фронта-конструктора).
-- [ ] Постепенный отказ от `frontend/src/shared/config/constants.ts` (PANEL_SIZES, BASE_PANEL_PRICES) — фронт начинает их получать из API. **Бек-совместимость:** на время миграции константы остаются как fallback.
+### Backend ✅
+- [x] Domain: новый агрегат `Panel` (`backend/app/domain/catalog/panel.py`): `id`, `name`, `slug`, `size: PanelSize` (VO), `base_price: int`, `description`, `photo_path`, `is_active: bool`, `created_at`. Invariants в `__post_init__`: цена ≥ 0, dimensions > 0.
+- [x] Domain: VO `PanelSize` — переиспользовали существующий `value_objects.PanelSize` (`width_mm`/`height_mm`/`label` + `.key`). Не создавали отдельный `PanelSizeKey enum` потому что VO уже даёт всё нужное.
+- [x] Domain: интерфейс `PanelRepository` (`backend/app/domain/catalog/repositories.py`) — `list_panels(include_inactive)`, `get_by_id`, `get_by_slug`, `create`, `update`, `delete`.
+- [x] Domain: исключения `PanelNotFoundError`, `PanelSlugConflictError` (`backend/app/domain/catalog/panel_exceptions.py`).
+- [x] Application: `CreatePanelAdmin`, `UpdatePanelAdmin`, `DeletePanelAdmin`, `ListPanelsAdmin`, `GetPanelAdmin`, `ListPanelsPublic` (`backend/app/application/catalog/panel_use_cases.py`). PATCH-семантика на UpdatePanelAdmin (`None` = «не трогать», `""` = «очистить»). Public/Admin листы — отдельные use cases, hard-code `include_inactive=False` в Public, чтобы query-string не мог пролить inactive.
+- [x] Infrastructure: `PanelModel` (`backend/app/infrastructure/persistence/models.py`) + миграция `011_create_panels` с UNIQUE(slug), `idx_panels_slug`, `idx_panels_is_active`, `bulk_insert` трёх baseline SKU из `constants.ts`.
+- [x] Infrastructure: `SqlPanelRepository` + `InMemoryPanelRepository` (`backend/app/infrastructure/persistence/repositories/{sql,memory}.py`) — defence-in-depth slug-uniqueness в обоих (UNIQUE constraint в SQL + явная проверка в InMemory).
+- [x] Infrastructure: container wiring (`get_panel_repo` + singleton `_mem_panel_repo`).
+- [x] Infrastructure: `app/infrastructure/api/admin/panels.py` — `GET /api/admin/panels`, `GET /…/{id}`, `POST`, `PATCH`, `DELETE`. Подключено в `admin/__init__.py`. Public `GET /api/panels` — расширил `app/infrastructure/api/catalog.py`.
+- [x] Infrastructure: error handlers — `PanelNotFoundError → 404 + code:"panel_not_found"`, `PanelSlugConflictError → 409 + code:"panel_slug_conflict"`. Зарегистрированы в `main.py`.
+- [ ] Постепенный отказ от `frontend/src/shared/config/constants.ts` (PANEL_SIZES, BASE_PANEL_PRICES) — фронт начинает их получать из API. **Бек-совместимость:** на время миграции константы остаются как fallback. *(Фронт-задача, отложена.)*
 
 ### Frontend
 - [ ] `domains/admin/ui/AdminUploadPage.tsx` — список панелей + кнопка «Добавить панель».
@@ -872,12 +878,16 @@ Frontend:
 - [ ] Toggle активности.
 - [ ] **Конструктор:** `domains/constructor/` обновить, чтобы получать панели из API (через TanStack Query), не из `constants.ts`. Совместимость fallback на 1 релиз.
 
-### Тесты
-- [ ] `tests/domain/catalog/test_panel.py`.
-- [ ] `tests/application/catalog/test_panel_crud_admin.py`.
-- [ ] `tests/api/admin/test_panels_crud.py`.
-- [ ] `tests/api/catalog/test_public_panels.py`.
-- [ ] `frontend/src/domains/constructor/__tests__/usePanels.test.ts` — fallback на константы при ошибке API.
+### Тесты ✅ (backend)
+- [x] `tests/domain/test_panel.py` — invariants Panel (4 теста).
+- [x] `tests/application/test_panel_use_cases.py` — все 6 use cases (15 тестов: happy/conflict/404/PATCH-semantics).
+- [x] `tests/api/admin/test_panels.py` — auth gates (3) + Create (4) + List (1) + Detail (2) + Update (4) + Delete (2) = 16 тестов.
+- [x] `tests/api/test_panels_public.py` — публичный листинг + защита от утечки inactive (4 теста).
+- [x] `tests/infrastructure/test_alembic.py` — pin head=011, проверка `panels` таблицы и индексов в round-trip.
+- [ ] `frontend/src/domains/constructor/__tests__/usePanels.test.ts` — fallback на константы при ошибке API. *(Фронт-задача.)*
+
+### Backend regression
+- ✅ 509 passed (было 470 после Фазы 6 + 7A пропущена), +39 новых тестов от Phase 7B.
 
 ### Definition of Done
 - В админке создаётся панель → доступна в конструкторе.

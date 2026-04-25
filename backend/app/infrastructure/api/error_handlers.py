@@ -33,6 +33,10 @@ from app.domain.media.exceptions import (
     MediaInvalidMimeError,
     MediaTooLargeError,
 )
+from app.domain.catalog.panel_exceptions import (
+    PanelNotFoundError,
+    PanelSlugConflictError,
+)
 
 
 async def collinear_corners_handler(request: Request, exc: CollinearCornersError):
@@ -196,4 +200,37 @@ async def media_corrupt_handler(request: Request, exc: MediaCorruptError):
     return JSONResponse(
         status_code=422,
         content={"detail": str(exc), "code": "media_corrupt"},
+    )
+
+
+# ─── Phase 7B — admin panel SKU CRUD ─────────────────────────────────
+# Two domain errors: 404 for "id unknown" and 409 for slug collisions.
+# Stable `code` values let the modal show a precise message ("такой
+# slug уже занят") instead of parsing the localized `detail` string.
+
+
+async def panel_not_found_handler(request: Request, exc: PanelNotFoundError):
+    """Admin requested a panel id that no longer exists → 404.
+
+    Same shape as `OrderNotFound`/`UserNotFound` from Phase 4/5 — the
+    use case raises this when `get_by_id` returns None on update/delete.
+    """
+    return JSONResponse(
+        status_code=404,
+        content={"detail": str(exc), "code": "panel_not_found"},
+    )
+
+
+async def panel_slug_conflict_handler(
+    request: Request, exc: PanelSlugConflictError,
+):
+    """Slug collision on create/update → 409.
+
+    Pre-checked at the use-case layer (`CreatePanelAdmin`/`UpdatePanelAdmin`)
+    before hitting the DB UNIQUE constraint, so the admin gets a clean
+    409 rather than a leaked IntegrityError 500.
+    """
+    return JSONResponse(
+        status_code=409,
+        content={"detail": str(exc), "code": "panel_slug_conflict"},
     )

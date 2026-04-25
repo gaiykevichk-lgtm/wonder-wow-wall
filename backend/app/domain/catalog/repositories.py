@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 
 from .entities import Design, Category, DesignReview
+from .panel import Panel
 
 
 class DesignRepository(ABC):
@@ -42,4 +43,44 @@ class ReviewRepository(ABC):
 
     @abstractmethod
     async def add(self, review: DesignReview) -> DesignReview:
+        ...
+
+
+class PanelRepository(ABC):
+    """Phase 7B — catalog Panel CRUD.
+
+    Read methods take an `include_inactive` flag so the same repo serves
+    both the public catalog (active only) and the admin table (everything).
+    Defaulting to False keeps the public path safe against a forgotten
+    flag at a call site.
+    """
+
+    @abstractmethod
+    async def list_panels(
+        self,
+        *,
+        include_inactive: bool = False,
+        offset: int = 0,
+        limit: int = 100,
+    ) -> tuple[list[Panel], int]:
+        ...
+
+    @abstractmethod
+    async def get_by_id(self, panel_id: str) -> Panel | None:
+        ...
+
+    @abstractmethod
+    async def get_by_slug(self, slug: str) -> Panel | None:
+        ...
+
+    @abstractmethod
+    async def create(self, panel: Panel) -> Panel:
+        ...
+
+    @abstractmethod
+    async def update(self, panel: Panel) -> Panel:
+        ...
+
+    @abstractmethod
+    async def delete(self, panel_id: str) -> bool:
         ...

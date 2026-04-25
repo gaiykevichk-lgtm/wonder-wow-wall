@@ -19,6 +19,7 @@ from app.infrastructure.persistence.repositories.memory import (
     InMemorySubscriptionRepository,
     InMemoryUserRepository,
     InMemoryMediaAssetRepository,
+    InMemoryPanelRepository,
 )
 from app.infrastructure.persistence.repositories.project_repo import (
     InMemoryProjectRepository,
@@ -55,6 +56,9 @@ _mem_analytics_repo = InMemoryAnalyticsRepository(
 # Phase 6 — admin file uploads. Singleton so test seeding/cleanup is
 # visible to the API across requests, mirroring `_mem_user_repo`.
 _mem_media_repo = InMemoryMediaAssetRepository()
+# Phase 7B — panel SKU catalog. Same singleton rationale as media: tests
+# seed via `_mem_panel_repo._panels.append(...)` and the API sees it.
+_mem_panel_repo = InMemoryPanelRepository()
 
 
 # ─── Backward-compatible aliases (used by existing tests) ────────────
@@ -69,6 +73,7 @@ project_repo = _mem_project_repo
 visualization_repo = _mem_visualization_repo
 analytics_repo = _mem_analytics_repo
 media_repo = _mem_media_repo
+panel_repo = _mem_panel_repo
 
 
 # ─── FastAPI Dependencies ────────────────────────────────────────────
@@ -88,6 +93,7 @@ def _get_sql_repo_classes() -> dict:
             SqlSubscriptionRepository,
             SqlUserRepository,
             SqlMediaAssetRepository,
+            SqlPanelRepository,
         )
         from app.infrastructure.persistence.repositories.project_repo import SqlProjectRepository
         from app.infrastructure.persistence.repositories.visualization_repo import SqlVisualizationProjectRepository
@@ -103,6 +109,7 @@ def _get_sql_repo_classes() -> dict:
             "visualization": SqlVisualizationProjectRepository,
             "analytics": SqlAnalyticsRepository,
             "media": SqlMediaAssetRepository,
+            "panel": SqlPanelRepository,
         }
     return _sql_repo_classes
 
@@ -187,6 +194,19 @@ def get_media_repo(session=Depends(get_db_session)):
     if settings.USE_MEMORY_REPOS:
         return _mem_media_repo
     return _get_sql_repo_classes()["media"](session)
+
+
+def get_panel_repo(session=Depends(get_db_session)):
+    """Phase 7B — panel SKU catalog.
+
+    Same shape as `get_media_repo`: singleton in-memory repo for tests,
+    per-request SQL repo in production. The admin and public catalog
+    routes both depend on this — splitting the use cases (Admin vs
+    Public) at the application layer keeps the wiring uniform here.
+    """
+    if settings.USE_MEMORY_REPOS:
+        return _mem_panel_repo
+    return _get_sql_repo_classes()["panel"](session)
 
 
 # ─── Phase 6 (admin panel) — file storage singleton ──────────────────
