@@ -11,7 +11,7 @@ from sqlalchemy.orm import selectinload
 from app.domain.catalog.entities import Design, Category, DesignReview
 from app.domain.catalog.repositories import DesignRepository, CategoryRepository, ReviewRepository
 from app.domain.catalog.value_objects import Color
-from app.domain.order.entities import Order, OrderItem
+from app.domain.order.entities import Order, OrderItem, OrderNote
 from app.domain.order.filters import OrderFilters
 from app.domain.order.repositories import OrderRepository
 from app.domain.order.value_objects import OrderStatus, Address
@@ -28,6 +28,7 @@ from app.infrastructure.persistence.models import (
     DesignReviewModel,
     OrderModel,
     OrderItemModel,
+    OrderNoteModel,
     SubscriptionModel,
     UserModel,
     UserAddressModel,
@@ -70,6 +71,15 @@ def _order_to_domain(m: OrderModel) -> Order:
         )
         for it in (m.items or [])
     ]
+    # Phase 4B — notes are eagerly loaded by `selectinload` on the read
+    # paths that need them. Iterating `m.notes` without a load attempt
+    # would trigger lazy IO inside the mapper (forbidden under async).
+    notes = [
+        OrderNote(
+            id=n.id, author_id=n.author_id, text=n.text, created_at=n.created_at,
+        )
+        for n in (m.notes or [])
+    ]
     # Parse address from stored JSON string
     addr_data = {}
     if m.address:
@@ -88,6 +98,8 @@ def _order_to_domain(m: OrderModel) -> Order:
         id=m.id, number=m.number, user_id=m.user_id,
         status=OrderStatus(m.status), items=items, address=address,
         installation_date=m.installation_date,
+        cancel_reason=m.cancel_reason,
+        notes=notes,
         created_at=m.created_at, updated_at=m.updated_at,
     )
 
@@ -292,9 +304,15 @@ class SqlOrderRepository(OrderRepository):
         return order
 
     async def get_by_id(self, order_id: str) -> Order | None:
+        # Phase 4B — eager-load `notes` so the detail mapper sees them
+        # without lazy IO. Customer endpoints use the same method but
+        # ignore the notes field (they're admin-only at the API layer).
         result = await self._session.execute(
             select(OrderModel)
-            .options(selectinload(OrderModel.items))
+            .options(
+                selectinload(OrderModel.items),
+                selectinload(OrderModel.notes),
+            )
             .where(OrderModel.id == order_id)
         )
         row = result.scalar_one_or_none()
@@ -303,6 +321,8 @@ class SqlOrderRepository(OrderRepository):
     async def list_by_user(
         self, user_id: str, offset: int = 0, limit: int = 20,
     ) -> list[Order]:
+        # Customer-facing list intentionally does NOT load notes — notes
+        # are admin-internal and the mapper falls back to an empty list.
         result = await self._session.execute(
             select(OrderModel)
             .options(selectinload(OrderModel.items))
@@ -319,9 +339,25 @@ class SqlOrderRepository(OrderRepository):
             model.address = _address_to_json(order.address)
             model.total = order.total
             model.installation_date = order.installation_date
+            model.cancel_reason = order.cancel_reason
             model.updated_at = datetime.utcnow()
         await self._session.flush()
         return order
+
+    async def add_note(self, order_id: str, note: OrderNote) -> OrderNote:
+        # Phase 4B — append a single note without re-writing the parent
+        # order row. Caller is responsible for having created the note
+        # via `Order.add_note(...)` first; this just persists it.
+        model = OrderNoteModel(
+            id=note.id,
+            order_id=order_id,
+            author_id=note.author_id,
+            text=note.text,
+            created_at=note.created_at,
+        )
+        self._session.add(model)
+        await self._session.flush()
+        return note
 
     async def generate_order_number(self) -> str:
         from sqlalchemy import text

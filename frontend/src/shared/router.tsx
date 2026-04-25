@@ -41,6 +41,9 @@ const ForgotPasswordPage = lazy(() => import('../domains/auth/ui/ForgotPasswordP
 const AdminLayout = lazy(() => import('../domains/admin/ui/AdminLayout'));
 const AdminDashboardPage = lazy(() => import('../domains/admin/ui/AdminDashboardPage'));
 const AdminOrdersPage = lazy(() => import('../domains/admin/ui/AdminOrdersPage'));
+const AdminOrderDetailPage = lazy(
+  () => import('../domains/admin/ui/AdminOrderDetailPage'),
+);
 const AdminUsersPage = lazy(() => import('../domains/admin/ui/AdminUsersPage'));
 const AdminCatalogPage = lazy(() => import('../domains/admin/ui/AdminCatalogPage'));
 const AdminShopPage = lazy(() => import('../domains/admin/ui/AdminShopPage'));
@@ -122,6 +125,7 @@ export function AppRouter() {
         >
           <Route index element={<AdminDashboardPage />} />
           <Route path="orders" element={<AdminOrdersPage />} />
+          <Route path="orders/:id" element={<AdminOrderDetailPage />} />
           <Route path="users" element={<AdminUsersPage />} />
           <Route path="catalog" element={<AdminCatalogPage />} />
           <Route path="shop" element={<AdminShopPage />} />

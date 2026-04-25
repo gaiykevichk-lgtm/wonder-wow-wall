@@ -15,6 +15,7 @@ Phase 5C wires:
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
+from app.domain.order.exceptions import InvalidOrderTransitionError
 from app.domain.user.exceptions import (
     LastAdminRemovalError,
     NotAuthorizedError,
@@ -96,6 +97,25 @@ async def last_admin_removal_handler(request: Request, exc: LastAdminRemovalErro
     return JSONResponse(
         status_code=409,
         content={"detail": str(exc), "code": "last_admin"},
+    )
+
+
+# ─── Phase 4B — admin order status transitions ───────────────────────
+
+
+async def invalid_order_transition_handler(
+    request: Request, exc: InvalidOrderTransitionError
+):
+    """Forbidden status transition (e.g. PLACED → DELIVERED) → 409.
+
+    Same `code` pattern as `stale_version` so the admin UI can map it to
+    a "Нельзя выполнить переход" toast and refetch the order to display
+    the actual current status. Plain `ValueError`s (missing reason etc.)
+    keep going to 422 — those are caller-input bugs, not workflow errors.
+    """
+    return JSONResponse(
+        status_code=409,
+        content={"detail": str(exc), "code": "invalid_transition"},
     )
 
 

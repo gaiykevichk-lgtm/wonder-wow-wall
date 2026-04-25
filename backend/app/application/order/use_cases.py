@@ -1,9 +1,9 @@
 from datetime import datetime
 
-from app.domain.order.entities import Order, OrderItem
+from app.domain.order.entities import Order, OrderItem, OrderNote
 from app.domain.order.filters import OrderFilters
 from app.domain.order.repositories import OrderRepository
-from app.domain.order.value_objects import Address
+from app.domain.order.value_objects import Address, OrderStatus
 from app.domain.order.services import calculate_wall_cost
 
 
@@ -57,6 +57,111 @@ class GetOrderDetails:
 class CalculateWallCost:
     async def execute(self, panels: list[dict], has_subscription: bool = False) -> dict:
         return calculate_wall_cost(panels, has_subscription)
+
+
+class OrderNotFoundError(LookupError):
+    """Raised when an admin requests an order that doesn't exist.
+
+    Mapped to HTTP 404 by the API layer. Subclasses LookupError so generic
+    catch-all handlers don't accidentally swallow it as an internal error.
+    """
+
+
+class GetOrderAdmin:
+    """Phase 4B — full-detail order fetch for the admin detail page.
+
+    No user-scope check (unlike `GetOrderDetails` which restricts to the
+    order owner): admins can view any order. Authorisation is enforced at
+    the API layer by `get_current_admin_id` so this use case is a thin
+    wrapper that just turns the "missing" case into a typed exception.
+    """
+
+    def __init__(self, repo: OrderRepository):
+        self.repo = repo
+
+    async def execute(self, order_id: str) -> Order:
+        order = await self.repo.get_by_id(order_id)
+        if order is None:
+            raise OrderNotFoundError(f"Order {order_id} not found")
+        return order
+
+
+# Status → bound method on Order. Each value is the **name** of the
+# instance method to call; `UpdateOrderStatusAdmin` resolves it via
+# `getattr` so adding a new status only requires one line here plus the
+# method on the entity. Statuses NOT in this map cannot be set directly
+# (e.g. PLACED is the initial state — there's no "un-confirm" verb).
+_STATUS_TRANSITIONS: dict[OrderStatus, str] = {
+    OrderStatus.CONFIRMED: "confirm",
+    OrderStatus.IN_PROGRESS: "start_work",
+    OrderStatus.DELIVERED: "mark_delivered",
+    OrderStatus.INSTALLED: "mark_installed",
+    # CANCELLED / REFUNDED are special-cased below — they take a `reason`.
+}
+
+
+class UpdateOrderStatusAdmin:
+    """Phase 4B — transition an order's status from the admin panel.
+
+    Dispatches to the right `Order` method based on the requested target
+    status. `cancel`/`refund` get the explicit-reason branch; everything
+    else uses the lookup table above.
+
+    The aggregate raises `InvalidOrderTransitionError` for forbidden
+    transitions (e.g. PLACED → DELIVERED); the API layer maps that to a
+    409 with `code: "invalid_transition"` so the UI can show a toast.
+    """
+
+    def __init__(self, repo: OrderRepository):
+        self.repo = repo
+
+    async def execute(
+        self,
+        actor_id: str,  # noqa: ARG002 — accepted for symmetry/audit logging
+        order_id: str,
+        new_status: OrderStatus,
+        reason: str | None = None,
+    ) -> Order:
+        order = await self.repo.get_by_id(order_id)
+        if order is None:
+            raise OrderNotFoundError(f"Order {order_id} not found")
+
+        if new_status is OrderStatus.CANCELLED:
+            order.cancel(reason or "")
+        elif new_status is OrderStatus.REFUNDED:
+            order.refund(reason or "")
+        elif new_status is OrderStatus.PLACED:
+            # PLACED is the initial state; transitioning *back* to it would
+            # mean "un-do the order" which is not a valid business action.
+            from app.domain.order.exceptions import InvalidOrderTransitionError
+            raise InvalidOrderTransitionError(
+                "Cannot transition back to PLACED"
+            )
+        else:
+            method_name = _STATUS_TRANSITIONS[new_status]
+            getattr(order, method_name)()
+
+        return await self.repo.update(order)
+
+
+class AddOrderNoteAdmin:
+    """Phase 4B — append an internal admin note to an order."""
+
+    def __init__(self, repo: OrderRepository):
+        self.repo = repo
+
+    async def execute(
+        self, actor_id: str, order_id: str, text: str,
+    ) -> OrderNote:
+        order = await self.repo.get_by_id(order_id)
+        if order is None:
+            raise OrderNotFoundError(f"Order {order_id} not found")
+        # Domain validates non-empty text + author. The note is appended
+        # to the loaded aggregate AND persisted via the repo so subsequent
+        # reads (within the same session or not) see it.
+        note = order.add_note(author_id=actor_id, text=text)
+        await self.repo.add_note(order_id, note)
+        return note
 
 
 class ListOrdersAdmin:

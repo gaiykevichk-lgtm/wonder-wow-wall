@@ -60,6 +60,10 @@ const STATUS_TAG_COLOR: Record<OrderStatusKey, string> = {
   in_progress: 'orange',
   delivered: 'green',
   installed: 'success',
+  // Phase 4B — terminal "unhappy" states. Both red so they read as
+  // "abnormal exit" at a glance; UI can branch on the tag text label.
+  cancelled: 'red',
+  refunded: 'volcano',
 };
 
 const APPLE_EASE: [number, number, number, number] = [0.25, 0.1, 0.25, 1.0];

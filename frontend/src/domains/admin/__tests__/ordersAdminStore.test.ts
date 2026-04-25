@@ -148,14 +148,18 @@ describe('applyFilterPatch', () => {
 });
 
 describe('STATUS_OPTIONS', () => {
-  it('lists every backend OrderStatus value', () => {
+  it('lists every backend OrderStatus value (incl. Phase 4B terminal states)', () => {
     // Drift-detector: if the backend enum changes, this fails fast.
+    // Order is significant for the filter dropdown — happy-chain first,
+    // then exit states, matching the backend `OrderStatus` enum order.
     expect(STATUS_OPTIONS.map((o) => o.value)).toEqual([
       'placed',
       'confirmed',
       'in_progress',
       'delivered',
       'installed',
+      'cancelled',
+      'refunded',
     ]);
   });
 });

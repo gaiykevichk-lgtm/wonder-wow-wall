@@ -18,6 +18,16 @@ if (typeof window !== 'undefined' && !window.matchMedia) {
   });
 }
 
+// Polyfill ResizeObserver (jsdom doesn't implement it; AntD's <List>/<Table>
+// pull in @rc-component/resize-observer which throws ReferenceError without it).
+if (typeof window !== 'undefined' && !window.ResizeObserver) {
+  window.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+}
+
 // Mock localStorage for Zustand persist
 const localStorageMock = (() => {
   let store: Record<string, string> = {};

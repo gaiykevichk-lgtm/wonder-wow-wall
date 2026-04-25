@@ -187,6 +187,32 @@ class TestHappyPath:
         assert body["items"][0]["number"] == "WW-A"
 
     @pytest.mark.asyncio
+    async def test_status_filter_accepts_terminal_statuses(self, client):
+        # Phase 4B regression: the list endpoint's `status` Literal must
+        # include the new terminal states (`cancelled`, `refunded`),
+        # otherwise the frontend's STATUS_OPTIONS dropdown sends a value
+        # the backend rejects with 422 — and the admin can never list
+        # cancelled/refunded orders by status.
+        token = await _admin_token(client)
+        _seed(number="WW-A", status=OrderStatus.PLACED)
+        _seed(number="WW-X", status=OrderStatus.CANCELLED)
+        _seed(number="WW-Y", status=OrderStatus.REFUNDED)
+
+        for st, expected_number in (
+            ("cancelled", "WW-X"),
+            ("refunded", "WW-Y"),
+        ):
+            resp = await client.get(
+                "/api/admin/orders",
+                params={"status": st},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            assert resp.status_code == 200, (st, resp.text)
+            body = resp.json()
+            assert body["total"] == 1, st
+            assert body["items"][0]["number"] == expected_number, st
+
+    @pytest.mark.asyncio
     async def test_pagination_metadata(self, client):
         token = await _admin_token(client)
         for i in range(5):

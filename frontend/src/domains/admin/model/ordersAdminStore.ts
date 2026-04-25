@@ -26,6 +26,10 @@ const VALID_STATUSES: ReadonlyArray<OrderStatusKey> = [
   'in_progress',
   'delivered',
   'installed',
+  // Phase 4B — terminal "unhappy" states. Kept here so the URL parser
+  // accepts them (`?status=cancelled`) without crashing the page.
+  'cancelled',
+  'refunded',
 ];
 
 export const DEFAULT_PAGE = 1;
@@ -48,6 +52,11 @@ export const STATUS_OPTIONS: { value: OrderStatusKey; label: string }[] = [
   { value: 'in_progress', label: 'В работе' },
   { value: 'delivered', label: 'Доставлен' },
   { value: 'installed', label: 'Установлен' },
+  // Phase 4B — terminal "unhappy" states. Order matters for the filter
+  // dropdown (happy chain first, then exits) and pinning is asserted by
+  // `STATUS_OPTIONS` test in `ordersAdminStore.test.ts`.
+  { value: 'cancelled', label: 'Отменён' },
+  { value: 'refunded', label: 'Возврат' },
 ];
 
 function parsePositiveInt(raw: string | null, fallback: number): number {

@@ -448,35 +448,48 @@
 
 ---
 
-## Фаза 4B: Заказы — детальный просмотр и управление статусом
+## Фаза 4B: Заказы — детальный просмотр и управление статусом ✅ РЕАЛИЗОВАНО (2026-04-25)
 
 > **Цель:** Карточка заказа с возможностью смены статуса, отмены, добавления внутренней заметки.
 
 ### Backend
-- [ ] Domain: расширить `Order` методами `complete()`, `cancel(reason: str)`, `refund(reason: str)`. Каждый — с гард-условием по текущему статусу (см. паттерн `confirm/start_work` в `entities.py:42`).
-- [ ] Domain: добавить `OrderNote` (entity внутри агрегата `Order`) — `id`, `author_id`, `text`, `created_at`. Метод `Order.add_note(author_id, text)`.
-- [ ] Domain: исключения `InvalidOrderTransitionError`, `OrderAlreadyCancelledError`.
-- [ ] Application: use cases `UpdateOrderStatusAdmin.execute(actor_id, order_id, new_status, reason?)`, `AddOrderNoteAdmin.execute(actor_id, order_id, text)`, `GetOrderAdmin.execute(order_id)`.
-- [ ] Infrastructure: миграция `add_order_notes` (новая таблица) + `add_cancel_reason_to_orders` (колонка nullable). Обязательный `downgrade()`.
-- [ ] Infrastructure: эндпоинты `GET /api/admin/orders/:id`, `PATCH /api/admin/orders/:id/status`, `POST /api/admin/orders/:id/notes`.
-- [ ] Mapping: `InvalidOrderTransitionError` → HTTP 409 в `error_handlers.py`.
+- [x] Domain: `Order.mark_delivered()` / `mark_installed()` (вместо общего `complete()` — явные глаголы для двух разных переходов IN_PROGRESS→DELIVERED→INSTALLED), `Order.cancel(reason)`, `Order.refund(reason)`. Все методы — с гард-условием по статусу + валидацией непустого `reason` (`backend/app/domain/order/entities.py:90-141`).
+- [x] Domain: `OrderNote` entity внутри агрегата (`entities.py:28-40`) + `Order.add_note(author_id, text)` (`entities.py:143-152`). Текст и автор валидируются; пустые отвергаются `ValueError`.
+- [x] Domain: `InvalidOrderTransitionError`, `OrderAlreadyCancelledError` (subclass) в `backend/app/domain/order/exceptions.py`. Подклассы `ValueError` для совместимости с существующими `pytest.raises(ValueError)`.
+- [x] Domain: новые статусы `OrderStatus.CANCELLED`, `OrderStatus.REFUNDED` + `label_ru` («Отменён», «Возврат»). `OrderRepository.add_note(...)` ABC.
+- [x] Application: `GetOrderAdmin`, `UpdateOrderStatusAdmin`, `AddOrderNoteAdmin` + `OrderNotFoundError` (`use_cases.py:62-164`). UpdateOrderStatusAdmin диспатчит в нужный метод агрегата по таблице `_STATUS_TRANSITIONS`; cancel/refund — спец-ветка с `reason`; PLACED как target явно отвергается.
+- [x] Infrastructure: миграция `008_add_order_notes_and_cancel_reason.py` — `orders.cancel_reason` (TEXT NULL) + таблица `order_notes` (с FK `ON DELETE CASCADE` и индексом по `order_id`). Симметричный `downgrade()`.
+- [x] Infrastructure: `OrderModel.cancel_reason` + `OrderNoteModel` + relationship `notes` с `cascade="all, delete-orphan"` и `order_by="created_at"` (`models.py:122,131-135,154-172`). `SqlOrderRepository.get_by_id` подгружает `notes` через `selectinload` (избегает лазя IO в async). `SqlOrderRepository.update` пишет `cancel_reason`. `SqlOrderRepository.add_note` — отдельный insert без переписывания parent-row. `InMemoryOrderRepository.add_note` — append с дедупликацией по id.
+- [x] Infrastructure API: `GET /api/admin/orders/{id}`, `PATCH /api/admin/orders/{id}/status` (Pydantic `StatusUpdateLiteral` ограничивает target-set), `POST /api/admin/orders/{id}/notes` (Pydantic `min_length=1, max_length=2000` → 422 на пустое). Resolver `_resolve_users` пакует один N+1 запрос для customer + всех авторов заметок (`infrastructure/api/admin/orders.py:74-272`).
+- [x] Infrastructure API: `GET /api/admin/orders` `Literal` расширен до 7 статусов — теперь `?status=cancelled` / `?status=refunded` принимаются (regression-fix: фронтенд уже отдавал их в `STATUS_OPTIONS`). Покрыто `test_status_filter_accepts_terminal_statuses`.
+- [x] Mapping: `invalid_order_transition_handler` → 409 + `{detail, code: "invalid_transition"}` (`error_handlers.py:103-119`); зарегистрирован в `app/main.py:58`. `OrderNotFoundError` → 404 в роутере. Чистый `ValueError` (пустой `reason`) → 422 (per Pydantic UX).
 
 ### Frontend
-- [ ] `domains/admin/ui/AdminOrderDetailPage.tsx` — три блока: header (статус как `<Tag>`, кнопки действий), items (Ant Design `<List>` с превью дизайнов), сайдбар (адрес, дата установки, юзер, заметки).
-- [ ] Кнопки смены статуса — disabled по правилам (например, нельзя «отменить» уже завершённый). Логика — на фронте дублирует домен; на бэке — авторитативная.
-- [ ] Модалка отмены — обязательное поле `reason` (Ant Design `<Modal>` + `<Form>`).
-- [ ] Заметки — список + textarea + кнопка «Добавить» (внутренняя заметка, не видна клиенту).
+- [x] `domains/admin/ui/AdminOrderDetailPage.tsx` — header (back-button, № заказа, статус-Tag, ряд action-кнопок), двухколонный grid: левый Card «Состав заказа» с `<List>` items, правый Card «Клиент и доставка» (`<Descriptions>`) + Card «Внутренние заметки» (список + textarea). Цвет статус-`<Tag>` единый с list-страницей (`STATUS_TAG_COLOR`).
+- [x] `domains/admin/model/orderTransitions.ts` — единый источник правды для матрицы переходов (`TRANSITIONS`), reason-required set (`REQUIRES_REASON`), labels (`TRANSITION_LABEL`), helpers `canTransition`/`isTerminal`. Покрыто `orderTransitions.test.ts`.
+- [x] Кнопки disabled по `canTransition(currentStatus, target)` (плюс `updateStatus.isPending`); сервер всё равно re-валидирует. Cancel/Refund отрисовываются как `<Button danger>`.
+- [x] Модалка с `<Form>` + textarea-валидацией (`required` + non-blank через custom validator) для cancel/refund; OK кидает `runStatusUpdate(target, reason)`.
+- [x] Заметки — `<List>` с автором/датой, textarea (maxLength 2000) + «Добавить заметку»; на success — TanStack Query инвалидирует detail-кеш, на 409 `invalid_transition` — toast и `refetch()`.
+- [x] `domains/admin/api/ordersAdminApi.ts` — `useOrderDetail`, `useUpdateOrderStatus`, `useAddOrderNote`. Расширен `OrderStatusKey` на `cancelled`/`refunded` + цвет/label синхронизирован.
+- [x] Роутинг: `path="orders/:id"` подключён в `shared/router.tsx:128` (lazy import); `AdminOrdersPage` ряд-clik навигирует на `/admin/orders/${id}`.
 
 ### Тесты
-- [ ] `tests/domain/order/test_status_transitions.py` — все валидные/невалидные переходы.
-- [ ] `tests/domain/order/test_order_notes.py`.
-- [ ] `tests/application/order/test_update_order_status_admin.py` — happy path + permission + транзиции.
-- [ ] `tests/api/admin/test_orders_detail.py`.
-- [ ] `frontend/src/domains/admin/__tests__/AdminOrderDetailPage.test.tsx` — кнопки disabled по статусу.
+- [x] `backend/tests/domain/order/test_status_transitions.py` — 24 теста: все валидные переходы (placed→confirmed→in_progress→delivered→installed), запрещённые (skip-ahead, backward, цикл), cancel из всех не-терминальных, refund только из delivered/installed, пустой/whitespace reason → ValueError, terminal-states замораживают агрегат, `OrderAlreadyCancelledError` подкласс `InvalidOrderTransitionError`.
+- [x] `backend/tests/domain/order/test_order_notes.py` — 5 тестов: add_note happy-path, валидация пустого text/whitespace/без author_id, append сохраняет порядок, `updated_at` дёргается.
+- [x] `backend/tests/application/order/test_update_order_status_admin.py` — 12 тестов: happy для каждого target, OrderNotFoundError, mapping cancel/refund→reason-validation, попытка PLACED как target → InvalidOrderTransitionError, repo.update вызывается ровно раз, AddOrderNoteAdmin happy + missing-order.
+- [x] `backend/tests/api/admin/test_orders_detail.py` — 13 тестов через ASGI: 401, 403 (non-admin), GET 200/404, PATCH happy для каждого target + 409 invalid_transition (с проверкой `code: "invalid_transition"`), PATCH cancel без reason → 422, POST note 201 + автор-резолв, POST note пустой → 422 (Pydantic min_length).
+- [x] `backend/tests/api/admin/test_orders_list.py` — добавлен regression-тест `test_status_filter_accepts_terminal_statuses` для `?status=cancelled`/`?status=refunded`.
+- [x] `frontend/src/domains/admin/__tests__/orderTransitions.test.ts` — table-driven тесты матрицы переходов + REQUIRES_REASON + isTerminal.
+- [x] `frontend/src/domains/admin/__tests__/AdminOrderDetailPage.test.tsx` — кнопки disabled по статусу (table-driven по всем 7 статусам), open cancel-modal требует reason, валидация пустой заметки, error-states (404, 409 invalid_transition → refetch + toast).
+
+### Регрессионная проверка
+- Backend `tests/domain/order tests/application/order tests/api/admin`: **93/93 зелёные**.
+- Frontend `AdminOrderDetailPage.test.tsx + orderTransitions.test.ts`: **28/28 зелёные**.
+- Preexisting flake `test_alembic.py` (postgres :5432 недоступен) — задокументирован в Phase 3 audit, к этой фазе не относится.
 
 ### Definition of Done
-- Полный жизненный цикл заказа кликается из UI.
-- Запрещённые переходы → toast «Нельзя перевести из X в Y», 409 с бэка.
+- ✅ Полный жизненный цикл заказа кликается из UI: PLACED → CONFIRMED → IN_PROGRESS → DELIVERED → INSTALLED, плюс cancel из любой не-терминальной точки и refund из DELIVERED/INSTALLED.
+- ✅ Запрещённые переходы дают toast «Переход недоступен — заказ изменился», 409 + `code: "invalid_transition"` с бэка; страница автоматически делает `refetch()` чтобы синхронизировать disabled-матрицу.
 
 ---
 

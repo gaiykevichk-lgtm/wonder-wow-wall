@@ -4,6 +4,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
+from app.domain.order.exceptions import InvalidOrderTransitionError
 from app.domain.user.exceptions import (
     LastAdminRemovalError,
     NotAuthorizedError,
@@ -19,6 +20,7 @@ from app.infrastructure.api import admin as admin_api
 from app.infrastructure.api.error_handlers import (
     collinear_corners_handler,
     depth_estimation_handler,
+    invalid_order_transition_handler,
     last_admin_removal_handler,
     not_authorized_handler,
     plane_fitting_handler,
@@ -51,6 +53,9 @@ app.add_exception_handler(PlaneFittingError, plane_fitting_handler)
 # registering here keeps `main.py` stable across follow-up phases.
 app.add_exception_handler(LastAdminRemovalError, last_admin_removal_handler)
 app.add_exception_handler(NotAuthorizedError, not_authorized_handler)
+# Phase 4B — admin order status transitions. Subclasses (e.g.
+# OrderAlreadyCancelledError) match the same handler so they all map to 409.
+app.add_exception_handler(InvalidOrderTransitionError, invalid_order_transition_handler)
 
 # ─── Security Headers ──────────────────────────────────────────────
 app.add_middleware(SecurityHeadersMiddleware)

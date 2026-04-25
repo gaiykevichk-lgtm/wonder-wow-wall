@@ -116,11 +116,23 @@ class OrderModel(Base):
     address: Mapped[str] = mapped_column(Text, default="")
     total: Mapped[int] = mapped_column(Integer, default=0)
     installation_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    # Phase 4B — populated by `Order.cancel(reason)` / `refund(reason)`. NULL
+    # for any non-terminated order. Single column reused for both verbs;
+    # `status` disambiguates which one happened.
+    cancel_reason: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user: Mapped["UserModel"] = relationship(back_populates="orders")
     items: Mapped[list["OrderItemModel"]] = relationship(back_populates="order", cascade="all, delete-orphan")
+    # Phase 4B — internal admin annotations. cascade="all, delete-orphan"
+    # mirrors `items` so deleting an order also deletes its notes (no
+    # orphan rows in the join table).
+    notes: Mapped[list["OrderNoteModel"]] = relationship(
+        back_populates="order",
+        cascade="all, delete-orphan",
+        order_by="OrderNoteModel.created_at",
+    )
 
 
 class OrderItemModel(Base):
@@ -137,6 +149,27 @@ class OrderItemModel(Base):
     unit_price: Mapped[int] = mapped_column(Integer, default=0)
 
     order: Mapped["OrderModel"] = relationship(back_populates="items")
+
+
+class OrderNoteModel(Base):
+    """Phase 4B — internal admin notes attached to an order.
+
+    Author is a `users.id` FK so we can render the author's name in the UI;
+    no FK constraint to a "deleted users" table because admins are
+    permanent — a deleted admin is a corner case we don't optimise for.
+    """
+
+    __tablename__ = "order_notes"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=gen_uuid)
+    order_id: Mapped[str] = mapped_column(
+        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    author_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    order: Mapped["OrderModel"] = relationship(back_populates="notes")
 
 
 # ─── Subscriptions ───────────────────────────────────────────────────

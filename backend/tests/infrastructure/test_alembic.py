@@ -116,14 +116,18 @@ def test_upgrade_head_creates_all_core_tables(alembic_cfg):
         "visualization_projects",  # 004 — Phase 5A new
     ):
         assert _table_exists(db_path, table), f"{table} should exist after upgrade head"
-    # head revision must equal the latest migration id (currently 007 — Phase 4A indexes).
-    assert _current_revision(db_path) == "007"
+    # head revision must equal the latest migration id (currently 008 — Phase 4B notes/cancel_reason).
+    assert _current_revision(db_path) == "008"
     # 006 adds `role` to users.
     assert "role" in _column_names(db_path, "users")
     # 007 adds order list filter indexes.
     assert _index_exists(db_path, "idx_orders_status")
     assert _index_exists(db_path, "idx_orders_created_at")
     assert _index_exists(db_path, "idx_orders_user_id")
+    # 008 adds order_notes table + cancel_reason column.
+    assert _table_exists(db_path, "order_notes")
+    assert "cancel_reason" in _column_names(db_path, "orders")
+    assert _index_exists(db_path, "idx_order_notes_order_id")
 
 
 def test_phase5b_columns_added_by_005(alembic_cfg):
@@ -221,7 +225,7 @@ def test_full_round_trip_head_base_head(alembic_cfg):
     alembic_cmd.downgrade(cfg, "base")
     assert _current_revision(db_path) is None
     alembic_cmd.upgrade(cfg, "head")
-    assert _current_revision(db_path) == "007"
+    assert _current_revision(db_path) == "008"
     for table in ("users", "designs", "subscriptions", "visualization_projects"):
         assert _table_exists(db_path, table), f"{table} should be re-created at head"
     # Phase 5B columns must be present at head after the full round-trip.

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from .entities import Order
+from .entities import Order, OrderNote
 from .filters import OrderFilters
 
 
@@ -19,6 +19,17 @@ class OrderRepository(ABC):
 
     @abstractmethod
     async def update(self, order: Order) -> Order:
+        ...
+
+    @abstractmethod
+    async def add_note(self, order_id: str, note: OrderNote) -> OrderNote:
+        """Phase 4B — append a single note row.
+
+        Kept separate from `update()` so the common "patch order fields"
+        path doesn't have to diff the notes collection on every save.
+        Caller must have constructed `note` via `Order.add_note(...)` so
+        validation lives in the domain.
+        """
         ...
 
     @abstractmethod

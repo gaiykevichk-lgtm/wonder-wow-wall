@@ -9,7 +9,7 @@ from uuid import uuid4
 
 from app.domain.catalog.entities import Design, Category, DesignReview
 from app.domain.catalog.repositories import DesignRepository, CategoryRepository, ReviewRepository
-from app.domain.order.entities import Order
+from app.domain.order.entities import Order, OrderNote
 from app.domain.order.filters import OrderFilters
 from app.domain.order.repositories import OrderRepository
 from app.domain.subscription.entities import Subscription
@@ -116,6 +116,21 @@ class InMemoryOrderRepository(OrderRepository):
     async def update(self, order):
         self._orders = [o if o.id != order.id else order for o in self._orders]
         return order
+
+    async def add_note(self, order_id: str, note: OrderNote) -> OrderNote:
+        # In-memory variant: locate the parent and append to its `notes`
+        # list. SQL repo persists into a separate table; semantics are
+        # equivalent — the next `get_by_id` returns the order with the
+        # new note attached.
+        parent = next((o for o in self._orders if o.id == order_id), None)
+        if parent is None:
+            raise ValueError(f"Order {order_id} not found")
+        # `Order.add_note` already populated the parent's notes list when
+        # the use case called it; the SQL repo needs an explicit insert.
+        # Avoid duplicating the entry if it's already there.
+        if not any(n.id == note.id for n in parent.notes):
+            parent.notes.append(note)
+        return note
 
     async def generate_order_number(self):
         self._counter += 1
