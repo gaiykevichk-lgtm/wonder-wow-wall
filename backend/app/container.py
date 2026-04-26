@@ -60,9 +60,16 @@ _mem_project_repo = InMemoryProjectRepository()
 _mem_visualization_repo = InMemoryVisualizationProjectRepository()
 # Phase 3 — analytics is a READ-ONLY projection over orders + users; it
 # shares the underlying lists so test writes become immediately visible.
+# Phase 11 — extra sources for the 8 dashboard widgets (subscriptions,
+# constructor projects, visualizations, plans). Lambdas defer attribute
+# resolution so seeding writes from later test fixtures are observed.
 _mem_analytics_repo = InMemoryAnalyticsRepository(
     orders=lambda: _mem_order_repo._orders,
     users=lambda: _mem_user_repo._users,
+    subscriptions=lambda: _mem_subscription_repo._subs,
+    constructor_projects=lambda: list(_mem_project_repo._projects.values()),
+    visualizations=lambda: list(_mem_visualization_repo._projects.values()),
+    plans=lambda: _mem_subscription_plan_repo._plans,
 )
 # Phase 6 — admin file uploads. Singleton so test seeding/cleanup is
 # visible to the API across requests, mirroring `_mem_user_repo`.

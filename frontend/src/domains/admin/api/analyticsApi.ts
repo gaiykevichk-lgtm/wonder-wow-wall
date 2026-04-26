@@ -45,6 +45,81 @@ export interface ApiTopDesign {
   orders_count: number;
 }
 
+// ─── Phase 11 widget types (mirror backend pydantic) ────────────────────
+
+export interface ApiSubscriptionPlanBucket {
+  plan_id: string;
+  plan_name: string;
+  monthly_price: number;
+  active_count: number;
+}
+
+export interface ApiSubscriptionsSummary {
+  active_count: number;
+  mrr: number;
+  churn_pct: number;
+  new_in_period: number;
+  by_plan: ApiSubscriptionPlanBucket[];
+}
+
+export interface ApiFunnelStage {
+  key: string;
+  label: string;
+  count: number;
+  conversion_pct: number | null;
+}
+
+export interface ApiAbandonedCart {
+  project_id: string;
+  user_id: string;
+  user_email: string;
+  user_name: string;
+  project_name: string;
+  total_price: number;
+  panels_count: number;
+  last_activity: string;
+}
+
+export interface ApiOrderAttention {
+  order_id: string;
+  order_number: string;
+  status: string;
+  age_hours: number;
+  total: number;
+  user_id: string;
+  user_email: string;
+  user_name: string;
+  reason: string;
+}
+
+export interface ApiToolUsage {
+  constructor_sessions: number;
+  visualizer_projects: number;
+  engaged_users: number;
+  converted_users: number;
+  conversion_pct: number;
+}
+
+export interface ApiSizeBucket {
+  size_key: string;
+  size_label: string;
+  items_count: number;
+  revenue: number;
+}
+
+export interface ApiCityBucket {
+  city: string;
+  orders_count: number;
+  revenue: number;
+}
+
+export interface ApiRegistrationsCompare {
+  new_users: ApiMetricSeries;
+  new_orders: ApiMetricSeries;
+  total_users: number;
+  total_orders: number;
+}
+
 export interface ApiDashboardSnapshot {
   range_start: string;
   range_end: string;
@@ -53,6 +128,15 @@ export interface ApiDashboardSnapshot {
   new_users_series: ApiMetricSeries;
   orders_by_status: ApiStatusBucket[];
   top_designs: ApiTopDesign[];
+  // ─── Phase 11 widgets ────────────────────────────────────────────────
+  subscriptions: ApiSubscriptionsSummary | null;
+  funnel: ApiFunnelStage[];
+  abandoned_carts: ApiAbandonedCart[];
+  orders_attention: ApiOrderAttention[];
+  tool_usage: ApiToolUsage | null;
+  size_breakdown: ApiSizeBucket[];
+  top_cities: ApiCityBucket[];
+  registrations_compare: ApiRegistrationsCompare | null;
 }
 
 // ─── Query Keys ─────────────────────────────────────────────────────────

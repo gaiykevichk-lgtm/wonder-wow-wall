@@ -133,3 +133,123 @@ class TopDesign:
     design_id: str
     design_name: str
     orders_count: int
+
+
+# ─── Widget VOs (Phase 11 — admin dashboard expansion) ──────────────────
+#
+# Eight new projections for the admin dashboard. Kept in the same module
+# as the original metric VOs because they share the same "frozen, hashable,
+# no behaviour" shape — the value of having them all importable from one
+# place outweighs the file growth.
+
+
+@dataclass(frozen=True)
+class SubscriptionPlanBucket:
+    """One row of the by-plan breakdown for the Subscriptions widget."""
+
+    plan_id: str
+    plan_name: str
+    monthly_price: int  # ₽ per month, plain rubles
+    active_count: int
+
+
+@dataclass(frozen=True)
+class SubscriptionsSummary:
+    """Active subscribers + recurring revenue + churn for the period."""
+
+    active_count: int           # active right now (not date-bounded)
+    mrr: int                    # ₽ / month, sum(plan.price for ACTIVE subs)
+    churn_pct: float            # cancelled-in-range / active-at-start * 100
+    new_in_period: int          # subscriptions started in the range
+    by_plan: tuple[SubscriptionPlanBucket, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True)
+class FunnelStage:
+    """One stage of the order/customer funnel."""
+
+    key: str                    # 'cart', 'placed', 'confirmed', 'in_progress', 'delivered', 'installed'
+    label: str                  # human-readable, ru
+    count: int
+    # Conversion to this stage as % of the *first* stage (top of funnel).
+    # `None` for the top stage itself; UI renders it as a dash.
+    conversion_pct: float | None = None
+
+
+@dataclass(frozen=True)
+class AbandonedCart:
+    """Constructor project with non-zero total whose owner never converted.
+
+    Proxy for "cart" since the live cart is client-only (Zustand). Uses
+    saved constructor projects: a saved project with `total_price > 0` and
+    no order from the same user inside `rng` is treated as engaged-but-
+    -unconverted intent.
+    """
+
+    project_id: str
+    user_id: str
+    user_email: str
+    user_name: str
+    project_name: str
+    total_price: int
+    panels_count: int
+    last_activity: str          # ISO datetime
+
+
+@dataclass(frozen=True)
+class OrderAttention:
+    """Order stuck longer than the SLA for its current status."""
+
+    order_id: str
+    order_number: str
+    status: str                 # raw enum value; UI maps to label_ru
+    age_hours: int              # hours since `created_at`, rounded down
+    total: int                  # ₽
+    user_id: str
+    user_email: str
+    user_name: str
+    reason: str                 # short ru explanation (e.g. "висит >24ч")
+
+
+@dataclass(frozen=True)
+class ToolUsage:
+    """Engagement metrics for the constructor + visualizer features."""
+
+    constructor_sessions: int   # saved Project entries created in range
+    visualizer_projects: int    # VisualizationProject entries created in range
+    engaged_users: int          # distinct users who created either type
+    converted_users: int        # of `engaged_users`, those with an order in range
+    conversion_pct: float       # converted_users / engaged_users * 100
+
+
+@dataclass(frozen=True)
+class SizeBucket:
+    """One row of the panel-size breakdown."""
+
+    size_key: str               # e.g. "300x300"
+    size_label: str             # e.g. "30×30 см"
+    items_count: int            # sum(quantity) across orders in range
+    revenue: int                # ₽
+
+
+@dataclass(frozen=True)
+class CityBucket:
+    """One row of the geography widget."""
+
+    city: str
+    orders_count: int
+    revenue: int
+
+
+@dataclass(frozen=True)
+class RegistrationsCompare:
+    """New users vs new orders, daily — proxy for acquisition→activation lag.
+
+    Two parallel series so the frontend can overlay them on a single chart;
+    sharing the gap-filling contract with `MetricSeries`.
+    """
+
+    new_users: MetricSeries
+    new_orders: MetricSeries
+    total_users: int
+    total_orders: int
