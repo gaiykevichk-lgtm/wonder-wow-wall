@@ -3,6 +3,7 @@ import { DeleteOutlined, EditOutlined, AppstoreOutlined } from '@ant-design/icon
 import { useNavigate } from 'react-router-dom';
 import { useAccountStore } from '../model/accountStore';
 import { useProjects, useDeleteProject } from '../api/accountApi';
+import { BrandedFrame } from '../../../shared/ui/BrandedFrame';
 
 const { Title, Text } = Typography;
 const ACCENT = '#4CAF50';
@@ -16,10 +17,7 @@ function ProjectPreview({ project }: { project: ReturnType<typeof useAccountStor
   const gridH = project.wallRows * (CELL_PX + GAP_PX) - GAP_PX;
 
   return (
-    <Card
-      style={{ borderRadius: 16 }}
-      hoverable
-    >
+    <BrandedFrame variant="compact" padding={20} gap={6} borderRadius={16}>
       <div style={{ display: 'flex', gap: 20 }}>
         {/* Mini grid preview */}
         <div
@@ -89,7 +87,7 @@ function ProjectPreview({ project }: { project: ReturnType<typeof useAccountStor
           </div>
         </div>
       </div>
-    </Card>
+    </BrandedFrame>
   );
 }
 

@@ -6,6 +6,7 @@ import {
   SUBSCRIPTION_PLANS,
 } from '../../domains/subscription/model/subscriptionStore';
 import type { SubscriptionPlan } from '../../domains/subscription/model/types';
+import { BrandedFrame } from './BrandedFrame';
 
 const ACCENT = '#4CAF50';
 const DARK = '#2D2D2D';
@@ -233,76 +234,78 @@ function StepForm({
 
 function StepSuccess({ plan, onClose }: { plan: SubscriptionPlan; onClose: () => void }) {
   return (
-    <div style={{ textAlign: 'center', padding: '20px 0' }}>
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-        style={{
-          width: 72,
-          height: 72,
-          borderRadius: '50%',
-          background: ACCENT,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          margin: '0 auto 20px',
-        }}
-      >
-        <CheckOutlined style={{ fontSize: 32, color: '#fff' }} />
-      </motion.div>
+    <BrandedFrame variant="full" animate padding="24px 20px 56px" logoHeight={40}>
+      <div style={{ textAlign: 'center' }}>
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+          style={{
+            width: 72,
+            height: 72,
+            borderRadius: '50%',
+            background: ACCENT,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 20px',
+          }}
+        >
+          <CheckOutlined style={{ fontSize: 32, color: '#fff' }} />
+        </motion.div>
 
-      <h2 style={{ fontFamily: FONT, fontSize: 24, fontWeight: 600, color: DARK, margin: '0 0 8px' }}>
-        Подписка оформлена!
-      </h2>
-      <p style={{ fontSize: 15, color: '#6B7280', margin: '0 0 20px', lineHeight: 1.6 }}>
-        План «{plan.name}» активирован. Вам доступно{' '}
-        {plan.areaLimitM2 === 0 ? 'неограниченную площадь' : `до ${plan.areaLimitM2} м²`}{' '}
-        накладок в месяц.
-      </p>
+        <h2 style={{ fontFamily: FONT, fontSize: 24, fontWeight: 600, color: DARK, margin: '0 0 8px' }}>
+          Подписка оформлена!
+        </h2>
+        <p style={{ fontSize: 15, color: '#6B7280', margin: '0 0 20px', lineHeight: 1.6 }}>
+          План «{plan.name}» активирован. Вам доступно{' '}
+          {plan.areaLimitM2 === 0 ? 'неограниченную площадь' : `до ${plan.areaLimitM2} м²`}{' '}
+          накладок в месяц.
+        </p>
 
-      <div
-        style={{
-          background: '#F5F5F5',
-          borderRadius: 16,
-          padding: '16px',
-          marginBottom: 20,
-          textAlign: 'left',
-        }}
-      >
-        <div style={{ fontSize: 13, fontWeight: 600, color: ACCENT, marginBottom: 8 }}>
-          Что дальше:
+        <div
+          style={{
+            background: '#F5F5F5',
+            borderRadius: 16,
+            padding: '16px',
+            marginBottom: 20,
+            textAlign: 'left',
+          }}
+        >
+          <div style={{ fontSize: 13, fontWeight: 600, color: ACCENT, marginBottom: 8 }}>
+            Что дальше:
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {[
+              'Накладки из подписки бесплатны в конструкторе',
+              'Статус подписки виден в шапке сайта',
+              'Управление подпиской — в личном кабинете',
+            ].map((t) => (
+              <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: ACCENT }}>
+                <CheckOutlined style={{ fontSize: 10 }} /> {t}
+              </div>
+            ))}
+          </div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {[
-            'Накладки из подписки бесплатны в конструкторе',
-            'Статус подписки виден в шапке сайта',
-            'Управление подпиской — в личном кабинете',
-          ].map((t) => (
-            <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: ACCENT }}>
-              <CheckOutlined style={{ fontSize: 10 }} /> {t}
-            </div>
-          ))}
-        </div>
+
+        <Button
+          size="large"
+          onClick={onClose}
+          style={{
+            background: DARK,
+            color: '#fff',
+            border: 'none',
+            borderRadius: 8,
+            height: 48,
+            width: '100%',
+            fontWeight: 600,
+            fontSize: 15,
+          }}
+        >
+          Отлично, начать!
+        </Button>
       </div>
-
-      <Button
-        size="large"
-        onClick={onClose}
-        style={{
-          background: DARK,
-          color: '#fff',
-          border: 'none',
-          borderRadius: 8,
-          height: 48,
-          width: '100%',
-          fontWeight: 600,
-          fontSize: 15,
-        }}
-      >
-        Отлично, начать!
-      </Button>
-    </div>
+    </BrandedFrame>
   );
 }
 

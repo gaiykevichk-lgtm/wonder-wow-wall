@@ -77,6 +77,7 @@ import {
   DASHBOARD_RANGE_OPTIONS,
   useDashboardStore,
 } from '../model/dashboardStore';
+import { BrandedFrame } from '../../../shared/ui/BrandedFrame';
 
 const { Title, Text } = Typography;
 
@@ -921,34 +922,44 @@ export default function AdminDashboardPage() {
       variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
       style={{ maxWidth: 1280 }}
     >
-      <motion.div
-        variants={fadeUpVariants}
-        custom={0}
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 16,
-          marginBottom: 20,
-        }}
-      >
-        <div>
-          <Title level={3} style={{ margin: 0, color: DARK, fontWeight: 700 }}>
-            Дашборд
-          </Title>
-          <Text type="secondary" style={{ color: GRAY_TEXT, fontSize: 13 }}>
-            Сводка магазина за выбранный период.
-          </Text>
-        </div>
-        <Segmented
-          value={range}
-          options={DASHBOARD_RANGE_OPTIONS.map((o) => ({
-            label: o.label,
-            value: o.value,
-          }))}
-          onChange={(v) => setRange(v as 7 | 30 | 90)}
-        />
+      <motion.div variants={fadeUpVariants} custom={0} style={{ marginBottom: 20 }}>
+        {/* Hero block — branded frame turns the header into a "report
+            cover" rather than a generic page title. Uses the full
+            variant so the corporate logo lands in the bottom-right of
+            the inner border. */}
+        <BrandedFrame
+          variant="full"
+          padding="20px 28px 56px"
+          logoHeight={44}
+          borderRadius={12}
+        >
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 16,
+            }}
+          >
+            <div>
+              <Title level={3} style={{ margin: 0, color: DARK, fontWeight: 700 }}>
+                Дашборд
+              </Title>
+              <Text type="secondary" style={{ color: GRAY_TEXT, fontSize: 13 }}>
+                Сводка магазина за выбранный период.
+              </Text>
+            </div>
+            <Segmented
+              value={range}
+              options={DASHBOARD_RANGE_OPTIONS.map((o) => ({
+                label: o.label,
+                value: o.value,
+              }))}
+              onChange={(v) => setRange(v as 7 | 30 | 90)}
+            />
+          </div>
+        </BrandedFrame>
       </motion.div>
 
       {error && (

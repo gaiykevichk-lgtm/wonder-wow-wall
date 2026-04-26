@@ -25,6 +25,7 @@ import { motion } from 'framer-motion';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import { useCartStore } from '../model/cartStore';
+import { BrandedFrame } from '../../../shared/ui/BrandedFrame';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
@@ -64,10 +65,198 @@ const CheckoutPage: React.FC = () => {
   const [form] = Form.useForm();
   const [delivery, setDelivery] = useState<string>('courier');
   const [payment, setPayment] = useState<string>('card');
+  // Phase 12 — post-submit "certificate" success state lives on the same
+  // page (no new route) so wizard → success is animated locally and the
+  // user keeps the order recap they just confirmed.
+  const [submittedOrder, setSubmittedOrder] = useState<{
+    number: string;
+    total: number;
+    items: typeof items;
+  } | null>(null);
 
   const subtotal = total();
   const deliveryCost = subtotal >= 50000 ? 0 : 2500;
   const grandTotal = subtotal + deliveryCost;
+
+  // ── Success state (post-submit) ──────────────────────────────────────────────
+  if (submittedOrder) {
+    return (
+      <div
+        style={{
+          paddingTop: 72,
+          minHeight: '100vh',
+          background: '#F5F5F5',
+          padding: '72px 24px 80px',
+        }}
+      >
+        <PageMeta title="Заказ оформлен" />
+        <div style={{ ...MAX_WIDTH, maxWidth: 760 }}>
+          <BrandedFrame
+            variant="full"
+            animate
+            padding="56px 56px 88px"
+            logoHeight={56}
+          >
+            <div style={{ textAlign: 'center' }}>
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                style={{
+                  width: 72,
+                  height: 72,
+                  borderRadius: '50%',
+                  background: ACCENT,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 24px',
+                }}
+              >
+                <CheckCircleOutlined style={{ fontSize: 38, color: '#fff' }} />
+              </motion.div>
+              <h1
+                style={{
+                  fontFamily: FONT,
+                  fontSize: 32,
+                  fontWeight: 700,
+                  color: DARK,
+                  margin: '0 0 8px',
+                  letterSpacing: -0.4,
+                }}
+              >
+                Спасибо за заказ!
+              </h1>
+              <p
+                style={{
+                  fontFamily: FONT,
+                  fontSize: 15,
+                  color: GRAY_TEXT,
+                  margin: '0 0 32px',
+                  lineHeight: 1.6,
+                }}
+              >
+                Мы свяжемся с вами в ближайшее время для подтверждения
+                деталей доставки и&nbsp;монтажа.
+              </p>
+
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'baseline',
+                  gap: 32,
+                  padding: '20px 32px',
+                  background: '#FAFAFA',
+                  borderRadius: 12,
+                  marginBottom: 28,
+                }}
+              >
+                <div style={{ textAlign: 'left' }}>
+                  <div
+                    style={{
+                      fontFamily: FONT,
+                      fontSize: 12,
+                      color: GRAY_TEXT,
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.6,
+                    }}
+                  >
+                    Номер заказа
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: FONT,
+                      fontSize: 22,
+                      fontWeight: 700,
+                      color: DARK,
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {submittedOrder.number}
+                  </div>
+                </div>
+                <div
+                  style={{
+                    width: 1,
+                    alignSelf: 'stretch',
+                    background: 'rgba(0,0,0,0.08)',
+                  }}
+                />
+                <div style={{ textAlign: 'left' }}>
+                  <div
+                    style={{
+                      fontFamily: FONT,
+                      fontSize: 12,
+                      color: GRAY_TEXT,
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.6,
+                    }}
+                  >
+                    Сумма
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: FONT,
+                      fontSize: 22,
+                      fontWeight: 700,
+                      color: DARK,
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {submittedOrder.total.toLocaleString('ru-RU')} ₽
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 12,
+                  justifyContent: 'center',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <Link to="/account/orders">
+                  <Button
+                    size="large"
+                    style={{
+                      background: DARK,
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 8,
+                      height: 48,
+                      padding: '0 28px',
+                      fontFamily: FONT,
+                      fontWeight: 600,
+                    }}
+                  >
+                    Мои заказы
+                  </Button>
+                </Link>
+                <Link to="/catalog">
+                  <Button
+                    size="large"
+                    style={{
+                      background: '#fff',
+                      color: DARK,
+                      border: '1px solid rgba(0,0,0,0.12)',
+                      borderRadius: 8,
+                      height: 48,
+                      padding: '0 28px',
+                      fontFamily: FONT,
+                      fontWeight: 600,
+                    }}
+                  >
+                    Продолжить покупки
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </BrandedFrame>
+        </div>
+      </div>
+    );
+  }
 
   // ── Empty state ──────────────────────────────────────────────────────────────
   if (items.length === 0) {
@@ -152,9 +341,17 @@ const CheckoutPage: React.FC = () => {
   const handleSubmit = async () => {
     try {
       await form.validateFields();
-      message.success('Заказ успешно оформлен! Мы свяжемся с вами в ближайшее время.');
+      // Phase 12 — switch to success state in-place. The cart is cleared
+      // AFTER capturing the items snapshot so the success view can still
+      // recap the order. Real backend integration will replace the
+      // synthetic order number with the server's response.
+      const captured = items;
+      const number =
+        'WW-' +
+        Math.floor(Math.random() * 1_000_000).toString().padStart(6, '0');
+      setSubmittedOrder({ number, total: grandTotal, items: captured });
       clearCart();
-      navigate('/');
+      message.success('Заказ оформлен!');
     } catch {
       // validation error — antd shows inline
     }
