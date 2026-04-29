@@ -9,6 +9,7 @@ import {
   CrownOutlined,
   SafetyCertificateOutlined,
   RocketOutlined,
+  CheckOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { products, categories, clientReviews } from '../../catalog/model/data';
@@ -33,23 +34,24 @@ const containerVariants = {
 
 // ─── Shared style constants ───────────────────────────────────────────────────
 
-const SECTION_PADDING: React.CSSProperties = { padding: '120px 24px' };
-const MAX_WIDTH: React.CSSProperties = { maxWidth: 1080, margin: '0 auto' };
+const SECTION_PADDING: React.CSSProperties = { padding: '100px 24px' };
+const MAX_WIDTH: React.CSSProperties = { maxWidth: 1200, margin: '0 auto' };
 const ACCENT = '#4CAF50';
+const ACCENT_DARK = '#2E7D32';
 const DARK = '#2D2D2D';
 const GRAY_TEXT = '#6B7280';
 const LIGHT_BG = '#F5F5F5';
 const SUBTLE_BORDER = 'rgba(0,0,0,0.04)';
 const CARD_RADIUS = 20;
-const PILL_RADIUS = 8;
+const PILL_RADIUS = 10;
 
-// ─── Hero Section ─────────────────────────────────────────────────────────────
+// ─── Hero Section (Сочная версия) ─────────────────────────────────────────────
 
 const heroImages = [
-  'https://images.unsplash.com/photo-1644925757334-d0397c01518c?w=600&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1566041510394-cf7c8fe21800?w=600&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1740686004244-e9bc7c75d8e5?w=600&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1582135739786-3bceafcaea85?w=600&h=600&fit=crop',
+  'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=700&h=700&fit=crop',
+  'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=700&h=700&fit=crop',
+  'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=700&h=700&fit=crop',
+  'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=700&h=700&fit=crop',
 ];
 
 const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }> = ({
@@ -59,20 +61,46 @@ const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }
   <section
     style={{
       minHeight: '100vh',
-      background: '#fff',
+      background: `linear-gradient(180deg, #FFFFFF 0%, #F8FBF8 50%, #F0F7F0 100%)`,
       display: 'flex',
       alignItems: 'center',
       ...SECTION_PADDING,
+      position: 'relative',
+      overflow: 'hidden',
     }}
   >
+    {/* Decorative blobs */}
+    <div style={{
+      position: 'absolute',
+      top: '-20%',
+      right: '-10%',
+      width: '600px',
+      height: '600px',
+      background: 'radial-gradient(circle, rgba(76,175,80,0.08) 0%, transparent 70%)',
+      borderRadius: '50%',
+      pointerEvents: 'none',
+    }} />
+    <div style={{
+      position: 'absolute',
+      bottom: '-10%',
+      left: '-5%',
+      width: '400px',
+      height: '400px',
+      background: 'radial-gradient(circle, rgba(76,175,80,0.06) 0%, transparent 70%)',
+      borderRadius: '50%',
+      pointerEvents: 'none',
+    }} />
+
     <div
       style={{
         ...MAX_WIDTH,
         width: '100%',
         display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: 64,
+        gridTemplateColumns: '1.1fr 0.9fr',
+        gap: 80,
         alignItems: 'center',
+        position: 'relative',
+        zIndex: 1,
       }}
       className="hero-grid"
     >
@@ -81,22 +109,23 @@ const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        style={{ display: 'flex', flexDirection: 'column', gap: 28 }}
+        style={{ display: 'flex', flexDirection: 'column', gap: 32 }}
       >
         <motion.div variants={fadeUpVariants} custom={0}>
           <Tag
             style={{
-              background: ACCENT,
+              background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
               color: '#fff',
               border: 'none',
               borderRadius: PILL_RADIUS,
-              padding: '4px 14px',
+              padding: '6px 16px',
               fontSize: 13,
               fontFamily: 'Inter, sans-serif',
               fontWeight: 600,
+              boxShadow: '0 4px 14px rgba(76,175,80,0.3)',
             }}
           >
-            Новая коллекция 2026
+            Сделано в России — 2026
           </Tag>
         </motion.div>
 
@@ -105,15 +134,24 @@ const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }
           custom={1}
           style={{
             fontFamily: 'Inter, sans-serif',
-            fontSize: 'clamp(56px, 6vw, 80px)',
-            fontWeight: 600,
+            fontSize: 'clamp(48px, 5.5vw, 72px)',
+            fontWeight: 700,
             color: DARK,
             margin: 0,
-            lineHeight: 1.1,
+            lineHeight: 1.08,
             letterSpacing: '-0.03em',
           }}
         >
-          Стены, которые вдохновляют
+          Стены, которые{' '}
+          <span style={{
+            background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+          }}>
+            меняют
+          </span>{' '}
+          всё
         </motion.h1>
 
         <motion.p
@@ -121,38 +159,38 @@ const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }
           custom={2}
           style={{
             fontFamily: 'Inter, sans-serif',
-            fontSize: 18,
+            fontSize: 19,
             color: GRAY_TEXT,
             margin: 0,
-            lineHeight: 1.6,
-            maxWidth: 480,
+            lineHeight: 1.65,
+            maxWidth: 500,
           }}
         >
-          Более 100&nbsp;000 вариантов оформления — от натурального дерева до
-          3D-гипса. Профессиональный монтаж за 2&nbsp;часа с гарантией результата.
+          Забудьте про обои. 3D-панели — это когда стена выглядит как произведение искусства. Приходите, потрогайте, оцените.
         </motion.p>
 
         <motion.div
           variants={fadeUpVariants}
           custom={3}
-          style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}
+          style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}
         >
           <Button
             onClick={onCatalog}
             size="large"
             style={{
-              background: ACCENT,
+              background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
               color: '#fff',
               border: 'none',
               borderRadius: PILL_RADIUS,
-              height: 52,
-              padding: '0 28px',
+              height: 56,
+              padding: '0 32px',
               fontFamily: 'Inter, sans-serif',
               fontWeight: 600,
-              fontSize: 15,
+              fontSize: 16,
+              boxShadow: '0 8px 24px rgba(76,175,80,0.35)',
             }}
           >
-            Смотреть каталог
+            Выбрать панели
           </Button>
           <Button
             onClick={onConstructor}
@@ -160,43 +198,44 @@ const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }
             style={{
               background: 'transparent',
               color: ACCENT,
-              border: 'none',
+              border: '2px solid #E8F5E9',
               borderRadius: PILL_RADIUS,
-              height: 52,
-              padding: '0 28px',
+              height: 56,
+              padding: '0 32px',
               fontFamily: 'Inter, sans-serif',
               fontWeight: 600,
-              fontSize: 15,
+              fontSize: 16,
             }}
           >
-            Открыть конструктор
+            Попробовать конструктор
           </Button>
         </motion.div>
 
-        {/* Stats row */}
+        {/* Trust badges */}
         <motion.div
           variants={fadeUpVariants}
           custom={4}
           style={{
             display: 'flex',
-            gap: 36,
+            gap: 24,
             borderTop: `1px solid ${SUBTLE_BORDER}`,
             paddingTop: 24,
             flexWrap: 'wrap',
           }}
         >
           {[
-            { number: '200+', label: 'Дизайнов' },
-            { number: '50K+', label: 'Клиентов' },
-            { number: '4.9', label: 'Рейтинг' },
+            { number: '200+', label: 'дизайнов в каталоге' },
+            { number: '50 000+', label: 'довольных клиентов' },
+            { number: '4.9', label: 'средний рейтинг' },
           ].map((stat) => (
             <div key={stat.label} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <span
                 style={{
                   fontFamily: 'Inter, sans-serif',
-                  fontSize: 44,
-                  fontWeight: 600,
+                  fontSize: 36,
+                  fontWeight: 700,
                   color: DARK,
+                  letterSpacing: '-0.02em',
                 }}
               >
                 {stat.number}
@@ -204,7 +243,7 @@ const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }
               <span
                 style={{
                   fontFamily: 'Inter, sans-serif',
-                  fontSize: 14,
+                  fontSize: 13,
                   color: GRAY_TEXT,
                 }}
               >
@@ -215,7 +254,7 @@ const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }
         </motion.div>
       </motion.div>
 
-      {/* Right column — 2×2 photo grid */}
+      {/* Right column — 2×2 photo grid with frames */}
       <motion.div
         variants={containerVariants}
         initial="hidden"
@@ -223,25 +262,51 @@ const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }
         style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
-          gap: 12,
+          gap: 16,
         }}
+        className="hero-images"
       >
         {heroImages.map((src, i) => (
           <motion.div
             key={src}
             variants={fadeUpVariants}
             custom={i * 0.5}
+            whileHover={{
+              scale: 1.03,
+              transition: { duration: 0.4, ease: APPLE_EASE },
+            }}
             style={{
               borderRadius: CARD_RADIUS,
               overflow: 'hidden',
               aspectRatio: '1 / 1',
+              position: 'relative',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.12)',
             }}
           >
             <img
               src={src}
-              alt={`Панель ${i + 1}`}
+              alt={`Пример интерьера ${i + 1}`}
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />
+            {/* Corner accent */}
+            <div style={{
+              position: 'absolute',
+              top: 12,
+              left: 12,
+              width: 24,
+              height: 24,
+              borderLeft: '3px solid #4CAF50',
+              borderTop: '3px solid #4CAF50',
+            }} />
+            <div style={{
+              position: 'absolute',
+              bottom: 12,
+              right: 12,
+              width: 24,
+              height: 24,
+              borderRight: '3px solid #4CAF50',
+              borderBottom: '3px solid #4CAF50',
+            }} />
           </motion.div>
         ))}
       </motion.div>
@@ -254,23 +319,27 @@ const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }
 const steps = [
   {
     num: '1',
-    title: 'Выберите дизайн',
-    desc: 'Просмотрите каталог из 200+ уникальных дизайнов и подберите нужный стиль.',
+    title: 'Выбираете дизайн',
+    desc: 'Листаете каталог. Нравится — сохраняете. Не нравится — листаете дальше.',
+    image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop',
   },
   {
     num: '2',
-    title: 'Примерьте на стену',
-    desc: 'Используйте наш 3D-конструктор для визуализации панелей в вашем интерьере.',
+    title: 'Примеряете на стену',
+    desc: 'Загружаете фото комнаты — и видите, как панели смотрятся именно у вас.',
+    image: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=300&fit=crop',
   },
   {
     num: '3',
-    title: 'Оформите заказ',
-    desc: 'Укажите размеры, выберите цвет и оформите заказ онлайн за несколько минут.',
+    title: 'Оформляете заказ',
+    desc: 'Указываете размеры. Оплачиваете. Всё — за пять минут, без поездки в магазин.',
+    image: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=300&fit=crop',
   },
   {
     num: '4',
-    title: 'Установим за 2 часа',
-    desc: 'Наша команда приедет и профессионально установит панели с гарантией.',
+    title: 'Мы приезжаем и ставим',
+    desc: 'Через два дня вы пьёте кофе и любуетесь стеной. Без пыли, без грязи.',
+    image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop',
   },
 ];
 
@@ -282,29 +351,41 @@ const HowItWorksSection: React.FC = () => (
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.2 }}
-        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 48 }}
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 56 }}
       >
-        <motion.h2
-          variants={fadeUpVariants}
-          custom={0}
-          style={{
+        <motion.div variants={fadeUpVariants} custom={0} style={{ textAlign: 'center' }}>
+          <span style={{
             fontFamily: 'Inter, sans-serif',
-            fontSize: 'clamp(32px, 3vw, 36px)',
+            fontSize: 12,
             fontWeight: 600,
-            color: DARK,
-            margin: 0,
-            textAlign: 'center',
-            letterSpacing: '-0.03em',
-          }}
-        >
-          Как это работает
-        </motion.h2>
+            color: ACCENT,
+            textTransform: 'uppercase',
+            letterSpacing: '3px',
+            display: 'block',
+            marginBottom: 12,
+          }}>
+            Прозрачно и просто
+          </span>
+          <h2
+            style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: 'clamp(32px, 3.5vw, 44px)',
+              fontWeight: 700,
+              color: DARK,
+              margin: 0,
+              letterSpacing: '-0.03em',
+              lineHeight: 1.15,
+            }}
+          >
+            Четыре шага — и готово
+          </h2>
+        </motion.div>
 
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: 32,
+            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+            gap: 24,
             width: '100%',
           }}
         >
@@ -313,37 +394,51 @@ const HowItWorksSection: React.FC = () => (
               key={step.num}
               variants={fadeUpVariants}
               custom={i + 1}
+              whileHover={{
+                translateY: -4,
+                boxShadow: '0 20px 50px rgba(0,0,0,0.08)',
+                transition: { duration: 0.5, ease: APPLE_EASE },
+              }}
               style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-start',
-                gap: 16,
+                borderRadius: CARD_RADIUS,
+                overflow: 'hidden',
+                background: '#fff',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
+                transition: `box-shadow 0.5s cubic-bezier(${APPLE_EASE.join(',')})`,
               }}
             >
-              <div
-                style={{
-                  width: 48,
-                  height: 48,
+              <div style={{ height: 160, overflow: 'hidden', position: 'relative' }}>
+                <img
+                  src={step.image}
+                  alt={step.title}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+                <div style={{
+                  position: 'absolute',
+                  top: 12,
+                  left: 12,
+                  width: 36,
+                  height: 36,
                   borderRadius: '50%',
-                  background: ACCENT,
+                  background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   color: '#fff',
                   fontFamily: 'Inter, sans-serif',
-                  fontWeight: 600,
-                  fontSize: 18,
-                  flexShrink: 0,
-                }}
-              >
-                {step.num}
+                  fontWeight: 700,
+                  fontSize: 16,
+                  boxShadow: '0 4px 12px rgba(76,175,80,0.4)',
+                }}>
+                  {step.num}
+                </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ padding: '20px 20px 24px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <span
                   style={{
                     fontFamily: 'Inter, sans-serif',
-                    fontWeight: 600,
-                    fontSize: 17,
+                    fontWeight: 700,
+                    fontSize: 18,
                     color: DARK,
                   }}
                 >
@@ -370,13 +465,43 @@ const HowItWorksSection: React.FC = () => (
 
 // ─── Advantages Section ──────────────────────────────────────────────────────
 
-const advantages: { icon: React.ReactNode; title: string; desc: string }[] = [
-  { icon: <AppstoreOutlined />, title: '100 000+ вариантов', desc: 'Огромный выбор дизайнов на любой вкус — от классики до авангарда.' },
-  { icon: <ThunderboltOutlined />, title: 'Монтаж за 2 часа', desc: 'Профессиональная установка в удобное для вас время без шума и пыли.' },
-  { icon: <AudioMutedOutlined />, title: 'Без шума и пыли', desc: 'Наша технология монтажа не требует грязных работ — чисто и аккуратно.' },
-  { icon: <CrownOutlined />, title: 'Гибкая подписка', desc: 'Меняйте дизайн стен так часто, как хотите — с подпиской это выгоднее.' },
-  { icon: <SafetyCertificateOutlined />, title: 'Гарантия 5 лет', desc: 'На все материалы и работы. При любом дефекте — бесплатная замена.' },
-  { icon: <RocketOutlined />, title: 'Доставка по РФ', desc: 'По Москве за 1 день, по России — от 3 рабочих дней.' },
+const advantages: { icon: React.ReactNode; title: string; desc: string; color: string }[] = [
+  {
+    icon: <AppstoreOutlined />,
+    title: '200+ дизайнов в наличии',
+    desc: 'Выбирайте. Не нашли — привезём под заказ за две недели.',
+    color: '#E8F5E9'
+  },
+  {
+    icon: <ThunderboltOutlined />,
+    title: 'Монтаж за 2 часа',
+    desc: 'Приедем, поставим, уберём за собой. Вы только проверяете.',
+    color: '#FFF3E0'
+  },
+  {
+    icon: <AudioMutedOutlined />,
+    title: 'Чисто. Без шума.',
+    desc: 'Технология без сверления и пыли. Дети и животные не пострадают.',
+    color: '#E3F2FD'
+  },
+  {
+    icon: <CrownOutlined />,
+    title: 'Подписка — выгоднее',
+    desc: 'Меняете дизайн каждый год? Подписка окупается за два заказа.',
+    color: '#F3E5F5'
+  },
+  {
+    icon: <SafetyCertificateOutlined />,
+    title: 'Гарантия 5 лет',
+    desc: 'Что-то пошло не так — приедем и исправим. Бесплатно.',
+    color: '#FFEBEE'
+  },
+  {
+    icon: <RocketOutlined />,
+    title: 'Доставка по всей России',
+    desc: 'Москва — завтра. По России — от трёх дней. Везём аккуратно.',
+    color: '#E0F7FA'
+  },
 ];
 
 const AdvantagesSection: React.FC = () => (
@@ -397,34 +522,42 @@ const AdvantagesSection: React.FC = () => (
               fontFamily: 'Inter, sans-serif',
               fontSize: 12,
               fontWeight: 600,
-              color: GRAY_TEXT,
+              color: ACCENT,
               textTransform: 'uppercase',
-              letterSpacing: '2px',
+              letterSpacing: '3px',
             }}
           >
-            Почему мы
+            Почему к нам приходят
           </motion.span>
           <motion.h2
             variants={fadeUpVariants}
             custom={1}
             style={{
               fontFamily: 'Inter, sans-serif',
-              fontSize: 'clamp(32px, 3vw, 36px)',
-              fontWeight: 600,
+              fontSize: 'clamp(32px, 3.5vw, 44px)',
+              fontWeight: 700,
               color: DARK,
               margin: 0,
               textAlign: 'center',
               letterSpacing: '-0.03em',
             }}
           >
-            Наши преимущества
+            Потому что мы делаем это{' '}
+            <span style={{
+              background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+            }}>
+              хорошо
+            </span>
           </motion.h2>
         </div>
 
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
             gap: 20,
             width: '100%',
           }}
@@ -435,8 +568,8 @@ const AdvantagesSection: React.FC = () => (
               variants={fadeUpVariants}
               custom={i * 0.1 + 2}
               whileHover={{
-                translateY: -2,
-                boxShadow: '0 8px 24px rgba(0,0,0,0.06)',
+                translateY: -3,
+                boxShadow: '0 16px 40px rgba(0,0,0,0.08)',
                 transition: { duration: 0.5, ease: APPLE_EASE },
               }}
               style={{
@@ -444,21 +577,22 @@ const AdvantagesSection: React.FC = () => (
                 borderRadius: CARD_RADIUS,
                 padding: '28px 24px',
                 display: 'flex',
-                gap: 16,
+                gap: 18,
                 alignItems: 'flex-start',
                 transition: `box-shadow 0.5s cubic-bezier(${APPLE_EASE.join(',')})`,
+                border: '1px solid rgba(0,0,0,0.04)',
               }}
             >
               <div
                 style={{
-                  width: 48,
-                  height: 48,
+                  width: 52,
+                  height: 52,
                   borderRadius: 14,
-                  background: LIGHT_BG,
+                  background: item.color,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: 22,
+                  fontSize: 24,
                   color: ACCENT,
                   flexShrink: 0,
                 }}
@@ -469,8 +603,8 @@ const AdvantagesSection: React.FC = () => (
                 <div
                   style={{
                     fontFamily: 'Inter, sans-serif',
-                    fontWeight: 600,
-                    fontSize: 16,
+                    fontWeight: 700,
+                    fontSize: 17,
                     color: DARK,
                     marginBottom: 6,
                   }}
@@ -499,7 +633,7 @@ const AdvantagesSection: React.FC = () => (
 // ─── Promo Banner Section ────────────────────────────────────────────────────
 
 const PromoBannerSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => (
-  <section style={{ background: '#fff', ...SECTION_PADDING }}>
+  <section style={{ background: '#fff', padding: '80px 24px' }}>
     <div style={{ ...MAX_WIDTH }}>
       <motion.div
         initial="hidden"
@@ -508,40 +642,55 @@ const PromoBannerSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) 
         variants={fadeUpVariants}
         custom={0}
         style={{
-          background: `linear-gradient(135deg, ${ACCENT} 0%, #2E7D32 100%)`,
+          background: `linear-gradient(135deg, #1B5E20 0%, #2E7D32 50%, #388E3C 100%)`,
           borderRadius: CARD_RADIUS,
-          padding: '56px 48px',
+          padding: '64px 56px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          gap: 32,
+          gap: 40,
           flexWrap: 'wrap',
+          position: 'relative',
+          overflow: 'hidden',
+          boxShadow: '0 20px 60px rgba(46,125,50,0.25)',
         }}
         className="promo-banner-inner"
       >
-        <div style={{ maxWidth: 480 }}>
+        {/* Decorative circles */}
+        <div style={{
+          position: 'absolute',
+          top: '-50%',
+          right: '-10%',
+          width: '400px',
+          height: '400px',
+          background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%)',
+          borderRadius: '50%',
+          pointerEvents: 'none',
+        }} />
+
+        <div style={{ maxWidth: 520, position: 'relative', zIndex: 1 }}>
           <div
             style={{
               fontFamily: 'Inter, sans-serif',
               fontSize: 13,
               fontWeight: 600,
-              color: 'rgba(255,255,255,0.8)',
+              color: 'rgba(255,255,255,0.75)',
               textTransform: 'uppercase',
               letterSpacing: '2px',
               marginBottom: 12,
             }}
           >
-            Специальное предложение
+            Только до конца месяца
           </div>
           <h2
             style={{
               fontFamily: 'Inter, sans-serif',
-              fontSize: 'clamp(28px, 3vw, 36px)',
-              fontWeight: 600,
+              fontSize: 'clamp(28px, 3vw, 40px)',
+              fontWeight: 700,
               color: '#fff',
-              margin: '0 0 12px',
-              lineHeight: 1.2,
-              letterSpacing: '-0.03em',
+              margin: '0 0 16px',
+              lineHeight: 1.15,
+              letterSpacing: '-0.02em',
             }}
           >
             Скидка 15% на первый заказ
@@ -555,9 +704,16 @@ const PromoBannerSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) 
               lineHeight: 1.6,
             }}
           >
-            Оформите заказ до конца месяца и получите скидку на весь ассортимент
-            панелей. Акция действует для новых клиентов.
+            Да, мы тоже не любим переплачивать. Поэтому — скидка. Введите промокод FIRST15 при оформлении.
           </p>
+          <div style={{ marginTop: 20, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {['Бесплатный замер', 'Гарантия 5 лет', 'Рассрочка 0%'].map((perk) => (
+              <div key={perk} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <CheckOutlined style={{ color: '#A5D6A7', fontSize: 14 }} />
+                <span style={{ fontFamily: 'Inter', fontSize: 13, color: 'rgba(255,255,255,0.9)' }}>{perk}</span>
+              </div>
+            ))}
+          </div>
         </div>
         <Button
           onClick={onCatalog}
@@ -567,15 +723,18 @@ const PromoBannerSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) 
             color: ACCENT,
             border: 'none',
             borderRadius: PILL_RADIUS,
-            height: 52,
-            padding: '0 32px',
+            height: 56,
+            padding: '0 36px',
             fontFamily: 'Inter, sans-serif',
-            fontWeight: 600,
-            fontSize: 15,
+            fontWeight: 700,
+            fontSize: 16,
             flexShrink: 0,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+            position: 'relative',
+            zIndex: 1,
           }}
         >
-          Выбрать панели
+          Получить скидку
         </Button>
       </motion.div>
     </div>
@@ -583,6 +742,15 @@ const PromoBannerSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) 
 );
 
 // ─── Categories Section ───────────────────────────────────────────────────────
+
+const categoryImages: Record<string, string> = {
+  wood: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=500&h=700&fit=crop',
+  stone: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=500&h=700&fit=crop',
+  concrete: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=500&h=700&fit=crop',
+  plaster: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=500&h=700&fit=crop',
+  brick: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=500&h=700&fit=crop',
+  textile: 'https://images.unsplash.com/photo-1615529182904-14819c35db37?w=500&h=700&fit=crop',
+};
 
 const CategoriesSection: React.FC<{ onCategory: (key: string) => void }> = ({ onCategory }) => {
   const filtered = categories.filter((c) => c.key !== 'all');
@@ -605,35 +773,35 @@ const CategoriesSection: React.FC<{ onCategory: (key: string) => void }> = ({ on
                 fontFamily: 'Inter, sans-serif',
                 fontSize: 12,
                 fontWeight: 600,
-                color: GRAY_TEXT,
+                color: ACCENT,
                 textTransform: 'uppercase',
-                letterSpacing: '2px',
+                letterSpacing: '3px',
               }}
             >
-              Категории
+              Подберите свой стиль
             </motion.span>
             <motion.h2
               variants={fadeUpVariants}
               custom={1}
               style={{
                 fontFamily: 'Inter, sans-serif',
-                fontSize: 'clamp(32px, 3vw, 36px)',
-                fontWeight: 600,
+                fontSize: 'clamp(32px, 3.5vw, 44px)',
+                fontWeight: 700,
                 color: DARK,
                 margin: 0,
                 textAlign: 'center',
                 letterSpacing: '-0.03em',
               }}
             >
-              Найдите свой стиль
+              Категории панелей
             </motion.h2>
           </div>
 
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-              gap: 16,
+              gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+              gap: 20,
               width: '100%',
             }}
           >
@@ -643,8 +811,8 @@ const CategoriesSection: React.FC<{ onCategory: (key: string) => void }> = ({ on
                 variants={fadeUpVariants}
                 custom={i * 0.1 + 2}
                 whileHover={{
-                  translateY: -2,
-                  boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
+                  translateY: -4,
+                  boxShadow: '0 20px 50px rgba(0,0,0,0.12)',
                   transition: { duration: 0.5, ease: APPLE_EASE },
                 }}
                 onClick={() => onCategory(cat.key)}
@@ -654,10 +822,11 @@ const CategoriesSection: React.FC<{ onCategory: (key: string) => void }> = ({ on
                   overflow: 'hidden',
                   cursor: 'pointer',
                   aspectRatio: '3 / 4',
+                  boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
                 }}
               >
                 <img
-                  src={cat.image}
+                  src={categoryImages[cat.key] || cat.image}
                   alt={cat.label}
                   style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                 />
@@ -665,23 +834,46 @@ const CategoriesSection: React.FC<{ onCategory: (key: string) => void }> = ({ on
                   style={{
                     position: 'absolute',
                     inset: 0,
-                    background: 'linear-gradient(to top, rgba(0,0,0,0.45) 0%, transparent 60%)',
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.1) 50%, transparent 80%)',
                   }}
                 />
-                <span
+                <div
                   style={{
                     position: 'absolute',
-                    bottom: 14,
-                    left: 14,
-                    right: 14,
-                    fontFamily: 'Inter, sans-serif',
-                    fontWeight: 600,
-                    fontSize: 15,
-                    color: '#fff',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    padding: '20px 16px',
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 100%)',
                   }}
                 >
-                  {cat.label}
-                </span>
+                  <span
+                    style={{
+                      fontFamily: 'Inter, sans-serif',
+                      fontWeight: 700,
+                      fontSize: 16,
+                      color: '#fff',
+                      display: 'block',
+                    }}
+                  >
+                    {cat.label}
+                  </span>
+                </div>
+                {/* Green accent corner */}
+                <div style={{
+                  position: 'absolute',
+                  top: 14,
+                  right: 14,
+                  width: 32,
+                  height: 32,
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <span style={{ color: '#fff', fontSize: 14 }}>→</span>
+                </div>
               </motion.div>
             ))}
           </div>
@@ -716,23 +908,37 @@ const PopularProductsSection: React.FC<{ onProduct: (id: string) => void; onAllP
             style={{
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'center',
+              alignItems: 'flex-end',
               flexWrap: 'wrap',
-              gap: 12,
+              gap: 16,
             }}
           >
-            <h2
-              style={{
+            <div>
+              <span style={{
                 fontFamily: 'Inter, sans-serif',
-                fontSize: 'clamp(32px, 3vw, 36px)',
+                fontSize: 12,
                 fontWeight: 600,
-                color: DARK,
-                margin: 0,
-                letterSpacing: '-0.03em',
-              }}
-            >
-              Популярные дизайны
-            </h2>
+                color: ACCENT,
+                textTransform: 'uppercase',
+                letterSpacing: '3px',
+                display: 'block',
+                marginBottom: 8,
+              }}>
+                Хиты продаж
+              </span>
+              <h2
+                style={{
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: 'clamp(32px, 3.5vw, 44px)',
+                  fontWeight: 700,
+                  color: DARK,
+                  margin: 0,
+                  letterSpacing: '-0.03em',
+                }}
+              >
+                Что выбирают чаще всего
+              </h2>
+            </div>
             <button
               onClick={onAllProducts}
               style={{
@@ -744,9 +950,13 @@ const PopularProductsSection: React.FC<{ onProduct: (id: string) => void; onAllP
                 fontWeight: 600,
                 color: ACCENT,
                 textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
               }}
             >
-              Все дизайны →
+              Все дизайны
+              <span>→</span>
             </button>
           </motion.div>
 
@@ -754,8 +964,8 @@ const PopularProductsSection: React.FC<{ onProduct: (id: string) => void; onAllP
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-              gap: 24,
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: 28,
             }}
           >
             {popular.map((product, i) => (
@@ -764,8 +974,8 @@ const PopularProductsSection: React.FC<{ onProduct: (id: string) => void; onAllP
                 variants={fadeUpVariants}
                 custom={i * 0.1 + 1}
                 whileHover={{
-                  translateY: -2,
-                  boxShadow: '0 16px 40px rgba(0,0,0,0.08)',
+                  translateY: -4,
+                  boxShadow: '0 24px 60px rgba(0,0,0,0.1)',
                   transition: { duration: 0.5, ease: APPLE_EASE },
                 }}
                 onClick={() => onProduct(product.id)}
@@ -774,12 +984,13 @@ const PopularProductsSection: React.FC<{ onProduct: (id: string) => void; onAllP
                   overflow: 'hidden',
                   cursor: 'pointer',
                   background: '#fff',
-                  boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
+                  border: '1px solid rgba(0,0,0,0.04)',
                   transition: `box-shadow 0.5s cubic-bezier(${APPLE_EASE.join(',')})`,
                 }}
               >
                 {/* Photo area */}
-                <div style={{ position: 'relative', height: 220, overflow: 'hidden' }}>
+                <div style={{ position: 'relative', height: 240, overflow: 'hidden' }}>
                   <img
                     src={product.image}
                     alt={product.name}
@@ -789,32 +1000,43 @@ const PopularProductsSection: React.FC<{ onProduct: (id: string) => void; onAllP
                     <Tag
                       style={{
                         position: 'absolute',
-                        top: 12,
-                        left: 12,
-                        background: ACCENT,
+                        top: 14,
+                        left: 14,
+                        background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
                         color: '#fff',
                         border: 'none',
                         borderRadius: PILL_RADIUS,
                         fontFamily: 'Inter, sans-serif',
-                        fontWeight: 600,
+                        fontWeight: 700,
                         fontSize: 12,
-                        padding: '2px 10px',
+                        padding: '4px 12px',
+                        boxShadow: '0 4px 12px rgba(76,175,80,0.3)',
                       }}
                     >
                       {product.badge}
                     </Tag>
                   )}
+                  {/* Bottom gradient */}
+                  <div style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: 60,
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.1) 0%, transparent 100%)',
+                  }} />
                 </div>
 
                 {/* Card body */}
-                <div style={{ padding: '16px 16px 20px' }}>
+                <div style={{ padding: '20px 20px 24px' }}>
                   <span
                     style={{
                       fontFamily: 'Inter, sans-serif',
-                      fontSize: 12,
+                      fontSize: 11,
                       color: GRAY_TEXT,
                       textTransform: 'uppercase',
-                      letterSpacing: '1px',
+                      letterSpacing: '1.5px',
+                      fontWeight: 600,
                     }}
                   >
                     {product.categoryLabel}
@@ -822,31 +1044,31 @@ const PopularProductsSection: React.FC<{ onProduct: (id: string) => void; onAllP
                   <div
                     style={{
                       fontFamily: 'Inter, sans-serif',
-                      fontWeight: 600,
-                      fontSize: 16,
+                      fontWeight: 700,
+                      fontSize: 18,
                       color: DARK,
                       marginTop: 6,
-                      marginBottom: 8,
+                      marginBottom: 10,
                     }}
                   >
                     {product.name}
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                     <Rate
                       disabled
                       defaultValue={product.rating}
                       allowHalf
-                      style={{ fontSize: 12, color: '#F59E0B' }}
+                      style={{ fontSize: 13, color: '#F59E0B' }}
                     />
                     <span
                       style={{
                         fontFamily: 'Inter, sans-serif',
-                        fontSize: 12,
+                        fontSize: 13,
                         color: GRAY_TEXT,
                       }}
                     >
-                      ({product.reviews})
+                      {product.reviews} отзывов
                     </span>
                   </div>
 
@@ -860,31 +1082,32 @@ const PopularProductsSection: React.FC<{ onProduct: (id: string) => void; onAllP
                     <span
                       style={{
                         fontFamily: 'Inter, sans-serif',
-                        fontWeight: 600,
-                        fontSize: 18,
+                        fontWeight: 700,
+                        fontSize: 20,
                         color: DARK,
                       }}
                     >
                       {product.price.toLocaleString('ru-RU')} ₽
                       <span
-                        style={{ fontWeight: 400, fontSize: 13, color: GRAY_TEXT, marginLeft: 3 }}
+                        style={{ fontWeight: 400, fontSize: 13, color: GRAY_TEXT, marginLeft: 4 }}
                       >
                         {product.priceUnit}
                       </span>
                     </span>
 
                     {/* Color dots */}
-                    <div style={{ display: 'flex', gap: 4 }}>
+                    <div style={{ display: 'flex', gap: 5 }}>
                       {product.colors.slice(0, 4).map((c) => (
                         <div
                           key={c.hex}
                           title={c.name}
                           style={{
-                            width: 16,
-                            height: 16,
+                            width: 18,
+                            height: 18,
                             borderRadius: '50%',
                             background: c.hex,
-                            border: `1.5px solid ${SUBTLE_BORDER}`,
+                            border: '2px solid #fff',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
                           }}
                         />
                       ))}
@@ -913,56 +1136,93 @@ const CalculatorCTASection: React.FC<{ onConstructor: () => void }> = ({ onConst
         custom={0}
         style={{
           borderRadius: CARD_RADIUS,
-          background: LIGHT_BG,
+          background: '#fff',
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
-          gap: 48,
-          padding: '48px 56px',
+          gap: 56,
+          padding: '56px',
           alignItems: 'center',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.04)',
+          border: '1px solid rgba(0,0,0,0.04)',
         }}
         className="cta-calc-grid"
       >
         {/* Left */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <h2
-            style={{
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          <div>
+            <span style={{
               fontFamily: 'Inter, sans-serif',
-              fontSize: 'clamp(28px, 2.5vw, 34px)',
+              fontSize: 12,
               fontWeight: 600,
-              color: DARK,
-              margin: 0,
-              lineHeight: 1.2,
-              letterSpacing: '-0.03em',
-            }}
-          >
-            Рассчитайте стоимость
-          </h2>
+              color: ACCENT,
+              textTransform: 'uppercase',
+              letterSpacing: '3px',
+              display: 'block',
+              marginBottom: 8,
+            }}>
+              Бесплатный расчёт
+            </span>
+            <h2
+              style={{
+                fontFamily: 'Inter, sans-serif',
+                fontSize: 'clamp(28px, 2.5vw, 38px)',
+                fontWeight: 700,
+                color: DARK,
+                margin: 0,
+                lineHeight: 1.15,
+                letterSpacing: '-0.02em',
+              }}
+            >
+              Узнайте точную стоимость за 30 секунд
+            </h2>
+          </div>
           <p
             style={{
               fontFamily: 'Inter, sans-serif',
               fontSize: 16,
               color: GRAY_TEXT,
               margin: 0,
-              lineHeight: 1.6,
+              lineHeight: 1.65,
             }}
           >
-            Укажите площадь стен, выберите панели — и получите точную стоимость
-            с учётом монтажа за несколько секунд.
+            Вводите площадь, выбираете панели — и видите итог. Никаких скрытых платежей. Монтаж уже включён в расчёт.
           </p>
+
+          {/* Trust items */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {['Точный расчёт за 30 секунд', 'Без скрытых платежей', 'Монтаж включён'].map((item) => (
+              <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: '50%',
+                  background: '#E8F5E9',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <CheckOutlined style={{ color: ACCENT, fontSize: 12 }} />
+                </div>
+                <span style={{ fontFamily: 'Inter', fontSize: 14, color: DARK }}>{item}</span>
+              </div>
+            ))}
+          </div>
+
           <Button
             onClick={onConstructor}
             size="large"
             style={{
-              background: ACCENT,
+              background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
               color: '#fff',
               border: 'none',
               borderRadius: PILL_RADIUS,
-              height: 52,
-              padding: '0 28px',
+              height: 56,
+              padding: '0 32px',
               fontFamily: 'Inter, sans-serif',
-              fontWeight: 600,
-              fontSize: 15,
+              fontWeight: 700,
+              fontSize: 16,
               width: 'fit-content',
+              boxShadow: '0 8px 24px rgba(76,175,80,0.3)',
             }}
           >
             Открыть калькулятор
@@ -972,44 +1232,63 @@ const CalculatorCTASection: React.FC<{ onConstructor: () => void }> = ({ onConst
         {/* Right — price examples visual */}
         <div
           style={{
-            background: '#fff',
+            background: LIGHT_BG,
             borderRadius: CARD_RADIUS,
-            padding: '28px 32px',
+            padding: '32px',
             display: 'flex',
             flexDirection: 'column',
-            gap: 14,
+            gap: 16,
           }}
         >
+          <span style={{
+            fontFamily: 'Inter, sans-serif',
+            fontSize: 13,
+            fontWeight: 600,
+            color: GRAY_TEXT,
+            textTransform: 'uppercase',
+            letterSpacing: '1px',
+          }}>
+            Примеры цен
+          </span>
           {[
-            { label: 'Прихожая ~8 м²', price: '13 600 ₽' },
-            { label: 'Спальня ~16 м²', price: '27 200 ₽' },
-            { label: 'Гостиная ~24 м²', price: '40 800 ₽' },
-          ].map((item) => (
+            { label: 'Прихожая', area: '~8 м²', price: '13 600 ₽' },
+            { label: 'Спальня', area: '~16 м²', price: '27 200 ₽' },
+            { label: 'Гостиная', area: '~24 м²', price: '40 800 ₽' },
+          ].map((item, idx) => (
             <div
               key={item.label}
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                borderBottom: `1px solid ${SUBTLE_BORDER}`,
-                paddingBottom: 14,
+                borderBottom: idx < 2 ? `1px solid ${SUBTLE_BORDER}` : 'none',
+                paddingBottom: 16,
               }}
             >
-              <span
-                style={{
+              <div>
+                <span style={{
                   fontFamily: 'Inter, sans-serif',
-                  fontSize: 14,
-                  color: GRAY_TEXT,
-                }}
-              >
-                {item.label}
-              </span>
-              <span
-                style={{
-                  fontFamily: 'Inter, sans-serif',
+                  fontSize: 15,
                   fontWeight: 600,
-                  fontSize: 16,
                   color: DARK,
+                  display: 'block',
+                }}>
+                  {item.label}
+                </span>
+                <span style={{
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: 12,
+                  color: GRAY_TEXT,
+                }}>
+                  {item.area}
+                </span>
+              </div>
+              <span
+                style={{
+                  fontFamily: 'Inter, sans-serif',
+                  fontWeight: 700,
+                  fontSize: 18,
+                  color: ACCENT,
                 }}
               >
                 {item.price}
@@ -1021,9 +1300,10 @@ const CalculatorCTASection: React.FC<{ onConstructor: () => void }> = ({ onConst
               fontFamily: 'Inter, sans-serif',
               fontSize: 12,
               color: GRAY_TEXT,
+              marginTop: 4,
             }}
           >
-            * Примерная стоимость материалов. Точный расчёт — в конструкторе.
+            *Точная цена зависит от выбранных панелей. Расчёт в конструкторе — бесплатный.
           </span>
         </div>
       </motion.div>
@@ -1047,6 +1327,8 @@ const ReviewsSection: React.FC = () => {
       .toUpperCase()
       .slice(0, 2);
 
+  const avatarColors = ['#4CAF50', '#81C784', '#A5D6A7', '#C8E6C9', '#2E7D32', '#388E3C'];
+
   return (
     <section style={{ background: '#fff', ...SECTION_PADDING }}>
       <div style={{ ...MAX_WIDTH }}>
@@ -1057,26 +1339,37 @@ const ReviewsSection: React.FC = () => {
           viewport={{ once: true, amount: 0.1 }}
           style={{ display: 'flex', flexDirection: 'column', gap: 48 }}
         >
-          <motion.h2
-            variants={fadeUpVariants}
-            custom={0}
-            style={{
+          <motion.div variants={fadeUpVariants} custom={0} style={{ textAlign: 'center' }}>
+            <span style={{
               fontFamily: 'Inter, sans-serif',
-              fontSize: 'clamp(32px, 3vw, 36px)',
+              fontSize: 12,
               fontWeight: 600,
-              color: DARK,
-              margin: 0,
-              textAlign: 'center',
-              letterSpacing: '-0.03em',
-            }}
-          >
-            Отзывы клиентов
-          </motion.h2>
+              color: ACCENT,
+              textTransform: 'uppercase',
+              letterSpacing: '3px',
+              display: 'block',
+              marginBottom: 12,
+            }}>
+              Реальные отзывы
+            </span>
+            <h2
+              style={{
+                fontFamily: 'Inter, sans-serif',
+                fontSize: 'clamp(32px, 3.5vw, 44px)',
+                fontWeight: 700,
+                color: DARK,
+                margin: 0,
+                letterSpacing: '-0.03em',
+              }}
+            >
+              Что говорят наши клиенты
+            </h2>
+          </motion.div>
 
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
               gap: 24,
             }}
           >
@@ -1086,45 +1379,47 @@ const ReviewsSection: React.FC = () => {
                 variants={fadeUpVariants}
                 custom={i * 0.1 + 1}
                 whileHover={{
-                  translateY: -2,
-                  boxShadow: '0 12px 32px rgba(0,0,0,0.06)',
+                  translateY: -3,
+                  boxShadow: '0 16px 40px rgba(0,0,0,0.06)',
                   transition: { duration: 0.5, ease: APPLE_EASE },
                 }}
                 style={{
                   borderRadius: CARD_RADIUS,
-                  padding: '24px',
+                  padding: '28px',
                   background: LIGHT_BG,
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 14,
+                  gap: 16,
+                  border: '1px solid rgba(0,0,0,0.04)',
                 }}
               >
                 {/* Author row */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <div
                     style={{
-                      width: 44,
-                      height: 44,
+                      width: 48,
+                      height: 48,
                       borderRadius: '50%',
-                      background: ACCENT,
+                      background: `linear-gradient(135deg, ${avatarColors[i % avatarColors.length]} 0%, ${ACCENT_DARK} 100%)`,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       color: '#fff',
                       fontFamily: 'Inter, sans-serif',
-                      fontWeight: 600,
-                      fontSize: 14,
+                      fontWeight: 700,
+                      fontSize: 15,
                       flexShrink: 0,
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                     }}
                   >
                     {getInitials(review.author)}
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     <span
                       style={{
                         fontFamily: 'Inter, sans-serif',
-                        fontWeight: 600,
-                        fontSize: 15,
+                        fontWeight: 700,
+                        fontSize: 16,
                         color: DARK,
                       }}
                     >
@@ -1133,7 +1428,7 @@ const ReviewsSection: React.FC = () => {
                     <Rate
                       disabled
                       defaultValue={review.rating}
-                      style={{ fontSize: 12, color: '#F59E0B' }}
+                      style={{ fontSize: 13, color: '#F59E0B' }}
                     />
                   </div>
                 </div>
@@ -1145,7 +1440,7 @@ const ReviewsSection: React.FC = () => {
                     fontSize: 14,
                     color: DARK,
                     margin: 0,
-                    lineHeight: 1.65,
+                    lineHeight: 1.7,
                     flex: 1,
                   }}
                 >
@@ -1177,7 +1472,7 @@ const CTABannerSection: React.FC<{ onCatalog: () => void; onContact: () => void 
   onCatalog,
   onContact,
 }) => (
-  <section style={{ background: '#fff', ...SECTION_PADDING }}>
+  <section style={{ background: LIGHT_BG, padding: '100px 24px' }}>
     <div style={{ ...MAX_WIDTH }}>
       <motion.div
         initial="hidden"
@@ -1187,56 +1482,74 @@ const CTABannerSection: React.FC<{ onCatalog: () => void; onContact: () => void 
         custom={0}
         className="cta-banner-inner"
         style={{
-          background: LIGHT_BG,
+          background: '#fff',
           borderRadius: CARD_RADIUS,
           padding: '80px 56px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: 24,
+          gap: 28,
           textAlign: 'center',
+          boxShadow: '0 12px 60px rgba(0,0,0,0.04)',
+          border: '1px solid rgba(0,0,0,0.04)',
+          position: 'relative',
+          overflow: 'hidden',
         }}
       >
-        <h2
-          style={{
-            fontFamily: 'Inter, sans-serif',
-            fontSize: 'clamp(32px, 3vw, 40px)',
-            fontWeight: 600,
-            color: DARK,
-            margin: 0,
-            lineHeight: 1.2,
-            letterSpacing: '-0.03em',
-          }}
-        >
-          Готовы преобразить ваши стены?
-        </h2>
-        <p
-          style={{
-            fontFamily: 'Inter, sans-serif',
-            fontSize: 17,
-            color: GRAY_TEXT,
-            margin: 0,
-            maxWidth: 520,
-            lineHeight: 1.6,
-          }}
-        >
-          Выберите дизайн из нашего каталога или свяжитесь с нами для индивидуального
-          проекта — мы поможем создать интерьер мечты.
-        </p>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+        {/* Decorative element */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '200px',
+          height: '4px',
+          background: 'linear-gradient(90deg, transparent 0%, #4CAF50 50%, transparent 100%)',
+          borderRadius: '0 0 4px 4px',
+        }} />
+
+        <div>
+          <h2
+            style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: 'clamp(32px, 3vw, 44px)',
+              fontWeight: 700,
+              color: DARK,
+              margin: 0,
+              lineHeight: 1.15,
+              letterSpacing: '-0.03em',
+            }}
+          >
+            Готовы преобразить стены?
+          </h2>
+          <p
+            style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: 18,
+              color: GRAY_TEXT,
+              margin: '12px 0 0',
+              maxWidth: 480,
+              lineHeight: 1.6,
+            }}
+          >
+            Выберите панели в каталоге — или напишите нам. Подскажем, поможем, рассчитаем.
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center' }}>
           <Button
             onClick={onCatalog}
             size="large"
             style={{
-              background: ACCENT,
+              background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
               color: '#fff',
               border: 'none',
               borderRadius: PILL_RADIUS,
-              height: 52,
-              padding: '0 32px',
+              height: 56,
+              padding: '0 36px',
               fontFamily: 'Inter, sans-serif',
-              fontWeight: 600,
-              fontSize: 15,
+              fontWeight: 700,
+              fontSize: 16,
+              boxShadow: '0 8px 24px rgba(76,175,80,0.3)',
             }}
           >
             Смотреть каталог
@@ -1247,16 +1560,16 @@ const CTABannerSection: React.FC<{ onCatalog: () => void; onContact: () => void 
             style={{
               background: 'transparent',
               color: ACCENT,
-              border: `1px solid ${ACCENT}`,
+              border: '2px solid #E8F5E9',
               borderRadius: PILL_RADIUS,
-              height: 52,
-              padding: '0 32px',
+              height: 56,
+              padding: '0 36px',
               fontFamily: 'Inter, sans-serif',
-              fontWeight: 600,
-              fontSize: 15,
+              fontWeight: 700,
+              fontSize: 16,
             }}
           >
-            Связаться с нами
+            Написать нам
           </Button>
         </div>
       </motion.div>
@@ -1277,7 +1590,7 @@ const HomePage: React.FC = () => {
 
   return (
     <div style={{ fontFamily: 'Inter, sans-serif' }}>
-      <PageMeta title="Главная" />
+      <PageMeta title="Wonder Wow Wall — 3D-панели для стен" description="Купить 3D-панели для стен с доставкой и монтажом. 200+ дизайнов, гарантия 5 лет, рассрочка 0%." />
       <HeroSection onCatalog={handleCatalog} onConstructor={handleConstructor} />
       <HowItWorksSection />
       <AdvantagesSection />
@@ -1290,11 +1603,11 @@ const HomePage: React.FC = () => {
 
       <style>{`
         @media (max-width: 768px) {
-          .hero-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
-          .hero-grid .hero-images { order: -1; }
+          .hero-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
+          .hero-images { order: -1; }
           .cta-calc-grid { grid-template-columns: 1fr !important; padding: 28px 20px !important; }
-          .cta-banner-inner { padding: 36px 20px !important; }
-          .promo-banner-inner { padding: 32px 20px !important; flex-direction: column !important; text-align: center !important; }
+          .cta-banner-inner { padding: 48px 20px !important; }
+          .promo-banner-inner { padding: 36px 20px !important; flex-direction: column !important; text-align: center !important; }
         }
       `}</style>
     </div>
