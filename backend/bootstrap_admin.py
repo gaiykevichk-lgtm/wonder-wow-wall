@@ -306,7 +306,7 @@ def load_subscriptions(conn):
             started_at=started_at,
             expires_at=expires_at,
         )
-        _mem_subscription_repo._subscriptions.append(sub)
+        _mem_subscription_repo._subs.append(sub)
 
     print(f"Loaded {len(rows)} subscriptions into in-memory repo")
 
@@ -373,7 +373,7 @@ def bootstrap():
     _mem_panel_repo._panels = []
     _mem_review_repo._reviews = []
     _mem_order_repo._orders = []
-    _mem_subscription_repo._subscriptions = []
+    _mem_subscription_repo._subs = []
     _mem_visualization_repo._projects = []
 
     # Load data
