@@ -708,8 +708,16 @@ class InMemoryRecommendationRepository(RecommendationRepository):
             else:
                 rows = [r for r in rows if len(r.targets) == 0]
         if filters.search:
+            # Phase 10 LOW-6 + REC-N1 — substring match on `source_id`
+            # OR on any `target_id` of the aggregate. Mirrors the SQL
+            # `OR EXISTS (...)` predicate so the in-memory and Postgres
+            # paths agree on filtered totals.
             needle = filters.search.lower()
-            rows = [r for r in rows if needle in r.source_id.lower()]
+            rows = [
+                r for r in rows
+                if needle in r.source_id.lower()
+                or any(needle in t.target_id.lower() for t in r.targets)
+            ]
         # Newest-first matches the SQL repo's ORDER BY updated_at DESC —
         # keeps the admin table consistent across implementations.
         rows.sort(key=lambda r: r.updated_at, reverse=True)

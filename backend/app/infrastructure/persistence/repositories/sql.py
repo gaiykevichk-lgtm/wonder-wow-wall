@@ -1302,9 +1302,11 @@ class SqlRecommendationRepository(RecommendationRepository):
                 query = query.where(~sub)
                 count_query = count_query.where(~sub)
         if filters.search:
-            # Phase 10 LOW-6 — case-insensitive substring on source_id.
-            # Spec-chars are escaped with `\` so admin-supplied `%` / `_`
-            # aren't interpreted as wildcards (same defence as panels.search).
+            # Phase 10 LOW-6 + REC-N1 — case-insensitive substring on
+            # source_id OR on any target_id (so an admin can find every
+            # aggregate that recommends a given product). Spec-chars are
+            # escaped with `\` so admin-supplied `%` / `_` aren't
+            # interpreted as wildcards (same defence as panels.search).
             needle = (
                 filters.search.lower()
                 .replace("\\", "\\\\")
@@ -1312,9 +1314,21 @@ class SqlRecommendationRepository(RecommendationRepository):
                 .replace("_", "\\_")
             )
             pattern = f"%{needle}%"
-            predicate = func.lower(RecommendationModel.source_id).like(
+            source_predicate = func.lower(RecommendationModel.source_id).like(
                 pattern, escape="\\",
             )
+            target_match = (
+                select(RecommendationTargetModel.recommendation_id)
+                .where(
+                    RecommendationTargetModel.recommendation_id
+                    == RecommendationModel.id,
+                    func.lower(RecommendationTargetModel.target_id).like(
+                        pattern, escape="\\",
+                    ),
+                )
+                .exists()
+            )
+            predicate = or_(source_predicate, target_match)
             query = query.where(predicate)
             count_query = count_query.where(predicate)
 

@@ -181,11 +181,30 @@ export default function AdminOrdersPage() {
     },
     {
       title: 'Клиент',
-      dataIndex: 'user_id',
-      key: 'user_id',
+      key: 'customer',
       ellipsis: true,
-      render: (userId: string) => (
-        <span style={{ color: '#6B7280', fontSize: 13 }}>{userId}</span>
+      // Phase 4A follow-up — show name + phone + email instead of an
+      // opaque user_id UUID. Phone is the primary contact channel for
+      // moving an order forward (call / SMS / WhatsApp), so it's the
+      // most prominent line. Telephone link bypasses the row click via
+      // `stopPropagation` so tapping it doesn't open the order detail.
+      render: (_v, row) => (
+        <div style={{ lineHeight: 1.35 }}>
+          <div style={{ fontWeight: 500 }}>{row.user_name || '—'}</div>
+          {row.user_phone && (
+            <div style={{ color: '#374151', fontSize: 13 }}>
+              <a
+                href={`tel:${row.user_phone.replace(/\s+/g, '')}`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {row.user_phone}
+              </a>
+            </div>
+          )}
+          {row.user_email && (
+            <div style={{ color: '#9CA3AF', fontSize: 12 }}>{row.user_email}</div>
+          )}
+        </div>
       ),
     },
     {

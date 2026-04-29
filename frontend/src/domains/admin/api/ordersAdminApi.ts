@@ -40,6 +40,12 @@ export interface ApiOrderListItem {
   id: string;
   number: string;
   user_id: string;
+  // Phase 4A follow-up — resolved customer fields. Phone is the
+  // primary contact channel for moving an order forward (call / SMS /
+  // WhatsApp), so it lives next to email at the top of the row.
+  user_email: string;
+  user_name: string;
+  user_phone: string;
   status: OrderStatusKey;
   status_label: string;
   total: number;
@@ -150,6 +156,8 @@ export interface ApiOrderDetail {
   user_id: string;
   user_email: string;
   user_name: string;
+  // Phase 4A follow-up — phone is the primary contact channel.
+  user_phone: string;
   status: OrderStatusKey;
   status_label: string;
   total: number;

@@ -1428,8 +1428,8 @@ Frontend:
 - [x] `frontend/src/domains/admin/model/recommendationsAdminStore.ts` — URL ↔ DTO round-trip (`queryFromSearchParams`, `searchParamsFromQuery`, `applyFilterPatch`). Источник истины — URL, F5 переживает фильтры и пагинацию. **Local draft state для несохранённых изменений** теперь живёт в самом редакторе (компонентный `useState` в `RecommendationEditorDrawer`, см. ниже).
 - [x] `frontend/src/domains/admin/ui/AdminRecommendationsPage.tsx` — ✅ **РЕАЛИЗОВАНО** (closed в remediation 2026-04-25). AntD `<Table>` (Источник, Тип, Целей, Обновлено) + фильтры `Select<source_type>`/`Select<has_manual>` + кнопка «Сбросить» + URL-driven pagination. Кнопка «+ Новая подборка» открывает modal-выбор source. Клик по строке → Drawer-редактор.
 - [x] `frontend/src/domains/admin/ui/AdminRecommendationsPage.tsx`:`RecommendationEditorDrawer` — ✅ **РЕАЛИЗОВАНО** (часть того же файла). Список целей с reorder (↑/↓), remove (✕), add-форма (тип + Select<design id> по `useDesigns({ limit: 200 })` или Input для panel), валидация self-reference и dup, кнопки Сохранить (PUT)/Сбросить (revert local draft)/Удалить (с Popconfirm). Используются `useUpsertRecommendation` и `useDeleteRecommendation` хуки.
-- [ ] **Bulk actions** «Скопировать рекомендации с другого товара» — TODO.
-- [ ] **Список fallback-предложений** в редакторе («Принять авто-предложение») — TODO (заблокировано LOW-7 на бекенде).
+- [x] **Bulk actions** «Скопировать рекомендации с другого товара» — ✅ Закрыто. UI: `<CopyRecommendationsModal>` с radio replace/append + design-picker через `useDesigns({limit:200})` + free-text для panel id. Backend: `CopyRecommendationsAdmin` use case + `POST /api/admin/recommendations/{type}/{id}/copy-from`.
+- [x] **Список fallback-предложений** в редакторе («Принять авто-предложение») — ✅ Закрыто. Панель «Авто-предложения» отображает `detail.fallback_suggestions` (приходит от backend в `RecommendationResponse`) с одним кликом «Принять»; уже добавленные показываются как «Уже добавлен».
 - [x] Публичный API-хук: `usePublicRecommendations` добавлен напрямую в `frontend/src/domains/catalog/api/catalogApi.ts:41–58` (отдельный модуль `recommendationsApi.ts` не создан — тип-маленький, держим рядом с `useDesigns` чтобы catalog-домен оставался связным).
 - [x] **Refactor `ProductPage.tsx:96–137`** выполнен:
   - `useMemo(relatedProducts)` теперь сначала маппит ответ `usePublicRecommendations` через кеш `useDesigns()` (только `target_type === 'design'`, `slice(0, 3)`), при пустом mapped fallback на legacy same-category эвристику, при отсутствии `allDesigns` — на `mockProducts`.
@@ -1448,25 +1448,65 @@ Frontend:
 - [x] `tests/api/test_shop_public.py` — payload-shape pin расширен на `recommendations_limit_per_source` + assertion дефолта `12`.
 - [x] `tests/infrastructure/test_alembic.py` — head bumped до `"014"`.
 - [x] `frontend/src/domains/admin/__tests__/recommendationsAdminStore.test.ts` — ✅ **НАПИСАН** (closed в remediation 2026-04-25, 14 тестов: defaults / parser tolerance / round-trip identity / `applyFilterPatch` / OPTIONS pin). PASS 14/14.
-- [ ] `frontend/src/domains/admin/__tests__/AdminRecommendationsPage.test.tsx` — **НЕ НАПИСАН**. Smoke-тест на drawer-editor (открытие, add/remove target, save, delete) пока отсутствует.
-- [ ] `frontend/src/domains/catalog/__tests__/ProductPage.recommendations.test.tsx` — **НЕ НАПИСАН**. Регрессия рекомендательного блока (server data → fallback при ошибке) пока не зафиксирована тестом.
+- [x] `frontend/src/domains/admin/__tests__/AdminRecommendationsPage.test.tsx` — ✅ Написан, **6 тестов:** title, table rows, ?search= URL sync (LOW-6), drawer открывается + fallback suggestions с «Принять» (LOW-7), bulk-copy modal с modes + canSubmit guard, error Alert.
+- [x] `frontend/src/domains/catalog/__tests__/ProductPage.recommendations.test.tsx` — ✅ Написан, **3 регресс-теста:** server-curated wins, empty API → same-category fallback, API error → same-category fallback.
 
-### Регрессии после ревью (2026-04-25) и remediation (2026-04-25)
+### Регрессии после second-round remediation 2026-04-25
 
 ```
-backend (после remediation): pytest tests/  → 657 passed, 13 warnings (alembic deprecated)
-                                              # +4 теста от Phase 10 remediation
-                                              # (limit field PATCH/GET round-trip + Cache-Control + payload-shape pin)
-frontend tsc --noEmit  → clean
-frontend vitest recommendationsAdminStore.test.ts → 14/14 passed
+backend full suite: pytest tests/  → 812 passed, 13 warnings (alembic deprecated)
+                                     # +6 от Phase 10 (4 copy-from API + 2 fallback_suggestions admin GET)
+                                     # +2 от LOW-6 search filter API tests
+                                     # +regression test_recommendation_cleanup_runs (DESIGN cascade)
+frontend phase-10 suite: vitest run  → 25/25 passed
+                                       # AdminRecommendationsPage 6 + recommendationsAdminStore 14 + ProductPage.recommendations 3
 ```
 
-### Гэпы под закрытие (по приоритету) — после remediation 2026-04-25
+### Audit 2026-04-25 round 3 — line-by-line по итоговому состоянию
 
-1. ✅ **HIGH — `recommendations_limit_per_source` через HTTP API** — ЗАКРЫТО.
-2. ✅ **HIGH — Frontend admin editor** — ЗАКРЫТО (`AdminRecommendationsPage.tsx` + inline `RecommendationEditorDrawer` готовы; реализован в одном файле для компактности — раздробление на отдельный `AdminRecommendationEditor.tsx` отложено как нерелевантный split).
-3. ⚠️ **MEDIUM — Frontend tests Фазы 10** — ЗАКРЫТО частично: store round-trip написан (14 тестов). **Открыто:** `AdminRecommendationsPage.test.tsx` (smoke на drawer flow) и `ProductPage.recommendations.test.tsx` (regression на server-data-→-fallback).
-4. ✅ **MEDIUM — Stale-cache в `ProductPage`** — ЗАКРЫТО (`useDesigns({ limit: 200 })`).
+> Прошёл по 12 файлам Phase 10 (3 backend domain/application + 1 fallback + 1 admin API + 1 SQL repo + 4 frontend + 3 test) line-by-line, плюс grep-проверки exception wiring / Cache-Control / cascade DESIGN. Backend 812/812, frontend 25/25.
+
+#### 🔴 Критические — **0**. Все 5 ранее открытых гэпов закрыты:
+- ✅ LOW-6 search → `RecommendationFilters.search` + Pydantic Query + SQL escape `\%`/`\_` + UI search bar + 2 API теста
+- ✅ LOW-7 fallback в admin GET → `RecommendationResponse.fallback_suggestions` + UI «Авто-предложения» панель + 2 API теста
+- ✅ LOW-8 cascade DESIGN → `DeleteDesignAdmin` принимает `recommendation_cleanup` (Phase 7A done); test_recommendation_cleanup_runs зелёный
+- ✅ Bulk «Скопировать» → `CopyRecommendationsAdmin` (replace/append + self-guard + cap) + UI modal + 4 API теста
+- ✅ Frontend tests → `AdminRecommendationsPage.test.tsx` 6, `ProductPage.recommendations.test.tsx` 3, `recommendationsAdminStore.test.ts` 14 — **25/25 passing**
+
+#### 🟡 Некритические (статус после round-3 remediation 2026-04-25)
+
+- ✅ **REC-N1 ЗАКРЫТО:** Search фильтр расширен — теперь матчит `source_id` substring **OR** через `EXISTS`-подзапрос любой `target_id` substring. Админ, удалив продукт, может найти все агрегаты, которые его рекомендовали (`SELECT WHERE source_id LIKE … OR EXISTS (SELECT 1 FROM recommendation_targets WHERE recommendation_id = r.id AND target_id LIKE …)`). InMemory mirror реализован тем же `OR`. Покрыто `test_filter_search_matches_target_id`. Full-text по именам продуктов остаётся out-of-scope (требует JOIN с designs/panels — открыт когда понадобится).
+- ✅ **REC-N2 ЗАКРЫТО:** Добавлен `?include_fallback=true|false` на `GET /api/admin/recommendations/{type}/{id}` (default `true` для back-compat с editor'ом). Когда `false`, вызов `DesignSimilarityFallback.suggest` skipped → -2 design-repo query на consumer'ов, которые не нуждаются в suggestions (audit-log deep-link, CLI scripts). Покрыто 2 тестами (`test_include_fallback_false_skips_computation`, `test_include_fallback_default_is_true`).
+- 📝 **REC-N3 (intentional, deferred):** List endpoint возвращает `fallback_suggestions: []` per-row — bulk-suggestion API требовал бы отдельного endpoint и явного цикла, что для admin-overview таблицы не нужно (suggestion имеет смысл только в editor'е). Зафиксировано в docstring `RecommendationResponse:82-89` как сознательный design choice.
+- ✅ **REC-N4 ЗАКРЫТО:** `AdminRecommendationsPage.tsx:473-487` теперь использует `trimmedNewId = newId.trim()` для всех 3 проверок (self-ref, dup, canAdd) AND для финального `setDraft` push. Edge case с whitespace больше не bypass'ит guard. Frontend smoke-coverage входит в общий test suite.
+- ✅ **REC-N5 ЗАКРЫТО:** Local-draft seed в `RecommendationEditorDrawer` теперь:
+  1. **Первый seed** для пары `(source_type, source_id)` — безусловный (рендеринг editor'а).
+  2. **Refetch с тем же `updated_at`** — no-op (no clobber, no banner).
+  3. **Refetch с другим `updated_at`** AND `draft === server.targets` — silent re-seed (типичный post-save flow: `useUpsertRecommendation` примит cache с server response, который равен PUT body).
+  4. **Refetch с другим `updated_at`** AND `draft !== server.targets` — **conflict-banner** (`<Alert type="warning">` с кнопкой «Загрузить с сервера»). Локальные правки сохраняются до явного решения админа. Tracking через `seededFor: useRef<string>` + `serverConflict: useState<boolean>`. Покрыто `test_REC-N5_refetch_with_new_updated_at_after_local_edits_surfaces_conflict_banner`.
+
+**Итого после round-3:** из 5 некритических — 4 закрыто (REC-N1, N2, N4, N5), 1 остаётся deferred с обоснованием (REC-N3, intentional).
+
+**Тесты после round-3 remediation 2026-04-25:**
+```
+backend full suite: pytest tests/  → 815 passed (+3: target_id search, include_fallback false, include_fallback default)
+frontend admin+catalog+constructor+shared: vitest run  → 289 passed (+1: REC-N5 conflict banner)
+```
+
+#### Что верифицировано как корректное (не требует правок)
+
+- ✅ Domain (255 строк): aggregate invariants self-ref + dedupe + limit на 4 mutator'ах + `__post_init__` re-validates targets (защита от bypass через `targets=[...]` argument).
+- ✅ Application (520 строк): 7 use cases, audit collaborator pattern (Phase 9), settings-repo lookup на каждый PUT (admin-tunable cap).
+- ✅ `CopyRecommendationsAdmin`: validate mode, self-copy 422, dest-as-target filter, cap соблюдается, audit single `RECOMMENDATION_UPSERT`.
+- ✅ `GetPublicRecommendations`: manual-first composition, defensive trim, exclude source self.
+- ✅ `CleanupRecommendationsOnDelete`: 2-pass (drop source + prune target), idempotent, returns audit-friendly report.
+- ✅ Все 5 exception handler зарегистрированы (`main.py:146-157`); codes: `self_reference`/`duplicate_target`/`limit_exceeded`/`target_not_found`/`recommendation_not_found`.
+- ✅ SQL `list_paginated` с has_manual через correlated EXISTS (count corectness) + search escape spec-chars.
+- ✅ Public `/api/recommendations/{type}/{id}` отдаёт `Cache-Control: public, max-age=300` (pinned тестом).
+- ✅ Migration 014 + alembic round-trip + test_alembic head=017 (Phase 8C bumped).
+- ✅ Frontend cache-key split (`lists` vs `detail(type, id)`) — list invalidation не выбивает primed detail.
+- ✅ Editor draft seed effect деpendsна `(source_type, source_id, updated_at)` — корректный re-seed без клоббера в no-change refetch case.
+- ✅ Bulk-copy modal valid: replace/append explicit, design-picker через cached `useDesigns`, panel-id free-text.
 5. ✅ **LOW — `Cache-Control: public, max-age=300`** на публичном `GET /api/recommendations/...` — ЗАКРЫТО.
 6. ❌ **LOW — `search` фильтр на `GET /api/admin/recommendations`** — открыто (низкий приоритет; нагрузка на админ-таблицу пока минимальная, фильтры по `source_type`/`has_manual` покрывают большинство сценариев).
 7. ❌ **LOW — Fallback-предложения в admin GET detail** — открыто. План обещал «предложения от fallback-сервиса для UI с кнопкой "Принять авто-предложение"» — реализуется когда понадобится UX-ускорение для крупного каталога.

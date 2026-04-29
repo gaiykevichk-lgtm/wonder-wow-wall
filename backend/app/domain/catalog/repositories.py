@@ -149,10 +149,14 @@ class RecommendationFilters:
 
     source_type: RecommendationSourceType | None = None
     has_manual: bool | None = None  # True → only sources with at least 1 target
-    # Phase 10 LOW-6 — case-insensitive substring on `source_id`. Cheap
-    # full-text isn't available because the source rows live in another
-    # aggregate (designs / panels) — admins copy a known id from another
-    # tab, this is for narrowing it, not for fuzzy product search.
+    # Phase 10 LOW-6 + REC-N1 — case-insensitive substring on `source_id`
+    # OR on any `target_id` of the aggregate (so an admin who just deleted
+    # a product can find every aggregate that referenced it). The
+    # implementation evaluates these as `(source_id LIKE … OR EXISTS
+    # (targets WHERE target_id LIKE …))`. Full-text on product *names*
+    # would require a JOIN with designs / panels — out of scope for
+    # current admin data volumes; `target_id` covers the common use case
+    # of "find every place X is recommended".
     search: str | None = None
 
 

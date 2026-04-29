@@ -120,10 +120,13 @@ class TestGetDetail:
         assert body["status"] == "confirmed"
         assert body["status_label"] == "Подтверждён"
         assert body["total"] == 3000
-        # Customer is resolved into the sidebar fields.
+        # Customer is resolved into the sidebar fields, including
+        # phone (Phase 4A follow-up — primary contact channel for
+        # moving an order forward).
         assert body["user_id"] == admin_id
         assert "@test.com" in body["user_email"]
         assert body["user_name"] == "Detail IT"
+        assert body["user_phone"] == "+7 999 000 00 00"
         # Address renders both forms.
         assert body["address"].startswith("Москва")
         assert body["address_full"]["city"] == "Москва"

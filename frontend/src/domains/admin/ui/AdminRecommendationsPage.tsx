@@ -42,7 +42,7 @@ import {
 } from 'antd';
 import type { TablePaginationConfig, TableProps } from 'antd';
 import dayjs from 'dayjs';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import {
@@ -443,13 +443,69 @@ function RecommendationEditorDrawer({
   // single PUT (matches the backend's idempotent upsert semantics) and
   // lets us add «Сбросить» without a network round-trip.
   const [draft, setDraft] = useState<ApiRecommendationTarget[]>([]);
-  // Re-seed the draft whenever the editor switches to a new source or
-  // the detail fetch resolves. Using `detail.updated_at` as the trigger
-  // is more precise than `detail` (which is a fresh object reference on
-  // every render) and avoids a clobber after a successful save.
+  // Phase 10 REC-N5 audit fix — track whether a re-seed is the FIRST
+  // for the currently-open source pair vs a subsequent refetch (15s
+  // staleTime expiry, parallel admin save, etc.). The first seed
+  // unconditionally writes the server state; any subsequent refetch
+  // that resolves to a different `updated_at` triggers a conflict
+  // banner instead of silently clobbering local edits. The user
+  // chooses to "discard local & accept server" via the banner's
+  // «Загрузить с сервера» button (`onAcceptServer` below).
+  const seededFor = useRef<string | null>(null);
+  const [serverConflict, setServerConflict] = useState(false);
+
+  function pairKey(): string | null {
+    return detail ? `${detail.source_type}:${detail.source_id}:${detail.updated_at}` : null;
+  }
+
   useEffect(() => {
-    setDraft(detail?.targets ?? []);
-  }, [detail?.source_type, detail?.source_id, detail?.updated_at]);
+    if (!detail) return;
+    const key = `${detail.source_type}:${detail.source_id}`;
+    const fullKey = `${key}:${detail.updated_at}`;
+    if (seededFor.current === null || !seededFor.current.startsWith(key)) {
+      // First open of this source pair — unconditional seed.
+      setDraft(detail.targets ?? []);
+      seededFor.current = fullKey;
+      setServerConflict(false);
+      return;
+    }
+    if (seededFor.current === fullKey) {
+      // Same `updated_at` — just a re-render, no action.
+      return;
+    }
+    // Same source pair, different `updated_at` → an external save
+    // happened (or our own PUT bumped it). If our local draft already
+    // matches the new server state (typical post-save flow:
+    // useUpsertRecommendation primes the cache with the server
+    // response which equals our PUT body), seed silently.
+    const draftMatchesServer =
+      JSON.stringify(draft) === JSON.stringify(detail.targets ?? []);
+    if (draftMatchesServer) {
+      seededFor.current = fullKey;
+      setServerConflict(false);
+      return;
+    }
+    // Real conflict — admin had unsaved local edits AND the server
+    // state changed underneath them. Surface it instead of clobbering.
+    setServerConflict(true);
+  }, [detail, draft]);
+
+  function onAcceptServer(): void {
+    if (!detail) return;
+    setDraft(detail.targets ?? []);
+    seededFor.current = `${detail.source_type}:${detail.source_id}:${detail.updated_at}`;
+    setServerConflict(false);
+  }
+
+  // Reset the seed marker when the drawer closes / switches source so
+  // the next open re-runs the first-time seed.
+  useEffect(() => {
+    if (!open) {
+      seededFor.current = null;
+      setServerConflict(false);
+    }
+  }, [open]);
+  void pairKey;  // helper available for future telemetry — referenced to silence unused-var.
 
   // Add-target form local state.
   const [newType, setNewType] =
@@ -470,21 +526,28 @@ function RecommendationEditorDrawer({
     [designsData],
   );
 
+  // Phase 10 REC-N4 audit fix — compare trimmed `newId` so a stray
+  // leading/trailing space in the input doesn't bypass the self-
+  // reference / dup guards (`onAdd` already uses `newId.trim()` for
+  // the actual push, so the visual state stayed consistent — but the
+  // validation banner would not fire and the add button stayed
+  // enabled until the server returned 422).
+  const trimmedNewId = newId.trim();
   const isSelfReference =
     sourceType !== undefined &&
     sourceId !== undefined &&
     newType === sourceType &&
-    newId === sourceId;
+    trimmedNewId === sourceId;
   const isDup = draft.some(
-    (t) => t.target_type === newType && t.target_id === newId,
+    (t) => t.target_type === newType && t.target_id === trimmedNewId,
   );
-  const canAdd = newId.trim().length > 0 && !isSelfReference && !isDup;
+  const canAdd = trimmedNewId.length > 0 && !isSelfReference && !isDup;
 
   function onAdd(): void {
     if (!canAdd) return;
     setDraft((prev) => [
       ...prev,
-      { target_type: newType, target_id: newId.trim() },
+      { target_type: newType, target_id: trimmedNewId },
     ]);
     setNewId('');
   }
@@ -574,6 +637,21 @@ function RecommendationEditorDrawer({
       }
     >
       {isFetching && <Text type="secondary">Загрузка…</Text>}
+
+      {serverConflict && (
+        <Alert
+          type="warning"
+          showIcon
+          message="Подборка изменилась на сервере"
+          description="Локальные изменения сохранены. Загрузить серверную версию (локальные правки будут потеряны)?"
+          action={
+            <Button size="small" onClick={onAcceptServer}>
+              Загрузить с сервера
+            </Button>
+          }
+          style={{ marginBottom: 12 }}
+        />
+      )}
 
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
         <div>

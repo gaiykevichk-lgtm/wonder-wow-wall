@@ -287,6 +287,15 @@ async def list_recommendations_admin(
 async def get_recommendation_admin(
     source_type: str,
     source_id: str,
+    include_fallback: bool = Query(
+        default=True,
+        description=(
+            "Phase 10 REC-N2 — opt-out of the fallback heuristic computation. "
+            "Default `True` matches the editor's needs (LOW-7 «Авто-предложения» "
+            "panel); pass `false` from non-editor consumers (audit-log "
+            "deep-link, CLI scripts) to skip the extra `design_repo` queries."
+        ),
+    ),
     _admin_id: str = Depends(get_current_admin_id),
     rec_repo=Depends(get_recommendation_repo),
     design_repo=Depends(get_design_repo),
@@ -305,29 +314,36 @@ async def get_recommendation_admin(
     suggestion list never duplicates the curated list. Limit comes
     from `ShopSettings.recommendations_limit_per_source` so the
     suggestion bucket size matches the live cap.
+
+    Phase 10 REC-N2 — `include_fallback=false` skips the
+    `DesignSimilarityFallback.suggest` call (saves 2 design-repo
+    queries per request). The editor sets `true` (default), other
+    consumers pass `false`.
     """
     st = _parse_source_type(source_type)
     rec = await GetRecommendationAdmin(rec_repo).execute(st, source_id)
 
-    settings = await settings_repo.get()
-    cap = settings.recommendations_limit_per_source
-    existing_targets = list(rec.targets) if rec is not None else []
-    exclude: set[tuple[RecommendationTargetType, str]] = {
-        (t.target_type, t.target_id) for t in existing_targets
-    }
-    # Slots remaining under the live cap; once curation already fills
-    # the cap we still hand back a few suggestions (capped at `cap`)
-    # so the admin can swap items out — UI decides whether to render.
-    headroom = max(cap - len(existing_targets), 0)
-    fallback_limit = headroom if headroom > 0 else cap
     fallback_suggestions: list[RecommendationTarget] = []
-    if fallback_limit > 0:
-        fallback = DesignSimilarityFallback(design_repo)
-        fallback_suggestions = await fallback.suggest(
-            st, source_id,
-            limit=fallback_limit,
-            exclude=exclude,
-        )
+    if include_fallback:
+        settings = await settings_repo.get()
+        cap = settings.recommendations_limit_per_source
+        existing_targets = list(rec.targets) if rec is not None else []
+        exclude: set[tuple[RecommendationTargetType, str]] = {
+            (t.target_type, t.target_id) for t in existing_targets
+        }
+        # Slots remaining under the live cap; once curation already
+        # fills the cap we still hand back a few suggestions (capped at
+        # `cap`) so the admin can swap items out — UI decides whether
+        # to render.
+        headroom = max(cap - len(existing_targets), 0)
+        fallback_limit = headroom if headroom > 0 else cap
+        if fallback_limit > 0:
+            fallback = DesignSimilarityFallback(design_repo)
+            fallback_suggestions = await fallback.suggest(
+                st, source_id,
+                limit=fallback_limit,
+                exclude=exclude,
+            )
 
     if rec is None:
         return _empty_response(

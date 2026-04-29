@@ -43,6 +43,13 @@ class OrderListItemResponse(BaseModel):
     id: str
     number: str
     user_id: str
+    # Phase 4A follow-up — resolved customer fields so the admin table
+    # shows name / email / phone instead of just the opaque UUID. Phone
+    # is the primary contact channel for moving an order forward (see
+    # «Заказы» tab UX), so it lives next to email at the top level.
+    user_email: str
+    user_name: str
+    user_phone: str
     status: str
     status_label: str
     total: int
@@ -58,11 +65,19 @@ class OrdersListResponse(BaseModel):
     size: int
 
 
-def _to_item(o: Order) -> OrderListItemResponse:
+def _to_item(
+    o: Order, users: dict[str, tuple[str, str, str]],
+) -> OrderListItemResponse:
+    customer_email, customer_name, customer_phone = users.get(
+        o.user_id, ("", "", ""),
+    )
     return OrderListItemResponse(
         id=o.id,
         number=o.number,
         user_id=o.user_id,
+        user_email=customer_email,
+        user_name=customer_name,
+        user_phone=customer_phone,
         status=o.status.value,
         status_label=o.status.label_ru,
         total=o.total,
@@ -101,6 +116,10 @@ class OrderDetailResponse(BaseModel):
     user_id: str
     user_email: str  # Resolved via UserRepository for the sidebar.
     user_name: str
+    # Phone is the primary contact channel for moving an order (call,
+    # SMS, WhatsApp). Surfaced here so support doesn't have to bounce
+    # to the «Пользователи» tab to find it.
+    user_phone: str
     status: str
     status_label: str
     total: int
@@ -137,12 +156,21 @@ class NoteCreateRequest(BaseModel):
     text: str = Field(min_length=1, max_length=2000)
 
 
-async def _resolve_users(user_repo, ids: set[str]) -> dict[str, tuple[str, str]]:
-    """Return `{user_id: (email, name)}` for a set of ids, missing → ('','')."""
-    out: dict[str, tuple[str, str]] = {}
+async def _resolve_users(
+    user_repo, ids: set[str],
+) -> dict[str, tuple[str, str, str]]:
+    """Return `{user_id: (email, name, phone)}` for a set of ids.
+
+    Missing user → `("", "", "")` so the row still renders gracefully
+    (e.g., a user-deleted account leaves a historical order intact —
+    we don't want a 500 from a NULL ref).
+    """
+    out: dict[str, tuple[str, str, str]] = {}
     for uid in ids:
         user = await user_repo.get_by_id(uid)
-        out[uid] = (user.email, user.name) if user else ("", "")
+        out[uid] = (
+            (user.email, user.name, user.phone) if user else ("", "", "")
+        )
     return out
 
 
@@ -170,14 +198,19 @@ def _to_note_response(n: OrderNote, author_name: str) -> OrderNoteResponse:
     )
 
 
-def _to_detail(o: Order, users: dict[str, tuple[str, str]]) -> OrderDetailResponse:
-    customer_email, customer_name = users.get(o.user_id, ("", ""))
+def _to_detail(
+    o: Order, users: dict[str, tuple[str, str, str]],
+) -> OrderDetailResponse:
+    customer_email, customer_name, customer_phone = users.get(
+        o.user_id, ("", "", ""),
+    )
     return OrderDetailResponse(
         id=o.id,
         number=o.number,
         user_id=o.user_id,
         user_email=customer_email,
         user_name=customer_name,
+        user_phone=customer_phone,
         status=o.status.value,
         status_label=o.status.label_ru,
         total=o.total,
@@ -193,7 +226,8 @@ def _to_detail(o: Order, users: dict[str, tuple[str, str]]) -> OrderDetailRespon
         cancel_reason=o.cancel_reason,
         items=[_to_item_detail(it) for it in o.items],
         notes=[
-            _to_note_response(n, users.get(n.author_id, ("", ""))[1])
+            # users.get(...) returns (email, name, phone) — index [1] is name.
+            _to_note_response(n, users.get(n.author_id, ("", "", ""))[1])
             for n in o.notes
         ],
         created_at=o.created_at.isoformat(),
@@ -301,6 +335,7 @@ async def list_orders_admin(
     size: int = Query(50, ge=1, le=200),
     _admin_id: str = Depends(get_current_admin_id),
     order_repo=Depends(get_order_repo),
+    user_repo=Depends(get_user_repo),
 ):
     try:
         filters = OrderFilters(
@@ -317,8 +352,14 @@ async def list_orders_admin(
         raise HTTPException(status_code=422, detail=str(exc))
 
     items, total = await ListOrdersAdmin(order_repo).execute(filters, page=page, size=size)
+    # Phase 4A follow-up — resolve customer email/name/phone for the
+    # rendered page in one batched lookup so the admin table can render
+    # «Анна Сергеева · +7 999 111 11 11» instead of a UUID. One repo
+    # round-trip per unique user_id on the current page (typical: 5-20).
+    user_ids = {o.user_id for o in items}
+    users = await _resolve_users(user_repo, user_ids)
     return OrdersListResponse(
-        items=[_to_item(o) for o in items],
+        items=[_to_item(o, users) for o in items],
         total=total,
         page=page,
         size=size,

@@ -220,4 +220,51 @@ describe('<AdminRecommendationsPage>', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('boom')).toBeInTheDocument();
   });
+
+  // ─── Phase 10 audit fixes (REC-N4 / REC-N5) regression tests ────────
+
+  it('REC-N5: refetch with new updated_at after local edits surfaces conflict banner', async () => {
+    setupListWith([makeRec({ source_id: 'd-src5' })]);
+    // First detail load — empty curation, updated_at=v1.
+    let currentDetail = makeRec({
+      source_id: 'd-src5',
+      targets: [],
+      updated_at: '2026-04-25T10:00:00Z',
+    });
+    mockUseDetail.mockImplementation(() => ({
+      data: currentDetail,
+      isFetching: false,
+    }));
+    renderPage();
+    fireEvent.click(screen.getByText('d-src5'));
+    // First seed is unconditional → no banner yet.
+    expect(
+      screen.queryByText('Подборка изменилась на сервере'),
+    ).toBeNull();
+    // Now flip the mocked detail to a different `updated_at` AND
+    // different targets — modelling an external admin save while the
+    // local user had unsaved edits. Force a re-render via state
+    // change in the parent (the LocationProbe's `useLocation` hook
+    // re-runs on `useSearchParams` writes — we emulate via a synthetic
+    // history nav).
+    currentDetail = makeRec({
+      source_id: 'd-src5',
+      targets: [{ target_type: 'design', target_id: 'd-from-other-tab' }],
+      updated_at: '2026-04-25T10:05:00Z',
+    });
+    // Trigger a re-render by clicking the same row (no-op state but
+    // forces React to re-execute the effect with new mock data).
+    fireEvent.click(screen.getByText('d-src5'));
+    // The conflict banner appears because the local draft still
+    // matches the OLD server state (empty list), but the new server
+    // state has a different target list AND a different updated_at.
+    // Note: in this synthetic test, draft===old-server-targets===[],
+    // new-server-targets===[d-from-other-tab] → JSON-mismatch → banner.
+    expect(
+      await screen.findByText('Подборка изменилась на сервере'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Загрузить с сервера' }),
+    ).toBeInTheDocument();
+  });
 });

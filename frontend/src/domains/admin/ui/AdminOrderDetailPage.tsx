@@ -306,8 +306,25 @@ export default function AdminOrderDetailPage() {
               <Descriptions.Item label="Имя">
                 {order.user_name || '—'}
               </Descriptions.Item>
+              {/* Phase 4A follow-up — phone is the primary contact
+                  channel for support; placed above email so it's the
+                  first thing a manager sees. `tel:` link triggers the
+                  default dialer on mobile. */}
+              <Descriptions.Item label="Телефон">
+                {order.user_phone ? (
+                  <a href={`tel:${order.user_phone.replace(/\s+/g, '')}`}>
+                    {order.user_phone}
+                  </a>
+                ) : (
+                  '—'
+                )}
+              </Descriptions.Item>
               <Descriptions.Item label="Email">
-                {order.user_email || order.user_id}
+                {order.user_email ? (
+                  <a href={`mailto:${order.user_email}`}>{order.user_email}</a>
+                ) : (
+                  order.user_id
+                )}
               </Descriptions.Item>
               <Descriptions.Item label="Адрес">{order.address}</Descriptions.Item>
               <Descriptions.Item label="Дата установки">

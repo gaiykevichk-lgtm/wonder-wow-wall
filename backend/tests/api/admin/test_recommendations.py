@@ -443,6 +443,37 @@ class TestList:
         # AND-combined: only the panel row survives.
         assert {item["source_id"] for item in body["items"]} == {"forest-panel"}
 
+    # Phase 10 REC-N1 audit fix — search ALSO matches by target_id, so an
+    # admin who deleted product `unique-target-X` can find every aggregate
+    # that referenced it without a separate "where is this used" query.
+
+    @pytest.mark.asyncio
+    async def test_filter_search_matches_target_id(self, client):
+        token = await _admin_token(client)
+        await client.put(
+            "/api/admin/recommendations/design/source-no-match",
+            headers={"Authorization": f"Bearer {token}"},
+            # source_id won't match, but a target_id will.
+            json={"targets": [_t("unique-needle-42")]},
+        )
+        await client.put(
+            "/api/admin/recommendations/design/source-other",
+            headers={"Authorization": f"Bearer {token}"},
+            # Doesn't reference the needle — must NOT match.
+            json={"targets": [_t("z-001")]},
+        )
+        resp = await client.get(
+            "/api/admin/recommendations?search=unique-needle",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        body = resp.json()
+        ids = {item["source_id"] for item in body["items"]}
+        # Source-id "source-no-match" doesn't contain "unique-needle"
+        # but its target does, so it should be returned.
+        assert ids == {"source-no-match"}
+        # Total reflects the OR-filter, not the source-only count.
+        assert body["total"] == 1
+
 
 # ─── Phase 10 LOW-7 — fallback suggestions in admin detail ───────────
 
@@ -513,6 +544,64 @@ class TestFallbackSuggestionsInDetail:
             # d-fb-2 is a fresh suggestion; d-curated must be filtered out.
             assert "d-fb-2" in suggestion_ids
             assert "d-curated" not in suggestion_ids
+        finally:
+            _mem_design_repo._designs.clear()
+            _mem_design_repo._designs.extend(seed)
+
+    # Phase 10 REC-N2 audit fix — opt-out flag for the fallback.
+
+    @pytest.mark.asyncio
+    async def test_include_fallback_false_skips_computation(self, client):
+        """REC-N2 — `?include_fallback=false` returns an empty
+        suggestions list without invoking the heuristic. Frontend sets
+        the default `true`; non-editor consumers (audit deep-link, CLI)
+        opt out to skip the 2 design-repo queries.
+        """
+        from app.container import _mem_design_repo
+        from app.domain.catalog.entities import Design
+
+        seed = list(_mem_design_repo._designs)
+        _mem_design_repo._designs.append(
+            Design(id="d-src-skip", name="Src", slug="src-skip", category_id="cat-1")
+        )
+        _mem_design_repo._designs.append(
+            Design(id="d-fb-skip", name="FB", slug="fb-skip", category_id="cat-1")
+        )
+        try:
+            token = await _admin_token(client)
+            resp = await client.get(
+                "/api/admin/recommendations/design/d-src-skip"
+                "?include_fallback=false",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            assert resp.status_code == 200
+            assert resp.json()["fallback_suggestions"] == []
+        finally:
+            _mem_design_repo._designs.clear()
+            _mem_design_repo._designs.extend(seed)
+
+    @pytest.mark.asyncio
+    async def test_include_fallback_default_is_true(self, client):
+        """REC-N2 — default keeps the editor flow working unchanged."""
+        from app.container import _mem_design_repo
+        from app.domain.catalog.entities import Design
+
+        seed = list(_mem_design_repo._designs)
+        _mem_design_repo._designs.append(
+            Design(id="d-src-def", name="Src", slug="src-def", category_id="cat-1")
+        )
+        _mem_design_repo._designs.append(
+            Design(id="d-fb-def", name="FB", slug="fb-def", category_id="cat-1")
+        )
+        try:
+            token = await _admin_token(client)
+            # No `include_fallback` param — should default to true.
+            resp = await client.get(
+                "/api/admin/recommendations/design/d-src-def",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            ids = {s["target_id"] for s in resp.json()["fallback_suggestions"]}
+            assert "d-fb-def" in ids
         finally:
             _mem_design_repo._designs.clear()
             _mem_design_repo._designs.extend(seed)

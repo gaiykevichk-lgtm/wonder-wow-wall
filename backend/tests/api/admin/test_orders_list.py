@@ -163,12 +163,48 @@ class TestHappyPath:
         assert set(item.keys()) == {
             "id", "number", "user_id", "status", "status_label",
             "total", "address", "created_at", "items_count",
+            # Phase 4A follow-up — resolved customer fields (admin needs
+            # phone as the primary contact channel).
+            "user_email", "user_name", "user_phone",
         }
         assert item["number"] == "WW-A"
         assert item["status"] == "delivered"
         assert item["status_label"] == "Доставлен"
         assert item["total"] == 3000  # 1500 * 2
         assert item["items_count"] == 1
+
+    @pytest.mark.asyncio
+    async def test_resolves_customer_email_name_phone(self, client):
+        """Phase 4A follow-up — admin sees actual contact info, not just UUID."""
+        token = await _admin_token(client)
+        # Register a real customer the order can FK to.
+        cust_id, cust_email, _, _ = await _register(client)
+        _seed(number="WW-C", status=OrderStatus.PLACED, user_id=cust_id)
+
+        resp = await client.get(
+            "/api/admin/orders",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 200
+        item = next(i for i in resp.json()["items"] if i["number"] == "WW-C")
+        assert item["user_email"] == cust_email
+        assert item["user_name"] == "Orders IT"
+        assert item["user_phone"] == "+7 999 000 00 00"
+
+    @pytest.mark.asyncio
+    async def test_missing_user_resolves_to_empty_strings(self, client):
+        """Order references a deleted account → no 500, contact fields blank."""
+        token = await _admin_token(client)
+        _seed(number="WW-ORPHAN", status=OrderStatus.PLACED, user_id="ghost")
+
+        resp = await client.get(
+            "/api/admin/orders",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        item = next(i for i in resp.json()["items"] if i["number"] == "WW-ORPHAN")
+        assert item["user_email"] == ""
+        assert item["user_name"] == ""
+        assert item["user_phone"] == ""
 
     @pytest.mark.asyncio
     async def test_status_filter_narrows(self, client):
