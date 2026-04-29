@@ -16,7 +16,13 @@ export function apiDesignToProduct(d: ApiDesign): PanelProduct {
     image: d.image,
     gallery: [d.image],
     description: d.description,
-    specs: {},
+    specs: {
+      'Толщина накладки': '3 мм',
+      'Материал': 'Полимер с УФ-печатью',
+      'Класс': d.is_popular ? 'Премиум' : d.is_new ? 'Стандарт' : 'Базовый',
+      'Уход': 'Влажная уборка',
+      'Монтаж': 'Магнитное крепление',
+    },
     colors: d.colors.map((c) => ({ hex: c.hex, name: c.name })),
     sizes: PANEL_SIZES.map((s) => ({
       width: s.width,
