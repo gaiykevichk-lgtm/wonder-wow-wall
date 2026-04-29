@@ -273,9 +273,9 @@ def _order_items() -> list[dict]:
          "design_name": "Волны", "design_image": "https://images.unsplash.com/photo-1740686004244-e9bc7c75d8e5?w=600&h=600&fit=crop",
          "size_key": "300x300", "color": "Индиго", "quantity": 1, "unit_price": 890},
         # order-3
-        {"id": "oi-5",  "order_id": "order-3", "design_id": "design-gradient",
-         "design_name": "Градиент", "design_image": "https://images.unsplash.com/photo-1690382285917-73dfd2a22d07?w=600&h=600&fit=crop",
-         "size_key": "60x60", "color": "Закат", "quantity": 5, "unit_price": 2490},
+        {"id": "oi-5",  "order_id": "order-3", "design_id": "design-wave",
+         "design_name": "Волна", "design_image": "/uploads/wave_panels/10000.png",
+         "size_key": "600x600", "color": "Морская волна", "quantity": 3, "unit_price": 2490},
         {"id": "oi-6",  "order_id": "order-3", "design_id": "design-hexagon",
          "design_name": "Гексагон", "design_image": "https://images.unsplash.com/photo-1582135739786-3bceafcaea85?w=600&h=600&fit=crop",
          "size_key": "30x30", "color": "Графит", "quantity": 2, "unit_price": 890},
@@ -283,9 +283,9 @@ def _order_items() -> list[dict]:
         {"id": "oi-7",  "order_id": "order-4", "design_id": "design-botanical",
          "design_name": "Ботаника", "design_image": "https://images.unsplash.com/photo-1682698992719-966a930ccc90?w=600&h=600&fit=crop",
          "size_key": "30x60", "color": "Крем", "quantity": 3, "unit_price": 1490},
-        {"id": "oi-8",  "order_id": "order-4", "design_id": "design-tropical",
-         "design_name": "Тропики", "design_image": "https://images.unsplash.com/photo-1722109997425-40f920848aed?w=600&h=600&fit=crop",
-         "size_key": "30x30", "color": "Зелёный", "quantity": 2, "unit_price": 890},
+        {"id": "oi-8",  "order_id": "order-4", "design_id": "design-wave",
+         "design_name": "Волна", "design_image": "/uploads/wave_panels/10000.png",
+         "size_key": "30x30", "color": "Глубокий океан", "quantity": 2, "unit_price": 2490},
         # order-5
         {"id": "oi-9",  "order_id": "order-5", "design_id": "design-lines",
          "design_name": "Линии", "design_image": "https://images.unsplash.com/photo-1711606404173-0a45c4735639?w=600&h=600&fit=crop",
@@ -411,17 +411,17 @@ def _reviews(now: datetime) -> list[dict]:
             "created_at": now - timedelta(days=45),
         },
         {
-            "id": "review-4", "design_id": "design-waves",
+            "id": "review-4", "design_id": "design-wave",
             "user_id": "user-mikhail", "user_name": "Михаил С.",
             "rating": 5,
-            "text": "Конструктор на сайте помог подобрать идеальную комбинацию. Взял подписку — теперь меняю дизайн накладок каждый сезон.",
+            "text": "Волна — это просто космос! 52 цвета, все уникальные. Заказали на всю стену гостиной. Качество УФ-печати премиальное.",
             "created_at": now - timedelta(days=30),
         },
         {
-            "id": "review-5", "design_id": "design-gradient",
+            "id": "review-5", "design_id": "design-wave",
             "user_id": "user-irina", "user_name": "Ирина П.",
-            "rating": 4,
-            "text": "Градиент в спальне — настоящее произведение искусства. Качество печати отличное, цвета сочные.",
+            "rating": 5,
+            "text": "Выбрала «Морскую волну» для спальни. Текстура невероятно живая, создаёт ощущение настоящего прибоя. Монтаж за 30 минут!",
             "created_at": now - timedelta(days=15),
         },
         {
@@ -430,6 +430,13 @@ def _reviews(now: datetime) -> list[dict]:
             "rating": 5,
             "text": "Гексагон на кухонном фартуке — это что-то невероятное. Все спрашивают, где я такое нашёл.",
             "created_at": now - timedelta(days=8),
+        },
+        {
+            "id": "review-7", "design_id": "design-wave",
+            "user_id": "user-anna", "user_name": "Анна К.",
+            "rating": 5,
+            "text": "Заказала «Глубокий океан» для офиса. Думала, будет слишком ярко — оказалось идеально. Клиенты в восторге!",
+            "created_at": now - timedelta(days=3),
         },
     ]
 
@@ -579,6 +586,48 @@ async def seed():
                    VALUES ('singleton', 1200, 0, 0, 12, :now)"""),
             {"now": now},
         )
+
+        # ── Wave panel texture photos (MediaAssets for Design Preview) ───────
+        # 52 real PNG texture photos in /uploads/wave_panels/
+        # The primary image (10000.png) is used as the design.main image;
+        # all 52 files are seeded as DESIGN_PREVIEW MediaAssets so the
+        # admin can manage them via the media library and see them in the
+        # design gallery on the product page.
+        _WAVE_FILES = [
+            "wonderWall__black.png", "Рамка.png",
+            "10000.png", "10001.png", "10003.png", "10004.png", "10005.png",
+            "10006.png", "10007.png", "10008.png", "10009.png", "10010.png",
+            "10011.png", "10012.png", "10013.png", "10014.png", "10015.png",
+            "10016.png", "10017.png", "10018.png", "10019.png", "10020.png",
+            "10021.png", "10022.png", "10023.png", "10024.png", "10025.png",
+            "10026.png", "10027.png", "10028.png", "10029.png", "10030.png",
+            "10031.png", "10032.png", "10033.png", "10034.png", "10035.png",
+            "10036.png", "10037.png", "10038.png", "10039.png", "10040.png",
+            "10041.png", "10042.png", "10043.png", "10044.png", "10045.png",
+            "10046.png", "10047.png", "10048.png", "10049.png", "10050.png",
+            "10051.png",
+        ]
+        import os
+        wave_dir = "/var/uploads/wave_panels"
+        for i, fname in enumerate(_WAVE_FILES):
+            fpath = os.path.join(wave_dir, fname)
+            size_bytes = os.path.getsize(fpath) if os.path.exists(fpath) else 1_000_000
+            asset_id = f"wave-media-{i:03d}"
+            path = f"wave_panels/{fname}"
+            await session.execute(
+                text("""INSERT INTO media_assets (id, path, mime, size_bytes, original_name, uploaded_by, purpose, uploaded_at)
+                       VALUES (:id, :path, :mime, :size_bytes, :original_name, :uploaded_by, :purpose, :uploaded_at)"""),
+                {
+                    "id": asset_id,
+                    "path": path,
+                    "mime": "image/png",
+                    "size_bytes": size_bytes,
+                    "original_name": fname,
+                    "uploaded_by": "user-admin",
+                    "purpose": "DESIGN_PREVIEW",
+                    "uploaded_at": now - timedelta(days=i * 0.5),
+                },
+            )
 
         await session.commit()
         print("✅ Seed complete: categories, designs, plans, panels, users, addresses, orders, order_items, subscriptions, projects, reviews, visualizations, shop_settings")

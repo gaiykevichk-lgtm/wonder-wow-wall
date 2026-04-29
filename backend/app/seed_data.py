@@ -24,6 +24,8 @@ SEED_CATEGORIES = [
     # new categories from frontend mock that need DB rows
     Category(id="cat-7", name="Дерево",     slug="wood",        image="https://images.unsplash.com/photo-1644925757334-d0397c01518c?w=400&h=300&fit=crop",   count=3),
     Category(id="cat-8", name="Камень",     slug="stone",       image="https://images.unsplash.com/photo-1566041510394-cf7c8fe21800?w=400&h=300&fit=crop",   count=2),
+    # Wave panels with real texture photos
+    Category(id="cat-9", name="Волна",     slug="wave",        image="/uploads/wave_panels/10000.png",                              count=1),
 ]
 
 
@@ -117,161 +119,38 @@ SEED_DESIGNS = [
         rating=4.5, reviews_count=203, is_popular=True,
     ),
 
-    # ── abstract ─────────────────────────────────────────────────────
+    # ── wave (Волна) — real texture photos ─────────────────────────────
+    # The primary image (10000.png) + 51 gallery variants
     Design(
-        id="design-waves",
-        name="Волны",
-        slug="waves",
-        category_id="cat-2",
-        style="Модерн",
-        image="https://images.unsplash.com/photo-1740686004244-e9bc7c75d8e5?w=600&h=600&fit=crop",
-        description="Динамичный абстрактный паттерн с волнообразным рисунком. Создаёт движение и глубину.",
+        id="design-wave",
+        name="Волна",
+        slug="wave",
+        category_id="cat-9",
+        style="Текстура",
+        image="/uploads/wave_panels/10000.png",
+        description="Натуральная текстура волны с 52 вариантами цветовых решений. Каждая панель уникальна благодаря УФ-печати. Идеально для гостиных, спален и офисов.",
         price=1200,
         colors=[
-            Color("#1A237E", "Индиго"),
-            Color("#006064", "Океан"),
-            Color("#4A148C", "Аметист"),
+            Color("#1A5F7A", "Морская волна"),
+            Color("#2E8B8B", "Бирюзовый"),
+            Color("#5DADE2", "Небесный"),
+            Color("#85C1E9", "Ледяной"),
+            Color("#AED6F1", "Морской бриз"),
+            Color("#1C2833", "Глубокий океан"),
+            Color("#34495E", "Стальной"),
+            Color("#7FB3D5", "Разлив"),
+            Color("#5499C7", "Средиземный"),
+            Color("#2E86AB", "Фиолетовая волна"),
+            Color("#48C9B0", "Мятный прибой"),
+            Color("#F39C12", "Закат на воде"),
+            Color("#E74C3C", "Коралловый риф"),
+            Color("#9B59B6", "Фиалковый прилив"),
+            Color("#1ABC9C", "Изумрудный прибой"),
+            Color("#F1C40F", "Золото волн"),
+            Color("#E67E22", "Янтарный берег"),
+            Color("#2ECC71", "Лесная река"),
         ],
-        rating=4.7, reviews_count=98,
-    ),
-    Design(
-        id="design-gradient",
-        name="Градиент",
-        slug="gradient",
-        category_id="cat-2",
-        style="Арт",
-        image="https://images.unsplash.com/photo-1690382285917-73dfd2a22d07?w=600&h=600&fit=crop",
-        description="Плавные цветовые переходы. Арт-объект на вашей стене. Каждая панель уникальна.",
-        price=1200,
-        colors=[
-            Color("#FF6B6B", "Закат"),
-            Color("#4ECDC4", "Мята"),
-            Color("#2C3E50", "Ночь"),
-        ],
-        rating=4.6, reviews_count=78,
-    ),
-
-    # ── geometric ─────────────────────────────────────────────────────
-    Design(
-        id="design-hexagon",
-        name="Гексагон",
-        slug="hexagon",
-        category_id="cat-3",
-        style="Модерн",
-        image="https://images.unsplash.com/photo-1582135739786-3bceafcaea85?w=600&h=600&fit=crop",
-        description="Шестиугольный геометрический паттерн. Современный и стильный дизайн для любого пространства.",
-        price=1200,
-        colors=[
-            Color("#2D2D2D", "Графит"),
-            Color("#FFFFFF", "Белый"),
-            Color("#B87333", "Медь"),
-            Color("#1ABC9C", "Бирюза"),
-        ],
-        rating=4.5, reviews_count=143,
-    ),
-    Design(
-        id="design-lines",
-        name="Линии",
-        slug="lines",
-        category_id="cat-3",
-        style="Минимализм",
-        image="https://images.unsplash.com/photo-1711606404173-0a45c4735639?w=600&h=600&fit=crop",
-        description="Строгие вертикальные линии. Ритмичный минималистичный рисунок для элегантных интерьеров.",
-        price=1200,
-        colors=[
-            Color("#FFFFFF", "Белый"),
-            Color("#1A1A1A", "Чёрный"),
-            Color("#9CA3AF", "Серебро"),
-        ],
-        rating=4.4, reviews_count=89,
-    ),
-
-    # ── nature ────────────────────────────────────────────────────────
-    Design(
-        id="design-tropical",
-        name="Тропики",
-        slug="tropical",
-        category_id="cat-1",
-        style="Модерн",
-        image="https://images.unsplash.com/photo-1722109997425-40f920848aed?w=600&h=600&fit=crop",
-        description="Тропические листья и растения. Оживите интерьер природными мотивами.",
-        price=1200,
-        colors=[
-            Color("#2E7D32", "Зелёный"),
-            Color("#1B5E20", "Тёмно-зелёный"),
-            Color("#4CAF50", "Свежая зелень"),
-        ],
-        rating=4.6, reviews_count=67, is_new=True,
-    ),
-    Design(
-        id="design-botanical",
-        name="Ботаника",
-        slug="botanical",
-        category_id="cat-1",
-        style="Арт",
-        image="https://images.unsplash.com/photo-1682698992719-966a930ccc90?w=600&h=600&fit=crop",
-        description="Нежные ботанические иллюстрации. Утончённый дизайн для уютных пространств.",
-        price=1200,
-        colors=[
-            Color("#F5F5DC", "Крем"),
-            Color("#FFF8E1", "Ваниль"),
-            Color("#E8F5E9", "Мятный"),
-        ],
-        rating=4.8, reviews_count=42,
-    ),
-
-    # ── minimalism ───────────────────────────────────────────────────
-    Design(
-        id="design-pure-white",
-        name="Чистый белый",
-        slug="pure-white",
-        category_id="cat-4",
-        style="Минимализм",
-        image="https://images.unsplash.com/photo-1584530313715-bfe628686135?w=600&h=600&fit=crop",
-        description="Идеально белая поверхность. Минималистичное решение для чистых и светлых пространств.",
-        price=1200,
-        colors=[
-            Color("#FFFFFF", "Белый"),
-            Color("#FAFAFA", "Снежный"),
-            Color("#F5F5F5", "Молочный"),
-        ],
-        rating=4.3, reviews_count=167,
-    ),
-
-    # ── textures (migrated from old backend seed) ────────────────────
-    Design(
-        id="d-11",
-        name="Бетонная текстура",
-        slug="concrete-texture",
-        category_id="cat-5",
-        style="Текстуры",
-        image="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&h=600&fit=crop",
-        description="Имитация бетонной поверхности",
-        price=1200,
-        colors=[
-            Color("#9E9E9E", "Бетон"),
-            Color("#757575", "Тёмный бетон"),
-            Color("#E0E0E0", "Светлый бетон"),
-        ],
-        rating=4.5, reviews_count=16,
-    ),
-
-    # ── art (migrated from old backend seed) ──────────────────────────
-    Design(
-        id="d-12",
-        name="Поп-арт",
-        slug="pop-art",
-        category_id="cat-6",
-        style="Арт",
-        image="https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=600&h=600&fit=crop",
-        description="Яркие поп-арт иллюстрации",
-        price=1200,
-        colors=[
-            Color("#F44336", "Красный"),
-            Color("#FFEB3B", "Жёлтый"),
-            Color("#2196F3", "Синий"),
-        ],
-        rating=4.8, reviews_count=20, is_new=True,
+        rating=4.9, reviews_count=312, is_popular=True, is_new=True,
     ),
 ]
 
