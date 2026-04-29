@@ -15,6 +15,12 @@ from app.domain.user.value_objects import UserRole, Email
 from app.domain.catalog.entities import Design, Category, DesignReview
 from app.domain.catalog.value_objects import Color, PanelSize
 from app.domain.catalog.panel import Panel
+from app.domain.catalog.recommendation import (
+    Recommendation,
+    RecommendationTarget,
+    RecommendationSourceType,
+    RecommendationTargetType,
+)
 from app.domain.order.entities import Order, OrderItem, OrderNote
 from app.domain.order.value_objects import OrderStatus, Address
 from app.domain.subscription.entities import Subscription
@@ -352,6 +358,49 @@ def load_projects(conn):
     print(f"Loaded {len(rows)} projects into in-memory repo")
 
 
+def load_recommendations(conn):
+    """Load recommendations from SQLite into in-memory repo.
+
+    SQLite stores each recommendation target as a separate row.
+    We group by source_id and create Recommendation aggregates.
+    """
+    from app.container import _mem_recommendation_repo
+    from collections import defaultdict
+    from datetime import datetime
+
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT r.id, r.design_id, r.recommended_design_id, r.sort_order, r.created_at
+        FROM recommendations r
+        ORDER BY r.design_id, r.sort_order
+    """)
+    rows = cursor.fetchall()
+
+    # Group by source design_id
+    by_source = defaultdict(list)
+    for row in rows:
+        by_source[row['design_id']].append(row)
+
+    # Create Recommendation aggregates
+    for source_id, targets in by_source.items():
+        rec_targets = [
+            RecommendationTarget(
+                target_type=RecommendationTargetType.DESIGN,
+                target_id=row['recommended_design_id'],
+            )
+            for row in targets
+        ]
+
+        recommendation = Recommendation(
+            source_type=RecommendationSourceType.DESIGN,
+            source_id=source_id,
+            targets=rec_targets,
+        )
+        _mem_recommendation_repo._recs.append(recommendation)
+
+    print(f"Loaded {len(rows)} recommendation targets for {len(by_source)} designs into in-memory repo")
+
+
 def bootstrap():
     """Load all data from SQLite into in-memory repos."""
     db_path = os.environ.get('SQLITE_DB_PATH', '/home/user/wonder-wow-wall/backend/wow_wall.db')
@@ -365,7 +414,7 @@ def bootstrap():
     print(f"Loading data from {db_path}")
 
     # Clear existing in-memory data
-    from app.container import _mem_user_repo, _mem_category_repo, _mem_design_repo, _mem_panel_repo, _mem_review_repo, _mem_order_repo, _mem_subscription_repo, _mem_visualization_repo
+    from app.container import _mem_user_repo, _mem_category_repo, _mem_design_repo, _mem_panel_repo, _mem_review_repo, _mem_order_repo, _mem_subscription_repo, _mem_visualization_repo, _mem_recommendation_repo
 
     _mem_user_repo._users = []
     _mem_category_repo._categories = []
@@ -375,6 +424,7 @@ def bootstrap():
     _mem_order_repo._orders = []
     _mem_subscription_repo._subs = []
     _mem_visualization_repo._projects = []
+    _mem_recommendation_repo._recs = []
 
     # Load data
     load_users(conn)
@@ -386,9 +436,8 @@ def bootstrap():
     load_reviews(conn)
     load_orders(conn)
     load_subscriptions(conn)
+    load_recommendations(conn)
     # load_projects removed - 'projects' table is for constructor, not visualizer
-
-    conn.close()
 
     conn.close()
     print("Bootstrap complete!")
