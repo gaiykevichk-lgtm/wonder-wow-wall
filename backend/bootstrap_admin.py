@@ -12,8 +12,9 @@ from app.seed_data import SEED_CATEGORIES, SEED_DESIGNS
 from app.infrastructure.security.jwt import hash_password
 from app.domain.user.entities import User
 from app.domain.user.value_objects import UserRole, Email
-from app.domain.catalog.entities import Design, Category
-from app.domain.catalog.value_objects import Color
+from app.domain.catalog.entities import Design, Category, DesignReview
+from app.domain.catalog.value_objects import Color, PanelSize
+from app.domain.catalog.panel import Panel
 
 
 def load_users(conn):
@@ -156,6 +157,63 @@ def load_shop_settings(conn):
         print(f"Loaded shop settings into in-memory repo")
 
 
+def load_panels(conn):
+    """Load panels from SQLite into in-memory repo."""
+    from app.container import _mem_panel_repo
+
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name, size_key, price, stock, is_active FROM panels WHERE is_active = 1")
+    rows = cursor.fetchall()
+
+    for row in rows:
+        size_map = {
+            'small-square': PanelSize(300, 300, "30×30 см"),
+            'small-rect': PanelSize(300, 600, "30×60 см"),
+            'large-square': PanelSize(600, 600, "60×60 см"),
+        }
+        size = size_map.get(row['size_key'], PanelSize(300, 300, "30×30 см"))
+        panel = Panel(
+            id=row['id'],
+            name=row['name'],
+            slug=row['size_key'],
+            size=size,
+            base_price=row['price'] or 0,
+            description='',
+            photo_path='',
+            is_active=bool(row['is_active']) if row['is_active'] else True,
+        )
+        _mem_panel_repo._panels.append(panel)
+
+    print(f"Loaded {len(rows)} panels into in-memory repo")
+
+
+def load_reviews(conn):
+    """Load reviews from SQLite into in-memory repo."""
+    from app.container import _mem_review_repo
+    from datetime import datetime
+
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, design_id, user_id, user_name, rating, text, created_at FROM design_reviews")
+    rows = cursor.fetchall()
+
+    for row in rows:
+        created_at = row['created_at']
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at.replace(' ', 'T'))
+        review = DesignReview(
+            id=row['id'],
+            design_id=row['design_id'],
+            user_id=row['user_id'],
+            user_name=row['user_name'] or '',
+            rating=row['rating'] or 5,
+            text=row['text'] or '',
+            created_at=created_at,
+        )
+        _mem_review_repo._reviews.append(review)
+
+    print(f"Loaded {len(rows)} reviews into in-memory repo")
+
+
 def bootstrap():
     """Load all data from SQLite into in-memory repos."""
     db_path = os.environ.get('SQLITE_DB_PATH', '/home/user/wonder-wow-wall/backend/wow_wall.db')
@@ -169,11 +227,13 @@ def bootstrap():
     print(f"Loading data from {db_path}")
 
     # Clear existing in-memory data
-    from app.container import _mem_user_repo, _mem_category_repo, _mem_design_repo
+    from app.container import _mem_user_repo, _mem_category_repo, _mem_design_repo, _mem_panel_repo, _mem_review_repo
 
     _mem_user_repo._users = []
     _mem_category_repo._categories = []
     _mem_design_repo._designs = []
+    _mem_panel_repo._panels = []
+    _mem_review_repo._reviews = []
 
     # Load data
     load_users(conn)
@@ -181,6 +241,8 @@ def bootstrap():
     load_designs(conn)
     load_subscription_plans(conn)
     load_shop_settings(conn)
+    load_panels(conn)
+    load_reviews(conn)
 
     conn.close()
     print("Bootstrap complete!")
