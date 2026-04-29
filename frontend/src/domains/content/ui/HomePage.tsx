@@ -791,12 +791,12 @@ const PromoBannerSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) 
 // ─── Categories Section ───────────────────────────────────────────────────────
 
 const categoryImages: Record<string, string> = {
-  wood: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=500&h=700&fit=crop',
-  stone: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=500&h=700&fit=crop',
-  concrete: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=500&h=700&fit=crop',
-  plaster: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=500&h=700&fit=crop',
-  brick: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=500&h=700&fit=crop',
-  textile: 'https://images.unsplash.com/photo-1615529182904-14819c35db37?w=500&h=700&fit=crop',
+  wood: 'https://images.unsplash.com/photo-1644925757334-d0397c01518c?w=500&h=700&fit=crop',
+  stone: 'https://images.unsplash.com/photo-1566041510394-cf7c8fe21800?w=500&h=700&fit=crop',
+  abstract: 'https://images.unsplash.com/photo-1740686004244-e9bc7c75d8e5?w=500&h=700&fit=crop',
+  geometric: 'https://images.unsplash.com/photo-1582135739786-3bceafcaea85?w=500&h=700&fit=crop',
+  nature: 'https://images.unsplash.com/photo-1722109997425-40f920848aed?w=500&h=700&fit=crop',
+  minimal: 'https://images.unsplash.com/photo-1584530313715-bfe628686135?w=500&h=700&fit=crop',
 };
 
 const CategoriesSection: React.FC<{ onCategory: (key: string) => void }> = ({ onCategory }) => {
