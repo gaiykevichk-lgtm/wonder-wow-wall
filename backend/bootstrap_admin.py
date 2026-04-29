@@ -257,16 +257,30 @@ def load_orders(conn):
                 unit_price=item_row['unit_price'] or 0,
             ))
 
-        # Parse address (stored as "city,street,building,apartment,postal")
+        # Parse address (stored as either old comma-separated "city,street,building,apt,postal"
+        # or new JSON format '{"city":...,"street":...,"building":...,"apartment":...,"postal_code":...}')
         address_str = row['address'] or ''
-        addr_parts = address_str.split(',') if address_str else ['', '', '']
-        address = Address(
-            city=addr_parts[0] if len(addr_parts) > 0 else '',
-            street=addr_parts[1] if len(addr_parts) > 1 else '',
-            building=addr_parts[2] if len(addr_parts) > 2 else '',
-            apartment=addr_parts[3] if len(addr_parts) > 3 else '',
-            postal_code=addr_parts[4] if len(addr_parts) > 4 else '',
-        )
+        if address_str.startswith('{'):
+            # JSON format
+            import json
+            addr_data = json.loads(address_str)
+            address = Address(
+                city=addr_data.get('city', ''),
+                street=addr_data.get('street', ''),
+                building=addr_data.get('building', ''),
+                apartment=addr_data.get('apartment', ''),
+                postal_code=addr_data.get('postal_code', ''),
+            )
+        else:
+            # Old comma-separated format "city,street,building,apartment,postal"
+            addr_parts = address_str.split(',') if address_str else ['', '', '']
+            address = Address(
+                city=addr_parts[0] if len(addr_parts) > 0 else '',
+                street=addr_parts[1] if len(addr_parts) > 1 else '',
+                building=addr_parts[2] if len(addr_parts) > 2 else '',
+                apartment=addr_parts[3] if len(addr_parts) > 3 else '',
+                postal_code=addr_parts[4] if len(addr_parts) > 4 else '',
+            )
 
         order = Order(
             id=row['id'],
@@ -317,9 +331,62 @@ def load_subscriptions(conn):
     print(f"Loaded {len(rows)} subscriptions into in-memory repo")
 
 
-def load_projects(conn):
+def load_visualization_projects(conn):
     """Load visualization projects from SQLite into in-memory repo."""
     from app.container import _mem_visualization_repo
+    from datetime import datetime
+
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, user_id, name, created_at, updated_at,
+               photo_url, photo_width, photo_height, wall_mask_base64,
+               calibration_pixels_per_cm, panels_json, perspective_corners,
+               placement_mode, calibration, perspective_auto_detected,
+               calibration_auto_detected, version
+        FROM visualization_projects
+    """)
+    rows = cursor.fetchall()
+
+    for row in rows:
+        created_at = row['created_at']
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at.replace(' ', 'T'))
+        updated_at = row['updated_at']
+        if isinstance(updated_at, str):
+            updated_at = datetime.fromisoformat(updated_at.replace(' ', 'T'))
+
+        panels_data = row['panels_json'] or []
+        if isinstance(panels_data, str):
+            import json
+            panels_data = json.loads(panels_data)
+
+        proj = VisualizationProject(
+            id=row['id'],
+            user_id=row['user_id'] or '',
+            name=row['name'] or '',
+            photo_url=row['photo_url'] or '',
+            photo_width=row['photo_width'] or 0,
+            photo_height=row['photo_height'] or 0,
+            wall_mask_base64=row['wall_mask_base64'] or '',
+            calibration_pixels_per_cm=row['calibration_pixels_per_cm'] or 5.0,
+            panels=panels_data,
+            perspective_corners=row['perspective_corners'],
+            placement_mode=row['placement_mode'] or 'manual',
+            created_at=created_at,
+            updated_at=updated_at,
+            calibration=None,  # parsed separately if needed
+            perspective_auto_detected=bool(row['perspective_auto_detected']) if row['perspective_auto_detected'] else False,
+            calibration_auto_detected=bool(row['calibration_auto_detected']) if row['calibration_auto_detected'] else False,
+            version=row['version'] or 1,
+        )
+        _mem_visualization_repo._projects[proj.id] = proj
+
+    print(f"Loaded {len(rows)} visualization projects into in-memory repo")
+
+
+def load_constructor_projects(conn):
+    """Load constructor projects (the 'projects' table) into in-memory repo."""
+    from app.container import _mem_project_repo
     import json
     from datetime import datetime
 
@@ -341,21 +408,56 @@ def load_projects(conn):
         else:
             panels_data = panels_json
 
+        project = {
+            "id": row['id'],
+            "user_id": row['user_id'] or '',
+            "name": row['name'] or '',
+            "wall_cols": row['wall_cols'] or 5,
+            "wall_rows": row['wall_rows'] or 3,
+            "wall_color": row['wall_color'] or '#ffffff',
+            "panels": panels_data,
+            "total_price": row['total_price'] or 0,
+            "created_at": created_at.isoformat() if created_at else '',
+            "updated_at": updated_at.isoformat() if updated_at else '',
+        }
+        _mem_project_repo._projects[project["id"]] = project
+
+    print(f"Loaded {len(rows)} constructor projects into in-memory repo")
+
+
+def load_visualization_projects(conn):
+    """Load visualization projects from SQLite into in-memory repo."""
+    from app.container import _mem_visualization_repo
+    from datetime import datetime
+
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, user_id, name, created_at, updated_at,
+               wall_photo_path, wall_mask_path, scene_data, status,
+               perspective_calibration
+        FROM visualization_projects
+    """)
+    rows = cursor.fetchall()
+
+    for row in rows:
+        created_at = row['created_at']
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at.replace(' ', 'T'))
+        updated_at = row['updated_at']
+        if isinstance(updated_at, str):
+            updated_at = datetime.fromisoformat(updated_at.replace(' ', 'T'))
+
         proj = VisualizationProject(
             id=row['id'],
             user_id=row['user_id'] or '',
             name=row['name'] or '',
-            wall_cols=row['wall_cols'] or 5,
-            wall_rows=row['wall_rows'] or 3,
-            wall_color=row['wall_color'] or '#ffffff',
-            panels=panels_data,
-            total_price=row['total_price'] or 0,
             created_at=created_at,
             updated_at=updated_at,
+            version=1,
         )
-        _mem_visualization_repo._projects.append(proj)
+        _mem_visualization_repo._projects[proj.id] = proj
 
-    print(f"Loaded {len(rows)} projects into in-memory repo")
+    print(f"Loaded {len(rows)} visualization projects into in-memory repo")
 
 
 def load_recommendations(conn):
@@ -414,7 +516,7 @@ def bootstrap():
     print(f"Loading data from {db_path}")
 
     # Clear existing in-memory data
-    from app.container import _mem_user_repo, _mem_category_repo, _mem_design_repo, _mem_panel_repo, _mem_review_repo, _mem_order_repo, _mem_subscription_repo, _mem_visualization_repo, _mem_recommendation_repo
+    from app.container import _mem_user_repo, _mem_category_repo, _mem_design_repo, _mem_panel_repo, _mem_review_repo, _mem_order_repo, _mem_subscription_repo, _mem_project_repo, _mem_visualization_repo, _mem_recommendation_repo
 
     _mem_user_repo._users = []
     _mem_category_repo._categories = []
@@ -423,7 +525,8 @@ def bootstrap():
     _mem_review_repo._reviews = []
     _mem_order_repo._orders = []
     _mem_subscription_repo._subs = []
-    _mem_visualization_repo._projects = []
+    _mem_project_repo._projects = {}
+    _mem_visualization_repo._projects = {}
     _mem_recommendation_repo._recs = []
 
     # Load data
@@ -436,8 +539,9 @@ def bootstrap():
     load_reviews(conn)
     load_orders(conn)
     load_subscriptions(conn)
+    load_constructor_projects(conn)
+    load_visualization_projects(conn)
     load_recommendations(conn)
-    # load_projects removed - 'projects' table is for constructor, not visualizer
 
     conn.close()
     print("Bootstrap complete!")
