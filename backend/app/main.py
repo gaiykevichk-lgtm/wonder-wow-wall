@@ -1,7 +1,9 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+import os
 
 from app.config import settings
 from app.domain.order.exceptions import InvalidOrderTransitionError
@@ -184,3 +186,15 @@ app.include_router(admin_api.router, prefix="/api/admin", tags=["admin"])
 @app.get("/api/health")
 async def health(request: Request):
     return {"status": "ok"}
+
+
+# Serve uploaded files during development
+# Check both the env-configured path and the local uploads fallback
+_possible_roots = [
+    os.environ.get("MEDIA_STORAGE_ROOT", ""),
+    "/home/user/wonder-wow-wall/uploads",
+]
+for _root in _possible_roots:
+    if _root and os.path.isdir(_root):
+        app.mount("/uploads", StaticFiles(directory=_root), name="uploads")
+        break

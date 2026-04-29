@@ -4,9 +4,9 @@ import asyncio
 import os
 import sys
 import sqlite3
+from dotenv import load_dotenv
 
-# Add backend to path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+load_dotenv()  # Load MEDIA_STORAGE_ROOT and other env vars from .env
 
 from app.seed_data import SEED_CATEGORIES, SEED_DESIGNS
 from app.infrastructure.security.jwt import hash_password
