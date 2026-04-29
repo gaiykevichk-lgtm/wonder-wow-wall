@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button, Card, Rate, Tag } from 'antd';
 import { PageMeta } from '../../../shared/ui/PageMeta';
@@ -314,6 +314,64 @@ const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }
   </section>
 );
 
+// ─── Step Icons (flat style) ─────────────────────────────────────────────────
+
+const StepIcon: React.FC<{ num: string; hovered?: boolean }> = ({ num, hovered }) => {
+  const color = hovered ? '#fff' : '#fff';
+  const bgColor = hovered ? ACCENT : 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)';
+
+  const icons: Record<string, React.ReactNode> = {
+    '1': (
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+        <rect x="8" y="12" width="32" height="28" rx="3" stroke={color} strokeWidth="2.5" fill="none"/>
+        <path d="M8 20 L24 12 L40 20" stroke={color} strokeWidth="2.5" strokeLinejoin="round" fill="none"/>
+        <circle cx="18" cy="28" r="3" fill={color}/>
+        <circle cx="30" cy="28" r="3" fill={color}/>
+      </svg>
+    ),
+    '2': (
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+        <rect x="6" y="10" width="36" height="28" rx="3" stroke={color} strokeWidth="2.5" fill="none"/>
+        <circle cx="24" cy="24" r="10" stroke={color} strokeWidth="2.5" fill="none"/>
+        <path d="M30 30 L38 38" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
+        <circle cx="24" cy="24" r="4" fill={color}/>
+      </svg>
+    ),
+    '3': (
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+        <rect x="8" y="8" width="32" height="32" rx="4" stroke={color} strokeWidth="2.5" fill="none"/>
+        <path d="M16 24 L22 30 L32 18" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M8 14 L24 8 L40 14" stroke={color} strokeWidth="2" strokeLinecap="round" fill="none"/>
+      </svg>
+    ),
+    '4': (
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+        <rect x="10" y="16" width="28" height="24" rx="3" stroke={color} strokeWidth="2.5" fill="none"/>
+        <path d="M20 16 L20 10 Q24 6 28 10 L28 16" stroke={color} strokeWidth="2.5" fill="none"/>
+        <circle cx="19" cy="26" r="2" fill={color}/>
+        <circle cx="29" cy="26" r="2" fill={color}/>
+        <path d="M18 34 Q24 38 30 34" stroke={color} strokeWidth="2" strokeLinecap="round" fill="none"/>
+      </svg>
+    ),
+  };
+
+  return (
+    <div style={{
+      width: 80,
+      height: 80,
+      borderRadius: '50%',
+      background: bgColor,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      boxShadow: hovered ? '0 8px 24px rgba(76,175,80,0.5)' : '0 4px 12px rgba(76,175,80,0.3)',
+      transition: 'all 0.4s ease',
+    }}>
+      {icons[num] || icons['1']}
+    </div>
+  );
+};
+
 // ─── How It Works Section ─────────────────────────────────────────────────────
 
 const steps = [
@@ -321,147 +379,136 @@ const steps = [
     num: '1',
     title: 'Выбираете дизайн',
     desc: 'Листаете каталог. Нравится — сохраняете. Не нравится — листаете дальше.',
-    image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop',
   },
   {
     num: '2',
     title: 'Примеряете на стену',
     desc: 'Загружаете фото комнаты — и видите, как панели смотрятся именно у вас.',
-    image: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=300&fit=crop',
   },
   {
     num: '3',
     title: 'Оформляете заказ',
     desc: 'Указываете размеры. Оплачиваете. Всё — за пять минут, без поездки в магазин.',
-    image: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=300&fit=crop',
   },
   {
     num: '4',
     title: 'Мы приезжаем и ставим',
     desc: 'Через два дня вы пьёте кофе и любуетесь стеной. Без пыли, без грязи.',
-    image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop',
   },
 ];
 
-const HowItWorksSection: React.FC = () => (
-  <section style={{ background: '#fff', ...SECTION_PADDING }}>
-    <div style={{ ...MAX_WIDTH }}>
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, amount: 0.2 }}
-        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 56 }}
-      >
-        <motion.div variants={fadeUpVariants} custom={0} style={{ textAlign: 'center' }}>
-          <span style={{
-            fontFamily: 'Inter, sans-serif',
-            fontSize: 12,
-            fontWeight: 600,
-            color: ACCENT,
-            textTransform: 'uppercase',
-            letterSpacing: '3px',
-            display: 'block',
-            marginBottom: 12,
-          }}>
-            Прозрачно и просто
-          </span>
-          <h2
-            style={{
-              fontFamily: 'Inter, sans-serif',
-              fontSize: 'clamp(32px, 3.5vw, 44px)',
-              fontWeight: 700,
-              color: DARK,
-              margin: 0,
-              letterSpacing: '-0.03em',
-              lineHeight: 1.15,
-            }}
-          >
-            Четыре шага — и готово
-          </h2>
-        </motion.div>
+const HowItWorksSection: React.FC = () => {
+  const [hoveredStep, setHoveredStep] = useState<string | null>(null);
 
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-            gap: 24,
-            width: '100%',
-          }}
+  return (
+    <section style={{ background: '#fff', ...SECTION_PADDING }}>
+      <div style={{ ...MAX_WIDTH }}>
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.2 }}
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 56 }}
         >
-          {steps.map((step, i) => (
-            <motion.div
-              key={step.num}
-              variants={fadeUpVariants}
-              custom={i + 1}
-              whileHover={{
-                translateY: -4,
-                boxShadow: '0 20px 50px rgba(0,0,0,0.08)',
-                transition: { duration: 0.5, ease: APPLE_EASE },
-              }}
+          <motion.div variants={fadeUpVariants} custom={0} style={{ textAlign: 'center' }}>
+            <span style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: 12,
+              fontWeight: 600,
+              color: ACCENT,
+              textTransform: 'uppercase',
+              letterSpacing: '3px',
+              display: 'block',
+              marginBottom: 12,
+            }}>
+              Прозрачно и просто
+            </span>
+            <h2
               style={{
-                borderRadius: CARD_RADIUS,
-                overflow: 'hidden',
-                background: '#fff',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
-                transition: `box-shadow 0.5s cubic-bezier(${APPLE_EASE.join(',')})`,
+                fontFamily: 'Inter, sans-serif',
+                fontSize: 'clamp(32px, 3.5vw, 44px)',
+                fontWeight: 700,
+                color: DARK,
+                margin: 0,
+                letterSpacing: '-0.03em',
+                lineHeight: 1.15,
               }}
             >
-              <div style={{ height: 160, overflow: 'hidden', position: 'relative' }}>
-                <img
-                  src={step.image}
-                  alt={step.title}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
+              Четыре шага — и готово
+            </h2>
+          </motion.div>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+              gap: 24,
+              width: '100%',
+            }}
+          >
+            {steps.map((step, i) => (
+              <motion.div
+                key={step.num}
+                variants={fadeUpVariants}
+                custom={i + 1}
+                whileHover={{
+                  translateY: -4,
+                  boxShadow: '0 20px 50px rgba(0,0,0,0.08)',
+                  transition: { duration: 0.5, ease: APPLE_EASE },
+                }}
+                onHoverStart={() => setHoveredStep(step.num)}
+                onHoverEnd={() => setHoveredStep(null)}
+                style={{
+                  borderRadius: CARD_RADIUS,
+                  overflow: 'hidden',
+                  background: '#fff',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
+                  transition: `box-shadow 0.5s cubic-bezier(${APPLE_EASE.join(',')})`,
+                  border: hoveredStep === step.num ? `2px solid ${ACCENT}30` : '2px solid transparent',
+                }}
+              >
                 <div style={{
-                  position: 'absolute',
-                  top: 12,
-                  left: 12,
-                  width: 36,
-                  height: 36,
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
+                  height: 180,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#fff',
-                  fontFamily: 'Inter, sans-serif',
-                  fontWeight: 700,
-                  fontSize: 16,
-                  boxShadow: '0 4px 12px rgba(76,175,80,0.4)',
+                  background: hoveredStep === step.num
+                    ? `linear-gradient(135deg, ${ACCENT}10 0%, ${ACCENT}20 100%)`
+                    : 'linear-gradient(135deg, #f8f9fa 0%, #f0f1f2 100%)',
+                  transition: 'background 0.4s ease',
                 }}>
-                  {step.num}
+                  <StepIcon num={step.num} hovered={hoveredStep === step.num} />
                 </div>
-              </div>
-              <div style={{ padding: '20px 20px 24px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <span
-                  style={{
-                    fontFamily: 'Inter, sans-serif',
-                    fontWeight: 700,
-                    fontSize: 18,
-                    color: DARK,
-                  }}
-                >
-                  {step.title}
-                </span>
-                <span
-                  style={{
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: 14,
-                    color: GRAY_TEXT,
-                    lineHeight: 1.6,
-                  }}
-                >
-                  {step.desc}
-                </span>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
-    </div>
-  </section>
-);
+                <div style={{ padding: '20px 20px 24px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <span
+                    style={{
+                      fontFamily: 'Inter, sans-serif',
+                      fontWeight: 700,
+                      fontSize: 18,
+                      color: DARK,
+                    }}
+                  >
+                    {step.title}
+                  </span>
+                  <span
+                    style={{
+                      fontFamily: 'Inter, sans-serif',
+                      fontSize: 14,
+                      color: GRAY_TEXT,
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    {step.desc}
+                  </span>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+};
 
 // ─── Advantages Section ──────────────────────────────────────────────────────
 
