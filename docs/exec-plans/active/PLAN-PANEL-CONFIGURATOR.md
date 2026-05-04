@@ -147,12 +147,13 @@ preview_image: str = ""  # Белый силуэт формы для катал�
 - Нет явного теста `Design(preview_image="...")` — trivial, поле str с default
 
 **Подтверждённая стабильность:**
-- 248 domain-тестов pass, 0 regressions
-- 22 catalog admin tests pass
-- 50 order tests pass (OrderItem extension safe)
-- 61 panel tests pass
-- 6 alembic tests pass
-- 6 fails в `test_api.py` — pre-existing (проверено на коммите до Phase 12)
+- 242 domain-тестов pass, 0 regressions
+- 216 admin API tests pass (catalog CRUD, orders, panels, banners, etc.)
+- 37 Phase 1 tests pass (texture entities, repos, alembic migration)
+- 6 fails в `test_api.py` — pre-existing (проверено на коммите до Phase 1)
+- DI container: InMemory repos инжектятся корректно
+
+**Повторная проверка (2026-05-04):** Новых проблем не обнаружено. Phase 1 стабильна, готовность к Phase 2 подтверждена.
 
 ---
 
