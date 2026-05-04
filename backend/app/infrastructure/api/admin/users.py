@@ -12,11 +12,8 @@ Domain → HTTP mapping (registered in `app/main.py`):
                             revoke-last-admin AND block-last-admin (operationally
                             equivalent, see `BlockUserAdmin`).
   `NotAuthorizedError`    → 403 + `{detail, code: "not_authorized"}`.
-  `UserNotFoundError`     → 404 + `{detail, code: "user_not_found"}` — locally
-                            raised here (no global handler) so the message stays
-                            specific to "user vs order". Code mirrors the
-                            admin-panel `{detail, code}` convention so frontend
-                            can branch uniformly across all error types.
+  `UserNotFoundError`     → 404 + `{detail, code: "user_not_found"}` — handled
+                            by the global handler in `error_handlers.py`.
 
 Why `recent_orders` is bundled into the detail response (not a second GET):
   the user-detail page renders profile + recent-orders as a single panel; the
@@ -28,7 +25,7 @@ Why `recent_orders` is bundled into the detail response (not a second GET):
 """
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
 from app.application.audit.use_cases import RecordAuditEntry
@@ -40,7 +37,6 @@ from app.application.user.use_cases import (
     ListUsersAdmin,
     RevokeAdminRole,
     UnblockUserAdmin,
-    UserNotFoundError,
 )
 from app.container import get_audit_repo, get_order_repo, get_user_repo
 from app.domain.order.entities import Order
@@ -179,20 +175,6 @@ async def list_users_admin(
 # ─── Detail ──────────────────────────────────────────────────────────
 
 
-def _user_not_found(message: str) -> HTTPException:
-    """Single source of truth for the 404 shape.
-
-    Returns the AntD-error-handler-friendly `{detail, code}` envelope used
-    across the admin panel. The frontend keys on `code` (not the localised
-    `detail` string) when it needs to branch — kept here so a future change
-    to the code value happens in one place.
-    """
-    return HTTPException(
-        status_code=404,
-        detail={"detail": message, "code": "user_not_found"},
-    )
-
-
 async def _load_detail(
     user_id: str,
     user_repo,
@@ -200,21 +182,13 @@ async def _load_detail(
 ) -> UserDetailResponse:
     """Fetch user + recent orders and shape the detail response.
 
-    Extracted so the mutation endpoints (block/unblock/grant/revoke) don't
-    have to call `get_user_admin()` as a regular function — that pattern
-    re-runs the `Depends(get_current_admin_id)` chain conceptually and
-    couples the mutations to FastAPI's route function. This helper is
-    pure (no `Depends`) and can be unit-tested in isolation.
+    `UserNotFoundError` propagates to the global handler registered in
+    `main.py` (→ 404 + `{detail, code: "user_not_found"}`).
 
     `recent` is a 5-row preview; full pagination lives at
-    `/api/admin/orders?user_id=...`. We use `ListOrdersAdmin` (not
-    `list_by_user`) so the same ordering convention as the orders table
-    applies.
+    `/api/admin/orders?user_id=...`.
     """
-    try:
-        user = await GetUserAdmin(user_repo).execute(user_id)
-    except UserNotFoundError as exc:
-        raise _user_not_found(str(exc))
+    user = await GetUserAdmin(user_repo).execute(user_id)
     recent, _total = await ListOrdersAdmin(order_repo).execute(
         OrderFilters(user_id=user_id), page=1, size=5,
     )
@@ -243,16 +217,10 @@ async def block_user(
     audit_repo=Depends(get_audit_repo),
     ip: str | None = Depends(get_request_ip),
 ):
-    try:
-        await BlockUserAdmin(
-            user_repo,
-            audit_recorder=RecordAuditEntry(audit_repo, request_ip=ip),
-        ).execute(actor_id=admin_id, target_user_id=user_id)
-    except UserNotFoundError as exc:
-        raise _user_not_found(str(exc))
-    # Re-fetch with recent orders so the frontend can `setQueryData(detail)`
-    # on success without an extra GET — same pattern as PATCH /status in
-    # Phase 4B's order detail.
+    await BlockUserAdmin(
+        user_repo,
+        audit_recorder=RecordAuditEntry(audit_repo, request_ip=ip),
+    ).execute(actor_id=admin_id, target_user_id=user_id)
     return await _load_detail(user_id, user_repo, order_repo)
 
 
@@ -265,13 +233,10 @@ async def unblock_user(
     audit_repo=Depends(get_audit_repo),
     ip: str | None = Depends(get_request_ip),
 ):
-    try:
-        await UnblockUserAdmin(
-            user_repo,
-            audit_recorder=RecordAuditEntry(audit_repo, request_ip=ip),
-        ).execute(actor_id=admin_id, target_user_id=user_id)
-    except UserNotFoundError as exc:
-        raise _user_not_found(str(exc))
+    await UnblockUserAdmin(
+        user_repo,
+        audit_recorder=RecordAuditEntry(audit_repo, request_ip=ip),
+    ).execute(actor_id=admin_id, target_user_id=user_id)
     return await _load_detail(user_id, user_repo, order_repo)
 
 
@@ -287,16 +252,10 @@ async def grant_admin(
     audit_repo=Depends(get_audit_repo),
     ip: str | None = Depends(get_request_ip),
 ):
-    try:
-        await GrantAdminRole(
-            user_repo,
-            audit_recorder=RecordAuditEntry(audit_repo, request_ip=ip),
-        ).execute(actor_id=admin_id, target_user_id=user_id)
-    except ValueError as exc:
-        # GrantAdminRole raises ValueError for missing user. Mirror the
-        # 404 mapping used by Get/Block/Unblock so the frontend can branch
-        # on status code + `code: user_not_found` uniformly.
-        raise _user_not_found(str(exc))
+    await GrantAdminRole(
+        user_repo,
+        audit_recorder=RecordAuditEntry(audit_repo, request_ip=ip),
+    ).execute(actor_id=admin_id, target_user_id=user_id)
     return await _load_detail(user_id, user_repo, order_repo)
 
 
@@ -309,12 +268,8 @@ async def revoke_admin(
     audit_repo=Depends(get_audit_repo),
     ip: str | None = Depends(get_request_ip),
 ):
-    try:
-        await RevokeAdminRole(
-            user_repo,
-            audit_recorder=RecordAuditEntry(audit_repo, request_ip=ip),
-        ).execute(actor_id=admin_id, target_user_id=user_id)
-    except ValueError as exc:
-        # Same 404-on-missing-target convention as grant_admin above.
-        raise _user_not_found(str(exc))
+    await RevokeAdminRole(
+        user_repo,
+        audit_recorder=RecordAuditEntry(audit_repo, request_ip=ip),
+    ).execute(actor_id=admin_id, target_user_id=user_id)
     return await _load_detail(user_id, user_repo, order_repo)

@@ -14,10 +14,13 @@ import pytest
 from app.application.user.use_cases import (
     BlockUserAdmin,
     UnblockUserAdmin,
-    UserNotFoundError,
 )
 from app.domain.user.entities import User
-from app.domain.user.exceptions import LastAdminRemovalError, NotAuthorizedError
+from app.domain.user.exceptions import (
+    LastAdminRemovalError,
+    NotAuthorizedError,
+    UserNotFoundError,
+)
 from app.domain.user.value_objects import UserRole
 from app.infrastructure.persistence.repositories.memory import InMemoryUserRepository
 

@@ -674,7 +674,31 @@
 7. **`except ValueError` ловит слишком широко** (`api/admin/users.py:295,318`): в `grant_admin()`/`revoke_admin()` catch `ValueError` → 404. `GrantAdminRole`/`RevokeAdminRole` (Phase 1) бросают `ValueError("User not found: ...")`. Если UC добавит другую валидацию ValueError, она ошибочно станет 404 вместо 422. **Fix:** мигрировать Phase 1 use cases на `UserNotFoundError`.
 8. **Pre-existing: `SqlUserRepository.update` не персистит `password_hash`** (`sql.py:683-688`): метод обновляет `name`, `phone`, `email`, `role`, `is_blocked`, но пропускает `password_hash`. `ResetPassword.execute()` → `repo.update()` → в SQL-режиме новый пароль НЕ сохранится. **Phase 5 корректно добавила `is_blocked`**; баг с password_hash существовал до Phase 5. Fixing later.
 
-**Вердикт:** фаза стабильна, критических дефектов нет. Три новых пункта тех-долга (#6, #7, #8) — не блокеры, могут быть закрыты попутно в любой последующей фазе.
+**Вердикт:** фаза стабильна, критических дефектов нет. Три новых пункта тех-долга (#6, #7, #8) — не блокеры.
+
+### Fix 2026-05-04 — исправление N6, N7, N8
+
+**N6 (двойная вложенность `detail`):** убрана локальная `_user_not_found()` helper-функция
+из `api/admin/users.py`. Все try/except `UserNotFoundError` / `ValueError` блоки удалены
+из block_user, unblock_user, grant_admin, revoke_admin, _load_detail. Исключения
+пробрасываются к глобальному handler `user_not_found_handler` в `error_handlers.py` →
+плоский `{"detail": "...", "code": "user_not_found"}`, согласованно со всеми другими
+domain exception handlers.
+
+**N7 (broad `except ValueError`):** `GrantAdminRole` и `RevokeAdminRole` use cases
+мигрированы с `ValueError` на типизированный `UserNotFoundError` (из
+`app.domain.user.exceptions`). Дублирующее определение `UserNotFoundError` в
+`use_cases.py` удалено — canonical source теперь `domain/user/exceptions.py`.
+
+**N8 (`password_hash` не персистился в SQL):** в `SqlUserRepository.update` добавлена
+строка `model.password_hash = user.password_hash`. `ResetPassword` теперь корректно
+сохраняет новый хеш в SQL-режиме.
+
+**Побочная правка:** `tests/application/test_block_user_admin.py` — import
+`UserNotFoundError` перенесён из `app.application.user.use_cases` в
+`app.domain.user.exceptions` (canonical location).
+
+**Тесты:** 63/63 Phase 5 passed (12 block/unblock UC + 23 domain + 16 API + 12 infra/login).
 
 ---
 

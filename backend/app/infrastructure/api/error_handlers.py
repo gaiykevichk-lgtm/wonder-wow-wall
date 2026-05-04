@@ -20,6 +20,7 @@ from app.domain.user.exceptions import (
     LastAdminRemovalError,
     NotAuthorizedError,
     UserBlockedError,
+    UserNotFoundError,
 )
 from app.domain.visualizer.exceptions import (
     CollinearCornersError,
@@ -187,6 +188,14 @@ async def user_blocked_handler(request: Request, exc: UserBlockedError):
     return JSONResponse(
         status_code=403,
         content={"detail": str(exc), "code": "user_blocked"},
+    )
+
+
+async def user_not_found_handler(request: Request, exc: UserNotFoundError):
+    """Admin requested a user that does not exist → 404."""
+    return JSONResponse(
+        status_code=404,
+        content={"detail": str(exc), "code": "user_not_found"},
     )
 
 

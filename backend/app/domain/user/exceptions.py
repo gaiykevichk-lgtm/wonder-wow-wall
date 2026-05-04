@@ -6,6 +6,7 @@ and mapped to HTTP responses in `infrastructure/api/error_handlers.py`.
     LastAdminRemovalError   → 409 (last_admin)
     NotAuthorizedError      → 403 (not_authorized)
     UserBlockedError        → 403 (user_blocked)   # Phase 5
+    UserNotFoundError       → 404 (user_not_found)  # Phase 5 review
 """
 
 
@@ -38,4 +39,14 @@ class UserBlockedError(Exception):
     credentials, but the account itself is disabled. The frontend branches
     on `code: "user_blocked"` to show "Аккаунт заблокирован, обратитесь
     к поддержке" instead of the generic "Неверный email или пароль".
+    """
+
+
+class UserNotFoundError(LookupError):
+    """Requested user does not exist.
+
+    Mapped to 404 + `{detail, code: "user_not_found"}` by the global
+    handler in `error_handlers.py`. Subclasses `LookupError` so callers
+    can use a generic `except` if they don't care about the bounded
+    context — same convention as `OrderNotFoundError`.
     """

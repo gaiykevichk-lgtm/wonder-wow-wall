@@ -686,6 +686,7 @@ class SqlUserRepository(UserRepository):
             model.email = user.email
             model.role = user.role.value
             model.is_blocked = user.is_blocked
+            model.password_hash = user.password_hash
             # Sync addresses: delete all, re-create
             for old_addr in list(model.addresses):
                 await self._session.delete(old_addr)

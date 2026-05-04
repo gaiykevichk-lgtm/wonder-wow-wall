@@ -4,6 +4,7 @@ from app.domain.user.exceptions import (
     LastAdminRemovalError,
     NotAuthorizedError,
     UserBlockedError,
+    UserNotFoundError,
 )
 from app.domain.user.filters import UserFilters
 from app.domain.user.repositories import UserRepository
@@ -155,7 +156,7 @@ class GrantAdminRole:
 
         target = await self.repo.get_by_id(target_user_id)
         if target is None:
-            raise ValueError(f"User not found: {target_user_id}")
+            raise UserNotFoundError(f"User {target_user_id} not found")
 
         was_admin = target.role == UserRole.ADMIN
         target.promote_to_admin()
@@ -195,7 +196,7 @@ class RevokeAdminRole:
 
         target = await self.repo.get_by_id(target_user_id)
         if target is None:
-            raise ValueError(f"User not found: {target_user_id}")
+            raise UserNotFoundError(f"User {target_user_id} not found")
 
         if target.role != UserRole.ADMIN:
             # Idempotent no-op — consistent with GrantAdminRole for already-ADMIN.
@@ -261,15 +262,6 @@ async def _ensure_actor_is_admin(repo: UserRepository, actor_id: str) -> None:
 
 
 # ─── Phase 5: User-management admin use cases ────────────────────────
-
-
-class UserNotFoundError(LookupError):
-    """Use case asked for a user that does not exist.
-
-    Subclasses `LookupError` so callers can use a generic `except` if they
-    don't care about the bounded context — same convention as
-    `OrderNotFoundError` (Phase 4B).
-    """
 
 
 class ListUsersAdmin:

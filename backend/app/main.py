@@ -11,6 +11,7 @@ from app.domain.user.exceptions import (
     LastAdminRemovalError,
     NotAuthorizedError,
     UserBlockedError,
+    UserNotFoundError,
 )
 from app.domain.visualizer.exceptions import (
     CollinearCornersError,
@@ -93,6 +94,7 @@ from app.infrastructure.api.error_handlers import (
     variant_image_not_found_handler,
     variant_image_combination_conflict_handler,
     user_blocked_handler,
+    user_not_found_handler,
 )
 from app.infrastructure.security.middleware import SecurityHeadersMiddleware
 from app.infrastructure.security.rate_limit import limiter
@@ -124,6 +126,7 @@ app.add_exception_handler(NotAuthorizedError, not_authorized_handler)
 # Phase 5 — blocked account login refusal. Plain `Login` ValueError stays
 # 422 (wrong creds), only this maps to 403 + USER_BLOCKED.
 app.add_exception_handler(UserBlockedError, user_blocked_handler)
+app.add_exception_handler(UserNotFoundError, user_not_found_handler)
 # Phase 4B — admin order status transitions. Subclasses (e.g.
 # OrderAlreadyCancelledError) match the same handler so they all map to 409.
 app.add_exception_handler(InvalidOrderTransitionError, invalid_order_transition_handler)
