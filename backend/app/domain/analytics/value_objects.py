@@ -15,7 +15,7 @@ Why a separate bounded context at all, if there's no state?
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 
 class InvalidDateRangeError(ValueError):
@@ -72,7 +72,7 @@ class DateRange:
         """
         if n <= 0:
             raise InvalidDateRangeError(f"last_n_days requires n > 0, got {n}")
-        anchor = today or datetime.utcnow().date()
+        anchor = today or datetime.now(timezone.utc).date()
         return cls(
             start=anchor - timedelta(days=n - 1),
             end=anchor + timedelta(days=1),

@@ -295,7 +295,7 @@
 6. **Readonly-сессия не реализована** — `SqlAnalyticsRepository` берёт обычную `AsyncSession`. — *backlog: refactor `get_readonly_session` имеет смысл, когда появится >1 read-only клиента*
 7. ✅ **`test_admin_gets_full_payload` сидирует общий `_mem_order_repo`** без отката — *закрыто 2026-04-25:* autouse-фикстура переименована в `_reset_cache_and_repos`, очищает `_mem_order_repo._orders` и `_counter` до и после каждого теста. Assertion ужесточён: `orders["value"] == 1` (раньше `>= 1`).
 8. **`top_designs` SQL: `func.max(design_name)`** (`analytics_repo.py:226`) — недетерминированный выбор имени при rename. — *оставлено в backlog (минорно)*
-9. **`datetime.utcnow()`** в `DateRange.last_n_days` (`value_objects.py:73`) — deprecation warning на Python 3.12+. — *общая проблема проекта, не Phase 3*
+9. ✅ **`datetime.utcnow()`** в `DateRange.last_n_days` и `analytics_repo.py` — deprecation warning на Python 3.12+. — *закрыто 2026-05-04:* заменено на `datetime.now(timezone.utc)` в `value_objects.py:75`, `analytics_repo.py:429,870` (`.replace(tzinfo=None)` для совместимости с naive `Order.created_at`)*
 10. **Нет UI-теста** на `AdminDashboardPage.tsx` — *оставлено в backlog (store покрыт, добавить при первой регрессии)*
 11. **Cache key `(days,)` агрегирует все SQL-сессии в один бакет** — сегодня безвредно. — *оставлено в backlog (поведение задокументировано в `cache.py:32-43` через `skip_self`)*
 
@@ -368,8 +368,10 @@
 **Исправлено:**
 - ✅ `AdminDashboardPage.tsx:176` — `bodyStyle` (deprecated AntD 5) → `styles={{ body: ... }}` (новый API). Устранена inconsistency с остальным файлом.
 - ✅ Подсчёт тестов в этом разделе скорректирован: domain=7, app=7, api=7 (ранее 9+8+6=23 ≠ 21).
+- ✅ `datetime.utcnow()` → `datetime.now(timezone.utc)` в `value_objects.py:75` и `analytics_repo.py:429,870`. Убран deprecated вызов; `.replace(tzinfo=None)` в repo для совместимости с naive `Order.created_at`.
+- ✅ `analytics_repo.py` — добавлен `ConstructorProjectDict` (TypedDict) для типизации plain-dict конструкторных проектов. Сигнатура `InMemoryAnalyticsRepository.__init__` и property `_constructor_projects` обновлены с `list[dict]` на `list[ConstructorProjectDict]`.
 
-**Подтверждённая стабильность:** Фаза 3 полностью стабильна. Phase 11 виджеты (8 шт., добавлены поверх Phase 3 файлов) аддитивны и не ломают Phase 3 функциональность.
+**Подтверждённая стабильность:** Фаза 3 полностью стабильна после всех исправлений (25/25 тестов pass). Phase 11 виджеты (8 шт., добавлены поверх Phase 3 файлов) аддитивны и не ломают Phase 3 функциональность.
 
 ---
 

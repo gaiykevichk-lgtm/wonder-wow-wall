@@ -7,9 +7,9 @@ repo-module" pattern (`project_repo.py`, `visualization_repo.py`).
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from collections import Counter, defaultdict
-from typing import Callable  # noqa: F401  # used in forward-reference string
+from typing import Callable, TypedDict  # noqa: F401  # used in forward-reference string
 
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -118,6 +118,21 @@ def _size_label(size_key: str) -> str:
     return _SIZE_KEY_LABELS.get(size_key, size_key)
 
 
+class ConstructorProjectDict(TypedDict, total=False):
+    """Shape contract for the plain-dict constructor projects fed by
+    ``InMemoryProjectRepository``. Using a TypedDict instead of bare
+    ``dict`` keeps the analytics consumer type-safe without forcing a
+    domain entity refactor on the legacy project repo."""
+
+    id: str
+    user_id: str
+    name: str
+    total_price: int
+    panels: list
+    created_at: str
+    updated_at: str
+
+
 # ─── helpers ─────────────────────────────────────────────────────────
 
 # Statuses that count toward "revenue" — everything past CONFIRMED.
@@ -160,7 +175,7 @@ class InMemoryAnalyticsRepository(AnalyticsRepository):
         orders: "Callable[[], list[Order]]",
         users: "Callable[[], list[User]]",
         subscriptions: "Callable[[], list[Subscription]] | None" = None,
-        constructor_projects: "Callable[[], list[dict]] | None" = None,
+        constructor_projects: "Callable[[], list[ConstructorProjectDict]] | None" = None,
         visualizations: "Callable[[], list[VisualizationProject]] | None" = None,
         plans: "Callable[[], list[SubscriptionPlan]] | None" = None,
     ) -> None:
@@ -184,7 +199,7 @@ class InMemoryAnalyticsRepository(AnalyticsRepository):
         return self._subscriptions_fn()
 
     @property
-    def _constructor_projects(self) -> list:
+    def _constructor_projects(self) -> list[ConstructorProjectDict]:
         return self._constructor_projects_fn()
 
     @property
@@ -426,7 +441,7 @@ class InMemoryAnalyticsRepository(AnalyticsRepository):
         self, *, limit: int = 10
     ) -> list[OrderAttention]:
         users_by_id = self._user_lookup()
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
 
         flagged: list[OrderAttention] = []
         for o in self._orders:
@@ -867,7 +882,7 @@ class SqlAnalyticsRepository(AnalyticsRepository):
     async def orders_needing_attention(
         self, *, limit: int = 10
     ) -> list[OrderAttention]:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         # Build a per-status cutoff filter — orders older than the SLA
         # land in the result. ORs keep it a single query per status.
         clauses = []
