@@ -8,6 +8,7 @@ export interface PanelProduct {
   price: number;
   priceUnit: string;
   image: string;
+  previewImage: string;
   gallery: string[];
   description: string;
   specs: Record<string, string>;

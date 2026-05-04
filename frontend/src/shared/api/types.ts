@@ -28,6 +28,7 @@ export interface ApiDesign {
   category_id: string;
   style: string;
   image: string;
+  preview_image: string;
   description: string;
   price: number;
   colors: ApiColor[];

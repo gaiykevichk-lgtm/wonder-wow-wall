@@ -12,6 +12,7 @@ describe('Catalog API Adapters', () => {
       category_id: 'wood',
       style: 'Классика',
       image: 'https://example.com/img.jpg',
+      preview_image: '/uploads/forms/oak-white.png',
       description: 'Beautiful oak design',
       price: 1200,
       colors: [
@@ -70,6 +71,14 @@ describe('Catalog API Adapters', () => {
       expect(result.sizes[0]).toHaveProperty('width');
       expect(result.sizes[0]).toHaveProperty('height');
       expect(result.sizes[0]).toHaveProperty('label');
+    });
+
+    it('maps previewImage from preview_image', () => {
+      const result = apiDesignToProduct(apiDesign);
+      expect(result.previewImage).toBe('/uploads/forms/oak-white.png');
+
+      const noPreview = { ...apiDesign, preview_image: '' };
+      expect(apiDesignToProduct(noPreview).previewImage).toBe('');
     });
 
     it('sets inStock to true and priceUnit', () => {

@@ -1,5 +1,8 @@
 import type { ThemeConfig } from 'antd';
 
+const FONT_FAMILY =
+  "-apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', system-ui, sans-serif";
+
 const theme: ThemeConfig = {
   token: {
     colorPrimary: '#2D2D2D',
@@ -9,35 +12,46 @@ const theme: ThemeConfig = {
     colorTextSecondary: '#6B7280',
     colorBorder: '#E5E7EB',
     borderRadius: 12,
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontFamily: FONT_FAMILY,
     colorLink: '#4CAF50',
     colorSuccess: '#4CAF50',
     fontSize: 15,
-    boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+    boxShadowSecondary: '0 2px 8px rgba(0,0,0,0.06)',
+    lineHeight: 1.47,
+    paddingLG: 24,
+    paddingXL: 32,
+    marginLG: 24,
+    marginXL: 32,
   },
   components: {
     Button: {
-      borderRadius: 8,
+      borderRadius: 12,
       controlHeight: 50,
-      fontWeight: 400,
+      fontWeight: 500,
       primaryShadow: 'none',
     },
     Card: {
       borderRadiusLG: 16,
-      boxShadowTertiary: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)',
+      boxShadowTertiary: '0 1px 2px rgba(0,0,0,0.04)',
+      paddingLG: 24,
     },
     Input: {
-      borderRadius: 8,
+      borderRadius: 12,
       controlHeight: 50,
     },
     Select: {
-      borderRadius: 8,
+      borderRadius: 12,
       controlHeight: 50,
     },
     Tag: {
-      borderRadiusSM: 6,
+      borderRadiusSM: 8,
+    },
+    Typography: {
+      fontWeightStrong: 600,
     },
   },
 };
 
+export { FONT_FAMILY };
 export default theme;

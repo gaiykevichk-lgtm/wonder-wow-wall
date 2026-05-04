@@ -1,52 +1,32 @@
 import { useState, useMemo } from 'react';
-import { Card, Rate, Tag, Input, Select, Slider, Button, Skeleton } from 'antd';
+import { Input, Skeleton } from 'antd';
 import { PageMeta } from '../../../shared/ui/PageMeta';
-import { SearchOutlined, FilterOutlined, AppstoreOutlined, UnorderedListOutlined, HeartOutlined, HeartFilled, CameraOutlined } from '@ant-design/icons';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { SearchOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { products as mockProducts, categories as mockCategories } from '../model/data';
-import { useDesigns, useCategories } from '../api/catalogApi';
-import { apiDesignToProduct, apiCategoryToCategory } from '../api/adapters';
-import { useCartStore } from '../../order/model/cartStore';
-import { useAccountStore } from '../../account/model/accountStore';
+import { products as mockProducts } from '../model/data';
+import { useDesigns } from '../api/catalogApi';
+import { apiDesignToProduct } from '../api/adapters';
 import type { PanelProduct } from '../model/types';
-
-type SortKey = 'popular' | 'price-asc' | 'price-desc' | 'rating';
-type ViewMode = 'grid' | 'list';
 
 const appleEase = [0.25, 0.1, 0.25, 1.0];
 
-const fadeUpVariants = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- framer-motion Variants typing mismatch with custom() functions
+const fadeUpVariants: any = {
   hidden: { opacity: 0, y: 24 },
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.8, delay: i * 0.05, ease: appleEase },
+    transition: { duration: 0.6, delay: i * 0.06, ease: appleEase },
   }),
 };
 
 export default function CatalogPage() {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const addItem = useCartStore((s) => s.addItem);
-  const favoriteIds = useAccountStore((s) => s.favoriteIds);
-  const toggleFavorite = useAccountStore((s) => s.toggleFavorite);
-
-  const initialCategory = searchParams.get('category') || 'all';
-
   const [search, setSearch] = useState('');
-  const [sortKey, setSortKey] = useState<SortKey>('popular');
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
-  const [filterColor, setFilterColor] = useState<string | null>(null);
-  const [filterStyle, setFilterStyle] = useState<string | null>(null);
-  const [filterNew, setFilterNew] = useState(false);
 
-  // API data with fallback to mocks
-  const { data: designsData, isLoading: designsLoading } = useDesigns();
-  const { data: categoriesData } = useCategories();
+  const { data: designsData, isLoading } = useDesigns();
 
   const products = useMemo(() => {
     if (designsData?.items) {
@@ -55,110 +35,21 @@ export default function CatalogPage() {
     return mockProducts;
   }, [designsData]);
 
-  const categories = useMemo(() => {
-    if (categoriesData) {
-      return [{ key: 'all', label: 'Все дизайны', image: '', count: 0 }, ...categoriesData.map(apiCategoryToCategory)];
-    }
-    return mockCategories;
-  }, [categoriesData]);
-
-  const handleCategoryChange = (key: string) => {
-    setActiveCategory(key);
-    const params = new URLSearchParams(searchParams);
-    if (key === 'all') {
-      params.delete('category');
-    } else {
-      params.set('category', key);
-    }
-    setSearchParams(params);
-  };
-
-  const handleAddToCart = (e: React.MouseEvent, product: PanelProduct) => {
-    e.stopPropagation();
-    const firstSize = product.sizes[0];
-    const firstColor = product.colors[0];
-    addItem({
-      id: product.id,
-      productId: product.id,
-      name: product.name,
-      image: product.image,
-      price: product.price,
-      area: (firstSize.width * firstSize.height) / 1_000_000,
-      color: firstColor.hex,
-      colorName: firstColor.name,
-      size: firstSize.label,
-    });
-  };
-
-  const uniqueStyles = useMemo(() => {
-    const styles = new Set(products.map((p) => p.style).filter(Boolean));
-    return Array.from(styles).sort();
-  }, [products]);
-
-  const uniqueColors = useMemo(() => {
-    const colorMap = new Map<string, string>();
-    products.forEach((p) => p.colors.forEach((c) => { if (!colorMap.has(c.name)) colorMap.set(c.name, c.hex); }));
-    return Array.from(colorMap.entries()).map(([name, hex]) => ({ name, hex })).sort((a, b) => a.name.localeCompare(b.name));
-  }, [products]);
-
   const filtered = useMemo(() => {
-    let list = [...products];
-
-    if (activeCategory !== 'all') {
-      list = list.filter((p) => p.category === activeCategory);
-    }
-
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.material.toLowerCase().includes(q) ||
-          p.categoryLabel.toLowerCase().includes(q)
-      );
-    }
-
-    list = list.filter((p) => p.price >= priceRange[0] && p.price <= priceRange[1]);
-
-    if (filterColor) {
-      list = list.filter((p) => p.colors.some((c) => c.name === filterColor));
-    }
-    if (filterStyle) {
-      list = list.filter((p) => p.style === filterStyle);
-    }
-    if (filterNew) {
-      list = list.filter((p) => p.badge === 'Новинка');
-    }
-
-    switch (sortKey) {
-      case 'price-asc':
-        list.sort((a, b) => a.price - b.price);
-        break;
-      case 'price-desc':
-        list.sort((a, b) => b.price - a.price);
-        break;
-      case 'rating':
-        list.sort((a, b) => b.rating - a.rating);
-        break;
-      case 'popular':
-      default:
-        list.sort((a, b) => b.reviews - a.reviews);
-        break;
-    }
-
-    return list;
-  }, [products, activeCategory, search, priceRange, sortKey, filterColor, filterStyle, filterNew]);
+    if (!search.trim()) return products;
+    const q = search.toLowerCase();
+    return products.filter((p) => p.name.toLowerCase().includes(q));
+  }, [products, search]);
 
   return (
     <div style={{ paddingTop: 72, minHeight: '100vh', background: '#FFFFFF' }}>
-      <PageMeta title="Каталог" description="Каталог модульных стеновых панелей Wonder Wow Wall. Более 100 000 вариантов дизайна." />
-      {/* Page Header */}
-      <div
-        style={{
-          background: '#F5F5F5',
-          padding: '120px 40px',
-        }}
-      >
+      <PageMeta
+        title="Каталог форм"
+        description="Выберите форму панели Wonder Wow Wall. Волна, гексагон, треугольник и другие дизайнерские формы."
+      />
+
+      {/* Hero */}
+      <div style={{ background: '#F5F5F5', padding: '100px 40px 80px' }}>
         <div style={{ maxWidth: 1080, margin: '0 auto', textAlign: 'center' }}>
           <h1
             style={{
@@ -170,255 +61,110 @@ export default function CatalogPage() {
               letterSpacing: '-0.03em',
             }}
           >
-            Каталог дизайнов
+            Выберите форму панели
           </h1>
-          <p style={{ margin: '12px 0 0', fontSize: 17, color: '#6B7280' }}>
-            {filtered.length} из {products.length} товаров
+          <p
+            style={{
+              margin: '16px 0 0',
+              fontSize: 19,
+              color: '#6B7280',
+              lineHeight: 1.5,
+              maxWidth: 480,
+              marginLeft: 'auto',
+              marginRight: 'auto',
+            }}
+          >
+            Каждая форма — уникальный рельеф на вашей стене. Выберите силуэт, затем настройте
+            текстуру и цвет.
           </p>
         </div>
       </div>
 
-      <div style={{ maxWidth: 1080, margin: '0 auto', padding: '48px 40px' }}>
-        {/* Filter Bar */}
+      <div style={{ maxWidth: 1080, margin: '0 auto', padding: '40px 40px 80px' }}>
+        {/* Search */}
         <div
-          className="catalog-filters"
           style={{
             display: 'flex',
-            flexWrap: 'wrap',
-            gap: 16,
-            alignItems: 'center',
-            marginBottom: 24,
-            padding: '12px 0',
+            justifyContent: 'center',
+            marginBottom: 48,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#6B7280' }}>
-            <FilterOutlined />
-            <span style={{ fontWeight: 500, fontSize: 14 }}>Фильтры</span>
-          </div>
-
           <Input
             prefix={<SearchOutlined style={{ color: '#6B7280' }} />}
-            placeholder="Поиск по названию или материалу..."
+            placeholder="Поиск по названию формы..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            allowClear
             style={{
-              flex: '1 1 220px',
-              minWidth: 180,
-              maxWidth: 320,
-              borderRadius: 8,
-              height: 38,
+              maxWidth: 400,
+              width: '100%',
+              borderRadius: 12,
+              height: 44,
               border: '1px solid rgba(0,0,0,0.08)',
+              fontSize: 15,
             }}
-            allowClear
           />
-
-          <Select
-            value={sortKey}
-            onChange={(val) => setSortKey(val as SortKey)}
-            style={{ width: 180, borderRadius: 8 }}
-            options={[
-              { value: 'popular', label: 'По популярности' },
-              { value: 'price-asc', label: 'Цена: по возрастанию' },
-              { value: 'price-desc', label: 'Цена: по убыванию' },
-              { value: 'rating', label: 'По рейтингу' },
-            ]}
-          />
-
-          <div style={{ flex: '1 1 200px', minWidth: 180, maxWidth: 280 }}>
-            <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>
-              Цена: {priceRange[0].toLocaleString('ru-RU')} ₽ — {priceRange[1].toLocaleString('ru-RU')} ₽
-            </div>
-            <Slider
-              range
-              min={0}
-              max={10000}
-              step={100}
-              value={priceRange}
-              onChange={(val) => setPriceRange(val as [number, number])}
-              tooltip={{ formatter: (v) => `${v?.toLocaleString('ru-RU')} ₽` }}
-              styles={{
-                track: { background: '#4CAF50' },
-                handle: { borderColor: '#4CAF50' },
-              }}
-            />
-          </div>
-
-          <Select
-            value={filterStyle}
-            onChange={(val) => setFilterStyle(val)}
-            allowClear
-            placeholder="Стиль"
-            style={{ width: 160, borderRadius: 8 }}
-            options={uniqueStyles.map((s) => ({ value: s, label: s }))}
-          />
-
-          <Select
-            value={filterColor}
-            onChange={(val) => setFilterColor(val)}
-            allowClear
-            placeholder="Цвет"
-            style={{ width: 160, borderRadius: 8 }}
-            options={uniqueColors.map((c) => ({
-              value: c.name,
-              label: (
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ width: 14, height: 14, borderRadius: '50%', background: c.hex, display: 'inline-block', border: '1px solid rgba(0,0,0,0.1)', flexShrink: 0 }} />
-                  {c.name}
-                </span>
-              ),
-            }))}
-          />
-
-          <Button
-            type={filterNew ? 'primary' : 'default'}
-            onClick={() => setFilterNew(!filterNew)}
-            style={{
-              borderRadius: 8,
-              height: 38,
-              fontWeight: 500,
-              fontSize: 14,
-              border: filterNew ? 'none' : '1px solid rgba(0,0,0,0.08)',
-            }}
-          >
-            Новинки
-          </Button>
-
-          <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
-            <Button
-              type="text"
-              icon={<AppstoreOutlined />}
-              onClick={() => setViewMode('grid')}
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 8,
-                background: viewMode === 'grid' ? '#2D2D2D' : 'transparent',
-                color: viewMode === 'grid' ? '#FFFFFF' : '#6B7280',
-                border: 'none',
-              }}
-            />
-            <Button
-              type="text"
-              icon={<UnorderedListOutlined />}
-              onClick={() => setViewMode('list')}
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 8,
-                background: viewMode === 'list' ? '#2D2D2D' : 'transparent',
-                color: viewMode === 'list' ? '#FFFFFF' : '#6B7280',
-                border: 'none',
-              }}
-            />
-          </div>
         </div>
 
-        {/* Category Tabs */}
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 8,
-            marginBottom: 32,
-          }}
-        >
-          {categories.map((cat) => (
-            <button
-              key={cat.key}
-              onClick={() => handleCategoryChange(cat.key)}
-              style={{
-                padding: '8px 18px',
-                borderRadius: 8,
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: 14,
-                fontWeight: activeCategory === cat.key ? 600 : 400,
-                background: activeCategory === cat.key ? '#2D2D2D' : 'rgba(0,0,0,0.04)',
-                color: activeCategory === cat.key ? '#FFFFFF' : '#2D2D2D',
-                transition: 'all 0.8s cubic-bezier(0.25, 0.1, 0.25, 1.0)',
-              }}
-            >
-              {cat.label}
-              {cat.count > 0 && (
-                <span
-                  style={{
-                    marginLeft: 6,
-                    fontSize: 11,
-                    opacity: 0.7,
-                  }}
-                >
-                  ({cat.count})
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* Product Grid / List */}
-        {designsLoading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 24 }}>
+        {/* Grid */}
+        {isLoading ? (
+          <div className="catalog-forms-grid">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Card key={i} style={{ borderRadius: 16, overflow: 'hidden', border: 'none' }}>
-                <Skeleton.Image style={{ width: '100%', height: 220 }} active />
-                <Skeleton active paragraph={{ rows: 2 }} style={{ marginTop: 16 }} />
-              </Card>
+              <div
+                key={i}
+                style={{
+                  borderRadius: 20,
+                  overflow: 'hidden',
+                  background: '#F5F5F5',
+                }}
+              >
+                <Skeleton.Image
+                  style={{ width: '100%', height: 280 }}
+                  active
+                />
+                <div style={{ padding: '20px 16px' }}>
+                  <Skeleton active paragraph={{ rows: 1 }} />
+                </div>
+              </div>
             ))}
           </div>
         ) : filtered.length === 0 ? (
           <div
             style={{
               textAlign: 'center',
-              padding: '120px 20px',
+              padding: '100px 20px',
               color: '#6B7280',
             }}
           >
-            <div style={{ fontSize: 48, marginBottom: 16 }}>🔍</div>
-            <h3 style={{ fontSize: 22, fontWeight: 600, color: '#2D2D2D', margin: '0 0 8px' }}>
+            <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>
+              &#x1F50D;
+            </div>
+            <h3
+              style={{
+                fontSize: 22,
+                fontWeight: 600,
+                color: '#2D2D2D',
+                margin: '0 0 8px',
+              }}
+            >
               Ничего не найдено
             </h3>
             <p style={{ fontSize: 15, margin: 0 }}>
-              Попробуйте изменить фильтры или поисковый запрос
+              Попробуйте изменить поисковый запрос
             </p>
           </div>
         ) : (
-          <div
-            style={
-              viewMode === 'grid'
-                ? {
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                    gap: 24,
-                  }
-                : {
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 16,
-                  }
-            }
-          >
-            {filtered.map((product, i) =>
-              viewMode === 'grid' ? (
-                <GridCard
-                  key={product.id}
-                  product={product}
-                  index={i}
-                  hovered={hoveredCard === product.id}
-                  isFavorite={favoriteIds.includes(product.id)}
-                  onToggleFavorite={toggleFavorite}
-                  onHover={setHoveredCard}
-                  onAddToCart={handleAddToCart}
-                  onNavigate={() => navigate(`/product/${product.id}`)}
-                />
-              ) : (
-                <ListCard
-                  key={product.id}
-                  product={product}
-                  index={i}
-                  onAddToCart={handleAddToCart}
-                  onNavigate={() => navigate(`/product/${product.id}`)}
-                />
-              )
-            )}
+          <div className="catalog-forms-grid">
+            {filtered.map((product, i) => (
+              <FormCard
+                key={product.id}
+                product={product}
+                index={i}
+                hovered={hoveredCard === product.id}
+                onHover={setHoveredCard}
+                onNavigate={() => navigate(`/product/${product.id}`)}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -426,376 +172,109 @@ export default function CatalogPage() {
   );
 }
 
-/* ─── Grid Card ─────────────────────────────────────────────────────────────── */
+/* ─── Form Card ──────────────────────────────────────────────────────────── */
 
-interface GridCardProps {
+interface FormCardProps {
   product: PanelProduct;
   index: number;
   hovered: boolean;
-  isFavorite: boolean;
-  onToggleFavorite: (id: string) => void;
   onHover: (id: string | null) => void;
-  onAddToCart: (e: React.MouseEvent, product: PanelProduct) => void;
   onNavigate: () => void;
 }
 
-function GridCard({ product, index, hovered, isFavorite, onToggleFavorite, onHover, onAddToCart, onNavigate }: GridCardProps) {
-  const navigate = useNavigate();
+function FormCard({ product, index, hovered, onHover, onNavigate }: FormCardProps) {
+  const imageSrc = product.previewImage || product.image;
+
   return (
     <motion.div
       custom={index}
       initial="hidden"
       animate="visible"
       variants={fadeUpVariants}
+      onClick={onNavigate}
+      onMouseEnter={() => onHover(product.id)}
+      onMouseLeave={() => onHover(null)}
+      style={{
+        cursor: 'pointer',
+        borderRadius: 20,
+        overflow: 'hidden',
+        background: '#FAFAFA',
+        transition: 'box-shadow 0.5s cubic-bezier(0.25, 0.1, 0.25, 1.0), transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1.0)',
+        boxShadow: hovered
+          ? '0 8px 30px rgba(0,0,0,0.08)'
+          : '0 1px 3px rgba(0,0,0,0.04)',
+        transform: hovered ? 'translateY(-4px) scale(1.015)' : 'translateY(0) scale(1)',
+      }}
     >
-      <Card
-        hoverable
-        onClick={onNavigate}
-        onMouseEnter={() => onHover(product.id)}
-        onMouseLeave={() => onHover(null)}
-        bodyStyle={{ padding: '16px' }}
+      {/* Image */}
+      <div
         style={{
-          borderRadius: 16,
+          position: 'relative',
+          aspectRatio: '1',
           overflow: 'hidden',
-          border: 'none',
-          cursor: 'pointer',
-          transition: 'all 0.8s cubic-bezier(0.25, 0.1, 0.25, 1.0)',
-          boxShadow: hovered ? '0 4px 24px rgba(0,0,0,0.06)' : 'none',
-          transform: hovered ? 'translateY(-2px) scale(1.01)' : 'translateY(0) scale(1)',
+          background: '#F0F0F0',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
-        cover={
-          <div style={{ position: 'relative', height: 220, overflow: 'hidden', background: '#F5F5F5' }}>
-            <img
-              src={product.image}
-              alt={product.name}
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                transition: 'transform 0.8s cubic-bezier(0.25, 0.1, 0.25, 1.0)',
-                transform: hovered ? 'scale(1.06)' : 'scale(1)',
-              }}
-            />
-
-            {/* Badge */}
-            {product.badge && (
-              <Tag
-                style={{
-                  position: 'absolute',
-                  top: 12,
-                  left: 12,
-                  background: '#4CAF50',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  borderRadius: 8,
-                  fontWeight: 600,
-                  fontSize: 11,
-                  padding: '2px 10px',
-                }}
-              >
-                {product.badge}
-              </Tag>
-            )}
-
-            {/* Favorite button */}
-            <Button
-              type="text"
-              icon={isFavorite ? <HeartFilled style={{ color: '#ff4d4f', fontSize: 18 }} /> : <HeartOutlined style={{ fontSize: 18, color: '#6B7280' }} />}
-              onClick={(e) => { e.stopPropagation(); onToggleFavorite(product.id); }}
-              style={{
-                position: 'absolute',
-                top: 8,
-                right: 8,
-                background: 'rgba(255,255,255,0.9)',
-                borderRadius: '50%',
-                width: 32,
-                height: 32,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: 0,
-                border: 'none',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-              }}
-            />
-
-            {/* Visualizer button */}
-            <Button
-              type="text"
-              icon={<CameraOutlined style={{ fontSize: 16, color: '#6B7280' }} />}
-              onClick={(e) => { e.stopPropagation(); navigate(`/visualizer?designId=${product.id}`); }}
-              title="Примерить на фото"
-              style={{
-                position: 'absolute',
-                top: 8,
-                right: 44,
-                background: 'rgba(255,255,255,0.9)',
-                borderRadius: '50%',
-                width: 32,
-                height: 32,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: 0,
-                border: 'none',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-              }}
-            />
-
-            {/* Add to cart overlay button */}
-            <div
-              style={{
-                position: 'absolute',
-                bottom: 12,
-                right: 12,
-                opacity: hovered ? 1 : 0,
-                transform: hovered ? 'translateY(0)' : 'translateY(8px)',
-                transition: 'opacity 0.8s cubic-bezier(0.25, 0.1, 0.25, 1.0), transform 0.8s cubic-bezier(0.25, 0.1, 0.25, 1.0)',
-              }}
-            >
-              <Button
-                onClick={(e) => onAddToCart(e, product)}
-                style={{
-                  background: '#4CAF50',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  borderRadius: 8,
-                  fontWeight: 600,
-                  fontSize: 13,
-                  height: 36,
-                  padding: '0 18px',
-                  boxShadow: '0 4px 12px rgba(0,113,227,0.3)',
-                }}
-              >
-                В корзину
-              </Button>
-            </div>
-          </div>
-        }
       >
-        {/* Category & Material */}
-        <div
+        <img
+          src={imageSrc}
+          alt={product.name}
+          loading="lazy"
           style={{
-            fontSize: 11,
-            color: '#6B7280',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            marginBottom: 6,
+            width: '75%',
+            height: '75%',
+            objectFit: 'contain',
+            transition: 'transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1.0)',
+            transform: hovered ? 'scale(1.06)' : 'scale(1)',
           }}
-        >
-          {product.categoryLabel} · {product.material}
-        </div>
+        />
 
-        {/* Name */}
+        {/* Badge */}
+        {product.badge && (
+          <span
+            style={{
+              position: 'absolute',
+              top: 16,
+              left: 16,
+              background:
+                product.badge === 'Новинка' ? '#4CAF50' : '#2D2D2D',
+              color: '#FFFFFF',
+              borderRadius: 10,
+              fontWeight: 600,
+              fontSize: 12,
+              padding: '4px 12px',
+              letterSpacing: '0.01em',
+            }}
+          >
+            {product.badge}
+          </span>
+        )}
+      </div>
+
+      {/* Info */}
+      <div style={{ padding: '20px 20px 24px' }}>
         <div
           style={{
-            fontSize: 16,
+            fontSize: 18,
             fontWeight: 600,
             color: '#2D2D2D',
-            marginBottom: 8,
             lineHeight: 1.3,
+            letterSpacing: '-0.01em',
+            marginBottom: 6,
           }}
         >
           {product.name}
         </div>
-
-        {/* Rating */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-          <Rate
-            disabled
-            allowHalf
-            value={product.rating}
-            style={{ fontSize: 12, color: '#F59E0B' }}
-          />
-          <span style={{ fontSize: 12, color: '#6B7280' }}>({product.reviews})</span>
-        </div>
-
-        {/* Price + Color dots */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <span style={{ fontSize: 20, fontWeight: 600, color: '#2D2D2D' }}>
-              {product.price.toLocaleString('ru-RU')} ₽
-            </span>
-            <span style={{ fontSize: 12, color: '#6B7280', marginLeft: 4 }}>
-              {product.priceUnit}
-            </span>
-          </div>
-
-          <div style={{ display: 'flex', gap: 4 }}>
-            {product.colors.slice(0, 4).map((c) => (
-              <div
-                key={c.hex}
-                title={c.name}
-                style={{
-                  width: 14,
-                  height: 14,
-                  borderRadius: '50%',
-                  background: c.hex,
-                  border: '1.5px solid rgba(0,0,0,0.04)',
-                  flexShrink: 0,
-                }}
-              />
-            ))}
-            {product.colors.length > 4 && (
-              <span style={{ fontSize: 11, color: '#6B7280', lineHeight: '14px' }}>
-                +{product.colors.length - 4}
-              </span>
-            )}
-          </div>
-        </div>
-      </Card>
-    </motion.div>
-  );
-}
-
-/* ─── List Card ─────────────────────────────────────────────────────────────── */
-
-interface ListCardProps {
-  product: PanelProduct;
-  index: number;
-  onAddToCart: (e: React.MouseEvent, product: PanelProduct) => void;
-  onNavigate: () => void;
-}
-
-function ListCard({ product, index, onAddToCart, onNavigate }: ListCardProps) {
-  return (
-    <motion.div
-      custom={index}
-      initial="hidden"
-      animate="visible"
-      variants={fadeUpVariants}
-    >
-      <div
-        onClick={onNavigate}
-        style={{
-          display: 'flex',
-          gap: 20,
-          background: '#FAFAFA',
-          border: 'none',
-          borderRadius: 16,
-          overflow: 'hidden',
-          cursor: 'pointer',
-          transition: 'all 0.8s cubic-bezier(0.25, 0.1, 0.25, 1.0)',
-          padding: 0,
-        }}
-        onMouseEnter={(e) => {
-          const el = e.currentTarget as HTMLDivElement;
-          el.style.boxShadow = '0 4px 24px rgba(0,0,0,0.06)';
-          el.style.transform = 'translateY(-2px) scale(1.01)';
-        }}
-        onMouseLeave={(e) => {
-          const el = e.currentTarget as HTMLDivElement;
-          el.style.boxShadow = 'none';
-          el.style.transform = 'translateY(0) scale(1)';
-        }}
-      >
-        {/* Image */}
-        <div style={{ position: 'relative', width: 140, flexShrink: 0 }}>
-          <img
-            src={product.image}
-            alt={product.name}
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              display: 'block',
-              minHeight: 140,
-            }}
-          />
-          {product.badge && (
-            <Tag
-              style={{
-                position: 'absolute',
-                top: 10,
-                left: 10,
-                background: '#4CAF50',
-                color: '#FFFFFF',
-                border: 'none',
-                borderRadius: 8,
-                fontWeight: 600,
-                fontSize: 11,
-                padding: '2px 10px',
-              }}
-            >
-              {product.badge}
-            </Tag>
-          )}
-        </div>
-
-        {/* Info */}
         <div
           style={{
-            flex: 1,
-            padding: '16px 0 16px 4px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            gap: 6,
-            minWidth: 0,
+            fontSize: 15,
+            color: '#6B7280',
+            fontWeight: 400,
           }}
         >
-          <div style={{ fontSize: 11, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            {product.categoryLabel} · {product.material}
-          </div>
-          <div style={{ fontSize: 17, fontWeight: 600, color: '#2D2D2D', lineHeight: 1.3 }}>
-            {product.name}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Rate disabled allowHalf value={product.rating} style={{ fontSize: 12, color: '#F59E0B' }} />
-            <span style={{ fontSize: 12, color: '#6B7280' }}>({product.reviews})</span>
-          </div>
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-            {product.colors.map((c) => (
-              <div
-                key={c.hex}
-                title={c.name}
-                style={{
-                  width: 14,
-                  height: 14,
-                  borderRadius: '50%',
-                  background: c.hex,
-                  border: '1.5px solid rgba(0,0,0,0.04)',
-                  flexShrink: 0,
-                }}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Price + CTA */}
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-end',
-            justifyContent: 'center',
-            gap: 12,
-            padding: '16px 20px',
-            flexShrink: 0,
-          }}
-        >
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 22, fontWeight: 600, color: '#2D2D2D', whiteSpace: 'nowrap' }}>
-              {product.price.toLocaleString('ru-RU')} ₽
-            </div>
-            <div style={{ fontSize: 12, color: '#6B7280' }}>{product.priceUnit}</div>
-          </div>
-          <Button
-            onClick={(e) => onAddToCart(e, product)}
-            style={{
-              background: '#4CAF50',
-              color: '#FFFFFF',
-              border: 'none',
-              borderRadius: 8,
-              fontWeight: 600,
-              fontSize: 13,
-              height: 38,
-              padding: '0 22px',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            В корзину
-          </Button>
+          от {product.price.toLocaleString('ru-RU')} ₽
         </div>
       </div>
     </motion.div>

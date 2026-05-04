@@ -1,0 +1,53 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`theme > matches snapshot 1`] = `
+{
+  "components": {
+    "Button": {
+      "borderRadius": 12,
+      "controlHeight": 50,
+      "fontWeight": 500,
+      "primaryShadow": "none",
+    },
+    "Card": {
+      "borderRadiusLG": 16,
+      "boxShadowTertiary": "0 1px 2px rgba(0,0,0,0.04)",
+      "paddingLG": 24,
+    },
+    "Input": {
+      "borderRadius": 12,
+      "controlHeight": 50,
+    },
+    "Select": {
+      "borderRadius": 12,
+      "controlHeight": 50,
+    },
+    "Tag": {
+      "borderRadiusSM": 8,
+    },
+    "Typography": {
+      "fontWeightStrong": 600,
+    },
+  },
+  "token": {
+    "borderRadius": 12,
+    "boxShadow": "0 1px 2px rgba(0,0,0,0.04)",
+    "boxShadowSecondary": "0 2px 8px rgba(0,0,0,0.06)",
+    "colorBgContainer": "#FFFFFF",
+    "colorBgLayout": "#F5F5F5",
+    "colorBorder": "#E5E7EB",
+    "colorLink": "#4CAF50",
+    "colorPrimary": "#2D2D2D",
+    "colorSuccess": "#4CAF50",
+    "colorText": "#2D2D2D",
+    "colorTextSecondary": "#6B7280",
+    "fontFamily": "-apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', system-ui, sans-serif",
+    "fontSize": 15,
+    "lineHeight": 1.47,
+    "marginLG": 24,
+    "marginXL": 32,
+    "paddingLG": 24,
+    "paddingXL": 32,
+  },
+}
+`;

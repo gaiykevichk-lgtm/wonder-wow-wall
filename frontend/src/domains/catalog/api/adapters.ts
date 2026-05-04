@@ -14,6 +14,7 @@ export function apiDesignToProduct(d: ApiDesign): PanelProduct {
     price: d.price || DESIGN_OVERLAY_PRICE,
     priceUnit: '/шт',
     image: d.image,
+    previewImage: d.preview_image || '',
     gallery: [d.image],
     description: d.description,
     specs: {

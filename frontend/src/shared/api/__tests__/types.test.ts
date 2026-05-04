@@ -13,7 +13,7 @@ import type {
 describe('API Types', () => {
   it('ApiAuthResponse has correct shape', () => {
     const response: ApiAuthResponse = {
-      user: { id: '1', name: 'Test', email: 'test@test.com', phone: '+7900', created_at: '2024-01-01' },
+      user: { id: '1', name: 'Test', email: 'test@test.com', phone: '+7900', role: 'CUSTOMER', created_at: '2024-01-01' },
       token: 'jwt-token',
     };
     expect(response.user.id).toBe('1');
@@ -24,7 +24,7 @@ describe('API Types', () => {
     const response: ApiDesignListResponse = {
       items: [{
         id: '1', name: 'Test', slug: 'test', category_id: 'cat', style: 'Modern',
-        image: 'img.jpg', description: 'desc', price: 1200,
+        image: 'img.jpg', preview_image: '', description: 'desc', price: 1200,
         colors: [{ hex: '#000', name: 'Black' }],
         rating: 4.5, reviews_count: 10, is_new: true, is_popular: false,
       }],
