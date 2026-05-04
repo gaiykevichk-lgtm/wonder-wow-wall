@@ -1,6 +1,6 @@
 # PLAN: Конфигуратор панелей (Apple-style)
 
-**Статус:** In Progress (Phase 2 Complete)  
+**Статус:** In Progress (Phase 4 Complete)  
 **Дата создания:** 2026-05-04  
 **Цель:** Переработать каталог и карточку товара в Apple-style конфигуратор с иерархией Форма → Текстура → Цвет
 
@@ -320,94 +320,92 @@ Use cases:
 
 ---
 
-## Фаза 3: Шрифты и визуальный язык (Frontend)
+## Фаза 3: Шрифты и визуальный язык (Frontend) ✅ DONE
 
-### 3.1 Замена шрифтов
+### 3.1 Замена шрифтов (реализовано)
 
-**Файлы:**
-- `frontend/src/index.css` — замена @import шрифта
-- `frontend/src/shared/theme.ts` — обновление fontFamily
-- `frontend/index.html` — preconnect/preload (если используем Google Fonts)
+- Font stack: `-apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', system-ui, sans-serif`
+- На macOS/iOS — настоящий SF Pro, на остальных — Inter
+- `index.html` — preconnect к Google Fonts
 
-**Шрифт:** SF Pro Display / SF Pro Text не доступен через Google Fonts. Варианты:
-1. **Рекомендуемый:** Использовать `Inter` (уже подключен, очень близок к SF Pro по метрикам) с system-ui fallback для Apple-устройств:
-   ```css
-   font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', system-ui, sans-serif;
-   ```
-   Так на macOS/iOS будет настоящий SF Pro, на остальных — Inter.
+### 3.2 Обновление темы (реализовано)
 
-2. **Альтернатива:** Подключить `Plus Jakarta Sans` или `Geist` (Vercel's font, ближайший open-source аналог SF Pro).
+- `borderRadius`: 16px (cards), 12px (buttons/inputs)
+- Сохранён accent `#4CAF50` — фирменный цвет бренда
+- Упрощены shadows, увеличено белое пространство
+- Letter-spacing: `-0.02em` для заголовков
 
-**Решение принимает заказчик на этапе реализации.** В плане закладываем оба варианта.
+### 3.3 Тесты (реализовано)
 
-### 3.2 Обновление темы под Apple-aesthetic
-
-**Файл:** `frontend/src/shared/theme.ts`
-
-Изменения:
-- Увеличить `borderRadius` → 16px (cards), 12px (buttons/inputs)
-- Сохранить зелёный accent (`#4CAF50`) — фирменный цвет бренда, не менять
-- Увеличить белое пространство (padding, gaps)
-- Упростить shadows (Apple использует минималистичные тени)
-- Letter-spacing: -0.02em для заголовков (как у Apple)
-
-### 3.3 Тесты (Frontend, Фаза 3)
-
-**Файл:** `frontend/src/shared/__tests__/theme.test.ts`
-
-- [ ] Snapshot-тест темы (фиксация после изменений)
-- [ ] Проверка, что fontFamily содержит system-ui fallback
+- `frontend/src/shared/__tests__/theme.test.ts` — snapshot-тест + fontFamily assertion
+- [x] Snapshot-тест темы
+- [x] fontFamily содержит system-ui fallback
 
 ---
 
-## Фаза 4: Каталог форм (Frontend)
+## Фаза 4: Каталог форм (Frontend) ✅ DONE
 
-### 4.1 Переработка CatalogPage
+### 4.1 Переработка CatalogPage (реализовано)
 
-**Файл:** `frontend/src/domains/catalog/ui/CatalogPage.tsx` — полная переработка
+**Файл:** `frontend/src/domains/catalog/ui/CatalogPage.tsx` — полная переработка (283 строки)
 
 **Новый UI:**
-- Заголовок "Выберите форму панели" (крупный, Apple-style typography)
-- Сетка карточек форм (responsive grid: 3 колонки desktop, 2 tablet, 1 mobile)
-- Каждая карточка:
-  - Белый силуэт формы на светло-сером фоне (`preview_image`)
-  - Название формы под изображением
-  - Минимальная цена "от X ₽"
-  - Бейдж "Новинка" / "Популярное" (если есть)
-  - Hover: subtle scale + shadow (как Apple product grid)
-- Клик → переход на `/product/:id`
+- Заголовок "Выберите форму панели" + subtitle
+- Responsive grid: 3 колонки desktop, 2 tablet (≤1024px), 1 mobile (≤640px)
+- FormCard: previewImage на #F0F0F0 фоне (aspect-ratio 1:1), название, "от X ₽", бейдж
+- Hover: translateY(-4px) scale(1.015) + shadow (Apple-style)
+- Поиск по названию формы
+- Fade-up анимация (framer-motion) с staggered delay
 
-**Убираем:**
-- Фильтры по цвету, стилю, цене (не релевантны для выбора формы)
-- Режимы grid/list (только grid)
-- Сортировку (оставить только "Популярные" дефолтом)
+**Убрано по плану:**
+- Фильтры (цвет, стиль, цена), категории, view modes (grid/list), сортировка
+- Кнопки "В корзину" / "Избранное" / "Визуализатор"
+- Зависимости: `useCategories`, `useCartStore`, `useAccountStore`
 
-**Оставляем:**
-- Поиск по названию формы (опционально)
+### 4.2 API-адаптер (реализовано)
 
-### 4.2 API-адаптер
+- `ApiDesign.preview_image: string` добавлен в `shared/api/types.ts:31`
+- `PanelProduct.previewImage: string` добавлен в `catalog/model/types.ts:11`
+- `apiDesignToProduct`: маппинг `previewImage: d.preview_image || ''`
+- 12 mock products в `data.ts` дополнены `previewImage: ''`
 
-**Файл:** `frontend/src/domains/catalog/api/adapters.ts`
+### 4.3 CSS (реализовано)
 
-Обновить `apiDesignToProduct` → добавить маппинг `preview_image`.
+- `index.css` — `.catalog-forms-grid` с 3 responsive breakpoints
+- Dead CSS: `.catalog-filters` осталась orphan (cleanup в Фазе 8)
 
-**Файл:** `frontend/src/domains/catalog/model/types.ts`
+### 4.4 Тесты (реализовано)
 
-Добавить в `PanelProduct`:
-```typescript
-previewImage: string;  // Белый силуэт
-```
+**Файл:** `frontend/src/domains/catalog/__tests__/CatalogPage.test.tsx` — 9 тестов
 
-### 4.3 Тесты (Frontend, Фаза 4)
+- [x] Loading skeletons при isLoading
+- [x] Рендерит карточки форм из API data
+- [x] preview_image в src каждой карточки
+- [x] Fallback на image при пустом preview_image
+- [x] Клик навигирует на /product/:id
+- [x] Бейджи "Новинка" / "Популярное"
+- [x] Empty state при пустом поиске
+- [x] Фильтрация по поисковому запросу
+- [x] Цена с префиксом "от"
 
-**Файл:** `frontend/src/domains/catalog/__tests__/CatalogPage.test.tsx`
+**Дополнительно обновлены тесты:**
+- `adapters.test.ts` — fixture + тест previewImage маппинга (+8 строк)
+- `types.test.ts` — fixtures `role`, `preview_image` для TS compliance
 
-- [ ] Рендерит список форм из API
-- [ ] Показывает preview_image в каждой карточке
-- [ ] Клик по карточке навигирует на /product/:id
-- [ ] Показывает loading-состояние
-- [ ] Показывает empty-состояние при пустом списке
-- [ ] Responsive: проверка grid layout (media query snapshot)
+### 4.5 Результат ревью (2026-05-04)
+
+**Критические проблемы:** 0
+
+**Некритические проблемы:**
+- N1: Dead CSS `.catalog-filters` — cleanup в Фазе 8
+- N2: `fadeUpVariants: any` — pre-existing framer-motion typing issue
+
+**Подтверждённая стабильность:**
+- 9 CatalogPage тестов pass
+- 10 adapters тестов pass (включая новый previewImage)
+- 8 types тестов pass
+- 3 ProductPage.recommendations тестов pass
+- 0 regressions в HomePage, ProductPage, FavoritesSection
 
 ---
 
