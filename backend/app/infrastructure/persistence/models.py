@@ -99,6 +99,8 @@ class DesignModel(Base):
     is_published: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default=true()
     )
+    # Phase 12 — white silhouette for the forms catalog grid.
+    preview_image: Mapped[str] = mapped_column(String(500), default="", server_default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     category: Mapped["CategoryModel"] = relationship(back_populates="designs")
@@ -162,6 +164,11 @@ class OrderItemModel(Base):
     color: Mapped[str] = mapped_column(String(100), default="")
     quantity: Mapped[int] = mapped_column(Integer, default=1)
     unit_price: Mapped[int] = mapped_column(Integer, default=0)
+
+    # Phase 12 — configurator texture/color tracking.
+    texture_name: Mapped[str] = mapped_column(String(255), default="", server_default="")
+    texture_id: Mapped[str] = mapped_column(String(36), default="", server_default="")
+    color_id: Mapped[str] = mapped_column(String(36), default="", server_default="")
 
     order: Mapped["OrderModel"] = relationship(back_populates="items")
 
@@ -608,5 +615,56 @@ class RecommendationTargetModel(Base):
         Index(
             "ix_recommendation_targets_target",
             "target_type", "target_id",
+        ),
+    )
+
+
+# ─── Phase 12 — Textures & Variant Images ──────────────────────────
+
+class TextureModel(Base):
+    __tablename__ = "textures"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=gen_uuid)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    slug: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
+    swatch_image: Mapped[str] = mapped_column(String(500), default="", server_default="")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    colors: Mapped[list["TextureColorModel"]] = relationship(
+        back_populates="texture", cascade="all, delete-orphan",
+    )
+
+
+class TextureColorModel(Base):
+    __tablename__ = "texture_colors"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=gen_uuid)
+    texture_id: Mapped[str] = mapped_column(ForeignKey("textures.id", ondelete="CASCADE"), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    hex: Mapped[str] = mapped_column(String(7), default="", server_default="")
+    swatch_image: Mapped[str] = mapped_column(String(500), default="", server_default="")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    texture: Mapped["TextureModel"] = relationship(back_populates="colors")
+
+
+class VariantImageModel(Base):
+    __tablename__ = "variant_images"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=gen_uuid)
+    design_id: Mapped[str] = mapped_column(ForeignKey("designs.id", ondelete="CASCADE"), nullable=False)
+    texture_id: Mapped[str] = mapped_column(ForeignKey("textures.id", ondelete="RESTRICT"), nullable=False)
+    color_id: Mapped[str] = mapped_column(ForeignKey("texture_colors.id", ondelete="RESTRICT"), nullable=False)
+    image_path: Mapped[str] = mapped_column(String(500), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "design_id", "texture_id", "color_id",
+            name="uq_variant_images_combination",
         ),
     )

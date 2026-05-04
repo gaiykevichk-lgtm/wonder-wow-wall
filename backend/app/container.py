@@ -20,6 +20,9 @@ from app.infrastructure.persistence.repositories.memory import (
     InMemoryUserRepository,
     InMemoryMediaAssetRepository,
     InMemoryPanelRepository,
+    InMemoryTextureRepository,
+    InMemoryTextureColorRepository,
+    InMemoryVariantImageRepository,
     InMemoryShopSettingsRepository,
     InMemoryBannerRepository,
     InMemorySubscriptionPlanRepository,
@@ -77,6 +80,10 @@ _mem_media_repo = InMemoryMediaAssetRepository()
 # Phase 7B — panel SKU catalog. Same singleton rationale as media: tests
 # seed via `_mem_panel_repo._panels.append(...)` and the API sees it.
 _mem_panel_repo = InMemoryPanelRepository()
+# Phase 12 — texture/color/variant configurator entities.
+_mem_texture_repo = InMemoryTextureRepository()
+_mem_texture_color_repo = InMemoryTextureColorRepository()
+_mem_variant_image_repo = InMemoryVariantImageRepository()
 # Phase 8A — singleton shop settings. The aggregate itself is one row;
 # the repo wraps it so tests can poke `_mem_shop_settings_repo._settings
 # = ShopSettings(...)` between cases without rebuilding the container.
@@ -278,6 +285,27 @@ def get_panel_repo(session=Depends(get_db_session)):
     if settings.USE_MEMORY_REPOS:
         return _mem_panel_repo
     return _get_sql_repo_classes()["panel"](session)
+
+
+def get_texture_repo(session=Depends(get_db_session)):
+    """Phase 12 — texture materials for the configurator."""
+    if settings.USE_MEMORY_REPOS:
+        return _mem_texture_repo
+    return _get_sql_repo_classes()["texture"](session)
+
+
+def get_texture_color_repo(session=Depends(get_db_session)):
+    """Phase 12 — colour options per texture."""
+    if settings.USE_MEMORY_REPOS:
+        return _mem_texture_color_repo
+    return _get_sql_repo_classes()["texture_color"](session)
+
+
+def get_variant_image_repo(session=Depends(get_db_session)):
+    """Phase 12 — product photos for form+texture+color combinations."""
+    if settings.USE_MEMORY_REPOS:
+        return _mem_variant_image_repo
+    return _get_sql_repo_classes()["variant_image"](session)
 
 
 def get_shop_settings_repo(session=Depends(get_db_session)):

@@ -46,12 +46,10 @@ class Design:
     reviews_count: int = 0
     is_new: bool = False
     is_popular: bool = False
-    # Phase 7A — admin-controlled soft-hide. `True` keeps the legacy
-    # behaviour for every existing seed/migration row; the public catalog
-    # endpoint filters `is_published = False` out, the admin list shows
-    # everything. Kept default-True so an in-memory `Design()` constructed
-    # by tests is publishable without ceremony, mirroring `Panel.is_active`.
+    # Phase 7A — admin-controlled soft-hide.
     is_published: bool = True
+    # Phase 12 — white silhouette image for the forms catalog grid.
+    preview_image: str = ""
     created_at: datetime = field(default_factory=datetime.utcnow)
 
     def add_review(self, review: DesignReview) -> None:

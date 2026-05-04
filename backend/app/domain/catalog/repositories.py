@@ -3,6 +3,9 @@ from dataclasses import dataclass
 
 from .entities import Design, Category, DesignReview
 from .panel import Panel
+from .texture import Texture
+from .texture_color import TextureColor
+from .variant_image import VariantImage
 from .recommendation import (
     Recommendation,
     RecommendationSourceType,
@@ -136,6 +139,82 @@ class PanelRepository(ABC):
 
     @abstractmethod
     async def delete(self, panel_id: str) -> bool:
+        ...
+
+
+# ─── Phase 12 — Texture / TextureColor / VariantImage ─────────────
+
+class TextureRepository(ABC):
+    @abstractmethod
+    async def get_by_id(self, texture_id: str) -> Texture | None:
+        ...
+
+    @abstractmethod
+    async def get_by_slug(self, slug: str) -> Texture | None:
+        ...
+
+    @abstractmethod
+    async def list_all(self, *, include_inactive: bool = False) -> list[Texture]:
+        ...
+
+    @abstractmethod
+    async def create(self, texture: Texture) -> Texture:
+        ...
+
+    @abstractmethod
+    async def update(self, texture: Texture) -> Texture:
+        ...
+
+    @abstractmethod
+    async def delete(self, texture_id: str) -> bool:
+        ...
+
+
+class TextureColorRepository(ABC):
+    @abstractmethod
+    async def get_by_id(self, color_id: str) -> TextureColor | None:
+        ...
+
+    @abstractmethod
+    async def list_by_texture(
+        self, texture_id: str, *, include_inactive: bool = False,
+    ) -> list[TextureColor]:
+        ...
+
+    @abstractmethod
+    async def create(self, color: TextureColor) -> TextureColor:
+        ...
+
+    @abstractmethod
+    async def update(self, color: TextureColor) -> TextureColor:
+        ...
+
+    @abstractmethod
+    async def delete(self, color_id: str) -> bool:
+        ...
+
+
+class VariantImageRepository(ABC):
+    @abstractmethod
+    async def get_by_combination(
+        self, design_id: str, texture_id: str, color_id: str,
+    ) -> VariantImage | None:
+        ...
+
+    @abstractmethod
+    async def list_by_design(self, design_id: str) -> list[VariantImage]:
+        ...
+
+    @abstractmethod
+    async def list_by_texture(self, texture_id: str) -> list[VariantImage]:
+        ...
+
+    @abstractmethod
+    async def create(self, variant: VariantImage) -> VariantImage:
+        ...
+
+    @abstractmethod
+    async def delete(self, variant_id: str) -> bool:
         ...
 
 

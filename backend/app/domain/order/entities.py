@@ -19,6 +19,10 @@ class OrderItem:
     color: str = ""
     quantity: int = 1
     unit_price: int = 0
+    # Phase 12 — configurator texture/color attributes (optional for legacy orders).
+    texture_name: str = ""
+    texture_id: str = ""
+    color_id: str = ""
 
     @property
     def subtotal(self) -> int:

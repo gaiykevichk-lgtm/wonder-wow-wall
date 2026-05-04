@@ -9,6 +9,9 @@ from uuid import uuid4
 
 from app.domain.catalog.entities import Design, Category, DesignReview
 from app.domain.catalog.panel import Panel
+from app.domain.catalog.texture import Texture
+from app.domain.catalog.texture_color import TextureColor
+from app.domain.catalog.variant_image import VariantImage
 from app.domain.catalog.recommendation import (
     Recommendation,
     RecommendationSourceType,
@@ -16,6 +19,7 @@ from app.domain.catalog.recommendation import (
 )
 from app.domain.catalog.repositories import (
     DesignRepository, CategoryRepository, ReviewRepository, PanelRepository,
+    TextureRepository, TextureColorRepository, VariantImageRepository,
     RecommendationFilters, RecommendationRepository,
 )
 from app.domain.order.entities import Order, OrderNote
@@ -447,6 +451,119 @@ class InMemoryPanelRepository(PanelRepository):
         before = len(self._panels)
         self._panels = [p for p in self._panels if p.id != panel_id]
         return len(self._panels) != before
+
+
+# ─── Textures (Phase 12) ────────────────────────────────────────────
+
+class InMemoryTextureRepository(TextureRepository):
+    def __init__(self, textures: list[Texture] | None = None):
+        self._textures: list[Texture] = textures or []
+
+    async def get_by_id(self, texture_id: str) -> Texture | None:
+        return next((t for t in self._textures if t.id == texture_id), None)
+
+    async def get_by_slug(self, slug: str) -> Texture | None:
+        return next((t for t in self._textures if t.slug == slug), None)
+
+    async def list_all(self, *, include_inactive: bool = False) -> list[Texture]:
+        rows = self._textures if include_inactive else [
+            t for t in self._textures if t.is_active
+        ]
+        return sorted(rows, key=lambda t: t.sort_order)
+
+    async def create(self, texture: Texture) -> Texture:
+        if any(t.slug == texture.slug for t in self._textures):
+            raise ValueError(f"Texture.slug collision: {texture.slug}")
+        self._textures.append(texture)
+        return texture
+
+    async def update(self, texture: Texture) -> Texture:
+        for i, t in enumerate(self._textures):
+            if t.id == texture.id:
+                if any(
+                    other.slug == texture.slug and other.id != texture.id
+                    for other in self._textures
+                ):
+                    raise ValueError(f"Texture.slug collision: {texture.slug}")
+                self._textures[i] = texture
+                return texture
+        raise LookupError(f"Texture {texture.id} not found")
+
+    async def delete(self, texture_id: str) -> bool:
+        before = len(self._textures)
+        self._textures = [t for t in self._textures if t.id != texture_id]
+        return len(self._textures) != before
+
+
+class InMemoryTextureColorRepository(TextureColorRepository):
+    def __init__(self, colors: list[TextureColor] | None = None):
+        self._colors: list[TextureColor] = colors or []
+
+    async def get_by_id(self, color_id: str) -> TextureColor | None:
+        return next((c for c in self._colors if c.id == color_id), None)
+
+    async def list_by_texture(
+        self, texture_id: str, *, include_inactive: bool = False,
+    ) -> list[TextureColor]:
+        rows = [c for c in self._colors if c.texture_id == texture_id]
+        if not include_inactive:
+            rows = [c for c in rows if c.is_active]
+        return sorted(rows, key=lambda c: c.sort_order)
+
+    async def create(self, color: TextureColor) -> TextureColor:
+        self._colors.append(color)
+        return color
+
+    async def update(self, color: TextureColor) -> TextureColor:
+        for i, c in enumerate(self._colors):
+            if c.id == color.id:
+                self._colors[i] = color
+                return color
+        raise LookupError(f"TextureColor {color.id} not found")
+
+    async def delete(self, color_id: str) -> bool:
+        before = len(self._colors)
+        self._colors = [c for c in self._colors if c.id != color_id]
+        return len(self._colors) != before
+
+
+class InMemoryVariantImageRepository(VariantImageRepository):
+    def __init__(self, variants: list[VariantImage] | None = None):
+        self._variants: list[VariantImage] = variants or []
+
+    async def get_by_combination(
+        self, design_id: str, texture_id: str, color_id: str,
+    ) -> VariantImage | None:
+        return next(
+            (v for v in self._variants
+             if v.design_id == design_id
+             and v.texture_id == texture_id
+             and v.color_id == color_id),
+            None,
+        )
+
+    async def list_by_design(self, design_id: str) -> list[VariantImage]:
+        return [v for v in self._variants if v.design_id == design_id]
+
+    async def list_by_texture(self, texture_id: str) -> list[VariantImage]:
+        return [v for v in self._variants if v.texture_id == texture_id]
+
+    async def create(self, variant: VariantImage) -> VariantImage:
+        existing = await self.get_by_combination(
+            variant.design_id, variant.texture_id, variant.color_id,
+        )
+        if existing:
+            raise ValueError(
+                f"VariantImage combination collision: "
+                f"({variant.design_id}, {variant.texture_id}, {variant.color_id})"
+            )
+        self._variants.append(variant)
+        return variant
+
+    async def delete(self, variant_id: str) -> bool:
+        before = len(self._variants)
+        self._variants = [v for v in self._variants if v.id != variant_id]
+        return len(self._variants) != before
 
 
 # ─── Shop settings (Phase 8A) ───────────────────────────────────────
