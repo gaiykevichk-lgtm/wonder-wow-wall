@@ -94,12 +94,21 @@ class VariantImage:
 
 ### 1.3 Миграции БД (Alembic)
 
-**Файл:** `backend/alembic/versions/xxx_add_textures_and_variants.py`
+**Файл:** `backend/alembic/versions/013_add_textures_and_variants.py`
 
 Таблицы:
 - `textures` (id, name, slug UNIQUE, swatch_image, sort_order, is_active, created_at)
-- `texture_colors` (id, texture_id FK, name, hex, swatch_image, sort_order, is_active, created_at)
+- `texture_colors` (id, texture_id FK ON DELETE CASCADE, name, hex, swatch_image, sort_order, is_active, created_at)
 - `variant_images` (id, design_id FK, texture_id FK, color_id FK, image_path, created_at, UNIQUE(design_id, texture_id, color_id))
+- ALTER TABLE `designs` ADD COLUMN `preview_image` VARCHAR(500) DEFAULT ""
+- ALTER TABLE `order_items` ADD COLUMNS: `texture_name` VARCHAR(255) DEFAULT "", `texture_id` VARCHAR(36) DEFAULT "", `color_id` VARCHAR(36) DEFAULT ""
+
+**Важно (mitigation R4):**
+- Все новые колонки — nullable / server_default="" (не блокируют существующие записи)
+- FK `texture_colors.texture_id` → ON DELETE CASCADE (удаление текстуры каскадно удаляет цвета)
+- FK `variant_images` → ON DELETE RESTRICT (нельзя удалить текстуру/цвет если есть изображения)
+- Добавить downgrade: DROP TABLE variant_images, texture_colors, textures; DROP COLUMN preview_image
+- Тестировать миграцию на копии prod-данных перед деплоем
 
 ### 1.4 Расширение Design
 
@@ -136,12 +145,16 @@ preview_image: str = ""  # Белый силуэт формы для катал�
 
 | Метод | Путь | Описание |
 |-------|------|----------|
-| GET | `/api/designs` | Список форм (добавить `preview_image`) |
+| GET | `/api/designs` | Список форм (добавить `preview_image`, `default_colors`) |
 | GET | `/api/designs/{id}` | Детали формы |
-| GET | `/api/designs/{id}/textures` | Текстуры для формы (активные) |
+| GET | `/api/designs/{id}/textures` | Текстуры для формы (только с ≥1 активным цветом, mitigation E2) |
+| GET | `/api/designs/{id}/full-config` | **NEW (mitigation R6):** Форма + все текстуры + цвета + variant-image paths одним запросом |
 | GET | `/api/textures` | Все активные текстуры |
 | GET | `/api/textures/{id}/colors` | Цвета текстуры (активные) |
 | GET | `/api/designs/{id}/variant-image` | Получить изображение по query: `?texture_id=...&color_id=...` |
+
+**Важно (mitigation R6 — N+1 запросов):**
+Endpoint `/api/designs/{id}/full-config` возвращает всё необходимое для рендера конфигуратора одним запросом. Используется при первичной загрузке ProductPage. Отдельные endpoints `/variant-image` — для lazy-load при смене выбора.
 
 **Ответ `/api/designs` (расширенный):**
 ```json
@@ -155,9 +168,15 @@ preview_image: str = ""  # Белый силуэт формы для катал�
   "rating": 4.5,
   "reviews_count": 12,
   "is_new": true,
-  "is_popular": false
+  "is_popular": false,
+  "default_colors": [
+    { "hex": "#8C8C8C", "name": "Серый" },
+    { "hex": "#F5F5F5", "name": "Белый" }
+  ]
 }
 ```
+
+**Поле `default_colors` (mitigation R3):** Denormalized — первые 4 цвета из первой текстуры формы. Нужно для HomePage (PopularProductsSection) и каталога, чтобы не делать дополнительные запросы.
 
 **Ответ `/api/designs/{id}/textures`:**
 ```json
@@ -469,6 +488,14 @@ interface CartItem {
 }
 ```
 
+**Миграция localStorage (mitigation R5):**
+При инициализации cartStore — валидировать каждый item из localStorage:
+```typescript
+// Если item не содержит textureId — удалить из корзины (graceful migration)
+const migrateCart = (items: CartItem[]) =>
+  items.filter(item => 'textureId' in item && item.textureId !== undefined);
+```
+
 **Файл:** `frontend/src/domains/order/model/types.ts` — обновить интерфейс
 
 **Файл:** `backend/app/domain/order/entities.py` — расширить OrderItem:
@@ -478,7 +505,22 @@ texture_id: str = ""     # ID текстуры (для отчётности)
 color_id: str = ""       # ID цвета
 ```
 
-### 5.5 Тесты (Frontend, Фаза 5)
+### 5.5 Адаптация Constructor и Visualizer (mitigation R2)
+
+**Файлы:**
+- `frontend/src/domains/constructor/ui/ConstructorPage.tsx`
+- `frontend/src/domains/visualizer/ui/PhotoEditorPage.tsx` (если использует Design.colors)
+
+**Проблема:** Constructor напрямую использует `Design.colors[idx]`. После миграции `Design.colors` будет пустой/legacy.
+
+**Решение:**
+- Заменить прямой доступ к `Design.colors` на fetch текстур через `useDesignTextures(designId)`
+- Цвета брать из первой текстуры (или показать выбор текстуры в Constructor тоже)
+- Fallback: если текстур нет — использовать legacy `Design.colors` (обратная совместимость)
+
+**Тест:** Constructor рендерит цвета из текстур и не падает с TypeError.
+
+### 5.6 Тесты (Frontend, Фаза 5)
 
 **Файлы:**
 - `frontend/src/domains/catalog/__tests__/ProductPage.test.tsx`
@@ -496,6 +538,9 @@ color_id: str = ""       # ID цвета
 - [ ] ColorSelector: показывает цвета текущей текстуры, выделяет активный
 - [ ] FormSwitcher: показывает другие формы, навигирует при клике
 - [ ] ConfiguratorPanel: sticky-поведение на desktop
+- [ ] Constructor: рендерит цвета из текстур без TypeError (mitigation R2)
+- [ ] Constructor: fallback на legacy Design.colors если текстур нет
+- [ ] Cart: graceful migration старых items из localStorage (mitigation R5)
 
 ---
 
@@ -576,13 +621,22 @@ React Query хуки:
 - Существующие Design.colors → НЕ удаляем, помечаем как legacy
 - Публичное API `/api/designs` продолжает возвращать `colors` для обратной совместимости
 - Конфигуратор использует только текстуры/цвета из новых эндпоинтов
-- Если у формы нет текстур — показываем "Скоро" placeholder
+- Если у формы нет текстур — показываем "Скоро" placeholder (E1)
+- Вычисляем `default_colors` из первой текстуры для каждого Design (mitigation R3)
 
-### 7.2 OrderItem — обратная совместимость
+### 7.2 OrderItem — обратная совместимость (mitigation R1)
 
 **Файл:** `backend/app/domain/order/entities.py`
 
 Поля `texture_name`, `texture_id`, `color_id` — опциональные (default=""). Старые заказы не ломаются.
+
+**Логика рендера заказа:**
+```python
+# Если texture_id пуст — это legacy-заказ, отображаем по-старому:
+# "Design Name — Color Name"
+# Если texture_id заполнен — новый формат:
+# "Form Name — Texture Name, Color Name"
+```
 
 **Файл:** `backend/app/infrastructure/api/public/orders.py`
 
@@ -593,20 +647,37 @@ texture_id: str = ""
 color_id: str = ""
 ```
 
-### 7.3 Checkout page
-
 **Файл:** `frontend/src/domains/order/ui/CheckoutPage.tsx`
+- Если `item.textureId` есть → "Волна — Бетон, Серый"
+- Если нет → legacy формат "Design Name — Color"
 
-Отображение в корзине/чекауте:
-```
-Волна — Бетон, Серый — 2 шт — 2 400 ₽
-```
+### 7.3 HomePage адаптация (mitigation R3)
 
-### 7.4 Тесты (Фаза 7)
+**Файл:** `frontend/src/domains/content/ui/HomePage.tsx`
 
-- [ ] E2E: старые заказы (без texture_id) отображаются корректно
+`PopularProductsSection` использует `product.colors.slice(0, 4)`. Решение:
+- API `/api/designs` возвращает `default_colors` (denormalized из первой текстуры)
+- Адаптер `apiDesignToProduct` маппит `default_colors` → `colors` для обратной совместимости с UI-компонентами
+- Если `default_colors` пуст — не показываем цветовые точки (graceful degradation)
+
+### 7.4 SEO обновление (mitigation R9)
+
+**Файл:** `frontend/src/domains/catalog/ui/ProductPage.tsx` (PageMeta)
+
+Обновить мета-теги:
+- `og:title` → "Панель {form_name} | Wonder Wow Wall"
+- `og:description` → Design.description (без упоминания overlay)
+- Structured data → Product schema с конфигурируемыми вариантами
+
+### 7.5 Тесты (Фаза 7)
+
+- [ ] E2E: старые заказы (без texture_id) отображаются в legacy-формате
+- [ ] E2E: новые заказы (с texture_id) отображаются в новом формате
 - [ ] API: OrderItemCreate с пустыми texture_* проходит валидацию
-- [ ] Checkout: корректное отображение новых атрибутов в позиции
+- [ ] API: `/api/designs` возвращает default_colors
+- [ ] Checkout: корректное отображение обоих форматов (legacy + new)
+- [ ] HomePage: PopularProductsSection рендерит default_colors
+- [ ] Cart migration: старые items из localStorage удаляются gracefully
 
 ---
 
@@ -645,29 +716,78 @@ color_id: str = ""
 
 ```
 Фаза 1 (Модель данных) ─────┐
-                              ├──→ Фаза 2 (API) ──→ Фаза 5 (Конфигуратор) ──┐
-Фаза 3 (Шрифты/тема) ───────┤                                                ├──→ Фаза 7 (Интеграция)
-                              ├──→ Фаза 4 (Каталог) ─────────────────────────┤         │
-                              │                                                │         ▼
-                              └──→ Фаза 6 (Админка) ──────────────────────────┘    Фаза 8 (QA)
+                              ├──→ Фаза 2 (API) ──┬──→ Фаза 5 (Конфигуратор + Constructor) ──┐
+Фаза 3 (Шрифты/тема) ───────┤                    │                                            │
+                              ├──→ Фаза 4 (Каталог, зависит от default_colors в API) ─────────┤
+                              │                    │                                            ├──→ Фаза 7 (Интеграция)
+                              └────────────────────┴──→ Фаза 6 (Админка) ─────────────────────┤         │
+                                                                                               │         ▼
+                                                                                               └───  Фаза 8 (QA)
 ```
 
-- Фазы 3 и 4 можно делать параллельно с Фазой 1-2
-- Фаза 5 зависит от Фазы 2 (API готово)
-- Фаза 6 зависит от Фазы 2 (Admin API готово)
-- Фаза 7 зависит от всех предыдущих
-- Фаза 8 — финальная проверка
+**Критические зависимости:**
+- Фаза 3 (шрифты) — независима, можно делать в любой момент
+- Фаза 4 (каталог) зависит от Фазы 2: endpoint `/api/designs` должен возвращать `preview_image` и `default_colors`
+- Фаза 5 (конфигуратор) зависит от Фазы 2: endpoints текстур и variant-images
+- Фаза 5 включает адаптацию Constructor (R2) — зависит от тех же API текстур
+- Фаза 6 (админка) зависит от Фазы 2: Admin API текстур
+- Фаза 7 зависит от Фаз 4, 5, 6 — интегрирует всё вместе
+- Фаза 8 — финальная проверка после всех интеграций
+
+**Безопасный порядок реализации:**
+1. Фаза 1 → 2 (backend foundation, ничего не ломает)
+2. Фаза 3 (шрифты, параллельно с 1-2)
+3. Фаза 6 (админка — чтобы можно было наполнить текстуры данными)
+4. Фаза 4 (каталог — после наполнения данными)
+5. Фаза 5 (конфигуратор + constructor — основной риск, после наличия данных и API)
+6. Фаза 7 (интеграция)
+7. Фаза 8 (QA)
 
 ---
 
 ## Риски и mitigation
 
-| Риск | Вероятность | Mitigation |
-|------|-------------|-----------|
-| Много комбинаций без изображений при запуске | Высокая | Fallback на preview_image (белый силуэт) + placeholder "Фото готовится" |
-| Медленная загрузка variant-images | Средняя | Lazy load + skeleton + prefetch при hover |
-| Сломается checkout для старых заказов | Низкая | Опциональные поля texture_* с default="" |
-| Большой объём загрузок в админке | Средняя | Batch-upload UI, drag-n-drop, progress indicators |
+### КРИТИЧЕСКИЕ РИСКИ
+
+| # | Фаза | Риск | Описание | Mitigation |
+|---|------|------|----------|-----------|
+| R1 | 1, 5 | **Регрессия заказов** | Существующие `OrderItem` хранят `design_id` + `color` (hex из Design.colors). После миграции Design означает "форму", а цвета переехали в TextureColor. Старые заказы отрендерят неправильные данные. | Поля `texture_id`, `color_id` добавить как nullable (default=""). Старые заказы продолжают отображаться по старой логике. В OrderItem добавить флаг `is_legacy: bool = False` — если True, рендерим по-старому. |
+| R2 | 4, 5 | **Constructor/Visualizer ломается** | `ConstructorPage.tsx` напрямую обращается к `Design.colors[idx]`. После перехода на формы — `colors` будет пустой массив, `selectedDesign.colors[selectedColorIdx]` → TypeError. | В Фазе 5 обязательно обновить Constructor: заменить `Design.colors` на fetch текстур через API. Добавить задачу "Адаптировать Constructor к новой модели" как подзадачу Фазы 5. |
+| R3 | 4 | **Homepage ломается** | `HomePage.tsx` → `PopularProductsSection` рендерит `product.colors.slice(0, 4)` как цветные точки. После миграции colors=[] → секция пустая. | В CatalogPage адаптере: если `Design.colors` пуст, подставить первые цвета из первой текстуры (дополнительный API-запрос или denormalized поле `default_colors` в Design response). |
+| R4 | 1 | **Миграция БД на проде** | Создание 3 новых таблиц + ALTER TABLE designs ADD COLUMN preview_image. При больших таблицах ALTER может залочить БД. | Использовать `server_default=""` для preview_image. Для texture_colors FK → ON DELETE CASCADE. Миграцию тестировать на копии prod-данных. |
+
+### СРЕДНИЕ РИСКИ
+
+| # | Фаза | Риск | Описание | Mitigation |
+|---|------|------|----------|-----------|
+| R5 | 5 | **Compound cart ID ломает localStorage** | Текущий cart ID: `${productId}-${colorIdx}-${sizeIdx}`. Новый: `${productId}-${textureId}-${colorId}`. У пользователей с существующими корзинами в localStorage сломается десериализация. | При загрузке cartStore: валидировать структуру items. Если item не содержит `textureId` — удалить из корзины (graceful migration). |
+| R6 | 2 | **N+1 запросов в конфигураторе** | План предлагает: загрузить форму → загрузить текстуры → по смене цвета загрузить variant-image. Это 3+ последовательных запроса при каждом открытии продукта. | Добавить endpoint `GET /api/designs/{id}/full-config` возвращающий форму + текстуры + цвета + все variant-image paths одним запросом. Отдельные endpoints оставить для конфигуратора (lazy load при смене). |
+| R7 | 6 | **Количество комбинаций при загрузке в админке** | 10 форм × 5 текстур × 4 цвета = 200 изображений. Загрузка вручную — очень трудоёмко. | Batch-upload по конвенции именования файлов: `{form-slug}_{texture-slug}_{color-slug}.jpg`. Админка парсит имена и автоматически привязывает. |
+| R8 | 5 | **Favorites используют mock data** | `FavoritesSection.tsx` фильтрует `products.filter(p => favoriteIds.includes(p.id))` из статичных данных. Если перейдём на API — favorites станут пустыми. | Перевести Favorites на API (useDesigns с filter по ids), либо оставить mock до отдельного рефакторинга. |
+| R9 | 7 | **SEO-мета на ProductPage** | Если PageMeta рендерит `design.style` или `design.category_id` в og:description — после миграции текст может стать бессмысленным. | Обновить PageMeta на ProductPage: title = "Панель {form_name} — {texture} {color}", description из Design.description. |
+
+### НИЗКИЕ РИСКИ
+
+| # | Фаза | Риск | Описание | Mitigation |
+|---|------|------|----------|-----------|
+| R10 | — | Много комбинаций без изображений при запуске | Высокая вероятность, что не все комбинации будут заполнены фото в первый день. | Fallback на `preview_image` (белый силуэт) + placeholder "Фото готовится". В админке — индикатор процента заполненности. |
+| R11 | 5 | Медленная загрузка variant-images | Каждое фото ~1 МБ, при быстрой смене цветов — задержки. | Lazy load + skeleton + prefetch при hover на свотч. WebP format. Thumbs (300px) для быстрой загрузки + full-size по клику. |
+| R12 | 6 | Большой объём загрузок в админке | 200+ фото нужно загрузить вручную. | Batch-upload через drag-n-drop зоны, progress indicators, конвенция именования. |
+
+---
+
+## Edge Cases (не покрыты в основных фазах)
+
+| # | Ситуация | Ожидаемое поведение | Где обработать |
+|---|----------|--------------------|----|
+| E1 | Форма без текстур | Конфигуратор показывает "Текстуры скоро появятся", preview = белый силуэт, кнопка "В корзину" неактивна | Фаза 5: ConfiguratorPanel |
+| E2 | Текстура без цветов | Текстура не отображается в конфигураторе (фильтруем на API-уровне: только текстуры с ≥1 активным цветом) | Фаза 2: endpoint filter |
+| E3 | Удаление текстуры, у которой есть variant-images | API возвращает 409 Conflict. Админ должен сначала удалить изображения. | Фаза 2: DeleteTexture use case |
+| E4 | Удаление цвета, привязанного к существующим заказам | Не удалять физически, только деактивировать (`is_active=false`). Старые заказы продолжают отображать название цвета (сохранено в OrderItem.colorName). | Фаза 2: API validation |
+| E5 | Пользователь открывает старую ссылку `/product/:id` с overlay-дизайном | ID остаётся тем же — Design entity та же, просто поменялась семантика. Если у этого Design нет текстур — показать E1 fallback. | Фаза 5: ProductPage |
+| E6 | Добавление в корзину при отсутствии variant-image | Разрешить: в корзину добавляется товар с preview_image (силуэт), текстура/цвет сохраняются. | Фаза 5: handleAddToCart |
+| E7 | Параллельное редактирование текстур в админке (два админа) | Optimistic locking через `updated_at` timestamp. PATCH с устаревшим timestamp → 409 Conflict. | Фаза 2: admin API |
+| E8 | Design с `is_published=false` но есть variant-images | Variant-images не отображаются публично (фильтр по `Design.is_published`). В админке — видны. | Фаза 2: public API filter |
 
 ---
 
