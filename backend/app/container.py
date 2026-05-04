@@ -288,24 +288,37 @@ def get_panel_repo(session=Depends(get_db_session)):
 
 
 def get_texture_repo(session=Depends(get_db_session)):
-    """Phase 12 — texture materials for the configurator."""
+    """Phase 12 — texture materials for the configurator.
+
+    SQL implementation pending (Phase 12 delivers in-memory first);
+    fallback keeps the app functional until SqlTextureRepository lands.
+    """
     if settings.USE_MEMORY_REPOS:
         return _mem_texture_repo
-    return _get_sql_repo_classes()["texture"](session)
+    classes = _get_sql_repo_classes()
+    if "texture" not in classes:
+        return _mem_texture_repo
+    return classes["texture"](session)
 
 
 def get_texture_color_repo(session=Depends(get_db_session)):
     """Phase 12 — colour options per texture."""
     if settings.USE_MEMORY_REPOS:
         return _mem_texture_color_repo
-    return _get_sql_repo_classes()["texture_color"](session)
+    classes = _get_sql_repo_classes()
+    if "texture_color" not in classes:
+        return _mem_texture_color_repo
+    return classes["texture_color"](session)
 
 
 def get_variant_image_repo(session=Depends(get_db_session)):
     """Phase 12 — product photos for form+texture+color combinations."""
     if settings.USE_MEMORY_REPOS:
         return _mem_variant_image_repo
-    return _get_sql_repo_classes()["variant_image"](session)
+    classes = _get_sql_repo_classes()
+    if "variant_image" not in classes:
+        return _mem_variant_image_repo
+    return classes["variant_image"](session)
 
 
 def get_shop_settings_repo(session=Depends(get_db_session)):

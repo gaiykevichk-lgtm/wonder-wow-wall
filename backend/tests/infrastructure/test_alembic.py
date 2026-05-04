@@ -126,10 +126,13 @@ def test_upgrade_head_creates_all_core_tables(alembic_cfg):
         "visualization_projects",  # 004 — Phase 5A new
         "banners",                 # 016 — Phase 8B
         "subscription_plans",      # 017 — Phase 8C
+        "textures",                # 018 — Phase 12
+        "texture_colors",          # 018 — Phase 12
+        "variant_images",          # 018 — Phase 12
     ):
         assert _table_exists(db_path, table), f"{table} should exist after upgrade head"
-    # head revision must equal the latest migration id (currently 017 — Phase 8C subscription_plans).
-    assert _current_revision(db_path) == "017"
+    # head revision must equal the latest migration id (currently 018 — Phase 12 textures).
+    assert _current_revision(db_path) == "018"
     # 006 adds `role` to users.
     assert "role" in _column_names(db_path, "users")
     # 007 adds order list filter indexes.
@@ -267,7 +270,7 @@ def test_full_round_trip_head_base_head(alembic_cfg):
     alembic_cmd.downgrade(cfg, "base")
     assert _current_revision(db_path) is None
     alembic_cmd.upgrade(cfg, "head")
-    assert _current_revision(db_path) == "017"
+    assert _current_revision(db_path) == "018"
     for table in ("users", "designs", "subscriptions", "visualization_projects"):
         assert _table_exists(db_path, table), f"{table} should be re-created at head"
     # Phase 5B columns must be present at head after the full round-trip.
@@ -289,3 +292,8 @@ def test_full_round_trip_head_base_head(alembic_cfg):
         "recommendations_limit_per_source"
         in _column_names(db_path, "shop_settings")
     )
+    # Phase 12 — textures/texture_colors/variant_images tables + preview_image column.
+    assert _table_exists(db_path, "textures")
+    assert _table_exists(db_path, "texture_colors")
+    assert _table_exists(db_path, "variant_images")
+    assert "preview_image" in _column_names(db_path, "designs")
