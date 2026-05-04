@@ -1,0 +1,5 @@
+# Uploaded files (served by nginx/backend, not tracked in git)
+uploads/
+
+# Large binaries
+frontend/public/opencv.js
