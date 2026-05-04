@@ -396,9 +396,9 @@ Use cases:
 
 **Критические проблемы:** 0
 
-**Некритические проблемы:**
-- N1: Dead CSS `.catalog-filters` — cleanup в Фазе 8
-- N2: `fadeUpVariants: any` — pre-existing framer-motion typing issue
+**Некритические проблемы (все исправлены 2026-05-04):**
+- N1: ✅ Dead CSS `.catalog-filters` — удалён orphan rule
+- N2: ✅ `fadeUpVariants: any` → `ComponentProps<typeof motion.div>['variants']` + `appleEase` typed as tuple
 
 **Подтверждённая стабильность:**
 - 9 CatalogPage тестов pass
