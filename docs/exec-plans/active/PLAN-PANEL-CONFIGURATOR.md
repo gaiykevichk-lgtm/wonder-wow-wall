@@ -125,6 +125,7 @@ preview_image: str = ""  # Белый силуэт формы для катал�
 **Файлы (реализовано):**
 - `backend/tests/domain/catalog/test_texture.py` — unit-тесты сущностей (12 тестов)
 - `backend/tests/domain/catalog/test_texture_repos.py` — тесты in-memory репозиториев (19 тестов)
+- `backend/tests/infrastructure/test_alembic.py` — обновлено: head="018", Phase 12 table checks
 
 **Покрытие:**
 - [x] Создание Texture с валидными данными
@@ -132,6 +133,26 @@ preview_image: str = ""  # Белый силуэт формы для катал�
 - [x] Создание VariantImage, уникальность комбинации
 - [x] Деактивация Texture → скрытие через list_all(include_inactive=False)
 - [x] Репозиторий: CRUD-операции для всех новых сущностей (31 тест, все pass)
+- [x] Alembic: upgrade head → "018", все таблицы Phase 12 создаются, round-trip clean (6 pass)
+
+### 1.6 Результат ревью (2026-05-04)
+
+**Критические проблемы (исправлены):**
+1. `test_alembic.py` ожидал revision "017", а head стал "018" → обновлено
+2. `container.py` — SQL deps `["texture"]` вызвали бы KeyError в production → добавлен guard с fallback на in-memory
+
+**Некритические (тех.долг, не блокируют):**
+- `VariantImage.image_path` не валидируется на пустоту — контроль будет на уровне API/use-case в Phase 2
+- `datetime.utcnow` deprecated в Python 3.12+ — pre-existing конвенция проекта, fix за scope Phase 12
+- Нет явного теста `Design(preview_image="...")` — trivial, поле str с default
+
+**Подтверждённая стабильность:**
+- 248 domain-тестов pass, 0 regressions
+- 22 catalog admin tests pass
+- 50 order tests pass (OrderItem extension safe)
+- 61 panel tests pass
+- 6 alembic tests pass
+- 6 fails в `test_api.py` — pre-existing (проверено на коммите до Phase 12)
 
 ---
 
