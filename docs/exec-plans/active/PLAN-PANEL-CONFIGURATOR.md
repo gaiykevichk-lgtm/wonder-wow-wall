@@ -120,11 +120,11 @@ preview_image: str = ""  # Белый силуэт формы для катал�
 - `backend/tests/infrastructure/test_texture_repo.py` — тесты репозиториев
 
 **Покрытие:**
-- [x] Создание Texture с валидными данными
-- [x] Создание TextureColor, привязка к Texture
-- [x] Создание VariantImage, уникальность комбинации
-- [x] Деактивация Texture → скрытие связанных цветов
-- [x] Репозиторий: CRUD-операции для всех новых сущностей
+- [ ] Создание Texture с валидными данными
+- [ ] Создание TextureColor, привязка к Texture
+- [ ] Создание VariantImage, уникальность комбинации
+- [ ] Деактивация Texture → скрытие связанных цветов
+- [ ] Репозиторий: CRUD-операции для всех новых сущностей
 
 ---
 
@@ -227,13 +227,13 @@ Use cases:
 - `backend/tests/application/test_texture_use_cases.py`
 
 **Покрытие:**
-- [x] GET /api/textures — возвращает только активные
-- [x] GET /api/designs/{id}/textures — текстуры с цветами для формы
-- [x] GET /api/designs/{id}/variant-image — 200 с путём или 404
-- [x] Admin CRUD текстур — создание, обновление, деактивация, удаление
-- [x] Admin CRUD цветов — привязка к текстуре, валидация hex
-- [x] Admin variant-images — загрузка, уникальность комбинации (409 при дубле)
-- [x] Проверка авторизации (admin-only endpoints)
+- [ ] GET /api/textures — возвращает только активные
+- [ ] GET /api/designs/{id}/textures — текстуры с цветами для формы
+- [ ] GET /api/designs/{id}/variant-image — 200 с путём или 404
+- [ ] Admin CRUD текстур — создание, обновление, деактивация, удаление
+- [ ] Admin CRUD цветов — привязка к текстуре, валидация hex
+- [ ] Admin variant-images — загрузка, уникальность комбинации (409 при дубле)
+- [ ] Проверка авторизации (admin-only endpoints)
 
 ---
 
@@ -272,8 +272,8 @@ Use cases:
 
 **Файл:** `frontend/src/shared/__tests__/theme.test.ts`
 
-- [x] Snapshot-тест темы (фиксация после изменений)
-- [x] Проверка, что fontFamily содержит system-ui fallback
+- [ ] Snapshot-тест темы (фиксация после изменений)
+- [ ] Проверка, что fontFamily содержит system-ui fallback
 
 ---
 
@@ -319,12 +319,12 @@ previewImage: string;  // Белый силуэт
 
 **Файл:** `frontend/src/domains/catalog/__tests__/CatalogPage.test.tsx`
 
-- [x] Рендерит список форм из API
-- [x] Показывает preview_image в каждой карточке
-- [x] Клик по карточке навигирует на /product/:id
-- [x] Показывает loading-состояние
-- [x] Показывает empty-состояние при пустом списке
-- [x] Responsive: проверка grid layout (media query snapshot)
+- [ ] Рендерит список форм из API
+- [ ] Показывает preview_image в каждой карточке
+- [ ] Клик по карточке навигирует на /product/:id
+- [ ] Показывает loading-состояние
+- [ ] Показывает empty-состояние при пустом списке
+- [ ] Responsive: проверка grid layout (media query snapshot)
 
 ---
 
@@ -487,15 +487,15 @@ color_id: str = ""       # ID цвета
 - `frontend/src/domains/catalog/__tests__/ConfiguratorPanel.test.tsx`
 
 **Покрытие:**
-- [x] ProductPage: рендерит конфигуратор с текстурами и цветами
-- [x] ProductPage: смена текстуры обновляет доступные цвета
-- [x] ProductPage: смена цвета загружает новое превью
-- [x] ProductPage: добавление в корзину с правильными атрибутами
-- [x] ProductPage: fallback-изображение если variant-image не найден
-- [x] TextureSelector: показывает свотчи текстур, выделяет активную
-- [x] ColorSelector: показывает цвета текущей текстуры, выделяет активный
-- [x] FormSwitcher: показывает другие формы, навигирует при клике
-- [x] ConfiguratorPanel: sticky-поведение на desktop
+- [ ] ProductPage: рендерит конфигуратор с текстурами и цветами
+- [ ] ProductPage: смена текстуры обновляет доступные цвета
+- [ ] ProductPage: смена цвета загружает новое превью
+- [ ] ProductPage: добавление в корзину с правильными атрибутами
+- [ ] ProductPage: fallback-изображение если variant-image не найден
+- [ ] TextureSelector: показывает свотчи текстур, выделяет активную
+- [ ] ColorSelector: показывает цвета текущей текстуры, выделяет активный
+- [ ] FormSwitcher: показывает другие формы, навигирует при клике
+- [ ] ConfiguratorPanel: sticky-поведение на desktop
 
 ---
 
@@ -560,11 +560,11 @@ React Query хуки:
 - `frontend/src/domains/admin/__tests__/texturesAdminApi.test.ts`
 
 **Покрытие:**
-- [x] CRUD текстур: создание, редактирование, удаление
-- [x] CRUD цветов: привязка к текстуре, валидация hex
-- [x] Variant images: загрузка изображения для комбинации
-- [x] Variant images: визуальная матрица с индикацией заполненности
-- [x] Навигация: пункт "Текстуры" в сайдбаре админки
+- [ ] CRUD текстур: создание, редактирование, удаление
+- [ ] CRUD цветов: привязка к текстуре, валидация hex
+- [ ] Variant images: загрузка изображения для комбинации
+- [ ] Variant images: визуальная матрица с индикацией заполненности
+- [ ] Навигация: пункт "Текстуры" в сайдбаре админки
 
 ---
 
@@ -604,9 +604,9 @@ color_id: str = ""
 
 ### 7.4 Тесты (Фаза 7)
 
-- [x] E2E: старые заказы (без texture_id) отображаются корректно
-- [x] API: OrderItemCreate с пустыми texture_* проходит валидацию
-- [x] Checkout: корректное отображение новых атрибутов в позиции
+- [ ] E2E: старые заказы (без texture_id) отображаются корректно
+- [ ] API: OrderItemCreate с пустыми texture_* проходит валидацию
+- [ ] Checkout: корректное отображение новых атрибутов в позиции
 
 ---
 
