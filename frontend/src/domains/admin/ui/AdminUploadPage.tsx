@@ -209,6 +209,7 @@ export default function AdminUploadPage() {
     setEditingId(null);
     setPhotoPath('');
     lastAutoSlugRef.current = '';
+    form.resetFields();
     form.setFieldsValue(EMPTY_FORM);
     setDrawerOpen(true);
   }
@@ -217,6 +218,7 @@ export default function AdminUploadPage() {
     setEditingId(panel.id);
     setPhotoPath(panel.photo_path);
     lastAutoSlugRef.current = '';
+    form.resetFields();
     form.setFieldsValue(panelToForm(panel));
     setDrawerOpen(true);
   }

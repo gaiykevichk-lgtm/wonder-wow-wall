@@ -82,7 +82,7 @@ def _design_to_domain(m: DesignModel) -> Design:
         style=m.style, image=m.image, description=m.description, price=m.price,
         colors=colors, rating=m.rating, reviews_count=m.reviews_count,
         is_new=m.is_new, is_popular=m.is_popular,
-        is_published=bool(getattr(m, "is_published", True)),
+        is_published=m.is_published,
         preview_image=getattr(m, "preview_image", ""),
         created_at=m.created_at,
     )

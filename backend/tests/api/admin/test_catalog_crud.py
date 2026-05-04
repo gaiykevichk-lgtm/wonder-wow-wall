@@ -143,6 +143,34 @@ class TestAuthGate:
         )
         assert resp.status_code == 403
 
+    @pytest.mark.asyncio
+    async def test_designs_patch_customer_403(self, client):
+        token = await _customer_token(client)
+        resp = await client.patch(
+            "/api/admin/designs/any-id",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"name": "x"},
+        )
+        assert resp.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_designs_delete_customer_403(self, client):
+        token = await _customer_token(client)
+        resp = await client.delete(
+            "/api/admin/designs/any-id",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_designs_toggle_customer_403(self, client):
+        token = await _customer_token(client)
+        resp = await client.post(
+            "/api/admin/designs/any-id/toggle-visibility",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 403
+
 
 # ═══════════════════════════════════════════════════════════════════════
 # Categories — CRUD

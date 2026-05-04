@@ -112,6 +112,51 @@ class TestAuthGate:
         )
         assert resp.status_code == 403
 
+    @pytest.mark.asyncio
+    async def test_detail_unauthenticated_401(self, client):
+        resp = await client.get("/api/admin/panels/any-id")
+        assert resp.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_detail_customer_403(self, client):
+        token = await _customer_token(client)
+        resp = await client.get(
+            "/api/admin/panels/any-id",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_patch_unauthenticated_401(self, client):
+        resp = await client.patch(
+            "/api/admin/panels/any-id", json={"name": "x"},
+        )
+        assert resp.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_patch_customer_403(self, client):
+        token = await _customer_token(client)
+        resp = await client.patch(
+            "/api/admin/panels/any-id",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"name": "x"},
+        )
+        assert resp.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_delete_unauthenticated_401(self, client):
+        resp = await client.delete("/api/admin/panels/any-id")
+        assert resp.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_delete_customer_403(self, client):
+        token = await _customer_token(client)
+        resp = await client.delete(
+            "/api/admin/panels/any-id",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 403
+
 
 # ─── Create ──────────────────────────────────────────────────────────
 

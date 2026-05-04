@@ -239,7 +239,7 @@ class DeletePanelAdmin:
                 RecommendationSourceType.PANEL, panel_id,
             )
 
-        if self.audit_recorder is not None and actor_id:
+        if self.audit_recorder is not None and actor_id is not None:
             payload: dict = {"name": panel.name, "slug": panel.slug}
             # Only attach the cascade keys when cleanup actually ran;
             # keeps the audit payload minimal for callers that didn't

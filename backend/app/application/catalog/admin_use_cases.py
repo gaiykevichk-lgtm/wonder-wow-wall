@@ -388,7 +388,7 @@ class ToggleDesignVisibilityAdmin:
         design.is_published = not was
         updated = await self.repo.update(design)
 
-        if self.audit_recorder is not None and actor_id:
+        if self.audit_recorder is not None and actor_id is not None:
             await self.audit_recorder.execute(
                 actor_id=actor_id,
                 action=AuditAction.DESIGN_VISIBILITY_TOGGLE,
@@ -454,7 +454,7 @@ class DeleteDesignAdmin:
                 RecommendationSourceType.DESIGN, design_id,
             )
 
-        if self.audit_recorder is not None and actor_id:
+        if self.audit_recorder is not None and actor_id is not None:
             payload: dict = {"name": design.name, "slug": design.slug}
             if cascade_report is not None:
                 payload["recommendations_cleanup"] = cascade_report

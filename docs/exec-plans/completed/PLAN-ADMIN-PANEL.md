@@ -1182,16 +1182,16 @@ Frontend:
 
 - ✅ **K1 (CRITICAL → ЗАКРЫТО):** `AdminUploadPage.tsx:679-681` — Drawer-форма редактирования панели содержала inline-логику пути (`photoPath.startsWith('http') ? ... : /uploads/...`), дублируя баг FE-A, который был закрыт в строке 333 того же файла. Ломал `data:` URI (→ `/uploads/data:...` → 404) и legacy `/images/...` пути (→ двойной слеш → 404). **Фикс:** заменено на `imageSrc(photoPath)`.
 
-#### Некритические наблюдения (tech debt, не блокируют)
+#### Некритические наблюдения (tech debt)
 
-- **H1:** `test_panels.py` — нет auth gate тестов (401/403) для PATCH и DELETE endpoints. GET detail тоже не покрыт 401.
-- **H2:** `test_catalog_crud.py` — нет auth gate тестов (403) для design UPDATE, DELETE, toggle-visibility.
-- **M1:** `panel_use_cases.py:242` — falsy check `and actor_id` вместо `and actor_id is not None` (пустая строка пропустит audit).
-- **M2:** `AdminUploadPage.tsx:210-212` — `form.setFieldsValue(EMPTY_FORM)` не очищает stale validation errors от предыдущей попытки.
-- **M3:** `AdminUploadPage.tsx:293-304` — Switch toggle без optimistic update (UI «прыгает» на медленной сети).
-- **M4:** `sql.py:85` — лишний `bool(getattr(m, "is_published", True))` на NOT NULL boolean column.
-- **M5:** `catalog.py:85` — `AddReviewRequest` вместо `AddReviewCreate` по CONVENTIONS.md.
-- **M6:** `AdminCatalogPage.tsx:71` — dead import `useAdminDesign` (комментарий объясняет, но import остался).
+- ✅ **H1 → ЗАКРЫТО 2026-05-04:** `test_panels.py` — добавлены auth gate тесты (401/403) для GET detail, PATCH, DELETE. Suite 28/28 green.
+- ✅ **H2 → ЗАКРЫТО 2026-05-04:** `test_catalog_crud.py` — добавлены auth gate тесты (403) для design PATCH, DELETE, toggle-visibility. Suite 25/25 green.
+- ✅ **M1 → ЗАКРЫТО 2026-05-04:** `panel_use_cases.py:242`, `admin_use_cases.py` (ToggleDesignVisibilityAdmin, DeleteDesignAdmin) — `and actor_id` → `and actor_id is not None` (3 places).
+- ✅ **M2 → ЗАКРЫТО 2026-05-04:** `AdminUploadPage.tsx` — добавлен `form.resetFields()` перед `setFieldsValue` в `openCreateDrawer`/`openEditDrawer` для очистки stale validation errors.
+- **M3:** `AdminUploadPage.tsx:293-304` — Switch toggle без optimistic update (UI «прыгает» на медленной сети). Tech debt, не блокирует.
+- ✅ **M4 → ЗАКРЫТО 2026-05-04:** `sql.py:85` — `bool(getattr(m, "is_published", True))` → `m.is_published` (NOT NULL boolean column, getattr не нужен).
+- **M5:** `catalog.py:85` — `AddReviewRequest` вместо `AddReviewCreate` по CONVENTIONS.md. Tech debt, не блокирует.
+- **M6:** `AdminCatalogPage.tsx:71` — dead import `useAdminDesign` (комментарий объясняет, но import остался). Tech debt, не блокирует.
 
 #### Подтверждено корректным
 
