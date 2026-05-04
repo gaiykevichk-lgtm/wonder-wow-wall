@@ -271,9 +271,9 @@
 - [x] Дополнительно: полифилл `window.matchMedia` в `frontend/src/test/setup.ts` — jsdom его не реализует, ломал AntD Segmented/Layout в тестах.
 
 ### Тесты
-- [x] `tests/domain/analytics/test_date_range.py` — инварианты DateRange + `last_n_days` (9 кейсов).
-- [x] `tests/application/analytics/test_get_dashboard_snapshot.py` — happy path, пустые данные, фильтрация по статусу, по диапазону, enum-порядок статусов, топ-дизайны по quantity, бакетирование по дням (8 кейсов).
-- [x] `tests/api/admin/test_dashboard.py` — 401 без токена, 403 для customer, 422 для days=500/0/"abc", 200 admin с полным payload, default days=30 (6 кейсов). autouse-фикстура `_reset_cache` сбрасывает TTL-кеш между кейсами.
+- [x] `tests/domain/analytics/test_date_range.py` — инварианты DateRange + `last_n_days` (7 кейсов: end<start, end=start, days half-open, iter_days, contains, last_7_days, non-positive rejected).
+- [x] `tests/application/analytics/test_get_dashboard_snapshot.py` — happy path, пустые данные, фильтрация по статусу (PLACED не revenue), по диапазону, enum-порядок статусов, топ-дизайны по quantity, new_users, бакетирование по дням (7 кейсов).
+- [x] `tests/api/admin/test_dashboard.py` — 401 без токена, 403 для customer, 422 для days=500/0/"abc", 200 admin с полным payload, default days=30 (7 кейсов). autouse-фикстура `_reset_cache_and_repos` сбрасывает TTL-кеш и `_mem_order_repo` между кейсами.
 - [x] `frontend/src/domains/admin/__tests__/dashboardStore.test.ts` — 4 кейса: дефолт, setRange, subscribers, опции.
 - [ ] ❌ **НЕ СДЕЛАНО:** `tests/api/admin/test_dashboard_perf.py` — перф-тест 30 дней / 10k заказов / <500мс. Оставить как tech-debt.
 
@@ -358,6 +358,18 @@
 - `frontend/src/domains/admin/ui/AdminDashboardPage.tsx` — полная переписка с плейсхолдера на реальный дашборд.
 - `frontend/package.json` + `package-lock.json` — +`recharts@^3.8.1`.
 - `frontend/src/test/setup.ts` — +polyfill `window.matchMedia` для jsdom.
+
+### Аудит 2026-05-04 — свежая ревизия
+
+Все 15 файлов Фазы 3 прочитаны построчно. Запущены 21/21 backend (7 domain + 7 app + 7 api) + 4/4 frontend = 25/25 pass.
+
+**Критические проблемы:** не найдено.
+
+**Исправлено:**
+- ✅ `AdminDashboardPage.tsx:176` — `bodyStyle` (deprecated AntD 5) → `styles={{ body: ... }}` (новый API). Устранена inconsistency с остальным файлом.
+- ✅ Подсчёт тестов в этом разделе скорректирован: domain=7, app=7, api=7 (ранее 9+8+6=23 ≠ 21).
+
+**Подтверждённая стабильность:** Фаза 3 полностью стабильна. Phase 11 виджеты (8 шт., добавлены поверх Phase 3 файлов) аддитивны и не ломают Phase 3 функциональность.
 
 ---
 

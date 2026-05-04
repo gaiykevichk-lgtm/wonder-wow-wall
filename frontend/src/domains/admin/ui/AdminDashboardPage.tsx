@@ -173,7 +173,7 @@ function MetricCard({
   hint?: string;
 }) {
   return (
-    <Card bodyStyle={{ padding: '18px 20px' }} style={SECTION_CARD_STYLE}>
+    <Card styles={{ body: { padding: '18px 20px' } }} style={SECTION_CARD_STYLE}>
       <Text style={{ fontSize: 13, color: GRAY_TEXT, letterSpacing: 0.2 }}>
         {label}
       </Text>
