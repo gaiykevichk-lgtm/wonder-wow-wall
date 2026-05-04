@@ -367,6 +367,10 @@ previewImage: string;  // Белый силуэт
 │  │                      │  │  Цвет:              │  │
 │  │                      │  │  ● ● ● ● ●          │  │
 │  │                      │  │                     │  │
+│  │                      │  │  Размер:            │  │
+│  │                      │  │  [30×30] [30×60]    │  │
+│  │                      │  │  [60×60]            │  │
+│  │                      │  │                     │  │
 │  │                      │  │  Цена: 1 200 ₽/шт  │  │
 │  │                      │  │  [Количество: +-]   │  │
 │  │                      │  │                     │  │
@@ -387,11 +391,12 @@ previewImage: string;  // Белый силуэт
 
 **Поведение конфигуратора:**
 1. При загрузке страницы — подгружаем текстуры для данной формы
-2. По умолчанию выбрана первая текстура и первый цвет
+2. По умолчанию выбрана первая текстура, первый цвет и первый размер
 3. При смене текстуры — обновляем доступные цвета, выбираем первый
 4. При смене цвета — загружаем variant-image для комбинации (форма + текстура + цвет)
-5. Если variant-image не найден — показываем placeholder (белый силуэт)
-6. Preview-изображение плавно меняется (fade transition)
+5. При смене размера — пересчитываем цену (размер влияет на base_price)
+6. Если variant-image не найден — показываем placeholder (белый силуэт)
+7. Preview-изображение плавно меняется (fade transition)
 
 **Секция "Другие формы":**
 - Горизонтальный скролл миниатюр других форм
@@ -403,6 +408,7 @@ previewImage: string;  // Белый силуэт
 **Новые файлы:**
 - `frontend/src/domains/catalog/ui/components/TextureSelector.tsx`
 - `frontend/src/domains/catalog/ui/components/ColorSelector.tsx`
+- `frontend/src/domains/catalog/ui/components/SizeSelector.tsx`
 - `frontend/src/domains/catalog/ui/components/ProductPreview.tsx`
 - `frontend/src/domains/catalog/ui/components/FormSwitcher.tsx`
 - `frontend/src/domains/catalog/ui/components/ConfiguratorPanel.tsx`
@@ -417,6 +423,12 @@ previewImage: string;  // Белый силуэт
 - Активный цвет — ring + checkmark
 - Tooltip с названием цвета
 
+**SizeSelector:**
+- Кнопки размеров: 30×30 см, 30×60 см, 60×60 см (из существующих PanelSize VO)
+- Активный размер — выделен фоном/рамкой
+- При смене размера — пересчёт цены (base_price зависит от размера: 890 / 1490 / 2490 ₽)
+- Итоговая цена = base_price(размер) + design.price
+
 **ProductPreview:**
 - Крупное изображение (aspect-ratio фиксирован)
 - Fade-transition при смене
@@ -429,7 +441,8 @@ previewImage: string;  // Белый силуэт
 - Текущая выделена
 
 **ConfiguratorPanel:**
-- Оркестрирует выбор: текстура → цвет → цена → кнопка "В корзину"
+- Оркестрирует выбор: текстура → цвет → размер → цена → кнопка "В корзину"
+- Порядок секций в конфигураторе: Текстура → Цвет → Размер → Количество → Итого + CTA
 - Sticky на desktop (как у Apple)
 
 ### 5.3 API-интеграция конфигуратора
@@ -472,21 +485,24 @@ interface VariantImageResponse {
 Расширить `CartItem`:
 ```typescript
 interface CartItem {
-  id: string;           // `${productId}-${textureId}-${colorId}`
+  id: string;           // `${productId}-${textureId}-${colorId}-${sizeKey}`
   productId: string;
   name: string;
   image: string;
-  price: number;
+  price: number;        // unit_price = base_price(size) + design.price
   quantity: number;
   area: number;
   color: string;        // hex
   colorName: string;
-  size: string;
+  size: string;         // label: "30×30 см" (СОХРАНЯЕМ — существующее поле)
+  sizeKey: string;      // NEW: ключ размера "300x300" для backend
   textureName: string;  // NEW: название текстуры
   textureId: string;    // NEW: id текстуры
   colorId: string;      // NEW: id цвета
 }
 ```
+
+**Важно:** Composite ID теперь включает `sizeKey` — одну форму с одной текстурой/цветом но разными размерами добавляем как разные позиции.
 
 **Миграция localStorage (mitigation R5):**
 При инициализации cartStore — валидировать каждый item из localStorage:
@@ -536,6 +552,8 @@ color_id: str = ""       # ID цвета
 - [ ] ProductPage: fallback-изображение если variant-image не найден
 - [ ] TextureSelector: показывает свотчи текстур, выделяет активную
 - [ ] ColorSelector: показывает цвета текущей текстуры, выделяет активный
+- [ ] SizeSelector: показывает доступные размеры, пересчитывает цену при смене
+- [ ] SizeSelector: разные размеры одной конфигурации — разные позиции в корзине
 - [ ] FormSwitcher: показывает другие формы, навигирует при клике
 - [ ] ConfiguratorPanel: sticky-поведение на desktop
 - [ ] Constructor: рендерит цвета из текстур без TypeError (mitigation R2)
