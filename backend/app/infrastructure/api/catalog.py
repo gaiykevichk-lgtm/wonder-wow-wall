@@ -9,12 +9,23 @@ from app.application.catalog.recommendation_fallback import (
 from app.application.catalog.recommendation_use_cases import (
     GetPublicRecommendations,
 )
+from app.application.catalog.texture_use_cases import (
+    ListTexturesPublic,
+    ListTextureColorsPublic,
+)
+from app.application.catalog.variant_image_use_cases import (
+    GetVariantImage,
+    ListVariantImagesByDesign,
+)
 from app.container import (
     get_design_repo,
     get_category_repo,
     get_review_repo,
     get_panel_repo,
     get_recommendation_repo,
+    get_texture_repo,
+    get_texture_color_repo,
+    get_variant_image_repo,
 )
 from app.domain.catalog.recommendation import (
     DEFAULT_RECOMMENDATIONS_LIMIT,
@@ -39,6 +50,7 @@ class DesignSchema(BaseModel):
     category_id: str
     style: str
     image: str
+    preview_image: str = ""
     description: str
     price: int
     colors: list[ColorSchema]
@@ -120,6 +132,44 @@ class RecommendationListResponse(BaseModel):
     items: list[RecommendationTargetSchema] = Field(default_factory=list)
 
 
+class TextureColorPublicSchema(BaseModel):
+    id: str
+    name: str
+    hex: str
+    swatch_image: str
+
+
+class TextureWithColorsSchema(BaseModel):
+    id: str
+    name: str
+    slug: str
+    swatch_image: str
+    colors: list[TextureColorPublicSchema] = Field(default_factory=list)
+
+
+class VariantImageSchema(BaseModel):
+    image_path: str
+
+
+class FullConfigTextureSchema(BaseModel):
+    id: str
+    name: str
+    slug: str
+    swatch_image: str
+    colors: list[TextureColorPublicSchema] = Field(default_factory=list)
+
+
+class FullConfigResponse(BaseModel):
+    id: str
+    name: str
+    slug: str
+    preview_image: str
+    description: str
+    price: int
+    textures: list[FullConfigTextureSchema] = Field(default_factory=list)
+    variant_images: list[dict] = Field(default_factory=list)
+
+
 # ─── Endpoints ───────────────────────────────────────────────────────
 
 @router.get("/designs", response_model=DesignListResponse)
@@ -144,7 +194,8 @@ async def list_designs(
         "items": [
             {
                 "id": d.id, "name": d.name, "slug": d.slug, "category_id": d.category_id,
-                "style": d.style, "image": d.image, "description": d.description,
+                "style": d.style, "image": d.image, "preview_image": d.preview_image,
+                "description": d.description,
                 "price": d.price, "colors": [{"hex": c.hex, "name": c.name} for c in d.colors],
                 "rating": d.rating, "reviews_count": d.reviews_count,
                 "is_new": d.is_new, "is_popular": d.is_popular,
@@ -320,4 +371,145 @@ async def add_review(
     return {
         "id": r.id, "design_id": r.design_id, "user_name": r.user_name,
         "rating": r.rating, "text": r.text, "created_at": r.created_at.isoformat(),
+    }
+
+
+# ─── Phase 2 — Texture / Variant Image endpoints ───────────────────
+
+
+@router.get("/textures", response_model=list[TextureWithColorsSchema])
+async def list_textures_public(
+    request: Request,
+    texture_repo=Depends(get_texture_repo),
+    color_repo=Depends(get_texture_color_repo),
+):
+    textures = await ListTexturesPublic(texture_repo).execute()
+    result = []
+    for t in textures:
+        colors = await ListTextureColorsPublic(color_repo).execute(t.id)
+        result.append({
+            "id": t.id,
+            "name": t.name,
+            "slug": t.slug,
+            "swatch_image": t.swatch_image,
+            "colors": [
+                {"id": c.id, "name": c.name, "hex": c.hex, "swatch_image": c.swatch_image}
+                for c in colors
+            ],
+        })
+    return result
+
+
+@router.get("/textures/{texture_id}/colors", response_model=list[TextureColorPublicSchema])
+async def list_texture_colors_public(
+    request: Request,
+    texture_id: str,
+    color_repo=Depends(get_texture_color_repo),
+):
+    colors = await ListTextureColorsPublic(color_repo).execute(texture_id)
+    return [
+        {"id": c.id, "name": c.name, "hex": c.hex, "swatch_image": c.swatch_image}
+        for c in colors
+    ]
+
+
+@router.get("/designs/{design_id}/textures", response_model=list[TextureWithColorsSchema])
+async def list_design_textures(
+    request: Request,
+    design_id: str,
+    design_repo=Depends(get_design_repo),
+    texture_repo=Depends(get_texture_repo),
+    color_repo=Depends(get_texture_color_repo),
+    variant_repo=Depends(get_variant_image_repo),
+):
+    design = await design_repo.get_by_id(design_id)
+    if not design or not design.is_published:
+        raise HTTPException(status_code=404, detail="Design not found")
+    textures = await ListTexturesPublic(texture_repo).execute()
+    variants = await ListVariantImagesByDesign(variant_repo).execute(design_id)
+    texture_ids_with_variants = {v.texture_id for v in variants}
+    result = []
+    for t in textures:
+        if t.id not in texture_ids_with_variants:
+            continue
+        colors = await ListTextureColorsPublic(color_repo).execute(t.id)
+        if not colors:
+            continue
+        result.append({
+            "id": t.id,
+            "name": t.name,
+            "slug": t.slug,
+            "swatch_image": t.swatch_image,
+            "colors": [
+                {"id": c.id, "name": c.name, "hex": c.hex, "swatch_image": c.swatch_image}
+                for c in colors
+            ],
+        })
+    return result
+
+
+@router.get("/designs/{design_id}/variant-image", response_model=VariantImageSchema)
+async def get_variant_image(
+    request: Request,
+    design_id: str,
+    texture_id: str = Query(...),
+    color_id: str = Query(...),
+    variant_repo=Depends(get_variant_image_repo),
+):
+    vi = await GetVariantImage(variant_repo).execute(design_id, texture_id, color_id)
+    if vi is None:
+        raise HTTPException(status_code=404, detail="Variant image not found")
+    return {"image_path": vi.image_path}
+
+
+@router.get("/designs/{design_id}/full-config", response_model=FullConfigResponse)
+async def get_full_config(
+    request: Request,
+    design_id: str,
+    design_repo=Depends(get_design_repo),
+    texture_repo=Depends(get_texture_repo),
+    color_repo=Depends(get_texture_color_repo),
+    variant_repo=Depends(get_variant_image_repo),
+):
+    design = await design_repo.get_by_id(design_id)
+    if not design or not design.is_published:
+        raise HTTPException(status_code=404, detail="Design not found")
+    all_textures = await ListTexturesPublic(texture_repo).execute()
+    all_variants = await ListVariantImagesByDesign(variant_repo).execute(design_id)
+    texture_ids_with_variants = {v.texture_id for v in all_variants}
+    textures_out = []
+    for t in all_textures:
+        if t.id not in texture_ids_with_variants:
+            continue
+        colors = await ListTextureColorsPublic(color_repo).execute(t.id)
+        if not colors:
+            continue
+        textures_out.append({
+            "id": t.id,
+            "name": t.name,
+            "slug": t.slug,
+            "swatch_image": t.swatch_image,
+            "colors": [
+                {"id": c.id, "name": c.name, "hex": c.hex, "swatch_image": c.swatch_image}
+                for c in colors
+            ],
+        })
+    variant_images_out = [
+        {
+            "design_id": v.design_id,
+            "texture_id": v.texture_id,
+            "color_id": v.color_id,
+            "image_path": v.image_path,
+        }
+        for v in all_variants
+    ]
+    return {
+        "id": design.id,
+        "name": design.name,
+        "slug": design.slug,
+        "preview_image": design.preview_image,
+        "description": design.description,
+        "price": design.price,
+        "textures": textures_out,
+        "variant_images": variant_images_out,
     }

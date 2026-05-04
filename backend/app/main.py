@@ -35,6 +35,14 @@ from app.domain.catalog.panel_exceptions import (
     PanelNotFoundError,
     PanelSlugConflictError,
 )
+from app.domain.catalog.texture_exceptions import (
+    TextureNotFoundError,
+    TextureSlugConflictError,
+    TextureColorNotFoundError,
+    TextureHasVariantsError,
+    VariantImageNotFoundError,
+    VariantImageCombinationConflictError,
+)
 from app.domain.shop.banner_exceptions import BannerNotFoundError
 from app.domain.subscription.plan_exceptions import (
     SubscriptionPlanIdConflictError,
@@ -78,6 +86,12 @@ from app.infrastructure.api.error_handlers import (
     subscription_plan_id_conflict_handler,
     subscription_plan_in_use_handler,
     subscription_plan_not_found_handler,
+    texture_not_found_handler,
+    texture_slug_conflict_handler,
+    texture_color_not_found_handler,
+    texture_has_variants_handler,
+    variant_image_not_found_handler,
+    variant_image_combination_conflict_handler,
     user_blocked_handler,
 )
 from app.infrastructure.security.middleware import SecurityHeadersMiddleware
@@ -157,6 +171,16 @@ app.add_exception_handler(
 )
 app.add_exception_handler(
     RecommendationNotFoundError, recommendation_not_found_handler,
+)
+# Phase 2 — configurator texture/variant-image CRUD.
+app.add_exception_handler(TextureNotFoundError, texture_not_found_handler)
+app.add_exception_handler(TextureSlugConflictError, texture_slug_conflict_handler)
+app.add_exception_handler(TextureColorNotFoundError, texture_color_not_found_handler)
+app.add_exception_handler(TextureHasVariantsError, texture_has_variants_handler)
+app.add_exception_handler(VariantImageNotFoundError, variant_image_not_found_handler)
+app.add_exception_handler(
+    VariantImageCombinationConflictError,
+    variant_image_combination_conflict_handler,
 )
 
 # ─── Security Headers ──────────────────────────────────────────────

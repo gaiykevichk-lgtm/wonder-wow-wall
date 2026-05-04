@@ -20,6 +20,7 @@ from . import panels as _panels
 from . import recommendations as _recommendations
 from . import shop_settings as _shop_settings
 from . import subscription_plans as _subscription_plans
+from . import textures as _textures
 from . import users as _users
 
 router = APIRouter()
@@ -39,3 +40,4 @@ router.include_router(_audit.router, prefix="", tags=["admin-audit"])
 router.include_router(
     _recommendations.router, prefix="", tags=["admin-recommendations"],
 )
+router.include_router(_textures.router, prefix="", tags=["admin-textures"])

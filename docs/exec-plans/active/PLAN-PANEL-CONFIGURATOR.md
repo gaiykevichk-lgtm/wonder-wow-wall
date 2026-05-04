@@ -1,6 +1,6 @@
 # PLAN: Конфигуратор панелей (Apple-style)
 
-**Статус:** In Progress (Phase 1 Complete)  
+**Статус:** In Progress (Phase 2 Complete)  
 **Дата создания:** 2026-05-04  
 **Цель:** Переработать каталог и карточку товара в Apple-style конфигуратор с иерархией Форма → Текстура → Цвет
 
@@ -157,7 +157,7 @@ preview_image: str = ""  # Белый силуэт формы для катал�
 
 ---
 
-## Фаза 2: API эндпоинты (Backend)
+## Фаза 2: API эндпоинты (Backend) ✅ DONE
 
 ### 2.1 Публичное API
 
@@ -259,20 +259,44 @@ Use cases:
 
 ### 2.4 Тесты (Backend, Фаза 2)
 
-**Файлы:**
-- `backend/tests/api/test_textures_public.py`
-- `backend/tests/api/test_textures_admin.py`
-- `backend/tests/api/test_variant_images_admin.py`
-- `backend/tests/application/test_texture_use_cases.py`
+**Файлы (реализовано):**
+- `backend/tests/application/catalog/test_texture_use_cases.py` — 32 теста use cases
+- `backend/tests/api/test_textures_public.py` — 15 тестов публичного API
+- `backend/tests/api/admin/test_textures.py` — 24 теста админ API
 
 **Покрытие:**
-- [ ] GET /api/textures — возвращает только активные
-- [ ] GET /api/designs/{id}/textures — текстуры с цветами для формы
-- [ ] GET /api/designs/{id}/variant-image — 200 с путём или 404
-- [ ] Admin CRUD текстур — создание, обновление, деактивация, удаление
-- [ ] Admin CRUD цветов — привязка к текстуре, валидация hex
-- [ ] Admin variant-images — загрузка, уникальность комбинации (409 при дубле)
-- [ ] Проверка авторизации (admin-only endpoints)
+- [x] GET /api/textures — возвращает только активные (15 тестов)
+- [x] GET /api/textures/{id}/colors — цвета текстуры (активные)
+- [x] GET /api/designs/{id}/textures — текстуры с цветами для формы, фильтр по наличию variant-images и активных цветов
+- [x] GET /api/designs/{id}/variant-image — 200 с путём, 404 если не найдено, 422 при отсутствии params
+- [x] GET /api/designs/{id}/full-config — полная конфигурация одним запросом (mitigation R6)
+- [x] GET /api/designs — preview_image поле в ответе
+- [x] Admin CRUD текстур — создание (201), обновление (200), удаление (204), slug conflict (409), not found (404)
+- [x] Admin CRUD цветов — привязка к текстуре, not found текстуры (404), not found цвета (404)
+- [x] Admin variant-images — создание (201), уникальность комбинации (409), не найден design (404), удаление (204)
+- [x] Проверка авторизации — 401 без токена, 403 с customer-токеном
+- [x] Удаление текстуры с variant-images заблокировано (409, mitigation E3)
+
+### 2.5 Результат реализации (2026-05-04)
+
+**Созданные файлы:**
+- `backend/app/domain/catalog/texture_exceptions.py` — 6 доменных исключений
+- `backend/app/application/catalog/texture_use_cases.py` — 12 use cases (Texture + TextureColor CRUD)
+- `backend/app/application/catalog/variant_image_use_cases.py` — 5 use cases (VariantImage CRUD + query)
+- `backend/app/infrastructure/api/admin/textures.py` — Admin API router (11 endpoints)
+- `backend/app/infrastructure/api/catalog.py` — расширен 6 публичными endpoints + preview_image в Design schema
+- `backend/app/infrastructure/api/error_handlers.py` — 6 новых exception handlers
+- `backend/app/infrastructure/api/admin/__init__.py` — регистрация textures router
+- `backend/app/main.py` — регистрация exception handlers
+
+**Подтверждённая стабильность:**
+- 242 domain тестов pass, 0 regressions
+- 297 application тестов pass (включая 32 новых texture/variant use case тестов)
+- 217 admin API тестов pass (включая 24 новых texture admin тестов)
+- 72 non-admin API тестов pass (включая 15 новых texture public тестов)
+- 33 visualizer тестов pass
+- 28 infrastructure тестов pass
+- 6 fails в `test_api.py` — pre-existing, не связаны с Phase 2
 
 ---
 

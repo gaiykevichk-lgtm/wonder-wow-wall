@@ -44,6 +44,14 @@ from app.domain.catalog.panel_exceptions import (
     PanelNotFoundError,
     PanelSlugConflictError,
 )
+from app.domain.catalog.texture_exceptions import (
+    TextureNotFoundError,
+    TextureSlugConflictError,
+    TextureColorNotFoundError,
+    TextureHasVariantsError,
+    VariantImageNotFoundError,
+    VariantImageCombinationConflictError,
+)
 from app.domain.shop.banner_exceptions import BannerNotFoundError
 from app.domain.subscription.plan_exceptions import (
     SubscriptionPlanIdConflictError,
@@ -422,4 +430,64 @@ async def subscription_plan_in_use_handler(
     return JSONResponse(
         status_code=409,
         content={"detail": str(exc), "code": "subscription_plan_in_use"},
+    )
+
+
+# ─── Phase 2 (configurator) — texture / variant-image CRUD ─────────
+
+
+async def texture_not_found_handler(
+    request: Request, exc: TextureNotFoundError,
+):
+    return JSONResponse(
+        status_code=404,
+        content={"detail": str(exc), "code": "texture_not_found"},
+    )
+
+
+async def texture_slug_conflict_handler(
+    request: Request, exc: TextureSlugConflictError,
+):
+    return JSONResponse(
+        status_code=409,
+        content={"detail": str(exc), "code": "texture_slug_conflict"},
+    )
+
+
+async def texture_color_not_found_handler(
+    request: Request, exc: TextureColorNotFoundError,
+):
+    return JSONResponse(
+        status_code=404,
+        content={"detail": str(exc), "code": "texture_color_not_found"},
+    )
+
+
+async def texture_has_variants_handler(
+    request: Request, exc: TextureHasVariantsError,
+):
+    return JSONResponse(
+        status_code=409,
+        content={"detail": str(exc), "code": "texture_has_variants"},
+    )
+
+
+async def variant_image_not_found_handler(
+    request: Request, exc: VariantImageNotFoundError,
+):
+    return JSONResponse(
+        status_code=404,
+        content={"detail": str(exc), "code": "variant_image_not_found"},
+    )
+
+
+async def variant_image_combination_conflict_handler(
+    request: Request, exc: VariantImageCombinationConflictError,
+):
+    return JSONResponse(
+        status_code=409,
+        content={
+            "detail": str(exc),
+            "code": "variant_image_combination_conflict",
+        },
     )
