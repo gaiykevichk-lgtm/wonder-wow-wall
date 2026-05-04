@@ -1,6 +1,6 @@
 # PLAN: Конфигуратор панелей (Apple-style)
 
-**Статус:** Draft  
+**Статус:** In Progress (Phase 1 Complete)  
 **Дата создания:** 2026-05-04  
 **Цель:** Переработать каталог и карточку товара в Apple-style конфигуратор с иерархией Форма → Текстура → Цвет
 
@@ -28,15 +28,14 @@ Design (Form/Shape)          — Волна, Гексагон, Треуголь�
 
 ---
 
-## Фаза 1: Модель данных (Backend)
+## Фаза 1: Модель данных (Backend) ✅ DONE
 
 ### 1.1 Новые сущности домена
 
-**Файлы:**
+**Файлы (реализовано):**
 - `backend/app/domain/catalog/texture.py` — агрегат Texture
 - `backend/app/domain/catalog/texture_color.py` — сущность TextureColor
 - `backend/app/domain/catalog/variant_image.py` — сущность VariantImage
-- `backend/app/domain/catalog/value_objects.py` — расширение (если нужны новые VO)
 
 **Texture (материал/текстура):**
 ```python
@@ -81,20 +80,20 @@ class VariantImage:
 
 ### 1.2 Репозитории
 
-**Файлы:**
-- `backend/app/domain/catalog/repositories.py` — абстрактные интерфейсы
-- `backend/app/infrastructure/repositories/texture_repo.py`
-- `backend/app/infrastructure/repositories/texture_color_repo.py`
-- `backend/app/infrastructure/repositories/variant_image_repo.py`
+**Файлы (реализовано):**
+- `backend/app/domain/catalog/repositories.py` — абстрактные интерфейсы (TextureRepository, TextureColorRepository, VariantImageRepository)
+- `backend/app/infrastructure/persistence/repositories/memory.py` — InMemory-реализации
+- `backend/app/container.py` — DI-синглтоны + FastAPI dependencies
+- `backend/app/infrastructure/persistence/repositories/sql.py` — маппинг preview_image + texture fields
 
 **Интерфейсы:**
-- `TextureRepository`: get_by_id, get_by_slug, list_active, list_all, save, delete
-- `TextureColorRepository`: get_by_id, list_by_texture, list_active_by_texture, save, delete
-- `VariantImageRepository`: get_by_combination(design_id, texture_id, color_id), list_by_design, save, delete
+- `TextureRepository`: get_by_id, get_by_slug, list_all(include_inactive), create, update, delete
+- `TextureColorRepository`: get_by_id, list_by_texture(include_inactive), create, update, delete
+- `VariantImageRepository`: get_by_combination, list_by_design, list_by_texture, create, delete
 
 ### 1.3 Миграции БД (Alembic)
 
-**Файл:** `backend/alembic/versions/013_add_textures_and_variants.py`
+**Файл (реализовано):** `backend/alembic/versions/018_create_textures_and_variants.py`
 
 Таблицы:
 - `textures` (id, name, slug UNIQUE, swatch_image, sort_order, is_active, created_at)
@@ -123,17 +122,16 @@ preview_image: str = ""  # Белый силуэт формы для катал�
 
 ### 1.5 Тесты (Backend, Фаза 1)
 
-**Файлы:**
-- `backend/tests/domain/test_texture.py` — unit-тесты сущностей
-- `backend/tests/domain/test_variant_image.py` — unit-тесты VariantImage
-- `backend/tests/infrastructure/test_texture_repo.py` — тесты репозиториев
+**Файлы (реализовано):**
+- `backend/tests/domain/catalog/test_texture.py` — unit-тесты сущностей (12 тестов)
+- `backend/tests/domain/catalog/test_texture_repos.py` — тесты in-memory репозиториев (19 тестов)
 
 **Покрытие:**
-- [ ] Создание Texture с валидными данными
-- [ ] Создание TextureColor, привязка к Texture
-- [ ] Создание VariantImage, уникальность комбинации
-- [ ] Деактивация Texture → скрытие связанных цветов
-- [ ] Репозиторий: CRUD-операции для всех новых сущностей
+- [x] Создание Texture с валидными данными
+- [x] Создание TextureColor, привязка к Texture, валидация hex
+- [x] Создание VariantImage, уникальность комбинации
+- [x] Деактивация Texture → скрытие через list_all(include_inactive=False)
+- [x] Репозиторий: CRUD-операции для всех новых сущностей (31 тест, все pass)
 
 ---
 
