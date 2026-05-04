@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import type { ComponentProps } from 'react';
 import { Input, Skeleton } from 'antd';
 import { PageMeta } from '../../../shared/ui/PageMeta';
 import { SearchOutlined } from '@ant-design/icons';
@@ -9,10 +10,9 @@ import { useDesigns } from '../api/catalogApi';
 import { apiDesignToProduct } from '../api/adapters';
 import type { PanelProduct } from '../model/types';
 
-const appleEase = [0.25, 0.1, 0.25, 1.0];
+const appleEase: [number, number, number, number] = [0.25, 0.1, 0.25, 1.0];
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- framer-motion Variants typing mismatch with custom() functions
-const fadeUpVariants: any = {
+const fadeUpVariants: ComponentProps<typeof motion.div>['variants'] = {
   hidden: { opacity: 0, y: 24 },
   visible: (i: number) => ({
     opacity: 1,

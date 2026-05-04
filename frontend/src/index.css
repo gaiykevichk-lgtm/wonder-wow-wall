@@ -138,12 +138,6 @@ img {
     display: none !important;
   }
 
-  /* Catalog filter row → vertical stacking */
-  .catalog-filters {
-    flex-direction: column !important;
-    gap: 8px !important;
-  }
-
   /* Pricing cards horizontal */
   .pricing-cards-grid {
     grid-template-columns: 1fr !important;
