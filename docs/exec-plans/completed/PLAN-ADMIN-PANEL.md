@@ -837,6 +837,75 @@ Frontend:
 - Минимальный repro `tests/api/test_security.py + tests/infrastructure/test_alembic.py`: 18/18 passed.
 - Все остальные тесты не тронуты — изменения 2 строки в фикстуре + удаление дубликата.
 
+### Ре-аудит 2026-05-04 — независимая line-by-line ревизия
+
+> Полный повторный аудит всех 22+ файлов Фазы 6 (domain/application/infrastructure/tests/frontend/alembic/nginx/docker-compose). Каждый файл прочитан построчно; тесты прогнаны.
+
+**Тесты:**
+- Backend Phase 6 suite: **39/39 passed** (10 domain + 13 application + 16 API) за 6.7с.
+- Frontend Phase 6 suite: **14/14 passed** (uploadFile.test.ts) за 0.9с.
+
+#### Критические проблемы
+**Нет.** Все DoD-пункты по-прежнему выполнены.
+
+#### Что верифицировано построчно (и подтверждено корректным):
+
+1. **Domain layer (6 файлов):**
+   - `entities.py` (43 строки): AR `MediaAsset` — корректный, no behaviour (immutable by design), soft-FK `uploaded_by` (осознанно). `datetime.utcnow()` на строке 42 — project-wide tech-debt (34 вхождения по 14 файлам domain; отмечен с Phase 3).
+   - `value_objects.py` (112 строк): `MediaPurpose` enum (str-mixin), `MediaConstraints` frozen dataclass, `PURPOSE_CONSTRAINTS` dict, `GLOBAL_MAX_SIZE_BYTES = 20MB`. Все 4 enum-члена покрыты constraints-маппингом (тест `TestEnumCoverage` пинит). SVG намеренно исключён (XSS), GIF намеренно исключён.
+   - `exceptions.py` (52 строки): 4 исключения с правильным HTTP-маппингом (413/415/422/422). Нет infrastructure imports.
+   - `services.py` (74 строки): `FileStorage` ABC в domain (корректное размещение). 3 метода: `save` (async), `delete` (async, idempotent), `url_for` (sync). Инварианты round-trip и URL-safety задокументированы.
+   - `repositories.py` (30 строк): `MediaAssetRepository` ABC — `create`, `get_by_id`, `delete(→bool)`. Минимальная поверхность (расширяется по demand).
+   - **DDD compliance:** ✅ Ни один domain-файл не импортирует infrastructure.
+
+2. **Application layer (1 файл, 216 строк):**
+   - `use_cases.py`: `UploadMedia` — 5-ступенчатая валидация (empty→global cap→per-purpose cap→declared MIME→Pillow verify+dimensions). **Критический инвариант «storage.save не вызывается на rejected» — соблюдён** (строка 170 достижима только после всех 5 проверок). `DeleteMedia` — row first, then file (строки 199-203). `_safe_original_name` — `os.path.basename()` + truncate 255 (строки 214-215, защита от path traversal). Pillow import локальный внутри `execute()` (строка 128) — domain stays infra-free.
+
+3. **Infrastructure storage (1 файл, 90 строк):**
+   - `local.py`: `LocalFileStorage` — UUID4 filenames (collision-free, URL-safe), lazy `os.makedirs`, sync I/O (обосновано — 20MB cap на NVMe = ms). `delete()` ловит только `FileNotFoundError` (узкий except, контракт формализован). `url_for()` — нормализация `os.sep` → `/`. Path traversal невозможен (UUID-based, не echoes `original_name`).
+
+4. **Infrastructure API (1 файл, 196 строк):**
+   - `media.py`: 3 эндпоинта. Все под `Depends(get_current_admin_id)`. **Нет локальных try/except** — domain exceptions пробрасываются к глобальным handlers (correct). Early size rejection (строка 146) экономит CPU. Delete возвращает 204/404 через `JSONResponse` (envelope `{detail, code}`). DTO-модели `MediaAssetResponse`, `ConstraintsResponse` — полные, все поля присутствуют.
+
+5. **Error handlers (4 handler-а в error_handlers.py:209-240):**
+   - `media_too_large → 413`, `media_invalid_mime → 415`, `media_invalid_dimensions → 422`, `media_corrupt → 422`. Все 4 зарегистрированы в `main.py:136-139`. Envelope `{detail, code}` — consistent с остальными фазами.
+
+6. **Persistence (3 точки):**
+   - `MediaAssetModel` (models.py): UNIQUE(path), soft-FK `uploaded_by`, все поля. Корректен.
+   - `SqlMediaAssetRepository` (sql.py): parameterized queries (no SQL injection), defensive enum coercion в mapper. Корректен.
+   - `InMemoryMediaAssetRepository` (memory.py): defence-in-depth UNIQUE(path) check, mirrors SQL. Корректен.
+
+7. **Container wiring (container.py):**
+   - `_mem_media_repo` singleton, `get_media_repo()` Depends, `get_file_storage()` с double-checked lock, `reset_file_storage_singleton()` test helper. Thread-safe, test-friendly.
+
+8. **Alembic migration 010 (57 строк):**
+   - `upgrade()`: 8 колонок, UNIQUE(path), 2 индекса. `downgrade()`: drop indexes + drop table. Симметрично.
+
+9. **Frontend (3 файла):**
+   - `uploadFile.ts` (182 строки): XHR с progress, AbortController, typed `UploadError` (plain fields, erasableSyntaxOnly compliant), `getToken()` из localStorage. Полный.
+   - `AdminFileUpload.tsx` (209 строк): `abortRef` per-upload, cleanup on unmount, `beforeUpload` pre-filter, `ERROR_LABELS` mapping (6 кодов), AntD Dragger integration. Полный.
+   - `uploadFile.test.ts` (14 тестов): request shape (5), happy path (3), error envelope (4), cancellation (2). FakeXHR mock.
+
+10. **Infra (nginx + docker-compose):**
+    - `nginx.conf`: `client_max_body_size 20M`, `location /uploads/` с alias, `Cache-Control immutable 1yr`, `autoindex off`.
+    - `docker-compose.yml`: named volume `uploads` (RW backend, RO nginx), env `MEDIA_STORAGE_ROOT=/var/uploads`, `MEDIA_URL_PREFIX=/uploads`.
+
+#### Статус ранее открытых некритичных замечаний (из аудита 2026-04-25):
+
+| # | Статус | Пояснение |
+|---|--------|-----------|
+| 1 | ✅ Закрыто | AbortController — исправлен в follow-up 2 |
+| 2 | Открыто | Нет компонентного теста `AdminFileUpload.tsx` — деferred до первого потребителя |
+| 3 | Открыто (low) | Нет теста API pre-reject (ветка `file.size > cap` в `media.py:146`) |
+| 4 | ✅ Закрыто | `test_constraints_requires_admin_role` добавлен |
+| 5 | Открыто (project-wide) | `datetime.utcnow()` — 34 вхождения в 14 domain-файлах |
+| 6 | Открыто (project-wide) | `_mem_*._assets.clear()` в тестах — backlog #7 Phase 4A |
+| 7 | Открыто (cosmetic) | Комментарий про «cheap pre-reject» — Starlette уже буферизовала |
+| 8 | ✅ Закрыто | Контракт `delete()` формализован в follow-up 2 |
+| 9 | ✅ Закрыто | Orphan-компоненты подключены в Phase 7A |
+
+**Новых проблем не найдено.** Код production-quality, все конвенции соблюдены, DDD-слои не текут, security-модель корректна (path traversal, XSS через SVG, auth guards).
+
 ### Файлы, добавленные/изменённые в Фазе 6 (для archeology)
 
 Добавлены:
