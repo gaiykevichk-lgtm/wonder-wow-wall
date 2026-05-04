@@ -712,6 +712,38 @@ color_id: str = ""
 
 ---
 
+## Ограничения среды разработки (sandbox)
+
+**RAM ограничен.** Sandbox имеет слабые ресурсы — запуск всех тестов разом вызывает OOM и крашит среду.
+
+**Правила запуска тестов:**
+- **Backend (pytest):** запускать по одному файлу или маленькими батчами:
+  ```bash
+  pytest tests/domain/test_texture.py -v
+  pytest tests/api/test_textures_public.py -v
+  ```
+  Никогда не запускать `pytest` без указания конкретного файла/папки.
+
+- **Frontend (vitest):** запускать по одному тест-файлу:
+  ```bash
+  NODE_OPTIONS='--max-old-space-size=512' npx vitest run src/domains/catalog/__tests__/ProductPage.test.tsx
+  ```
+  Никогда не запускать `npx vitest run` без фильтра — sandbox крашится.
+
+- **Type-check (tsc):** запускать с ограничением памяти:
+  ```bash
+  NODE_OPTIONS='--max-old-space-size=512' npx tsc --noEmit
+  ```
+
+- **Build:** аналогично:
+  ```bash
+  NODE_OPTIONS='--max-old-space-size=512' npm run build
+  ```
+
+**При реализации каждой фазы** — запускать тесты инкрементально: только новые/изменённые файлы. Полный прогон — только в Фазе 8 (QA), и то по батчам.
+
+---
+
 ## Зависимости между фазами
 
 ```
