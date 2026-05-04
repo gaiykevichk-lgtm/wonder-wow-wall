@@ -33,7 +33,11 @@ class TextureColor:
     created_at: datetime = field(default_factory=datetime.utcnow)
 
     def __post_init__(self) -> None:
-        if self.hex and not _HEX_RE.match(self.hex):
-            raise ValueError(f"TextureColor.hex must be #RRGGBB, got: {self.hex!r}")
+        self.check_hex(self.hex)
         if self.sort_order < 0:
             raise ValueError("TextureColor.sort_order cannot be negative")
+
+    @staticmethod
+    def check_hex(value: str) -> None:
+        if value and not _HEX_RE.match(value):
+            raise ValueError(f"TextureColor.hex must be #RRGGBB, got: {value!r}")

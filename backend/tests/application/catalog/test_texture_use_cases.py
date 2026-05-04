@@ -121,6 +121,13 @@ class TestUpdateTexture:
         with pytest.raises(TextureSlugConflictError):
             await UpdateTextureAdmin(texture_repo).execute(b.id, slug="a")
 
+    @pytest.mark.asyncio
+    async def test_self_slug_no_conflict(self, texture_repo):
+        """Updating to own slug must not raise (self-aliasing guard N1)."""
+        t = await CreateTextureAdmin(texture_repo).execute(name="X", slug="x")
+        updated = await UpdateTextureAdmin(texture_repo).execute(t.id, slug="x")
+        assert updated.slug == "x"
+
 
 class TestDeleteTexture:
     @pytest.mark.asyncio
@@ -223,6 +230,26 @@ class TestUpdateTextureColor:
         )
         assert updated.name == "New"
         assert updated.hex == "#FFFFFF"
+
+    @pytest.mark.asyncio
+    async def test_invalid_hex_rejected(self, texture_repo, color_repo):
+        """N2: hex validation must run on update, not just on create."""
+        t = await CreateTextureAdmin(texture_repo).execute(name="X", slug="x")
+        c = await CreateTextureColorAdmin(color_repo, texture_repo).execute(
+            texture_id=t.id, name="Gray", hex="#888888",
+        )
+        with pytest.raises(ValueError, match="hex"):
+            await UpdateTextureColorAdmin(color_repo).execute(c.id, hex="bad")
+
+    @pytest.mark.asyncio
+    async def test_clear_hex_allowed(self, texture_repo, color_repo):
+        """Empty hex is valid — used when swatch_image replaces the hex dot."""
+        t = await CreateTextureAdmin(texture_repo).execute(name="X", slug="x2")
+        c = await CreateTextureColorAdmin(color_repo, texture_repo).execute(
+            texture_id=t.id, name="Gray", hex="#888888",
+        )
+        updated = await UpdateTextureColorAdmin(color_repo).execute(c.id, hex="")
+        assert updated.hex == ""
 
     @pytest.mark.asyncio
     async def test_not_found(self, color_repo):

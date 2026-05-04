@@ -165,7 +165,7 @@ preview_image: str = ""  # Белый силуэт формы для катал�
 
 | Метод | Путь | Описание |
 |-------|------|----------|
-| GET | `/api/designs` | Список форм (добавить `preview_image`, `default_colors`) |
+| GET | `/api/designs` | Список форм (добавить `preview_image`; `default_colors` отложен → Phase 7.3, mitigation R3) |
 | GET | `/api/designs/{id}` | Детали формы |
 | GET | `/api/designs/{id}/textures` | Текстуры для формы (только с ≥1 активным цветом, mitigation E2) |
 | GET | `/api/designs/{id}/full-config` | **NEW (mitigation R6):** Форма + все текстуры + цвета + variant-image paths одним запросом |
@@ -300,16 +300,23 @@ Use cases:
 
 ### 2.6 Результат ревью (2026-05-04)
 
-**Критические проблемы (исправлены):**
+**Критические проблемы (исправлены в коммите 1):**
 1. `catalog.py:220` — detail endpoint `GET /api/designs/{id}` не включал `preview_image` в ответ (list endpoint включал). Конфигуратор (Phase 5) зависит от этого поля. **Исправлено, тест добавлен.**
 2. `catalog.py:451` — endpoint `GET /api/designs/{id}/variant-image` не проверял `design.is_published`, нарушая security-позицию Phase 7A (остальные design-scoped endpoints проверяли). **Исправлено, тест добавлен.**
 
-**Некритические (техдолг, не блокируют Phase 3+):**
-- N1: `UpdateTextureAdmin` slug check без `existing.id != texture.id` guard — логически верно, стилистически отличается от панельного паттерна.
-- N2: `UpdateTextureColorAdmin` обходит hex-валидацию `__post_init__` при мутации — invalid hex может проникнуть через update.
-- N3: `TextureColorCreate.hex` Pydantic schema без pattern constraint — на create ловится доменом, на update (N2) — нет.
-- N4: `ListVariantImagesAdmin` возвращает `[]` без фильтра — молчаливое поведение, потенциально неочевидное для фронта.
-- N5: `default_colors` заявлен в Phase 2 spec (секция 2.1), но не реализован — фактически отложен до Phase 7.3 (R3). План нужно синхронизировать.
+**Некритические проблемы (все исправлены в коммите 2):**
+- N1: `UpdateTextureAdmin` slug check — добавлен `existing.id != texture.id` guard для консистентности с паттерном `panel_use_cases.py`. Тест `test_self_slug_no_conflict` добавлен.
+- N2: `UpdateTextureColorAdmin` обходил hex-валидацию `__post_init__` при мутации — добавлен вызов `TextureColor.check_hex(hex)` перед присвоением. Метод `check_hex` вынесен из `__post_init__` как `@staticmethod` для reuse. Тесты `test_invalid_hex_rejected` и `test_clear_hex_allowed` добавлены.
+- N3: `TextureColorCreate.hex` и `TextureColorUpdate.hex` Pydantic schemas — добавлен `pattern=r"^(#[0-9A-Fa-f]{6})?$"` для валидации на API boundary. Тесты `test_invalid_hex_422` и `test_invalid_hex_update_422` добавлены.
+- N4: `ListVariantImagesAdmin` возвращает `[]` без фильтра — **оставлено by design**: (1) добавление `list_all` требует расширения абстрактного репозитория + обеих реализаций, (2) количество комбинаций может быть 200+ (по плану R7), (3) админ-UI (Phase 6) всегда будет передавать фильтр из dropdown.
+- N5: `default_colors` — **перенесён из scope Phase 2 в Phase 7.3** (mitigation R3). Phase 2 spec обновлён ниже.
+
+**Обновлённая стабильность после ревью:**
+- 242 domain тестов pass (включая 12 texture domain), 0 regressions
+- 300 application тестов pass (включая 35 texture/variant use case тестов, +3 от ревью)
+- 219 admin API тестов pass (включая 26 texture admin тестов, +2 от ревью)
+- 74 non-admin API тестов pass (включая 17 texture public тестов, +2 от ревью)
+- 6 fails в `test_api.py` — pre-existing
 
 ---
 

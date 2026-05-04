@@ -277,6 +277,23 @@ class TestTextureColorCreate:
         assert body["texture_id"] == tid
 
     @pytest.mark.asyncio
+    async def test_invalid_hex_422(self, client):
+        """N3: Pydantic pattern rejects malformed hex at API boundary."""
+        token = await _admin_token(client)
+        t = await client.post(
+            "/api/admin/textures",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"name": "X", "slug": "hex-test"},
+        )
+        tid = t.json()["id"]
+        resp = await client.post(
+            f"/api/admin/textures/{tid}/colors",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"name": "Bad", "hex": "not-hex"},
+        )
+        assert resp.status_code == 422
+
+    @pytest.mark.asyncio
     async def test_texture_not_found_404(self, client):
         token = await _admin_token(client)
         resp = await client.post(
@@ -312,6 +329,29 @@ class TestTextureColorUpdate:
         assert resp.status_code == 200
         assert resp.json()["name"] == "New"
         assert resp.json()["hex"] == "#FFFFFF"
+
+    @pytest.mark.asyncio
+    async def test_invalid_hex_update_422(self, client):
+        """N3: Pydantic pattern rejects malformed hex on PATCH too."""
+        token = await _admin_token(client)
+        t = await client.post(
+            "/api/admin/textures",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"name": "X", "slug": "hex-upd"},
+        )
+        tid = t.json()["id"]
+        c = await client.post(
+            f"/api/admin/textures/{tid}/colors",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"name": "OK", "hex": "#111111"},
+        )
+        cid = c.json()["id"]
+        resp = await client.patch(
+            f"/api/admin/texture-colors/{cid}",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"hex": "xyz"},
+        )
+        assert resp.status_code == 422
 
     @pytest.mark.asyncio
     async def test_not_found_404(self, client):

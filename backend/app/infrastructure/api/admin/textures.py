@@ -69,7 +69,7 @@ class TextureColorResponse(BaseModel):
 
 class TextureColorCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
-    hex: str = Field(default="", max_length=7)
+    hex: str = Field(default="", max_length=7, pattern=r"^(#[0-9A-Fa-f]{6})?$")
     swatch_image: str = Field(default="", max_length=500)
     sort_order: int = Field(default=0, ge=0)
     is_active: bool = True
@@ -77,7 +77,7 @@ class TextureColorCreate(BaseModel):
 
 class TextureColorUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
-    hex: str | None = Field(default=None, max_length=7)
+    hex: str | None = Field(default=None, max_length=7, pattern=r"^(#[0-9A-Fa-f]{6})?$")
     swatch_image: str | None = Field(default=None, max_length=500)
     sort_order: int | None = Field(default=None, ge=0)
     is_active: bool | None = None

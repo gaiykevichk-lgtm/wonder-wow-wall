@@ -96,7 +96,7 @@ class UpdateTextureAdmin:
             raise TextureNotFoundError(f"Texture {texture_id} not found")
         if slug is not None and slug != texture.slug:
             existing = await self.repo.get_by_slug(slug)
-            if existing is not None:
+            if existing is not None and existing.id != texture.id:
                 raise TextureSlugConflictError(
                     f"Texture with slug {slug!r} already exists"
                 )
@@ -202,6 +202,7 @@ class UpdateTextureColorAdmin:
         if name is not None:
             color.name = name
         if hex is not None:
+            TextureColor.check_hex(hex)
             color.hex = hex
         if swatch_image is not None:
             color.swatch_image = swatch_image
