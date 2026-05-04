@@ -1164,6 +1164,55 @@ Frontend:
 
 **Регрессия после второго раунда remediation 2026-04-25:** backend **729/729** (+6 от FE-B), frontend admin+constructor+shared/lib **224/224** (+3 от N-test-7B). 0 fail. 0 deferred items для Phase 7B.
 
+### Full Phase 7 (7A+7B) re-audit 2026-05-04
+
+> Полный line-by-line аудит всех файлов обеих фаз (37+ файлов backend + frontend + тесты). 8 параллельных проверок: domain, application, infrastructure API, persistence, container+handlers, backend tests, frontend, frontend tests.
+
+#### Проверено (line-by-line)
+
+**Backend domain:** `panel.py`, `panel_exceptions.py`, `repositories.py` (Panel ABC), `entities.py` (is_published), `value_objects.py`, `catalog_exceptions.py`.
+**Backend application:** `panel_use_cases.py` (6 use cases), `admin_use_cases.py` (7 use cases), `use_cases.py` (public, is_published filter).
+**Backend infrastructure:** `admin/panels.py`, `admin/catalog.py`, `admin/__init__.py`, `catalog.py` (public), `error_handlers.py`, `models.py` (PanelModel, DesignModel.is_published), `repositories/sql.py` (SqlPanelRepository, SqlDesignRepository), `repositories/memory.py` (InMemory repos), `container.py`, `main.py`.
+**Migrations:** `011_create_panels.py`, `015_add_is_published_to_designs.py`.
+**Backend tests:** `test_panel.py`, `test_panel_use_cases.py`, `test_panels.py`, `test_panels_public.py`, `test_crud_admin.py`, `test_catalog_crud.py`, `test_public_catalog_filters_unpublished.py`, `test_alembic.py`.
+**Frontend:** `AdminUploadPage.tsx`, `AdminCatalogPage.tsx`, `panelsAdminApi.ts`, `catalogAdminApi.ts`, `panelsAdminStore.ts`, `catalogAdminStore.ts`, `useEffectivePanelPrices.ts`, `imageSrc.ts`.
+**Frontend tests:** 6 файлов, 70 тестов суммарно.
+
+#### Критические проблемы (найдены и исправлены)
+
+- ✅ **K1 (CRITICAL → ЗАКРЫТО):** `AdminUploadPage.tsx:679-681` — Drawer-форма редактирования панели содержала inline-логику пути (`photoPath.startsWith('http') ? ... : /uploads/...`), дублируя баг FE-A, который был закрыт в строке 333 того же файла. Ломал `data:` URI (→ `/uploads/data:...` → 404) и legacy `/images/...` пути (→ двойной слеш → 404). **Фикс:** заменено на `imageSrc(photoPath)`.
+
+#### Некритические наблюдения (tech debt, не блокируют)
+
+- **H1:** `test_panels.py` — нет auth gate тестов (401/403) для PATCH и DELETE endpoints. GET detail тоже не покрыт 401.
+- **H2:** `test_catalog_crud.py` — нет auth gate тестов (403) для design UPDATE, DELETE, toggle-visibility.
+- **M1:** `panel_use_cases.py:242` — falsy check `and actor_id` вместо `and actor_id is not None` (пустая строка пропустит audit).
+- **M2:** `AdminUploadPage.tsx:210-212` — `form.setFieldsValue(EMPTY_FORM)` не очищает stale validation errors от предыдущей попытки.
+- **M3:** `AdminUploadPage.tsx:293-304` — Switch toggle без optimistic update (UI «прыгает» на медленной сети).
+- **M4:** `sql.py:85` — лишний `bool(getattr(m, "is_published", True))` на NOT NULL boolean column.
+- **M5:** `catalog.py:85` — `AddReviewRequest` вместо `AddReviewCreate` по CONVENTIONS.md.
+- **M6:** `AdminCatalogPage.tsx:71` — dead import `useAdminDesign` (комментарий объясняет, но import остался).
+
+#### Подтверждено корректным
+
+- ✅ DDD-слои: domain не импортирует infrastructure.
+- ✅ Error envelope `{detail, code}` — все 7 handlers зарегистрированы в `main.py`.
+- ✅ PATCH-семантика: `None`=не трогать, `""`=очистить — consistent.
+- ✅ Defence-in-depth slug uniqueness: InMemory pre-check + SQL UNIQUE constraint.
+- ✅ Public listing hardcodes `include_inactive=False` / `is_published=True` на use-case уровне.
+- ✅ is_published: public detail, reviews, list — все фильтруют unpublished (404, не 403).
+- ✅ Toggle visibility: POST, audit с `{from, to, name, slug}`.
+- ✅ DeleteDesignAdmin: cascade cleanup + audit collaborator.
+- ✅ CategoryInUseError: проверяется ДО delete через `count_designs()`.
+- ✅ Migrations: reversible, seed 3 SKU корректны, alembic round-trip head=018.
+- ✅ Container wiring: все singletons, lazy imports, dependencies.
+- ✅ DTO naming: `PanelCreate/Update`, `CategoryCreate/Update`, `DesignCreate/Update`.
+- ✅ HTTP статусы: 201 POST, 200 GET/PATCH, 204 DELETE.
+- ✅ imageSrc helper: 4 input shapes (http, data:, root-anchored, storage-relative).
+- ✅ useEffectivePanelPrices: fallback на `BASE_PANEL_PRICES`, ключ `<W>x<H>`.
+- ✅ ColorListEditor: WeakMap-based stable keys (N2 из Phase 7A audit закрыт).
+- ✅ Frontend: 70 тестов зелёные.
+
 ---
 
 ## Фаза 8: Управление магазином (настройки и тарифы) ⚠️ ЧАСТИЧНО РЕАЛИЗОВАНО (audit 2026-04-25)

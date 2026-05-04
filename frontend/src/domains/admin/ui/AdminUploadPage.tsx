@@ -675,11 +675,7 @@ export default function AdminUploadPage() {
                 }}
               >
                 <img
-                  src={
-                    photoPath.startsWith('http')
-                      ? photoPath
-                      : `/uploads/${photoPath.replace(/^\/?uploads\/?/, '')}`
-                  }
+                  src={imageSrc(photoPath)}
                   alt=""
                   style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 4 }}
                 />
