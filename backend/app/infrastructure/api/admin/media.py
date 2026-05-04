@@ -136,12 +136,13 @@ async def upload_media(
     repo=Depends(get_media_repo),
     storage: FileStorage = Depends(get_file_storage),
 ):
-    # Cheap pre-reject before reading the body. Starlette buffers
-    # multipart to disk if the request is large, so even an aborted
-    # read costs disk I/O — raising the domain exception here lets the
-    # global `media_too_large_handler` build the same {detail, code}
-    # envelope the post-read check produces, so the frontend can branch
-    # on `code: media_too_large` uniformly.
+    # Pre-reject before the use case reads and validates the stream.
+    # Starlette has already buffered the multipart body by this point,
+    # so this saves the CPU of Pillow decode + per-purpose validation,
+    # not the bandwidth of receiving the upload. Raising the domain
+    # exception here lets the global `media_too_large_handler` build the
+    # same {detail, code} envelope the post-read check produces, so the
+    # frontend can branch on `code: media_too_large` uniformly.
     # `file.size` is populated by Starlette when Content-Length is set.
     if file.size is not None and file.size > GLOBAL_MAX_SIZE_BYTES:
         raise MediaTooLargeError(

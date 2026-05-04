@@ -842,8 +842,9 @@ Frontend:
 > Полный повторный аудит всех 22+ файлов Фазы 6 (domain/application/infrastructure/tests/frontend/alembic/nginx/docker-compose). Каждый файл прочитан построчно; тесты прогнаны.
 
 **Тесты:**
-- Backend Phase 6 suite: **39/39 passed** (10 domain + 13 application + 16 API) за 6.7с.
+- Backend Phase 6 suite: **40/40 passed** (10 domain + 13 application + 17 API) за 6.7с.
 - Frontend Phase 6 suite: **14/14 passed** (uploadFile.test.ts) за 0.9с.
+- Combined Phase 5+6: **56/56 passed** за 15.5с.
 
 #### Критические проблемы
 **Нет.** Все DoD-пункты по-прежнему выполнены.
@@ -896,15 +897,20 @@ Frontend:
 |---|--------|-----------|
 | 1 | ✅ Закрыто | AbortController — исправлен в follow-up 2 |
 | 2 | Открыто | Нет компонентного теста `AdminFileUpload.tsx` — деferred до первого потребителя |
-| 3 | Открыто (low) | Нет теста API pre-reject (ветка `file.size > cap` в `media.py:146`) |
+| 3 | ✅ Закрыто | `test_global_cap_api_pre_reject_is_413` добавлен (2026-05-04) |
 | 4 | ✅ Закрыто | `test_constraints_requires_admin_role` добавлен |
 | 5 | Открыто (project-wide) | `datetime.utcnow()` — 34 вхождения в 14 domain-файлах |
 | 6 | Открыто (project-wide) | `_mem_*._assets.clear()` в тестах — backlog #7 Phase 4A |
-| 7 | Открыто (cosmetic) | Комментарий про «cheap pre-reject» — Starlette уже буферизовала |
+| 7 | ✅ Закрыто | Комментарий исправлен — теперь описывает экономию CPU, а не bandwidth (2026-05-04) |
 | 8 | ✅ Закрыто | Контракт `delete()` формализован в follow-up 2 |
 | 9 | ✅ Закрыто | Orphan-компоненты подключены в Phase 7A |
 
-**Новых проблем не найдено.** Код production-quality, все конвенции соблюдены, DDD-слои не текут, security-модель корректна (path traversal, XSS через SVG, auth guards).
+**Fixes applied 2026-05-04:**
+1. `media.py:139-145` — комментарий исправлен: «cheap pre-reject before reading the body» → «pre-reject saves CPU of Pillow decode, not bandwidth» (Starlette уже буферизовала multipart к моменту handler-а).
+2. `test_media_upload.py` — добавлен `test_global_cap_api_pre_reject_is_413`: 21MB blob → 413, покрывает ветку `file.size > GLOBAL_MAX_SIZE_BYTES` в API-слое (ранее покрывался только per-purpose cap через use case).
+
+**Итого открыто:** 3 пункта (все project-wide / deferred, ни один не Phase-6-specific).
+Код production-quality, все конвенции соблюдены, DDD-слои не текут, security-модель корректна (path traversal, XSS через SVG, auth guards).
 
 ### Файлы, добавленные/изменённые в Фазе 6 (для archeology)
 

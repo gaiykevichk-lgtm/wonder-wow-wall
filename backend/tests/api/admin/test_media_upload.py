@@ -322,6 +322,24 @@ class TestUploadValidation:
         body = resp.json()
         assert body["code"] == "media_too_large"
 
+    @pytest.mark.asyncio
+    async def test_global_cap_api_pre_reject_is_413(self, client, storage_root):
+        # Exercises the API-layer early check (media.py:146) that fires
+        # BEFORE the use case runs. 21MB > 20MB global cap → 413 without
+        # Pillow decode. The per-purpose test above hits the use-case
+        # check (5MB < 20MB); this one hits the API-layer guard.
+        token = await _admin_token(client)
+        blob = b"\x00" * (20 * 1024 * 1024 + 1)
+        resp = await client.post(
+            "/api/admin/media",
+            params={"purpose": "MISC"},
+            files={"file": ("huge.bin", blob, "image/jpeg")},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 413
+        body = resp.json()
+        assert body["code"] == "media_too_large"
+
 
 # ─── Delete ──────────────────────────────────────────────────────────
 
