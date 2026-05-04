@@ -263,7 +263,7 @@ Use cases:
 
 Изменения:
 - Увеличить `borderRadius` → 16px (cards), 12px (buttons/inputs)
-- Убрать зелёный accent (`#4CAF50`) → заменить на чёрный/тёмно-серый CTA (Apple-style)
+- Сохранить зелёный accent (`#4CAF50`) — фирменный цвет бренда, не менять
 - Увеличить белое пространство (padding, gaps)
 - Упростить shadows (Apple использует минималистичные тени)
 - Letter-spacing: -0.02em для заголовков (как у Apple)
