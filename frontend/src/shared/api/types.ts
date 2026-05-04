@@ -60,6 +60,40 @@ export interface ApiReview {
   created_at: string;
 }
 
+// Configurator (Phase 5)
+export interface ApiTextureColor {
+  id: string;
+  name: string;
+  hex: string;
+  swatch_image: string;
+}
+
+export interface ApiTexture {
+  id: string;
+  name: string;
+  slug: string;
+  swatch_image: string;
+  colors: ApiTextureColor[];
+}
+
+export interface ApiVariantImageRef {
+  design_id: string;
+  texture_id: string;
+  color_id: string;
+  image_path: string;
+}
+
+export interface ApiFullConfig {
+  id: string;
+  name: string;
+  slug: string;
+  preview_image: string;
+  description: string;
+  price: number;
+  textures: ApiTexture[];
+  variant_images: ApiVariantImageRef[];
+}
+
 // Orders
 export interface ApiOrderItem {
   id: string;
@@ -69,6 +103,9 @@ export interface ApiOrderItem {
   color: string;
   quantity: number;
   unit_price: number;
+  texture_name?: string;
+  texture_id?: string;
+  color_id?: string;
 }
 
 export interface ApiOrder {
@@ -90,6 +127,9 @@ export interface ApiCreateOrderRequest {
     color?: string;
     quantity?: number;
     unit_price?: number;
+    texture_name?: string;
+    texture_id?: string;
+    color_id?: string;
   }[];
   address: {
     city: string;

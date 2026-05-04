@@ -17,6 +17,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { products } from '../../catalog/model/data';
+import { useConfigColors } from '../../catalog/api/useConfigColors';
 import { useShopSettings } from '../../../shared/api/shopApi';
 import { useSubscriptionStore } from '../../subscription/model/subscriptionStore';
 import { useCartStore } from '../../order/model/cartStore';
@@ -168,7 +169,8 @@ export default function ConstructorPage() {
   const { designOverlayPrice } = useShopSettings();
 
   const selectedDesign = products.find((p) => p.id === selectedDesignId) || products[0];
-  const selectedColor = selectedDesign.colors[selectedColorIdx] || selectedDesign.colors[0];
+  const { colors: designColors } = useConfigColors(selectedDesign.id, selectedDesign.colors);
+  const selectedColor = designColors[selectedColorIdx] || designColors[0];
   const selectedSize = SIZE_OPTIONS.find((s) => s.key === selectedSizeKey)!;
   const selectedPreset = selectedPresetId ? INTERIOR_PRESETS.find((p) => p.id === selectedPresetId) || null : null;
 
@@ -841,7 +843,7 @@ export default function ConstructorPage() {
                 Оттенок: {selectedColor.name}
               </div>
               <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                {selectedDesign.colors.map((c, idx) => (
+                {designColors.map((c, idx) => (
                   <Tooltip title={c.name} key={c.hex + idx}>
                     <div
                       onClick={() => setSelectedColorIdx(idx)}

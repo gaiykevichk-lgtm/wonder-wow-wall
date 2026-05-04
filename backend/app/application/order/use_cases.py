@@ -34,6 +34,9 @@ class CreateOrder:
                 color=item_data.get("color", ""),
                 quantity=item_data.get("quantity", 1),
                 unit_price=item_data.get("unit_price", 0),
+                texture_name=item_data.get("texture_name", ""),
+                texture_id=item_data.get("texture_id", ""),
+                color_id=item_data.get("color_id", ""),
             ))
         return await self.repo.create(order)
 

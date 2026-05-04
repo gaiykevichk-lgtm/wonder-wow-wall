@@ -1,6 +1,6 @@
 // Maps API responses to existing frontend types
-import type { PanelProduct, Category, Review } from '../model/types';
-import type { ApiDesign, ApiCategory, ApiReview } from '../../../shared/api/types';
+import type { PanelProduct, Category, Review, FullConfig } from '../model/types';
+import type { ApiDesign, ApiCategory, ApiReview, ApiFullConfig } from '../../../shared/api/types';
 import { DESIGN_OVERLAY_PRICE, PANEL_SIZES } from '../../../shared/config/constants';
 
 export function apiDesignToProduct(d: ApiDesign): PanelProduct {
@@ -35,6 +35,34 @@ export function apiDesignToProduct(d: ApiDesign): PanelProduct {
     badge: d.is_new ? 'Новинка' : d.is_popular ? 'Популярное' : undefined,
     inStock: true,
     room: [],
+  };
+}
+
+export function apiFullConfigToFullConfig(fc: ApiFullConfig): FullConfig {
+  return {
+    designId: fc.id,
+    designName: fc.name,
+    previewImage: fc.preview_image,
+    description: fc.description,
+    price: fc.price || DESIGN_OVERLAY_PRICE,
+    textures: fc.textures.map((t) => ({
+      id: t.id,
+      name: t.name,
+      slug: t.slug,
+      swatchImage: t.swatch_image,
+      colors: t.colors.map((c) => ({
+        id: c.id,
+        name: c.name,
+        hex: c.hex,
+        swatchImage: c.swatch_image,
+      })),
+    })),
+    variantImages: fc.variant_images.map((v) => ({
+      designId: v.design_id,
+      textureId: v.texture_id,
+      colorId: v.color_id,
+      imagePath: v.image_path,
+    })),
   };
 }
 

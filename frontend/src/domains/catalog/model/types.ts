@@ -22,6 +22,38 @@ export interface PanelProduct {
   usageExamples?: { room: string; image: string; caption: string }[];
 }
 
+export interface Texture {
+  id: string;
+  name: string;
+  slug: string;
+  swatchImage: string;
+  colors: TextureColor[];
+}
+
+export interface TextureColor {
+  id: string;
+  name: string;
+  hex: string;
+  swatchImage: string;
+}
+
+export interface VariantImageRef {
+  designId: string;
+  textureId: string;
+  colorId: string;
+  imagePath: string;
+}
+
+export interface FullConfig {
+  designId: string;
+  designName: string;
+  previewImage: string;
+  description: string;
+  price: number;
+  textures: Texture[];
+  variantImages: VariantImageRef[];
+}
+
 export interface Category {
   key: string;
   label: string;

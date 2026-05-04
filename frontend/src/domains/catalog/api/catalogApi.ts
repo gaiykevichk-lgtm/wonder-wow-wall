@@ -1,12 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../../shared/api';
-import type { ApiDesignListResponse, ApiDesign, ApiCategory, ApiReview } from '../../../shared/api/types';
+import type { ApiDesignListResponse, ApiDesign, ApiCategory, ApiReview, ApiFullConfig } from '../../../shared/api/types';
+import { apiFullConfigToFullConfig } from '../api/adapters';
 
 // ─── Query Keys ─────────────────────────────────────────────────────────────
 
 export const catalogKeys = {
   designs: (params?: Record<string, string | number | undefined>) => ['designs', params] as const,
   design: (id: string) => ['designs', id] as const,
+  fullConfig: (designId: string) => ['fullConfig', designId] as const,
   categories: () => ['categories'] as const,
   reviews: (designId: string) => ['reviews', designId] as const,
   // Phase 10 — public «с этим покупают» rail. Keyed by the natural source
@@ -138,6 +140,19 @@ export function useDesign(id: string) {
     queryKey: catalogKeys.design(id),
     queryFn: () => api.get<ApiDesign>(`/designs/${id}`),
     enabled: !!id,
+    retry: false,
+  });
+}
+
+export function useFullConfig(designId: string) {
+  return useQuery({
+    queryKey: catalogKeys.fullConfig(designId),
+    queryFn: async () => {
+      const raw = await api.get<ApiFullConfig>(`/designs/${designId}/full-config`);
+      return apiFullConfigToFullConfig(raw);
+    },
+    enabled: !!designId,
+    staleTime: 30_000,
     retry: false,
   });
 }

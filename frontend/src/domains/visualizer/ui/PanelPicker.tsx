@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Input, Radio, Skeleton, Tag, Typography } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { products } from '../../catalog/model/data';
+import { useConfigColors } from '../../catalog/api/useConfigColors';
 import type { PanelSizeKey } from '../model/types';
 
 const { Text } = Typography;
@@ -36,6 +37,10 @@ export function PanelPicker({
   );
 
   const selectedProduct = products.find((p) => p.id === selectedDesignId);
+  const { colors: productColors } = useConfigColors(
+    selectedProduct?.id ?? '',
+    selectedProduct?.colors ?? [],
+  );
 
   return (
     <div
@@ -159,7 +164,7 @@ export function PanelPicker({
       </div>
 
       {/* Color selector */}
-      {selectedProduct && selectedProduct.colors.length > 0 && (
+      {selectedProduct && productColors.length > 0 && (
         <div>
           <Text
             strong
@@ -168,7 +173,7 @@ export function PanelPicker({
             Цвет
           </Text>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {selectedProduct.colors.map((c) => (
+            {productColors.map((c) => (
               <div
                 key={c.hex}
                 data-testid={`color-${c.hex}`}

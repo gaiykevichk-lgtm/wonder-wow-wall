@@ -20,6 +20,9 @@ class OrderItemRequest(BaseModel):
     color: str = ""
     quantity: int = 1
     unit_price: int = 0
+    texture_name: str = ""
+    texture_id: str = ""
+    color_id: str = ""
 
 
 class AddressRequest(BaseModel):
@@ -55,6 +58,9 @@ class OrderItemSchema(BaseModel):
     color: str
     quantity: int
     unit_price: int
+    texture_name: str = ""
+    texture_id: str = ""
+    color_id: str = ""
 
 
 class OrderSchema(BaseModel):
@@ -120,6 +126,7 @@ def _order_to_response(order) -> dict:
             {
                 "id": i.id, "design_name": i.design_name, "design_image": i.design_image,
                 "size_key": i.size_key, "color": i.color, "quantity": i.quantity, "unit_price": i.unit_price,
+                "texture_name": i.texture_name, "texture_id": i.texture_id, "color_id": i.color_id,
             }
             for i in order.items
         ],

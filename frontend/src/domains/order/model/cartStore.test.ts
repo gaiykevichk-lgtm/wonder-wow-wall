@@ -5,11 +5,14 @@ const reset = () => useCartStore.setState({ items: [], isOpen: false });
 
 const mockItem = (overrides: Partial<{ id: string; name: string; price: number }> = {}) => ({
   id: overrides.id ?? 'item-1',
+  productId: 'design-1',
   name: overrides.name ?? 'Тропический лес',
   image: '/images/design-1.jpg',
   price: overrides.price ?? 2090,
+  area: 1,
   size: '30×30 см',
-  color: 'Зелёный',
+  color: '#4CAF50',
+  colorName: 'Зелёный',
 });
 
 describe('cartStore', () => {

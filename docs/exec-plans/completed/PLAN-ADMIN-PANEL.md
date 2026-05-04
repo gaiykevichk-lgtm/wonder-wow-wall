@@ -664,6 +664,18 @@
 4. **`recent_orders` контракт в `ApiUserDetail`** — фронт ожидает `{id, number, status, status_label, total, created_at}`. Если бэкенд позже добавит поля (e.g. `currency`), TS пройдёт через `...over` spread в тестах, но прод-парсер должен оставаться лояльным к лишним полям. Сейчас `usersAdminApi.ts` использует прямой JSON-cast — не строгое чтение. Это общая черта проекта (см. `ordersAdminApi.ts`), не Phase 5.
 5. **Пагинация AntD `pageSizeOptions: [25, 50, 100, 200]`** — синхронизирована с `MAX_PAGE_SIZE=200` (test-drift-detector в `usersAdminStore.test.ts` пинит совпадение). При изменении лимита — править все три точки (Pydantic Query, store константа, AntD options).
 
+### Аудит 2026-05-04 — повторная независимая проверка (line-by-line, 30+ файлов)
+
+**Прогон тестов:** 94/94 passed (46 backend + 17 pre-existing domain + 31 frontend). Регрессий нет.
+
+**Новые находки (ранее не зафиксированы):**
+
+6. **`_user_not_found()` — двойная вложенность `detail` в 404 ответе** (`api/admin/users.py:182-193`): `HTTPException(detail={"detail": msg, "code": "user_not_found"})` — FastAPI оборачивает `detail` в `{"detail": ...}`, итого body = `{"detail": {"detail": "...", "code": "user_not_found"}}`. Все глобальные handlers возвращают плоский `JSONResponse(content={"detail": ..., "code": ...})`. **Несогласованность.** Не блокер: фронтенд проверяет 404 только по `error.status === 404`. **Fix:** заменить на `JSONResponse(status_code=404, content={"detail": msg, "code": "user_not_found"})` либо вынести `UserNotFoundError` в глобальный handler.
+7. **`except ValueError` ловит слишком широко** (`api/admin/users.py:295,318`): в `grant_admin()`/`revoke_admin()` catch `ValueError` → 404. `GrantAdminRole`/`RevokeAdminRole` (Phase 1) бросают `ValueError("User not found: ...")`. Если UC добавит другую валидацию ValueError, она ошибочно станет 404 вместо 422. **Fix:** мигрировать Phase 1 use cases на `UserNotFoundError`.
+8. **Pre-existing: `SqlUserRepository.update` не персистит `password_hash`** (`sql.py:683-688`): метод обновляет `name`, `phone`, `email`, `role`, `is_blocked`, но пропускает `password_hash`. `ResetPassword.execute()` → `repo.update()` → в SQL-режиме новый пароль НЕ сохранится. **Phase 5 корректно добавила `is_blocked`**; баг с password_hash существовал до Phase 5. Fixing later.
+
+**Вердикт:** фаза стабильна, критических дефектов нет. Три новых пункта тех-долга (#6, #7, #8) — не блокеры, могут быть закрыты попутно в любой последующей фазе.
+
 ---
 
 ## Фаза 6: Хранилище файлов (инфраструктурная фаза) ✅ РЕАЛИЗОВАНО (2026-04-25)
