@@ -193,6 +193,22 @@ class TestGetVariantImage:
         resp = await client.get("/api/designs/d1/variant-image")
         assert resp.status_code == 422
 
+    @pytest.mark.asyncio
+    async def test_unpublished_design_404(self, client):
+        d = Design(
+            id="d-unpub-vi", name="Hidden", slug="hidden-vi",
+            category_id="c1", price=100, is_published=False,
+        )
+        _mem_design_repo._designs.append(d)
+        t = _seed_texture()
+        c = _seed_color(t.id)
+        _seed_variant(d.id, t.id, c.id)
+        resp = await client.get(
+            f"/api/designs/{d.id}/variant-image",
+            params={"texture_id": t.id, "color_id": c.id},
+        )
+        assert resp.status_code == 404
+
 
 # ─── GET /api/designs/{id}/full-config ──────────────────────────────
 
@@ -248,3 +264,10 @@ class TestDesignListPreviewImage:
         match = [i for i in items if i["id"] == d.id]
         assert len(match) == 1
         assert match[0]["preview_image"] == "/preview.png"
+
+    @pytest.mark.asyncio
+    async def test_detail_includes_preview_image(self, client):
+        d = _ensure_design()
+        resp = await client.get(f"/api/designs/{d.id}")
+        assert resp.status_code == 200
+        assert resp.json()["preview_image"] == "/preview.png"

@@ -219,7 +219,8 @@ async def get_design(request: Request, design_id: str, design_repo=Depends(get_d
         raise HTTPException(status_code=404, detail="Design not found")
     return {
         "id": d.id, "name": d.name, "slug": d.slug, "category_id": d.category_id,
-        "style": d.style, "image": d.image, "description": d.description,
+        "style": d.style, "image": d.image, "preview_image": d.preview_image,
+        "description": d.description,
         "price": d.price, "colors": [{"hex": c.hex, "name": c.name} for c in d.colors],
         "rating": d.rating, "reviews_count": d.reviews_count,
         "is_new": d.is_new, "is_popular": d.is_popular,
@@ -454,8 +455,12 @@ async def get_variant_image(
     design_id: str,
     texture_id: str = Query(...),
     color_id: str = Query(...),
+    design_repo=Depends(get_design_repo),
     variant_repo=Depends(get_variant_image_repo),
 ):
+    design = await design_repo.get_by_id(design_id)
+    if not design or not design.is_published:
+        raise HTTPException(status_code=404, detail="Design not found")
     vi = await GetVariantImage(variant_repo).execute(design_id, texture_id, color_id)
     if vi is None:
         raise HTTPException(status_code=404, detail="Variant image not found")

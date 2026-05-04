@@ -293,10 +293,23 @@ Use cases:
 - 242 domain тестов pass, 0 regressions
 - 297 application тестов pass (включая 32 новых texture/variant use case тестов)
 - 217 admin API тестов pass (включая 24 новых texture admin тестов)
-- 72 non-admin API тестов pass (включая 15 новых texture public тестов)
+- 74 non-admin API тестов pass (включая 17 новых texture public тестов)
 - 33 visualizer тестов pass
 - 28 infrastructure тестов pass
 - 6 fails в `test_api.py` — pre-existing, не связаны с Phase 2
+
+### 2.6 Результат ревью (2026-05-04)
+
+**Критические проблемы (исправлены):**
+1. `catalog.py:220` — detail endpoint `GET /api/designs/{id}` не включал `preview_image` в ответ (list endpoint включал). Конфигуратор (Phase 5) зависит от этого поля. **Исправлено, тест добавлен.**
+2. `catalog.py:451` — endpoint `GET /api/designs/{id}/variant-image` не проверял `design.is_published`, нарушая security-позицию Phase 7A (остальные design-scoped endpoints проверяли). **Исправлено, тест добавлен.**
+
+**Некритические (техдолг, не блокируют Phase 3+):**
+- N1: `UpdateTextureAdmin` slug check без `existing.id != texture.id` guard — логически верно, стилистически отличается от панельного паттерна.
+- N2: `UpdateTextureColorAdmin` обходит hex-валидацию `__post_init__` при мутации — invalid hex может проникнуть через update.
+- N3: `TextureColorCreate.hex` Pydantic schema без pattern constraint — на create ловится доменом, на update (N2) — нет.
+- N4: `ListVariantImagesAdmin` возвращает `[]` без фильтра — молчаливое поведение, потенциально неочевидное для фронта.
+- N5: `default_colors` заявлен в Phase 2 spec (секция 2.1), но не реализован — фактически отложен до Phase 7.3 (R3). План нужно синхронизировать.
 
 ---
 
