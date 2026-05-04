@@ -82,10 +82,8 @@ def _design_to_domain(m: DesignModel) -> Design:
         style=m.style, image=m.image, description=m.description, price=m.price,
         colors=colors, rating=m.rating, reviews_count=m.reviews_count,
         is_new=m.is_new, is_popular=m.is_popular,
-        # Phase 7A — `getattr` shields tests that build a fake `DesignModel`
-        # without the column (e.g., a hand-rolled stub) from `AttributeError`.
-        # Production rows always have it (NOT NULL with `server_default=true()`).
         is_published=bool(getattr(m, "is_published", True)),
+        preview_image=getattr(m, "preview_image", ""),
         created_at=m.created_at,
     )
 
@@ -107,6 +105,9 @@ def _order_to_domain(m: OrderModel) -> Order:
             id=it.id, design_id=it.design_id, design_name=it.design_name,
             design_image=it.design_image, size_key=it.size_key, color=it.color,
             quantity=it.quantity, unit_price=it.unit_price,
+            texture_name=getattr(it, "texture_name", ""),
+            texture_id=getattr(it, "texture_id", ""),
+            color_id=getattr(it, "color_id", ""),
         )
         for it in (m.items or [])
     ]
@@ -290,6 +291,7 @@ class SqlDesignRepository(DesignRepository):
             model.is_new = design.is_new
             model.is_popular = design.is_popular
             model.is_published = design.is_published
+            model.preview_image = design.preview_image
             model.colors = [{"hex": c.hex, "name": c.name} for c in design.colors]
         await self._session.flush()
         return design
@@ -310,6 +312,7 @@ class SqlDesignRepository(DesignRepository):
             is_new=design.is_new,
             is_popular=design.is_popular,
             is_published=design.is_published,
+            preview_image=design.preview_image,
             created_at=design.created_at,
         )
         self._session.add(model)
@@ -437,6 +440,9 @@ class SqlOrderRepository(OrderRepository):
                 design_name=item.design_name, design_image=item.design_image,
                 size_key=item.size_key, color=item.color,
                 quantity=item.quantity, unit_price=item.unit_price,
+                texture_name=item.texture_name,
+                texture_id=item.texture_id,
+                color_id=item.color_id,
             )
             self._session.add(item_model)
         await self._session.flush()
