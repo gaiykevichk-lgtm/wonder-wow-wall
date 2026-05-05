@@ -58,22 +58,108 @@ async def seed_everything():
     print(f"Admin seeded: admin@wow.ru / admin123", file=sys.stderr)
     print(f"Users seeded: {len(users)}", file=sys.stderr)
 
-    # ── Reviews ───────────────────────────────────────────────────────
+    # ── Reviews (для всех 37 форм) ─────────────────────────────────────
+    from uuid import uuid4
     reviews_data = [
-        {"design_id": "d-1", "user_name": "Иван П.", "rating": 5, "text": "Потрясающее качество!"},
-        {"design_id": "d-1", "user_name": "Анна С.", "rating": 4, "text": "Очень красиво, но монтаж сложнее."},
-        {"design_id": "d-1", "user_name": "Елена В.", "rating": 5, "text": "Заказала на всю стену!"},
-        {"design_id": "d-2", "user_name": "Олег К.", "rating": 5, "text": "Горы выглядят очень реалистично."},
-        {"design_id": "d-2", "user_name": "Дмитрий М.", "rating": 4, "text": "Хороший дизайн."},
-        {"design_id": "d-3", "user_name": "Иван П.", "rating": 5, "text": "Океан создаёт атмосферу спокойствия."},
-        {"design_id": "d-4", "user_name": "Елена В.", "rating": 5, "text": "Современный дизайн."},
-        {"design_id": "d-5", "user_name": "Олег К.", "rating": 5, "text": "Космос завораживает!"},
-        {"design_id": "d-5", "user_name": "Дмитрий М.", "rating": 5, "text": "Идеально для спальни."},
-        {"design_id": "d-7", "user_name": "Иван П.", "rating": 4, "text": "Геометрия смотрится стильно."},
-        {"design_id": "d-9", "user_name": "Анна С.", "rating": 5, "text": "Минимализм — идеально."},
+        # 30×30
+        {"design_id": "flat-s-01", "user_name": "Иван П.", "rating": 5, "text": "Идеальная база — нанесли текстуру дерева и комната преобразилась."},
+        {"design_id": "flat-s-01", "user_name": "Анна С.", "rating": 5, "text": "Плоская панель — универсальный вариант на все случаи. Рекомендую!"},
+        {"design_id": "flat-s-01", "user_name": "Елена В.", "rating": 4, "text": "Качество на высоте, монтаж занял 20 минут на 4 м²."},
+        {"design_id": "tslat-s-02", "user_name": "Дмитрий М.", "rating": 5, "text": "Рейки потрясающе смотрятся в прихожей — визуально стена стала выше."},
+        {"design_id": "tslat-s-02", "user_name": "Олег К.", "rating": 4, "text": "Хорошие рейки, но нужно точно выставлять уровень."},
+        {"design_id": "tslat-s-02", "user_name": "Иван П.", "rating": 5, "text": "Заказал на всю стену в коридоре — гости думают, что это натуральное дерево."},
+        {"design_id": "wslat-s-03", "user_name": "Анна С.", "rating": 5, "text": "Трио — это элегантность и простота. Идеально за ТВ."},
+        {"design_id": "wslat-s-03", "user_name": "Елена В.", "rating": 4, "text": "Широкие секции дают приятный ритм, но хотелось бы ещё вариант цвета."},
+        {"design_id": "dslat-s-04", "user_name": "Олег К.", "rating": 5, "text": "Диагональ — вау-эффект! Все спрашивают, где заказывали."},
+        {"design_id": "dslat-s-04", "user_name": "Дмитрий М.", "rating": 5, "text": "Динамичный рисунок, который не надоедает. Очень доволен!"},
+        {"design_id": "dslat-s-04", "user_name": "Иван П.", "rating": 5, "text": "Лучший выбор для акцентной стены. Свет играет потрясающе."},
+        {"design_id": "key-s-05", "user_name": "Анна С.", "rating": 5, "text": "Лаконично и стильно. Одна грань — а эффект колоссальный."},
+        {"design_id": "key-s-05", "user_name": "Елена В.", "rating": 4, "text": "Минимализм в чистом виде. Подошло к скандинавскому интерьеру."},
+        {"design_id": "col-s-06", "user_name": "Олег К.", "rating": 5, "text": "Колонны придали комнате настоящий дворцовый вид!"},
+        {"design_id": "col-s-06", "user_name": "Дмитрий М.", "rating": 5, "text": "Классика не стареет. Отличная форма для гостиной."},
+        {"design_id": "col-s-06", "user_name": "Иван П.", "rating": 4, "text": "Благородно смотрится с текстурой камня. Советую!"},
+        {"design_id": "arc-s-07", "user_name": "Анна С.", "rating": 5, "text": "Арка создаёт ощущение мягкости. Спальня стала уютнее."},
+        {"design_id": "arc-s-07", "user_name": "Елена В.", "rating": 5, "text": "Заказала в детскую — дочь в восторге от формы."},
+        {"design_id": "arc-s-07", "user_name": "Олег К.", "rating": 4, "text": "Романская арка — неожиданно хорошо для современного интерьера."},
+        {"design_id": "trap-s-08", "user_name": "Дмитрий М.", "rating": 5, "text": "Трапеция с боковой подсветкой — это произведение искусства."},
+        {"design_id": "trap-s-08", "user_name": "Иван П.", "rating": 4, "text": "Чёткие линии, хороший объём. Доволен покупкой."},
+        {"design_id": "trap-s-08", "user_name": "Анна С.", "rating": 5, "text": "Геометрия на стене — именно то, что искала для кабинета."},
+        {"design_id": "zig-s-09", "user_name": "Елена В.", "rating": 5, "text": "Зигзаг — это движение на стене! Невероятная энергетика."},
+        {"design_id": "zig-s-09", "user_name": "Олег К.", "rating": 5, "text": "Динамичный рельеф, который оживляет любое пространство."},
+        {"design_id": "zig-s-09", "user_name": "Дмитрий М.", "rating": 4, "text": "Интересный паттерн, хорошо сочетается с металлом."},
+        {"design_id": "wav-s-10", "user_name": "Иван П.", "rating": 5, "text": "Волна — наш фаворит! Свет скользит по поверхности как по воде."},
+        {"design_id": "wav-s-10", "user_name": "Анна С.", "rating": 5, "text": "Заказали на всю стену в гостиной — эффект просто космический."},
+        {"design_id": "wav-s-10", "user_name": "Елена В.", "rating": 5, "text": "Самая красивая форма в коллекции. Не пожалели ни секунды."},
+        {"design_id": "sqr-s-11", "user_name": "Олег К.", "rating": 5, "text": "Квадраты создают игру объёмов. Современно и свежо."},
+        {"design_id": "sqr-s-11", "user_name": "Дмитрий М.", "rating": 4, "text": "Мозаичный эффект — то, что нужно для лофта."},
+        {"design_id": "pyr-s-12", "user_name": "Иван П.", "rating": 5, "text": "Кессон — классика! Стена выглядит как в итальянском палаццо."},
+        {"design_id": "pyr-s-12", "user_name": "Анна С.", "rating": 5, "text": "Ступенчатая рамка придаёт глубину и торжественность."},
+        {"design_id": "pyr-s-12", "user_name": "Елена В.", "rating": 5, "text": "Для классического интерьера — идеальный выбор."},
+        {"design_id": "rdiv-s-13", "user_name": "Олег К.", "rating": 4, "text": "Минималистичный ригель. Подошёл для акцента над диваном."},
+        {"design_id": "rdiv-s-13", "user_name": "Дмитрий М.", "rating": 5, "text": "Строго и лаконично. Именно такой рельеф и искал."},
+        {"design_id": "cdiv-s-14", "user_name": "Иван П.", "rating": 5, "text": "Цилиндр ловит свет по-особенному. Очень тактильная форма."},
+        {"design_id": "cdiv-s-14", "user_name": "Анна С.", "rating": 4, "text": "Необычная скульптурная форма, хорошо в паре с подсветкой."},
+        # 30×60
+        {"design_id": "flat-m-01", "user_name": "Елена В.", "rating": 5, "text": "Вертикальный формат визуально поднимает потолки."},
+        {"design_id": "flat-m-01", "user_name": "Олег К.", "rating": 4, "text": "Простая и функциональная. Хорошая основа для текстуры."},
+        {"design_id": "rslat-m-02", "user_name": "Дмитрий М.", "rating": 5, "text": "Рейки в вертикальном формате — коридор стал вдвое просторнее визуально."},
+        {"design_id": "rslat-m-02", "user_name": "Иван П.", "rating": 5, "text": "Поставил в прихожую — потолки кажутся на метр выше."},
+        {"design_id": "rslat-m-02", "user_name": "Анна С.", "rating": 4, "text": "Ритмичные рейки, отличное качество материала."},
+        {"design_id": "cslat-m-03", "user_name": "Елена В.", "rating": 5, "text": "Каскад — глубина рельефа впечатляет. Очень объёмно!"},
+        {"design_id": "cslat-m-03", "user_name": "Олег К.", "rating": 4, "text": "Ступенчатые планки хорошо играют со светом."},
+        {"design_id": "ddia-m-04", "user_name": "Дмитрий М.", "rating": 5, "text": "Двойная диагональ — это шедевр! Узор как на дизайнерских обоях."},
+        {"design_id": "ddia-m-04", "user_name": "Иван П.", "rating": 5, "text": "Сложная геометрия, но монтаж прост. Результат превзошёл ожидания."},
+        {"design_id": "ddia-m-04", "user_name": "Анна С.", "rating": 5, "text": "Эффект плетения — все гости в восторге!"},
+        {"design_id": "her-m-05", "user_name": "Елена В.", "rating": 5, "text": "Ёлочка — вечная классика. Смотрится дорого и солидно."},
+        {"design_id": "her-m-05", "user_name": "Олег К.", "rating": 4, "text": "Паркетный рисунок на стене — неожиданно и красиво."},
+        {"design_id": "her-m-05", "user_name": "Дмитрий М.", "rating": 5, "text": "С текстурой дерева — невозможно отличить от настоящего паркета."},
+        {"design_id": "clo-m-06", "user_name": "Иван П.", "rating": 5, "text": "Кристалл — игра граней при свете свечей завораживает!"},
+        {"design_id": "clo-m-06", "user_name": "Анна С.", "rating": 5, "text": "Как драгоценный камень на стене. Люкс!"},
+        {"design_id": "clo-m-06", "user_name": "Елена В.", "rating": 4, "text": "Объёмные грани создают неповторимый рельеф. Рекомендую."},
+        {"design_id": "seg-m-07", "user_name": "Олег К.", "rating": 5, "text": "Сегменты — архитектурная элегантность. Кабинет преобразился."},
+        {"design_id": "seg-m-07", "user_name": "Дмитрий М.", "rating": 4, "text": "Шестиугольники в удлинённом виде — современно и стильно."},
+        {"design_id": "ncm-m-08", "user_name": "Иван П.", "rating": 4, "text": "Тонкие рёбра — как вельвет на стене. Приятная тактильность."},
+        {"design_id": "ncm-m-08", "user_name": "Анна С.", "rating": 5, "text": "С текстурой текстиля — невероятно уютно."},
+        {"design_id": "nmol-m-09", "user_name": "Елена В.", "rating": 5, "text": "Молдинг по центру — классика в современном прочтении. Элегантно."},
+        {"design_id": "nmol-m-09", "user_name": "Олег К.", "rating": 4, "text": "Филёнка без лишних деталей. Хорошо подходит для спальни."},
+        {"design_id": "wcm-m-10", "user_name": "Дмитрий М.", "rating": 5, "text": "Широкий гребень напоминает застывшие волны. Медитативно."},
+        {"design_id": "wcm-m-10", "user_name": "Иван П.", "rating": 4, "text": "Плавный профиль хорошо рассеивает свет."},
+        {"design_id": "wmol-m-11", "user_name": "Анна С.", "rating": 5, "text": "Широкий молдинг — для тех, кто не боится классики. Великолепно!"},
+        {"design_id": "wmol-m-11", "user_name": "Елена В.", "rating": 5, "text": "С текстурой камня — комната стала похожа на галерею."},
+        {"design_id": "wmol-m-11", "user_name": "Олег К.", "rating": 4, "text": "Выраженная рамка — солидно и основательно."},
+        {"design_id": "tet-m-12", "user_name": "Дмитрий М.", "rating": 5, "text": "Тетра — геометрическая загадка. Форма меняется от угла обзора!"},
+        {"design_id": "tet-m-12", "user_name": "Иван П.", "rating": 5, "text": "Четыре грани к центру — необычно и завораживающе."},
+        # 60×60
+        {"design_id": "flat-l-01", "user_name": "Анна С.", "rating": 5, "text": "Большая плоская панель — быстро закрыли всю стену. Идеально!"},
+        {"design_id": "flat-l-01", "user_name": "Елена В.", "rating": 4, "text": "Максимум площади за один элемент — экономия времени на монтаже."},
+        {"design_id": "frel-l-02", "user_name": "Олег К.", "rating": 5, "text": "Плавный рельеф — стена играет как шёлк при вечернем свете."},
+        {"design_id": "frel-l-02", "user_name": "Дмитрий М.", "rating": 5, "text": "Волнообразные переходы — это магия! Гостиная стала галереей."},
+        {"design_id": "frel-l-02", "user_name": "Иван П.", "rating": 4, "text": "Мягкие волны отлично подошли к минималистичному интерьеру."},
+        {"design_id": "crel-l-03", "user_name": "Анна С.", "rating": 5, "text": "Классический рельеф — основа нашего интерьера. Безупречно!"},
+        {"design_id": "crel-l-03", "user_name": "Елена В.", "rating": 5, "text": "Филёнка большого формата — как настоящие деревянные панели."},
+        {"design_id": "crel-l-03", "user_name": "Олег К.", "rating": 5, "text": "Для классики — лучший выбор. Заказал на 3 комнаты!"},
+        {"design_id": "brk-l-04", "user_name": "Дмитрий М.", "rating": 5, "text": "Кирпич — лофт без ремонта! Выглядит как настоящая кладка."},
+        {"design_id": "brk-l-04", "user_name": "Иван П.", "rating": 5, "text": "Кирпичная стена за час. Соседи не верят, что это панели."},
+        {"design_id": "brk-l-04", "user_name": "Анна С.", "rating": 4, "text": "Объёмные швы дают реалистичный эффект. Очень довольна."},
+        {"design_id": "lwav-l-05", "user_name": "Елена В.", "rating": 5, "text": "Длинная волна на большой стене — это океан в комнате."},
+        {"design_id": "lwav-l-05", "user_name": "Олег К.", "rating": 5, "text": "Амплитуда рельефа раскрывается на площади. Потрясающе!"},
+        {"design_id": "lwav-l-05", "user_name": "Дмитрий М.", "rating": 4, "text": "Крупная волна хорошо сочетается с текстурой камня."},
+        {"design_id": "cir-l-06", "user_name": "Иван П.", "rating": 5, "text": "Круг — дзен на стене. Медитирую каждый вечер глядя на неё."},
+        {"design_id": "cir-l-06", "user_name": "Анна С.", "rating": 5, "text": "Спокойная форма — идеально для спальни или yoga-зоны."},
+        {"design_id": "cir-l-06", "user_name": "Елена В.", "rating": 5, "text": "Минимализм и гармония в одной панели. Шедевр."},
+        {"design_id": "rho-l-07", "user_name": "Олег К.", "rating": 5, "text": "Ромб с фаской — art deco прямо в квартире!"},
+        {"design_id": "rho-l-07", "user_name": "Дмитрий М.", "rating": 4, "text": "Строгая геометрия, хорошо вписалась в кабинет."},
+        {"design_id": "mos-l-08", "user_name": "Иван П.", "rating": 5, "text": "Мозаика ловит свет с каждой грани по-своему. Живая стена!"},
+        {"design_id": "mos-l-08", "user_name": "Анна С.", "rating": 4, "text": "Каждый прямоугольник под своим углом — красивая игра теней."},
+        {"design_id": "ffrm-l-09", "user_name": "Елена В.", "rating": 4, "text": "Плоская рамка — сдержанно и со вкусом. Для минималистов."},
+        {"design_id": "ffrm-l-09", "user_name": "Олег К.", "rating": 5, "text": "Простая форма, но именно такая деталь завершает интерьер."},
+        {"design_id": "pfrm-l-10", "user_name": "Дмитрий М.", "rating": 5, "text": "Профильная рамка — глубина за счёт фаски впечатляет."},
+        {"design_id": "pfrm-l-10", "user_name": "Иван П.", "rating": 4, "text": "Скошенный профиль даёт красивую тень. Хорошая форма."},
+        {"design_id": "cfrm-l-11", "user_name": "Анна С.", "rating": 5, "text": "Классическая рамка — буазери мечты! Комната стала дворцом."},
+        {"design_id": "cfrm-l-11", "user_name": "Елена В.", "rating": 5, "text": "Многоступенчатый профиль — каждая ступень ловит свет."},
+        {"design_id": "cfrm-l-11", "user_name": "Олег К.", "rating": 5, "text": "Для классического интерьера ничего лучше не найти."},
     ]
     for rd in reviews_data:
-        from uuid import uuid4
         r = DesignReview(id=str(uuid4()), design_id=rd["design_id"], user_id="",
                          user_name=rd["user_name"], rating=rd["rating"], text=rd["text"])
         await _mem_review_repo.add(r)
@@ -314,30 +400,67 @@ async def seed_everything():
                     pass
     print(f"Variant images seeded: {vi_count}", file=sys.stderr)
 
-    # ── Recommendations ───────────────────────────────────────────────
+    # ── Recommendations (каждая форма → 3 похожие) ─────────────────────
     targets_data = [
-        ("d-1","d-2",1), ("d-1","d-5",2), ("d-1","d-12",3),
-        ("d-5","d-4",1), ("d-5","d-1",2),
-        ("d-9","d-10",1), ("d-9","d-6",2),
+        # 30×30: внутри категории + cross-size
+        ("flat-s-01", ["tslat-s-02", "wslat-s-03", "flat-m-01"]),
+        ("tslat-s-02", ["wslat-s-03", "dslat-s-04", "rslat-m-02"]),
+        ("wslat-s-03", ["tslat-s-02", "key-s-05", "cslat-m-03"]),
+        ("dslat-s-04", ["zig-s-09", "trap-s-08", "ddia-m-04"]),
+        ("key-s-05", ["wslat-s-03", "rdiv-s-13", "flat-s-01"]),
+        ("col-s-06", ["arc-s-07", "pyr-s-12", "crel-l-03"]),
+        ("arc-s-07", ["col-s-06", "wav-s-10", "cir-l-06"]),
+        ("trap-s-08", ["sqr-s-11", "dslat-s-04", "rho-l-07"]),
+        ("zig-s-09", ["wav-s-10", "dslat-s-04", "her-m-05"]),
+        ("wav-s-10", ["zig-s-09", "arc-s-07", "lwav-l-05"]),
+        ("sqr-s-11", ["trap-s-08", "pyr-s-12", "mos-l-08"]),
+        ("pyr-s-12", ["col-s-06", "cdiv-s-14", "cfrm-l-11"]),
+        ("rdiv-s-13", ["key-s-05", "cdiv-s-14", "nmol-m-09"]),
+        ("cdiv-s-14", ["rdiv-s-13", "arc-s-07", "wcm-m-10"]),
+        # 30×60: внутри категории + cross-size
+        ("flat-m-01", ["rslat-m-02", "nmol-m-09", "flat-s-01"]),
+        ("rslat-m-02", ["cslat-m-03", "ncm-m-08", "tslat-s-02"]),
+        ("cslat-m-03", ["rslat-m-02", "wcm-m-10", "wslat-s-03"]),
+        ("ddia-m-04", ["her-m-05", "tet-m-12", "dslat-s-04"]),
+        ("her-m-05", ["ddia-m-04", "seg-m-07", "zig-s-09"]),
+        ("clo-m-06", ["tet-m-12", "seg-m-07", "rho-l-07"]),
+        ("seg-m-07", ["clo-m-06", "her-m-05", "mos-l-08"]),
+        ("ncm-m-08", ["wcm-m-10", "rslat-m-02", "tslat-s-02"]),
+        ("nmol-m-09", ["wmol-m-11", "flat-m-01", "rdiv-s-13"]),
+        ("wcm-m-10", ["ncm-m-08", "cslat-m-03", "lwav-l-05"]),
+        ("wmol-m-11", ["nmol-m-09", "cslat-m-03", "cfrm-l-11"]),
+        ("tet-m-12", ["clo-m-06", "ddia-m-04", "sqr-s-11"]),
+        # 60×60: внутри категории + cross-size
+        ("flat-l-01", ["frel-l-02", "ffrm-l-09", "flat-m-01"]),
+        ("frel-l-02", ["lwav-l-05", "cir-l-06", "wav-s-10"]),
+        ("crel-l-03", ["cfrm-l-11", "pfrm-l-10", "pyr-s-12"]),
+        ("brk-l-04", ["mos-l-08", "crel-l-03", "sqr-s-11"]),
+        ("lwav-l-05", ["frel-l-02", "cir-l-06", "wav-s-10"]),
+        ("cir-l-06", ["frel-l-02", "rho-l-07", "arc-s-07"]),
+        ("rho-l-07", ["cir-l-06", "pfrm-l-10", "trap-s-08"]),
+        ("mos-l-08", ["brk-l-04", "crel-l-03", "sqr-s-11"]),
+        ("ffrm-l-09", ["pfrm-l-10", "cfrm-l-11", "flat-l-01"]),
+        ("pfrm-l-10", ["ffrm-l-09", "cfrm-l-11", "crel-l-03"]),
+        ("cfrm-l-11", ["pfrm-l-10", "crel-l-03", "wmol-m-11"]),
     ]
-    rec_map: dict[tuple, Recommendation] = {}
-    for source_id, target_id, _order in targets_data:
+    rec_count = 0
+    for source_id, target_ids in targets_data:
         key = (RecommendationSourceType.DESIGN, source_id)
-        if key not in rec_map:
-            rec_map[key] = Recommendation(
-                id=f"rec-{source_id}",
-                source_type=RecommendationSourceType.DESIGN,
-                source_id=source_id,
-            )
-        rec_map[key].targets.append(RecommendationTarget(
-            target_type=RecommendationTargetType.DESIGN,
-            target_id=target_id,
-        ))
-    for rec in rec_map.values():
+        rec = Recommendation(
+            id=f"rec-{source_id}",
+            source_type=RecommendationSourceType.DESIGN,
+            source_id=source_id,
+        )
+        for tid in target_ids:
+            rec.targets.append(RecommendationTarget(
+                target_type=RecommendationTargetType.DESIGN,
+                target_id=tid,
+            ))
         existing = await _mem_recommendation_repo.find_by_source(rec.source_type, rec.source_id)
         if existing is None:
             await _mem_recommendation_repo.save(rec)
-    print(f"Recommendations seeded: {len(targets_data)} targets across {len(rec_map)} sources", file=sys.stderr)
+            rec_count += 1
+    print(f"Recommendations seeded: {len(targets_data)} sources, {rec_count} new", file=sys.stderr)
 
 
 def run():
