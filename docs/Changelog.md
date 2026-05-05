@@ -5,6 +5,135 @@
 
 ---
 
+## 05.05.2026
+
+### Конфигуратор панелей: переосмысление каталога и карточки товара в Apple-style
+
+Каталог и страница товара полностью переработаны по модели Apple-конфигуратора. Вместо плоского списка накладок-дизайнов продукт теперь строится вокруг иерархии «Форма → Текстура → Цвет»: пользователь сначала выбирает геометрию панели (волна, гексагон, треугольник и т. д.), затем материал (бетон, дерево, мрамор) и цветовой вариант, а на экране в реальном времени отображается фотография именно этой комбинации. Визуальный референс — конфигуратор MacBook Air на apple.com: крупное превью слева, компактная панель выбора справа, sticky на скролле.
+
+**Новая иерархия данных:**
+- `Design` — теперь означает геометрическую форму (slug: wave, hexagon, triangle). Каталог показывает белые силуэты форм на светлом фоне, от цены «от N ₽»
+- `Texture` — материал/текстура панели с превью-свотчем и slug'ом (concrete, wood, marble)
+- `TextureColor` — конкретный цвет в рамках текстуры: hex, swatch-изображение, название («Серый бетон», «Тёплый дуб»)
+- `VariantImage` — загруженная фотография конкретной комбинации (форма + текстура + цвет); уникальная по тройке (design_id, texture_id, color_id)
+
+Это изменение не ломает исторические заказы: поля `Design.colors` сохранены как legacy, старые `OrderItem` хранят текстуру и цвет в текстовых полях и рендерятся по-прежнему.
+
+**Как работает конфигуратор на карточке товара:**
+1. При открытии страницы — единый запрос `GET /api/designs/{id}/full-config` возвращает форму, все текстуры, цвета и пути к variant-images без N+1
+2. По умолчанию выбрана первая текстура, первый цвет, первый размер
+3. При смене текстуры — обновляются доступные цвета, автоматически выбирается первый
+4. При смене цвета — превью плавно меняется (fade-transition); если variant-image не загружен — fallback на белый силуэт формы
+5. При смене размера — пересчитывается итоговая цена (base_price зависит от размера: 890 / 1490 / 2490 ₽ + цена дизайна)
+6. Sticky-панель CTA на мобильных (bottom bar ≤860px) — цена и кнопка «В корзину» всегда видны
+
+---
+
+### Модель данных и миграция БД
+
+Alembic-миграция `018_create_textures_and_variants.py` добавляет три новые таблицы и два ALTER:
+
+- `textures` (id, name, slug UNIQUE, swatch_image, sort_order, is_active, created_at)
+- `texture_colors` (id, texture_id FK CASCADE, name, hex, swatch_image, sort_order, is_active, created_at)
+- `variant_images` (id, design_id FK, texture_id FK, color_id FK, image_path, created_at; UNIQUE на тройку)
+- `designs.preview_image VARCHAR(500) DEFAULT ""` — путь к белому силуэту формы для каталога
+- `order_items.texture_name / texture_id / color_id DEFAULT ""` — для хранения атрибутов нового флоу в заказе
+
+Все новые колонки nullable / server_default="" — существующие записи не затронуты. FK `variant_images` → RESTRICT (текстуру с изображениями нельзя удалить), FK `texture_colors.texture_id` → CASCADE (удаление текстуры каскадно удаляет её цвета).
+
+Репозитории и use cases реализованы для всех трёх новых сущностей: CRUD-операции, валидация уникальности slug, hex-валидация на доменном и API-уровне (pattern `^(#[0-9A-Fa-f]{6})?$`), guard от удаления текстуры с изображениями (409 Conflict).
+
+---
+
+### Новые API-эндпоинты
+
+**Публичные:**
+- `GET /api/designs` — расширен полями `preview_image` и `default_colors` (первые 4 цвета из первой текстуры, batch-запрос без N+1)
+- `GET /api/designs/{id}/full-config` — форма + все текстуры + цвета + variant-image paths одним запросом
+- `GET /api/designs/{id}/textures` — текстуры с цветами; фильтруются текстуры без активных цветов
+- `GET /api/designs/{id}/variant-image?texture_id=…&color_id=…` — путь к изображению комбинации
+- `GET /api/textures` и `GET /api/textures/{id}/colors` — публичный справочник текстур
+
+**Админские:** полный CRUD текстур, цветов и variant-images под guard'ом роли `admin`:
+- `GET/POST /api/admin/textures`, `PATCH/DELETE /api/admin/textures/{id}`
+- `GET/POST /api/admin/textures/{id}/colors`, `PATCH/DELETE /api/admin/texture-colors/{id}`
+- `GET/POST /api/admin/variant-images`, `DELETE /api/admin/variant-images/{id}`
+
+Все admin-эндпоинты: 401 без токена, 403 с customer-токеном, slug-конфликт 409 (включая guard «не конфликтовать с самим собой» при PATCH), удаление текстуры с изображениями 409.
+
+---
+
+### Визуальный язык: системные шрифты и Apple-тема
+
+Font stack переключён на `-apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', system-ui, sans-serif` — на macOS/iOS пользователь видит настоящий SF Pro, на остальных платформах Inter через Google Fonts (preconnect). Радиусы: 16px для карточек, 12px для кнопок/инпутов. Letter-spacing `-0.02em` для заголовков. Акцентный цвет `#4CAF50` сохранён — фирменный зелёный бренда.
+
+---
+
+### Новый каталог форм
+
+`CatalogPage` полностью переработан: вместо фильтров по цвету, стилю и цене — минималистичная сетка форм (3 колонки на desktop, 2 на планшете, 1 на мобиле). Каждая карточка — белый силуэт формы на фоне `#F0F0F0` (aspect-ratio 1:1), название, «от N ₽», бейджи «Новинка» / «Популярное». Hover: translateY(-4px) scale(1.015) + shadow (Apple-style). Fade-up анимация с staggered delay через Framer Motion. Поиск по названию формы. Убраны: категории, кнопки «В корзину» / «Избранное» / «Визуализатор».
+
+---
+
+### Компоненты конфигуратора
+
+Реализовано шесть новых React-компонентов в `frontend/src/domains/catalog/ui/`:
+
+- **`TextureSelector`** — карточки-свотчи текстур (изображение + название); активная выделена рамкой; ARIA radiogroup с roving tabIndex и стрелочной навигацией
+- **`ColorSelector`** — строка кругов-свотчей (hex-цвет или swatch_image); активный — ring + checkmark; AnimatePresence fade на имени цвета; tooltip; ARIA radiogroup
+- **`SizeSelector`** — кнопки 30×30 / 30×60 / 60×60 см с синхронизированными ценами (base_price + designPrice); ARIA radiogroup с клавиатурной навигацией
+- **`ProductPreview`** — крупное превью с fade-transition при смене, skeleton на загрузке, fallback на силуэт формы
+- **`FormSwitcher`** — горизонтальный скролл миниатюр других форм со snap-scrolling; текущая форма выделена
+- **`ConfiguratorPanel`** — оркестратор: текстура → цвет → размер → количество → итого + CTA; sticky на desktop; aria-live для обновлений цены
+
+Корзина расширена: `CartItem` теперь хранит `textureName`, `textureId`, `colorId`, `sizeKey`; composite ID `${designId}-${textureId|'default'}-${colorId|'default'}-${sizeKey}` — одну форму с разными текстурами/размерами добавляем как разные позиции. `CheckoutPage` и `OrdersSection` показывают атрибуты текстуры/цвета.
+
+---
+
+### Управление текстурами в админ-панели
+
+В сайдбаре `/admin` появился новый раздел «Текстуры» (иконка `BgColorsOutlined`). Страница `AdminTexturesPage` содержит три вкладки:
+
+- **Текстуры** — таблица с swatch-изображением, названием, slug'ом, порядком сортировки, переключателем активности; Drawer-форма с auto-slug
+- **Цвета** — выбор текстуры из dropdown, таблица цветов; ColorPicker реактивно связан с hex-полем через `Form.useWatch`; колонка swatch показывает картинку / hex-квадрат / «нет»
+- **Изображения комбинаций** — два dropdown «Форма» + «Текстура»; сетка карточек по цветам: зелёная рамка `#4CAF50` = фото загружено, серая dashed = фото отсутствует; загрузка через `AdminFileUpload` с `purpose="MISC"`, Popconfirm для удаления
+
+Дополнительно в `AdminCatalogPage` добавлено поле «Силуэт формы» (`preview_image`) с загрузкой через файловое хранилище; метка «Цвета» переименована в «Цвета (legacy)» с tooltip-пояснением.
+
+Вспомогательная функция `slugify()` и таблица транслитерации `CYR_MAP` вынесены в `shared/lib/slugify.ts` — три прежних копии в `catalogAdminStore`, `panelsAdminStore` и `AdminTexturesPage` заменены единым импортом.
+
+---
+
+### Интеграция и обратная совместимость
+
+- **Каталог/homepage**: `GET /api/designs` возвращает `default_colors` — первые 4 цвета из первой текстуры по sort_order, batch-запросом без N+1. `PopularProductsSection` работает через адаптер с graceful fallback на legacy `Design.colors` при отсутствии текстур
+- **Заказы**: `OrderItem` и `OrderItemRequest` принимают и возвращают `texture_name / texture_id / color_id`; `OrdersSection` показывает textureName в истории заказов и передаёт его при повторном заказе
+- **SEO**: `PageMeta` расширен prop'ом `ogType`; на ProductPage: `og:title = "Панель {name} — Wonder Wow Wall"`, `og:type = "product"`
+- **Constructor**: `useConfigColors` хук — цвета берутся из первой текстуры через API; fallback на legacy `Design.colors` если текстур нет — ни один из смежных экранов не падает с TypeError
+
+---
+
+### QA, accessibility и производительность
+
+**Регрессионные фиксы при финальной QA-фазе:**
+- `test_role_management.py`: 2 теста ожидали `ValueError`, код бросал `UserNotFoundError` — исправлено
+- `PanelPickerSkeleton.test.tsx`: тесты падали без `QueryClientProvider` — добавлен wrapper
+- `vite.config.ts`: proxy target указывал на `localhost:8001` вместо `localhost:8081` — исправлен
+
+**Accessibility:**
+- Все три селектора (текстура / цвет / размер) реализуют `role="radiogroup"` с roving tabIndex и стрелочной клавиатурной навигацией
+- `ConfiguratorPanel`: `aria-live` на блоке итоговой цены — обновление озвучивается скринридером
+- Swatches имеют ARIA-labels с названием варианта
+
+**Производительность:**
+- Variant-images загружаются лениво (`loading="lazy"` + `decoding="async"`) для изображений вне viewport
+- При hover на свотч текстуры — prefetch всех variant-images для её цветов (ускоряет смену цвета)
+- `ProductPreview` использует `decoding="async"` для основного превью
+
+**Тесты:** 417 frontend (56 shared/theme + 14 adapters + 283 admin + 64 catalog/configurator) и 943 backend (245 domain + 300 application + 28 infrastructure + 370 API) проходят. `tsc --noEmit` чистый.
+
+---
+
 ## 26.04.2026
 
 ### Фирменная рамка Wonder Wow Wall в ключевых интерфейсах
