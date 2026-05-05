@@ -771,7 +771,7 @@ React Query хуки:
 
 ---
 
-## Фаза 7: Интеграция и обратная совместимость ✅ (2026-05-05)
+## Фаза 7: Интеграция и обратная совместимость ✅ (2026-05-05, review fix 2026-05-05)
 
 ### 7.1 Миграция данных ✅
 
@@ -790,6 +790,7 @@ React Query хуки:
 - ✅ Compound cart ID: `${designId}-${textureId|'default'}-${colorId|'default'}-${sizeKey}`
 - ✅ `CheckoutPage`: показывает текстуру/цвет/размер под именем товара
 - ✅ `OrdersSection`: показывает textureName в истории заказов, передаёт при повторе
+  - **Review fix (`f02ae3b`):** маппинг API → OrderItem пропускал `texture_name`, `texture_id`, `color_id` — добавлено
 
 ### 7.3 HomePage адаптация ✅
 
@@ -819,12 +820,19 @@ React Query хуки:
 - **Cart localStorage migration (R5)**: корзина НЕ использует zustand/persist — данные не сохраняются между сессиями, migration не нужен
 - **Structured data (JSON-LD)**: отложено — требует product variants schema, сложность без реальной выгоды на текущем этапе
 
-**Коммит:** `93739c7` — feat(phase7): integration and backward compatibility
+**Коммиты:**
+- `93739c7` — feat(phase7): integration and backward compatibility
+- `f02ae3b` — fix(phase7): map texture fields from API order items in OrdersSection
 
 **Результаты тестирования:**
 - Backend: 21/21 test_textures_public ✅, 10/10 test_public_catalog ✅, 3/3 test_order_texture_api ✅
 - Frontend: 12/12 adapters ✅, 9/9 CatalogPage ✅, 3/3 ProductPage.recommendations ✅, 4/4 ConfiguratorPanel ✅
 - TypeScript: `tsc --noEmit` clean ✅
+
+**Review findings (2026-05-05):**
+- **R1 FIXED** — `OrdersSection` API маппинг не передавал texture_name/texture_id/color_id → исправлено (`f02ae3b`)
+- **R2 NOTE** — `_compute_default_colors_batch` содержит N+1 внутри цикла по design_ids (ListVariantImagesByDesign + ListTextureColorsPublic на каждый design). Допустимо для in-memory repo и page size 20, рефакторить при переходе на SQL
+- **R3 NOTE** — Отсутствует unit-test для `PageMeta.ogType` prop. Тривиальный prop, низкий приоритет
 
 ---
 
