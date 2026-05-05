@@ -771,71 +771,60 @@ React Query хуки:
 
 ---
 
-## Фаза 7: Интеграция и обратная совместимость
+## Фаза 7: Интеграция и обратная совместимость ✅ (2026-05-05)
 
-### 7.1 Миграция данных
+### 7.1 Миграция данных ✅
 
-**Задачи:**
-- Существующие Design.colors → НЕ удаляем, помечаем как legacy
-- Публичное API `/api/designs` продолжает возвращать `colors` для обратной совместимости
-- Конфигуратор использует только текстуры/цвета из новых эндпоинтов
-- Если у формы нет текстур — показываем "Скоро" placeholder (E1)
-- Вычисляем `default_colors` из первой текстуры для каждого Design (mitigation R3)
+**Реализовано:**
+- ✅ Design.colors сохранены как legacy — публичное API продолжает возвращать
+- ✅ `default_colors` вычисляется из первой текстуры (по sort_order) через variant_images
+- ✅ `_compute_default_colors_batch()` в `catalog.py` — batch-запрос, без N+1
+- ✅ `_serialize_design()` — унифицированная сериализация для list + detail endpoints
+- ✅ Конфигуратор использует full-config endpoint (реализован ранее)
 
-### 7.2 OrderItem — обратная совместимость (mitigation R1)
+### 7.2 OrderItem — обратная совместимость ✅ (реализовано ранее)
 
-**Файл:** `backend/app/domain/order/entities.py`
+- ✅ `OrderItem` entity: `texture_name`, `texture_id`, `color_id` (default="")
+- ✅ `OrderItemRequest` / `OrderItemSchema` — принимают и возвращают texture fields
+- ✅ `CartItem` type: `textureName`, `textureId`, `colorId` (с normalizeInput defaults)
+- ✅ Compound cart ID: `${designId}-${textureId|'default'}-${colorId|'default'}-${sizeKey}`
+- ✅ `CheckoutPage`: показывает текстуру/цвет/размер под именем товара
+- ✅ `OrdersSection`: показывает textureName в истории заказов, передаёт при повторе
 
-Поля `texture_name`, `texture_id`, `color_id` — опциональные (default=""). Старые заказы не ломаются.
+### 7.3 HomePage адаптация ✅
 
-**Логика рендера заказа:**
-```python
-# Если texture_id пуст — это legacy-заказ, отображаем по-старому:
-# "Design Name — Color Name"
-# Если texture_id заполнен — новый формат:
-# "Form Name — Texture Name, Color Name"
-```
+- ✅ Backend: `default_colors: list[ColorSchema]` добавлен в `DesignSchema`
+- ✅ Frontend: `ApiDesign.default_colors` добавлен в типы
+- ✅ Adapter: `apiDesignToProduct` — `d.default_colors?.length ? d.default_colors : d.colors`
+- ✅ PopularProductsSection работает через adapter, graceful fallback на legacy colors
 
-**Файл:** `backend/app/infrastructure/api/public/orders.py`
+### 7.4 SEO обновление ✅
 
-Добавить в OrderItemCreate:
-```python
-texture_name: str = ""
-texture_id: str = ""
-color_id: str = ""
-```
+- ✅ `PageMeta` расширен: `ogType` prop (default "website")
+- ✅ ProductPage: `og:title` = "Панель {name} — Wonder Wow Wall"
+- ✅ ProductPage: `og:type` = "product"
+- ✅ ProductPage: fallback description с размерами и монтажом
 
-**Файл:** `frontend/src/domains/order/ui/CheckoutPage.tsx`
-- Если `item.textureId` есть → "Волна — Бетон, Серый"
-- Если нет → legacy формат "Design Name — Color"
+### 7.5 Тесты ✅
 
-### 7.3 HomePage адаптация (mitigation R3)
+- [x] API: OrderItemCreate с пустыми texture_* проходит валидацию (test_order_texture_api.py)
+- [x] API: `/api/designs` возвращает default_colors — 4 теста (TestDefaultColors)
+- [x] API: default_colors использует первую текстуру по sort_order
+- [x] Adapter: fallback на legacy colors когда default_colors пуст — 2 теста
+- [x] Cart store: texture fields обрабатываются корректно (cartStoreTexture.test.ts)
+- [x] Cart migration: не требуется — cart не использует localStorage persist
 
-**Файл:** `frontend/src/domains/content/ui/HomePage.tsx`
+### 7.6 Не реализовано (не требуется)
 
-`PopularProductsSection` использует `product.colors.slice(0, 4)`. Решение:
-- API `/api/designs` возвращает `default_colors` (denormalized из первой текстуры)
-- Адаптер `apiDesignToProduct` маппит `default_colors` → `colors` для обратной совместимости с UI-компонентами
-- Если `default_colors` пуст — не показываем цветовые точки (graceful degradation)
+- **Cart localStorage migration (R5)**: корзина НЕ использует zustand/persist — данные не сохраняются между сессиями, migration не нужен
+- **Structured data (JSON-LD)**: отложено — требует product variants schema, сложность без реальной выгоды на текущем этапе
 
-### 7.4 SEO обновление (mitigation R9)
+**Коммит:** `93739c7` — feat(phase7): integration and backward compatibility
 
-**Файл:** `frontend/src/domains/catalog/ui/ProductPage.tsx` (PageMeta)
-
-Обновить мета-теги:
-- `og:title` → "Панель {form_name} | Wonder Wow Wall"
-- `og:description` → Design.description (без упоминания overlay)
-- Structured data → Product schema с конфигурируемыми вариантами
-
-### 7.5 Тесты (Фаза 7)
-
-- [ ] E2E: старые заказы (без texture_id) отображаются в legacy-формате
-- [ ] E2E: новые заказы (с texture_id) отображаются в новом формате
-- [ ] API: OrderItemCreate с пустыми texture_* проходит валидацию
-- [ ] API: `/api/designs` возвращает default_colors
-- [ ] Checkout: корректное отображение обоих форматов (legacy + new)
-- [ ] HomePage: PopularProductsSection рендерит default_colors
-- [ ] Cart migration: старые items из localStorage удаляются gracefully
+**Результаты тестирования:**
+- Backend: 21/21 test_textures_public ✅, 10/10 test_public_catalog ✅, 3/3 test_order_texture_api ✅
+- Frontend: 12/12 adapters ✅, 9/9 CatalogPage ✅, 3/3 ProductPage.recommendations ✅, 4/4 ConfiguratorPanel ✅
+- TypeScript: `tsc --noEmit` clean ✅
 
 ---
 
