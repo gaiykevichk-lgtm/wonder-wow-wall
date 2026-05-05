@@ -170,7 +170,7 @@ export default function ConstructorPage() {
 
   const selectedDesign = products.find((p) => p.id === selectedDesignId) || products[0];
   const { colors: designColors } = useConfigColors(selectedDesign.id, selectedDesign.colors);
-  const selectedColor = designColors[selectedColorIdx] || designColors[0];
+  const selectedColor = designColors[selectedColorIdx] || designColors[0] || { hex: '#CCCCCC', name: 'Загрузка…' };
   const selectedSize = SIZE_OPTIONS.find((s) => s.key === selectedSizeKey)!;
   const selectedPreset = selectedPresetId ? INTERIOR_PRESETS.find((p) => p.id === selectedPresetId) || null : null;
 
