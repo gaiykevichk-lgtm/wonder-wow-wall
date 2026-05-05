@@ -751,14 +751,23 @@ React Query хуки:
 - H1: `texturesAdminApi.ts:236` — `useAdminVariantImages` использовал `||` (OR) вместо `&&` (AND) в `enabled`. Запрос стрелял при выборе одного фильтра, хотя UI требует оба. Исправлено на `&&`.
 - H2: `AdminTexturesPage.tsx:1019` — variant image upload использовал `purpose="DESIGN_PREVIEW"`, файлы складывались в каталог preview дизайнов. Исправлено на `purpose="MISC"`.
 
-**Найдено (некритические, для будущих итераций):**
-- N1: ColorPicker не реактивно связан с полем hex (нужен `Form.useWatch`)
-- N2: `uploadingColorId` устанавливается до `mutate()` — минимальный timing gap в isUploading
-- N3: `slugify()` + `CYR_MAP` дублируется между AdminTexturesPage и AdminCatalogPage (DRY)
-- N4: Таблица цветов не показывает swatch_image (только hex-квадрат), хотя drawer preview — показывает
-- N5: Тестовое покрытие variant images таба минимально (только placeholder, нет тестов на create/delete)
+**Найдено и исправлено (некритические):**
+- N1: ✅ ColorPicker теперь реактивно связан с полем hex через `Form.useWatch` — swatch обновляется при ручном вводе
+- N2: ✅ `setUploadingColorId(colorId)` перенесён в начало `onVariantUploaded()` до `mutate()` — timing gap устранён
+- N3: ✅ `slugify()` + `CYR_MAP` вынесены в `shared/lib/slugify.ts`. `catalogAdminStore` и `panelsAdminStore` реэкспортируют, `AdminTexturesPage` импортирует напрямую. 3 копии → 1 источник
+- N4: Снято — при повторном чтении колонка swatch цвета уже корректно рендерит 3 варианта: swatch_image → hex-квадрат → "нет"
+- N5: ✅ Добавлены 5 тестов (20 total): delete button render, texture active toggle mutation, color active toggle mutation, variant images placeholder, texture dropdown
 
-**Коммит:** `f136576` — fix(phase6): variant images query AND, upload purpose MISC
+**Коммиты:**
+- `f136576` — fix(phase6): variant images query AND, upload purpose MISC
+- `61bce03` — refactor(phase6): shared slugify, ColorPicker watch, upload timing, tests
+
+**Подтверждённая стабильность после remediation:**
+- AdminTexturesPage: 20/20 тестов pass ✅
+- AdminCatalogPage: 15/15 тестов pass ✅
+- catalogAdminStore: 19/19 тестов pass ✅
+- panelsAdminStore: 22/22 тестов pass ✅
+- TypeScript: `tsc --noEmit` clean ✅
 
 ---
 
