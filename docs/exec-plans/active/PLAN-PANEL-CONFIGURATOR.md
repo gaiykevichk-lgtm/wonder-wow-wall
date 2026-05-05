@@ -636,14 +636,14 @@ color_id: str = ""       # ID цвета
 
 **Критические проблемы:** 0
 
-**Некритические проблемы (техдолг):**
-- N1: `SizeSelector.tsx:18` — цена в кнопках размеров жёстко использует `DESIGN_OVERLAY_PRICE`, а `ConfiguratorPanel.tsx:88` использует `config.price || DESIGN_OVERLAY_PRICE`. При различии — несовпадение цен. **Рекомендация:** пробросить `designPrice` prop.
-- N2: `FormSwitcher.tsx:12` — `scrollRef` объявлен, но не используется для программного скролла (мёртвый код).
-- N3: `ProductPage.tsx:595` — `ConfiguratorFallback` формирует cart ID по числовым индексам (`${designId}-${selectedColor}-${selectedSize}`), а `ConfiguratorPanel` — по UUID (`${designId}-${textureId}-${colorId}-${sizeKey}`). Формат разный, но функционально не конфликтует.
-- N4: `ProductPage.tsx:565-572` — inline `<style>` тег с `!important` для responsive. Работает, но не идиоматично.
+**Некритические проблемы (все исправлены 2026-05-05):**
+- N1: ✅ `SizeSelector.tsx` — добавлен optional prop `designPrice`, ConfiguratorPanel пробрасывает `config.price || DESIGN_OVERLAY_PRICE`. Цены в кнопках размеров теперь синхронизированы с итоговой ценой.
+- N2: ✅ `FormSwitcher.tsx` — удалён неиспользуемый `scrollRef` и import `useRef`.
+- N3: ✅ `ProductPage.tsx` — `ConfiguratorFallback` переведён на формат cart ID `${designId}-default-${colorRef}-${sizeKey}`, консистентный с `ConfiguratorPanel`. Добавлена передача `sizeKey` в cart item.
+- N4: ✅ `ProductPage.tsx` — inline `<style>` тег удалён. Responsive правило вынесено в `index.css` через CSS-класс `.configurator-grid`.
 
-**Подтверждённая стабильность:**
-- 35 тестов Фазы 5 pass, 0 failures
+**Подтверждённая стабильность после фиксов:**
+- 36 тестов Фазы 5 pass (+1 тест на `designPrice` prop), 0 failures
 - 0 regressions в существующих тестах
 
 ---

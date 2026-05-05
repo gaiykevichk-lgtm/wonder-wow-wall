@@ -3,9 +3,10 @@ import { PANEL_SIZES, BASE_PANEL_PRICES, DESIGN_OVERLAY_PRICE } from '../../../s
 interface Props {
   activeSizeKey: string;
   onChange: (sizeKey: string) => void;
+  designPrice?: number;
 }
 
-export default function SizeSelector({ activeSizeKey, onChange }: Props) {
+export default function SizeSelector({ activeSizeKey, onChange, designPrice }: Props) {
   return (
     <div>
       <div style={{ fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16, textAlign: 'center' }}>
@@ -15,7 +16,7 @@ export default function SizeSelector({ activeSizeKey, onChange }: Props) {
         {PANEL_SIZES.map((s) => {
           const key = `${s.width}x${s.height}`;
           const active = key === activeSizeKey;
-          const price = (BASE_PANEL_PRICES[key] ?? 0) + DESIGN_OVERLAY_PRICE;
+          const price = (BASE_PANEL_PRICES[key] ?? 0) + (designPrice ?? DESIGN_OVERLAY_PRICE);
           return (
             <button
               key={key}

@@ -137,7 +137,7 @@ export default function ConfiguratorPanel({ config, designId, designImage, onVar
         </>
       )}
 
-      <SizeSelector activeSizeKey={sizeKey} onChange={setSizeKey} />
+      <SizeSelector activeSizeKey={sizeKey} onChange={setSizeKey} designPrice={config.price || DESIGN_OVERLAY_PRICE} />
 
       {/* Quantity + Price */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F5F5F5', borderRadius: 16, padding: '20px 24px' }}>

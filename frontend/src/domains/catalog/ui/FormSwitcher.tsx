@@ -1,4 +1,3 @@
-import { useRef } from 'react';
 import { motion } from 'framer-motion';
 import type { PanelProduct } from '../model/types';
 
@@ -9,8 +8,6 @@ interface Props {
 }
 
 export default function FormSwitcher({ forms, currentId, onSelect }: Props) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-
   const others = forms.filter((f) => f.id !== currentId);
   if (others.length === 0) return null;
 
@@ -20,7 +17,6 @@ export default function FormSwitcher({ forms, currentId, onSelect }: Props) {
         Другие формы
       </div>
       <div
-        ref={scrollRef}
         style={{
           display: 'flex',
           gap: 12,

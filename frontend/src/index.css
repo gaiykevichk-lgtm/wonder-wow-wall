@@ -172,6 +172,15 @@ img {
   }
 }
 
+/* ─── Configurator responsive (≤860px) ────────────────────────────────────── */
+
+@media (max-width: 860px) {
+  .configurator-grid {
+    grid-template-columns: 1fr !important;
+    gap: 32px !important;
+  }
+}
+
 /* ─── Small phone (≤480px) ─────────────────────────────────────────────────── */
 
 @media (max-width: 480px) {

@@ -277,6 +277,7 @@ export default function ProductPage() {
       {/* ── Configurator Section (Preview + Panel) ──────── */}
       <section
         id="configurator"
+        className="configurator-grid"
         style={{
           maxWidth: 1200,
           margin: '56px auto 0',
@@ -561,15 +562,6 @@ export default function ProductPage() {
         </div>
       )}
 
-      {/* Responsive override for configurator grid */}
-      <style>{`
-        @media (max-width: 860px) {
-          #configurator {
-            grid-template-columns: 1fr !important;
-            gap: 32px !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }
@@ -591,16 +583,20 @@ function ConfiguratorFallback({ product, designId }: { product: { name: string; 
   const [selectedSize, setSelectedSize] = useState(0);
 
   const handleAdd = () => {
+    const color = product.colors[selectedColor];
+    const size = product.sizes[selectedSize];
+    const sizeKey = size ? `${size.width}x${size.height}` : 'default';
     addItem({
-      id: `${designId}-${selectedColor}-${selectedSize}`,
+      id: `${designId}-default-${color ? 'legacy-' + selectedColor : 'default'}-${sizeKey}`,
       productId: designId,
       name: product.name,
       image: product.image,
       price: product.price,
       area: 1,
-      color: product.colors[selectedColor]?.hex ?? '',
-      colorName: product.colors[selectedColor]?.name ?? '',
-      size: product.sizes[selectedSize]?.label ?? '',
+      color: color?.hex ?? '',
+      colorName: color?.name ?? '',
+      sizeKey,
+      size: size?.label ?? '',
     });
     message.success('Товар добавлен в корзину');
     setCartOpen(true);

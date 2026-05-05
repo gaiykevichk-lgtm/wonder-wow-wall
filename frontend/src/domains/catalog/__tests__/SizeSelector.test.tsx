@@ -31,6 +31,13 @@ describe('SizeSelector', () => {
     expect(handleChange).toHaveBeenCalledWith('300x600');
   });
 
+  it('uses custom designPrice when provided', () => {
+    render(<SizeSelector activeSizeKey="300x300" onChange={() => {}} designPrice={500} />);
+
+    // 890 + 500 = 1390
+    expect(screen.getByText(/1\s?390\s*₽/)).toBeDefined();
+  });
+
   it('active size button has green background', () => {
     render(<SizeSelector activeSizeKey="300x600" onChange={() => {}} />);
 
