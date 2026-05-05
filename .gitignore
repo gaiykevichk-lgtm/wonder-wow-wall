@@ -1,5 +1,8 @@
 # Uploaded files (served by nginx/backend, not tracked in git)
 uploads/
 
+# Vite cache
+frontend/.vite-cache/
+
 # Large binaries
 frontend/public/opencv.js
