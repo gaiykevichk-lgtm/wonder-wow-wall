@@ -44,6 +44,7 @@ describe('useAdminNavigation', () => {
       'orders',
       'users',
       'catalog',
+      'textures',
       'shop',
       'upload',
       'recommendations',

@@ -125,6 +125,7 @@ interface DesignFormValues {
   category_id: string;
   style: string;
   image: string;
+  preview_image: string;
   description: string;
   price: number;
   colors: ApiColor[];
@@ -139,6 +140,7 @@ const EMPTY_DESIGN_FORM: DesignFormValues = {
   category_id: '',
   style: '',
   image: '',
+  preview_image: '',
   description: '',
   price: 1200,
   colors: [],
@@ -158,6 +160,7 @@ function designToForm(d: ApiAdminDesign): DesignFormValues {
     category_id: d.category_id,
     style: d.style,
     image: d.image,
+    preview_image: d.preview_image,
     description: d.description,
     price: d.price,
     colors: d.colors,
@@ -454,6 +457,7 @@ export default function AdminCatalogPage() {
           category_id: values.category_id,
           style: values.style.trim(),
           image: values.image.trim(),
+          preview_image: values.preview_image.trim(),
           description: values.description.trim(),
           price: values.price,
           colors: values.colors ?? [],
@@ -1074,11 +1078,7 @@ export default function AdminCatalogPage() {
             <TextArea rows={3} placeholder="Описание дизайна…" />
           </Form.Item>
 
-          <Form.Item label="Цвета" name="colors">
-            <ColorListEditor />
-          </Form.Item>
-
-          <Form.Item label="Превью" name="image">
+          <Form.Item label="Превью (overlay)" name="image">
             <Input
               placeholder="Путь к загруженному файлу"
               style={{ marginBottom: 8 }}
@@ -1092,6 +1092,33 @@ export default function AdminCatalogPage() {
               message.success('Превью загружено');
             }}
           />
+
+          <Form.Item
+            label="Силуэт формы (preview_image)"
+            name="preview_image"
+            tooltip="Белый силуэт формы панели для каталога"
+          >
+            <Input
+              placeholder="Путь к загруженному файлу"
+              style={{ marginBottom: 8 }}
+            />
+          </Form.Item>
+          <AdminFileUpload
+            purpose="DESIGN_PREVIEW"
+            hint="JPG/PNG — белый силуэт формы"
+            onUploaded={(asset) => {
+              designForm.setFieldsValue({ preview_image: asset.path });
+              message.success('Силуэт загружен');
+            }}
+          />
+
+          <Form.Item
+            label="Цвета (legacy)"
+            name="colors"
+            tooltip="Устаревшее поле. Цвета теперь управляются через текстуры (раздел «Текстуры»)."
+          >
+            <ColorListEditor />
+          </Form.Item>
 
           <Form.Item
             name="is_published"

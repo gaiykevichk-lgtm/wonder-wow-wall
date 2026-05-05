@@ -1,6 +1,6 @@
 # PLAN: Конфигуратор панелей (Apple-style)
 
-**Статус:** In Progress (Phase 5 Complete)  
+**Статус:** In Progress (Phase 6 Complete)  
 **Дата создания:** 2026-05-04  
 **Цель:** Переработать каталог и карточку товара в Apple-style конфигуратор с иерархией Форма → Текстура → Цвет
 
@@ -648,38 +648,36 @@ color_id: str = ""       # ID цвета
 
 ---
 
-## Фаза 6: Админ-панель — управление текстурами (Frontend)
+## Фаза 6: Админ-панель — управление текстурами (Frontend) ✅ DONE
 
 ### 6.1 Новая страница AdminTexturesPage
 
-**Файл:** `frontend/src/domains/admin/ui/AdminTexturesPage.tsx`
+**Файл (реализовано):** `frontend/src/domains/admin/ui/AdminTexturesPage.tsx` (~700 строк)
 
 **Tabs:**
-1. **Текстуры** — CRUD текстур (таблица: название, slug, swatch, sort_order, active, actions)
-2. **Цвета** — CRUD цветов (фильтр по текстуре; таблица: название, hex, swatch, sort_order, active)
-3. **Изображения комбинаций** — загрузка variant-images (фильтр: форма × текстура; сетка загруженных фото)
+1. **Текстуры** — CRUD текстур (таблица: Swatch, Name+Slug, Sort Order, Active Switch, Created, Actions); Drawer-форма с auto-slug
+2. **Цвета** — CRUD цветов (dropdown выбора текстуры, auto-select первой; таблица: Swatch/hex, Name, HEX Tag, Sort Order, Active Switch, Created, Actions); ColorPicker как addonAfter
+3. **Изображения комбинаций** — два dropdown (Форма + Текстура); сетка карточек по цветам: зелёная рамка (#4CAF50) = фото есть, серая dashed = фото отсутствует; AdminFileUpload для загрузки, Popconfirm для удаления
 
 **UI для вкладки "Изображения комбинаций":**
-- Выбрать форму (dropdown)
-- Выбрать текстуру (dropdown)
-- Матрица: строки = цвета текстуры, колонка = загруженное фото
-- Кнопка "Загрузить" для каждой ячейки
-- Визуальная индикация: зелёная рамка = фото есть, серая = фото отсутствует
+- Выбрать форму (dropdown с useAdminDesigns)
+- Выбрать текстуру (dropdown с useAdminTextures)
+- Сетка: карточка на каждый цвет текстуры — загруженное фото или AdminFileUpload
+- Визуальная индикация: зелёная рамка = фото есть, серая dashed = фото отсутствует
 
-### 6.2 Роутинг админки
+### 6.2 Роутинг админки (реализовано)
 
-**Файл:** `frontend/src/shared/router.tsx`
+**Файл:** `frontend/src/shared/router.tsx` — lazy import + `<Route path="textures" element={<AdminTexturesPage />} />`
 
-Добавить:
-```typescript
-<Route path="textures" element={<AdminTexturesPage />} />
-```
+**Файл:** `frontend/src/domains/admin/ui/AdminLayout.tsx` — `BgColorsOutlined` icon для пункта меню "Текстуры"
 
-**Файл:** `frontend/src/domains/admin/ui/AdminLayout.tsx` — добавить пункт меню "Текстуры"
+**Файл:** `frontend/src/domains/admin/model/navigation.ts` — `'textures'` добавлен в `AdminSectionKey` и `ADMIN_SECTIONS` (между 'catalog' и 'shop')
 
-### 6.3 API-клиент админки
+### 6.3 API-клиент админки (реализовано)
 
-**Файл:** `frontend/src/domains/admin/api/texturesAdminApi.ts`
+**Файл:** `frontend/src/domains/admin/api/texturesAdminApi.ts` (~220 строк)
+
+Wire types: `ApiTexture`, `ApiTextureColor`, `ApiVariantImage`, `TextureCreatePayload`, `TextureUpdatePayload`, `TextureColorCreatePayload`, `TextureColorUpdatePayload`, `VariantImageCreatePayload`
 
 React Query хуки:
 - `useAdminTextures()` — список текстур
@@ -691,29 +689,59 @@ React Query хуки:
 - `useUpdateTextureColor()` — обновление цвета
 - `useDeleteTextureColor()` — удаление цвета
 - `useAdminVariantImages(params)` — список variant-images
-- `useUploadVariantImage()` — загрузка изображения комбинации
+- `useCreateVariantImage()` — создание изображения комбинации
 - `useDeleteVariantImage()` — удаление
 
-### 6.4 Расширение AdminCatalogPage
+### 6.4 Расширение AdminCatalogPage (реализовано)
 
 **Файл:** `frontend/src/domains/admin/ui/AdminCatalogPage.tsx`
 
-В форме создания/редактирования Design:
-- Добавить поле `preview_image` (загрузка белого силуэта формы)
-- Убрать поле `colors` из формы (цвета теперь через текстуры) — но оставить отображение для legacy
+- Добавлено поле `preview_image` (Силуэт формы) с AdminFileUpload (purpose="DESIGN_PREVIEW")
+- Метка "Цвета" переименована в "Цвета (legacy)" с tooltip
+- Backend: `preview_image` добавлен в DesignAdminResponse, DesignCreate, DesignUpdate + use cases
 
 ### 6.5 Тесты (Frontend, Фаза 6)
 
-**Файлы:**
-- `frontend/src/domains/admin/__tests__/AdminTexturesPage.test.tsx`
-- `frontend/src/domains/admin/__tests__/texturesAdminApi.test.ts`
+**Файлы (реализовано):**
+- `frontend/src/domains/admin/__tests__/AdminTexturesPage.test.tsx` — 15 тестов
+- `frontend/src/domains/admin/__tests__/AdminCatalogPage.test.tsx` — 15 тестов (обновлён)
+- `frontend/src/domains/admin/__tests__/useAdminNavigation.test.tsx` — 10 тестов (обновлён)
 
 **Покрытие:**
-- [ ] CRUD текстур: создание, редактирование, удаление
-- [ ] CRUD цветов: привязка к текстуре, валидация hex
-- [ ] Variant images: загрузка изображения для комбинации
-- [ ] Variant images: визуальная матрица с индикацией заполненности
-- [ ] Навигация: пункт "Текстуры" в сайдбаре админки
+- [x] CRUD текстур: создание drawer, редактирование drawer, таблица с данными, sort_order, active switch, error alert
+- [x] CRUD цветов: привязка к текстуре, hex tag display, create drawer
+- [x] Variant images: вкладка через URL, dropdowns формы/текстуры, placeholder message
+- [x] Variant images: визуальная матрица с индикацией заполненности (карточки с зелёной/серой рамкой)
+- [x] Навигация: пункт "Текстуры" в сайдбаре админки, URL tab state
+- [x] AdminCatalogPage: preview_image поле, getAllByTestId для множественных AdminFileUpload
+- [x] useAdminNavigation: 'textures' в массиве секций
+
+### 6.6 Результат реализации (2026-05-05)
+
+**Созданные файлы:**
+- `frontend/src/domains/admin/api/texturesAdminApi.ts` — API client с wire types и React Query hooks
+- `frontend/src/domains/admin/ui/AdminTexturesPage.tsx` — 3-tab admin page
+- `frontend/src/domains/admin/__tests__/AdminTexturesPage.test.tsx` — 15 smoke tests
+
+**Изменённые файлы:**
+- `frontend/src/domains/admin/model/navigation.ts` — 'textures' section key
+- `frontend/src/domains/admin/ui/AdminLayout.tsx` — BgColorsOutlined icon
+- `frontend/src/shared/router.tsx` — lazy route
+- `frontend/src/domains/admin/ui/AdminCatalogPage.tsx` — preview_image field, colors legacy label
+- `frontend/src/domains/admin/api/catalogAdminApi.ts` — preview_image in Design types
+- `backend/app/infrastructure/api/admin/catalog.py` — preview_image in DTOs + handlers
+- `backend/app/application/catalog/admin_use_cases.py` — preview_image in use cases
+- `frontend/src/domains/admin/__tests__/AdminCatalogPage.test.tsx` — fixture + assertion fix
+- `frontend/src/domains/admin/__tests__/useAdminNavigation.test.tsx` — 'textures' in expected array
+
+**Подтверждённая стабильность:**
+- AdminTexturesPage: 15/15 тестов pass ✅
+- AdminCatalogPage: 15/15 тестов pass ✅
+- useAdminNavigation: 10/10 тестов pass ✅
+- Backend test_catalog_crud: 25/25 pass ✅
+- Backend test_textures: 26/26 pass ✅
+- TypeScript: `tsc --noEmit` clean ✅
+- 0 regressions
 
 ---
 

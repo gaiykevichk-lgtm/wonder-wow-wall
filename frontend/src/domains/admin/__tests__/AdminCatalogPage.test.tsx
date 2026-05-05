@@ -112,6 +112,7 @@ function makeDesign(over: Partial<ApiAdminDesign> = {}): ApiAdminDesign {
     category_id: 'cat-1',
     style: 'Минимализм',
     image: '',
+    preview_image: '',
     description: '',
     price: 1500,
     colors: [],
@@ -269,7 +270,7 @@ describe('<AdminCatalogPage>', () => {
     expect(screen.getByText('Новый дизайн')).toBeInTheDocument();
     expect(screen.getByLabelText('Категория')).toBeInTheDocument();
     expect(screen.getByLabelText('Цена (₽)')).toBeInTheDocument();
-    expect(screen.getByTestId('admin-file-upload')).toBeInTheDocument();
+    expect(screen.getAllByTestId('admin-file-upload').length).toBeGreaterThanOrEqual(1);
   });
 
   it('surfaces a fetch error via Alert', () => {

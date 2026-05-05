@@ -132,3 +132,31 @@ export function usePublicSubscriptionPlans() {
     retry: false,
   });
 }
+
+// ─── Mapped plan list for UI components ─────────────────────────────
+
+import type { SubscriptionPlan } from '../../domains/subscription/model/types';
+import { SUBSCRIPTION_PLANS } from '../../domains/subscription/model/subscriptionStore';
+
+function apiPlanToFrontend(p: ApiPublicSubscriptionPlan): SubscriptionPlan {
+  return {
+    id: p.id,
+    name: p.name,
+    price: p.price,
+    period: p.period,
+    areaLimitM2: p.area_limit_m2,
+    popular: p.popular,
+    features: p.features,
+    desc: p.area_limit_m2 === 0
+      ? 'Безлимитная площадь'
+      : `До ${p.area_limit_m2} м² в месяц`,
+  };
+}
+
+export function useSubscriptionPlansList(): SubscriptionPlan[] {
+  const { data } = usePublicSubscriptionPlans();
+  return useMemo(() => {
+    if (!data?.items?.length) return SUBSCRIPTION_PLANS;
+    return data.items.map(apiPlanToFrontend);
+  }, [data]);
+}

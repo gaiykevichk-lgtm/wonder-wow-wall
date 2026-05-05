@@ -215,6 +215,7 @@ class CreateDesignAdmin:
         category_id: str,
         style: str = "",
         image: str = "",
+        preview_image: str = "",
         description: str = "",
         price: int = 1200,
         colors: list[Color] | None = None,
@@ -247,6 +248,7 @@ class CreateDesignAdmin:
             category_id=category_id,
             style=style,
             image=image,
+            preview_image=preview_image,
             description=description,
             price=price,
             colors=list(colors or []),
@@ -297,6 +299,7 @@ class UpdateDesignAdmin:
         category_id: str | None = None,
         style: str | None = None,
         image: str | None = None,
+        preview_image: str | None = None,
         description: str | None = None,
         price: int | None = None,
         colors: list[Color] | None = None,
@@ -334,6 +337,8 @@ class UpdateDesignAdmin:
             design.style = style
         if image is not None:
             design.image = image
+        if preview_image is not None:
+            design.preview_image = preview_image
         if description is not None:
             design.description = description
         if price is not None:

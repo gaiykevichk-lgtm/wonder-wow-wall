@@ -109,6 +109,29 @@ class TestAuthGate:
         assert resp.status_code == 403
 
     @pytest.mark.asyncio
+    async def test_patch_unauthenticated_401(self, client):
+        resp = await client.patch(
+            "/api/admin/subscription-plans/starter",
+            json={"price": 100},
+        )
+        assert resp.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_patch_customer_403(self, client):
+        token = await _customer_token(client)
+        resp = await client.patch(
+            "/api/admin/subscription-plans/starter",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"price": 100},
+        )
+        assert resp.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_delete_unauthenticated_401(self, client):
+        resp = await client.delete("/api/admin/subscription-plans/starter")
+        assert resp.status_code == 401
+
+    @pytest.mark.asyncio
     async def test_delete_customer_403(self, client):
         token = await _customer_token(client)
         resp = await client.delete(

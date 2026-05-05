@@ -6,7 +6,9 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { BASE_PANEL_PRICES } from '../../../shared/config/constants';
 import { useShopSettings } from '../../../shared/hooks/useShopSettings';
-import { useSubscriptionStore, SUBSCRIPTION_PLANS } from '../model/subscriptionStore';
+import { useSubscriptionPlansList } from '../../../shared/api/shopApi';
+import { useSubscriptionStore } from '../model/subscriptionStore';
+import type { SubscriptionPlan } from '../model/types';
 
 const ACCENT = '#4CAF50';
 const DARK = '#2D2D2D';
@@ -44,7 +46,7 @@ function buildPanelPricing(overlayPrice: number) {
 // ─── PlanCard ────────────────────────────────────────────────────────────────
 
 const PlanCard: React.FC<{
-  plan: (typeof SUBSCRIPTION_PLANS)[0];
+  plan: SubscriptionPlan;
   index: number;
   isActive: boolean;
   onSelect: (id: string) => void;
@@ -125,6 +127,7 @@ const PricingPage: React.FC = () => {
   const navigate = useNavigate();
   const { openModal, activePlanId, hasSubscription, getActivePlan, cancelSubscription } = useSubscriptionStore();
   const { designOverlayPrice } = useShopSettings();
+  const plans = useSubscriptionPlansList();
   const panelPricing = buildPanelPricing(designOverlayPrice);
 
   const tabBtn = (key: 'purchase' | 'subscription', label: string) => (
@@ -284,7 +287,7 @@ const PricingPage: React.FC = () => {
               </motion.div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, alignItems: 'start' }}>
-                {SUBSCRIPTION_PLANS.map((plan, i) => (
+                {plans.map((plan, i) => (
                   <PlanCard
                     key={plan.id}
                     plan={plan}

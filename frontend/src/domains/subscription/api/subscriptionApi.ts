@@ -11,6 +11,7 @@ export const subscriptionKeys = {
 
 // ─── Queries ────────────────────────────────────────────────────────────────
 
+/** @deprecated Use `useSubscriptionPlansList` from `shared/api/shopApi` instead. */
 export function usePlans() {
   return useQuery({
     queryKey: subscriptionKeys.plans(),

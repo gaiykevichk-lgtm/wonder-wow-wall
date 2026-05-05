@@ -1,6 +1,7 @@
 import { Card, Typography, Button, Tag, Space, Empty, Descriptions } from 'antd';
 import { CrownOutlined, CheckCircleOutlined, SwapOutlined } from '@ant-design/icons';
-import { useSubscriptionStore, SUBSCRIPTION_PLANS } from '../../subscription/model/subscriptionStore';
+import { useSubscriptionStore } from '../../subscription/model/subscriptionStore';
+import { useSubscriptionPlansList } from '../../../shared/api/shopApi';
 
 const { Title, Text } = Typography;
 const ACCENT = '#4CAF50';
@@ -12,6 +13,7 @@ export default function AccountSubscriptionSection() {
   const remaining = useSubscriptionStore((s) => s.getRemainingAreaM2);
   const cancelSubscription = useSubscriptionStore((s) => s.cancelSubscription);
   const openModal = useSubscriptionStore((s) => s.openModal);
+  const plans = useSubscriptionPlansList();
 
   const plan = activePlan();
 
@@ -46,7 +48,7 @@ export default function AccountSubscriptionSection() {
 
         {/* Plans overview */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-          {SUBSCRIPTION_PLANS.map((p) => (
+          {plans.map((p) => (
             <Card
               key={p.id}
               hoverable

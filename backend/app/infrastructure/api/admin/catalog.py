@@ -110,6 +110,7 @@ class DesignAdminResponse(BaseModel):
     category_id: str
     style: str
     image: str
+    preview_image: str
     description: str
     price: int
     colors: list[ColorPayload] = Field(default_factory=list)
@@ -134,6 +135,7 @@ class DesignCreate(BaseModel):
     category_id: str = Field(min_length=1, max_length=36)
     style: str = Field(default="", max_length=100)
     image: str = Field(default="", max_length=500)
+    preview_image: str = Field(default="", max_length=500)
     description: str = Field(default="", max_length=4000)
     price: int = Field(ge=0)
     colors: list[ColorPayload] = Field(default_factory=list)
@@ -148,6 +150,7 @@ class DesignUpdate(BaseModel):
     category_id: str | None = Field(default=None, min_length=1, max_length=36)
     style: str | None = Field(default=None, max_length=100)
     image: str | None = Field(default=None, max_length=500)
+    preview_image: str | None = Field(default=None, max_length=500)
     description: str | None = Field(default=None, max_length=4000)
     price: int | None = Field(default=None, ge=0)
     colors: list[ColorPayload] | None = None
@@ -169,8 +172,8 @@ def _category_to_response(c: Category, designs_count: int) -> CategoryAdminRespo
 def _design_to_response(d: Design) -> DesignAdminResponse:
     return DesignAdminResponse(
         id=d.id, name=d.name, slug=d.slug, category_id=d.category_id,
-        style=d.style, image=d.image, description=d.description,
-        price=d.price,
+        style=d.style, image=d.image, preview_image=d.preview_image,
+        description=d.description, price=d.price,
         colors=[ColorPayload(hex=c.hex, name=c.name) for c in d.colors],
         rating=d.rating, reviews_count=d.reviews_count,
         is_new=d.is_new, is_popular=d.is_popular,
@@ -297,6 +300,7 @@ async def create_design_admin(
         category_id=body.category_id,
         style=body.style,
         image=body.image,
+        preview_image=body.preview_image,
         description=body.description,
         price=body.price,
         colors=[Color(hex=c.hex, name=c.name) for c in body.colors],
@@ -327,6 +331,7 @@ async def update_design_admin(
         category_id=body.category_id,
         style=body.style,
         image=body.image,
+        preview_image=body.preview_image,
         description=body.description,
         price=body.price,
         colors=colors_arg,

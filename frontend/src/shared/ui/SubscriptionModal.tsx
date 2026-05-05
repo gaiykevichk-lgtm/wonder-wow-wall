@@ -1,11 +1,9 @@
 import { Modal, Button, Input, Card, Tag, Form, message, Checkbox } from 'antd';
 import { CheckOutlined, CrownOutlined, ThunderboltOutlined, RocketOutlined } from '@ant-design/icons';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  useSubscriptionStore,
-  SUBSCRIPTION_PLANS,
-} from '../../domains/subscription/model/subscriptionStore';
+import { useSubscriptionStore } from '../../domains/subscription/model/subscriptionStore';
 import type { SubscriptionPlan } from '../../domains/subscription/model/types';
+import { useSubscriptionPlansList } from '../api/shopApi';
 import { BrandedFrame } from './BrandedFrame';
 
 const ACCENT = '#4CAF50';
@@ -20,13 +18,13 @@ const PLAN_ICONS: Record<string, React.ReactNode> = {
 
 // ─── Plan selector step ──────────────────────────────────────────────────────
 
-function StepSelect({ onSelect }: { onSelect: (id: string) => void }) {
+function StepSelect({ plans, onSelect }: { plans: SubscriptionPlan[]; onSelect: (id: string) => void }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <p style={{ fontSize: 15, color: '#6B7280', margin: '0 0 8px', textAlign: 'center' }}>
         Выберите план подписки на обновление накладок
       </p>
-      {SUBSCRIPTION_PLANS.map((plan) => (
+      {plans.map((plan) => (
         <Card
           key={plan.id}
           hoverable
@@ -314,8 +312,9 @@ function StepSuccess({ plan, onClose }: { plan: SubscriptionPlan; onClose: () =>
 export function SubscriptionModal() {
   const { isModalOpen, closeModal, modalStep, selectedPlanId, selectPlan, subscribe, setModalStep } =
     useSubscriptionStore();
+  const plans = useSubscriptionPlansList();
 
-  const selectedPlan = SUBSCRIPTION_PLANS.find((p) => p.id === selectedPlanId);
+  const selectedPlan = plans.find((p) => p.id === selectedPlanId);
 
   const titles: Record<string, string> = {
     select: 'Выберите план подписки',
@@ -343,7 +342,7 @@ export function SubscriptionModal() {
             exit={{ opacity: 0, x: 20 }}
             transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1.0] }}
           >
-            <StepSelect onSelect={selectPlan} />
+            <StepSelect plans={plans} onSelect={selectPlan} />
           </motion.div>
         )}
 

@@ -13,6 +13,7 @@ export type AdminSectionKey =
   | 'orders'
   | 'users'
   | 'catalog'
+  | 'textures'
   | 'shop'
   | 'upload'
   | 'recommendations'
@@ -31,6 +32,7 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
   { key: 'orders', path: 'orders', label: 'Заказы' },
   { key: 'users', path: 'users', label: 'Пользователи' },
   { key: 'catalog', path: 'catalog', label: 'Каталог' },
+  { key: 'textures', path: 'textures', label: 'Текстуры' },
   { key: 'shop', path: 'shop', label: 'Магазин' },
   { key: 'upload', path: 'upload', label: 'Загрузка' },
   { key: 'recommendations', path: 'recommendations', label: 'Рекомендации' },

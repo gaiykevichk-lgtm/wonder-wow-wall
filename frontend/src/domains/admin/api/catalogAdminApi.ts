@@ -70,6 +70,7 @@ export interface ApiAdminDesign {
   category_id: string;
   style: string;
   image: string;
+  preview_image: string;
   description: string;
   price: number;
   colors: ApiColor[];
@@ -94,6 +95,7 @@ export interface DesignCreatePayload {
   category_id: string;
   style?: string;
   image?: string;
+  preview_image?: string;
   description?: string;
   price: number;
   colors?: ApiColor[];
@@ -108,6 +110,7 @@ export interface DesignUpdatePayload {
   category_id?: string;
   style?: string;
   image?: string;
+  preview_image?: string;
   description?: string;
   price?: number;
   colors?: ApiColor[];
