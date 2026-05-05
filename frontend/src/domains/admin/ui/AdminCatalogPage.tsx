@@ -61,7 +61,6 @@ import { AdminFileUpload } from '../../../shared/ui/AdminFileUpload';
 import {
   type ApiAdminCategory,
   type ApiAdminDesign,
-  type ApiColor,
   type CategoryCreatePayload,
   type CategoryUpdatePayload,
   type DesignCreatePayload,
@@ -128,7 +127,6 @@ interface DesignFormValues {
   preview_image: string;
   description: string;
   price: number;
-  colors: ApiColor[];
   is_published: boolean;
   is_new: boolean;
   is_popular: boolean;
@@ -143,7 +141,6 @@ const EMPTY_DESIGN_FORM: DesignFormValues = {
   preview_image: '',
   description: '',
   price: 1200,
-  colors: [],
   is_published: true,
   is_new: false,
   is_popular: false,
@@ -163,7 +160,6 @@ function designToForm(d: ApiAdminDesign): DesignFormValues {
     preview_image: d.preview_image,
     description: d.description,
     price: d.price,
-    colors: d.colors,
     is_published: d.is_published,
     is_new: d.is_new,
     is_popular: d.is_popular,
@@ -182,92 +178,6 @@ function formatDate(iso: string): string {
 // `AdminUploadPage` (Phase 7B) share one canonical implementation —
 // previously each had a divergent inline copy. See module docstring.
 
-// ─── Color editor ──────────────────────────────────────────────────────
-
-interface ColorListEditorProps {
-  value?: ApiColor[];
-  onChange?: (next: ApiColor[]) => void;
-}
-
-// Stable per-row id keyed in a parallel `WeakMap` so React's reconciler
-// doesn't reuse DOM nodes across add/remove (which made the native color
-// picker focus jump and palette reset — N2 follow-up from Phase 7A audit).
-// `WeakMap<ApiColor, string>` because the underlying objects are stable
-// references inside `value` until the parent rebuilds them; the `update`
-// helper passes a NEW object so a fresh id is allocated automatically.
-const colorRowId = new WeakMap<ApiColor, string>();
-function getColorRowKey(color: ApiColor, fallbackIdx: number): string {
-  let id = colorRowId.get(color);
-  if (id === undefined) {
-    id =
-      typeof crypto !== 'undefined' && 'randomUUID' in crypto
-        ? crypto.randomUUID()
-        : `c-${Date.now()}-${fallbackIdx}-${Math.random().toString(36).slice(2)}`;
-    colorRowId.set(color, id);
-  }
-  return id;
-}
-
-function ColorListEditor({ value = [], onChange }: ColorListEditorProps) {
-  function update(idx: number, patch: Partial<ApiColor>): void {
-    const next = value.map((c, i) => (i === idx ? { ...c, ...patch } : c));
-    onChange?.(next);
-  }
-  function remove(idx: number): void {
-    onChange?.(value.filter((_, i) => i !== idx));
-  }
-  function add(): void {
-    onChange?.([...value, { hex: '#000000', name: '' }]);
-  }
-  return (
-    <div>
-      {value.map((color, idx) => (
-        <div
-          key={getColorRowKey(color, idx)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            marginBottom: 8,
-          }}
-        >
-          <input
-            type="color"
-            aria-label={`Цвет ${idx + 1}`}
-            value={color.hex}
-            onChange={(e) => update(idx, { hex: e.target.value })}
-            style={{
-              width: 36,
-              height: 32,
-              border: '1px solid #D9D9D9',
-              borderRadius: 4,
-              padding: 0,
-            }}
-          />
-          <Input
-            placeholder="Название цвета"
-            value={color.name}
-            // Bound to the same hard cap as backend `ColorPayload.name`
-            // (`Field(min_length=1, max_length=64)` in `admin/catalog.py`)
-            // so 422 round-trips are impossible from the UI. (N3.)
-            maxLength={64}
-            onChange={(e) => update(idx, { name: e.target.value })}
-          />
-          <Button
-            type="text"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => remove(idx)}
-            aria-label={`Удалить цвет ${idx + 1}`}
-          />
-        </div>
-      ))}
-      <Button onClick={add} icon={<PlusOutlined />} block>
-        Добавить цвет
-      </Button>
-    </div>
-  );
-}
 
 // ─── Page ──────────────────────────────────────────────────────────────
 
@@ -460,7 +370,7 @@ export default function AdminCatalogPage() {
           preview_image: values.preview_image.trim(),
           description: values.description.trim(),
           price: values.price,
-          colors: values.colors ?? [],
+          colors: [],
           is_published: values.is_published,
           is_new: values.is_new,
           is_popular: values.is_popular,
@@ -1063,14 +973,6 @@ export default function AdminCatalogPage() {
           </Form.Item>
 
           <Form.Item
-            name="style"
-            label="Стиль"
-            rules={[{ max: 100, message: 'Максимум 100 символов' }]}
-          >
-            <Input placeholder="Минимализм" />
-          </Form.Item>
-
-          <Form.Item
             name="description"
             label="Описание"
             rules={[{ max: 4000, message: 'Максимум 4000 символов' }]}
@@ -1111,14 +1013,6 @@ export default function AdminCatalogPage() {
               message.success('Силуэт загружен');
             }}
           />
-
-          <Form.Item
-            label="Цвета (legacy)"
-            name="colors"
-            tooltip="Устаревшее поле. Цвета теперь управляются через текстуры (раздел «Текстуры»)."
-          >
-            <ColorListEditor />
-          </Form.Item>
 
           <Form.Item
             name="is_published"
