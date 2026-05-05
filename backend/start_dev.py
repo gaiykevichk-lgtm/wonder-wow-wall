@@ -194,6 +194,102 @@ async def seed_everything():
             await _mem_banner_repo.create(b)
     print(f"Banners seeded: {len(banners)}", file=sys.stderr)
 
+    # ── Textures & Colors ──────────────────────────────────────────────
+    from app.domain.catalog.texture import Texture
+    from app.domain.catalog.texture_color import TextureColor
+    from app.container import _mem_texture_repo, _mem_texture_color_repo
+
+    textures_data = [
+        ("tex-leather",  "Кожа",                "leather",      1),
+        ("tex-textile",  "Текстиль",            "textile",      2),
+        ("tex-wood",     "Дерево",              "wood",         3),
+        ("tex-metal",    "Металл",              "metal",        4),
+        ("tex-stone",    "Природный камень",    "natural-stone", 5),
+        ("tex-decor",    "Декоративные фактуры","decorative",   6),
+        ("tex-paint",    "Краска",              "paint",        7),
+        ("tex-graphics", "Графика",             "graphics",     8),
+    ]
+    colors_data = {
+        "tex-leather": [
+            ("Шоколад",        "#5C3317"),
+            ("Карамель",        "#C68E5B"),
+            ("Слоновая кость",  "#FFFFF0"),
+            ("Чёрный",          "#1A1A1A"),
+            ("Бордо",           "#800020"),
+        ],
+        "tex-textile": [
+            ("Лён",       "#E8DCC8"),
+            ("Графит",    "#4A4A4A"),
+            ("Лаванда",   "#B8A9C9"),
+            ("Изумруд",   "#2D7D46"),
+            ("Терракот",  "#CC5C3C"),
+        ],
+        "tex-wood": [
+            ("Натуральный дуб", "#C4A882"),
+            ("Тёмный орех",     "#5C4033"),
+            ("Берёза",          "#F5E6CC"),
+            ("Венге",           "#3C2415"),
+            ("Ясень",           "#D4C5A9"),
+        ],
+        "tex-metal": [
+            ("Сталь",     "#71797E"),
+            ("Бронза",    "#CD7F32"),
+            ("Золото",    "#D4AF37"),
+            ("Медь",      "#B87333"),
+            ("Чернёный",  "#2C2C2C"),
+        ],
+        "tex-stone": [
+            ("Каррарский мрамор", "#F0EDE5"),
+            ("Серый гранит",      "#808080"),
+            ("Оникс",             "#353839"),
+            ("Травертин",         "#D2C6B2"),
+            ("Сланец",            "#54585A"),
+        ],
+        "tex-decor": [
+            ("Белая штукатурка",       "#F5F2ED"),
+            ("Серый бетон",            "#A0A0A0"),
+            ("Терракотовая штукатурка", "#CC7755"),
+            ("Песчаник",               "#D2B48C"),
+            ("Антрацит",               "#293133"),
+        ],
+        "tex-paint": [
+            ("Белый",          "#FFFFFF"),
+            ("Слоновая кость", "#FAEBD7"),
+            ("Пыльная роза",   "#DCAE96"),
+            ("Серо-голубой",   "#6D8EA0"),
+            ("Оливковый",      "#808000"),
+        ],
+        "tex-graphics": [
+            ("Монохром",          "#2D2D2D"),
+            ("Индиго",            "#3F51B5"),
+            ("Терракот",          "#E07C5A"),
+            ("Золотой орнамент",  "#C9A84C"),
+            ("Изумрудный",        "#00695C"),
+        ],
+    }
+
+    tex_count = 0
+    color_count = 0
+    for tex_id, tex_name, tex_slug, sort_order in textures_data:
+        existing = await _mem_texture_repo.get_by_slug(tex_slug)
+        if existing is None:
+            tex = Texture(id=tex_id, name=tex_name, slug=tex_slug,
+                          swatch_image="", sort_order=sort_order, is_active=True)
+            await _mem_texture_repo.create(tex)
+            tex_count += 1
+
+        for idx, (color_name, color_hex) in enumerate(colors_data.get(tex_id, [])):
+            color_id = f"{tex_id}-c{idx+1}"
+            existing_colors = await _mem_texture_color_repo.list_by_texture(tex_id, include_inactive=True)
+            if not any(c.id == color_id for c in existing_colors):
+                tc = TextureColor(id=color_id, texture_id=tex_id, name=color_name,
+                                  hex=color_hex, swatch_image="", sort_order=idx,
+                                  is_active=True)
+                await _mem_texture_color_repo.create(tc)
+                color_count += 1
+
+    print(f"Textures seeded: {tex_count}, Colors seeded: {color_count}", file=sys.stderr)
+
     # ── Recommendations ───────────────────────────────────────────────
     targets_data = [
         ("d-1","d-2",1), ("d-1","d-5",2), ("d-1","d-12",3),

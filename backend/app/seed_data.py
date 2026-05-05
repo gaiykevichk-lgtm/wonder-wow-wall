@@ -9,148 +9,322 @@ from app.domain.catalog.entities import Design, Category
 from app.domain.catalog.value_objects import Color
 
 
-# ─── Categories ──────────────────────────────────────────────────────────────
-# Slugs MUST match what the frontend category filter sends as `?category=`
-# (frontend model data.ts uses the same slugs).
+# ─── Categories (размеры панелей) ───────────────────────────────────────────
 
 SEED_CATEGORIES = [
-    # existing backend slugs (keep for migrations compatibility)
-    Category(id="cat-1", name="Природа",     slug="nature",      image="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&h=300&fit=crop",   count=2),
-    Category(id="cat-2", name="Абстракция", slug="abstract",    image="https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=400&h=300&fit=crop",   count=2),
-    Category(id="cat-3", name="Геометрия",  slug="geometry",    image="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop",   count=2),
-    Category(id="cat-4", name="Минимализм", slug="minimalism",   image="https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&h=300&fit=crop",   count=1),
-    Category(id="cat-5", name="Текстуры",   slug="textures",    image="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop",   count=1),
-    Category(id="cat-6", name="Арт",        slug="art",         image="https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=400&h=300&fit=crop",   count=1),
-    # new categories from frontend mock that need DB rows
-    Category(id="cat-7", name="Дерево",     slug="wood",        image="https://images.unsplash.com/photo-1644925757334-d0397c01518c?w=400&h=300&fit=crop",   count=3),
-    Category(id="cat-8", name="Камень",     slug="stone",       image="https://images.unsplash.com/photo-1566041510394-cf7c8fe21800?w=400&h=300&fit=crop",   count=2),
-    # Wave panels with real texture photos
-    Category(id="cat-9", name="Волна",     slug="wave",        image="/uploads/wave_panels/10000.png",                              count=1),
+    Category(id="cat-30x30", name="30×30 см", slug="30x30", image="/uploads/forms/30x30/FLAT-S-01 (фронтально).png", count=14),
+    Category(id="cat-30x60", name="30×60 см", slug="30x60", image="/uploads/forms/30x60/FLAT-M-01 (фронтально).png", count=12),
+    Category(id="cat-60x60", name="60×60 см", slug="60x60", image="/uploads/forms/60x60/FLAT-L-01 (фронтально).png", count=11),
 ]
 
 
-# ─── Designs ────────────────────────────────────────────────────────────────────
-# All designs from frontend/src/domains/catalog/model/data.ts with REAL Unsplash URLs
-# and matching backend entity fields.
+# ─── Designs (формы панелей) ────────────────────────────────────────────────
+
+_F30 = "/uploads/forms/30x30"
+_F60R = "/uploads/forms/30x60"
+_F60S = "/uploads/forms/60x60"
 
 SEED_DESIGNS = [
-    # ── wood ──────────────────────────────────────────────────────────
+    # ── 30×30 см (14 форм) ────────────────────────────────────────────
     Design(
-        id="design-oak-classic",
-        name="Дубовая классика",
-        slug="oak-classic",
-        category_id="cat-7",
-        style="Классика",
-        image="https://images.unsplash.com/photo-1644925757334-d0397c01518c?w=600&h=600&fit=crop",
-        description="Накладка с текстурой натурального дуба. Реалистичная фактура, тёплый древесный оттенок. Подходит для гостиных, кабинетов и спален.",
-        price=1200,
-        colors=[
-            Color("#8B6914", "Натуральный дуб"),
-            Color("#A0522D", "Тёмный дуб"),
-            Color("#D2B48C", "Светлый дуб"),
-            Color("#6B4226", "Шоколад"),
-        ],
-        rating=4.8, reviews_count=124, is_popular=True,
+        id="flat-s-01", name="Плоская", slug="flat-s",
+        category_id="cat-30x30",
+        image=f"{_F30}/FLAT-S-01 (фронтально).png",
+        preview_image=f"{_F30}/FLAT-S-01 (фронтально).png",
+        description="Гладкая плоская панель — чистый холст для любой текстуры. Универсальная база для минималистичных интерьеров.",
+        price=1200, rating=4.8, reviews_count=64, is_popular=True,
     ),
     Design(
-        id="design-walnut",
-        name="Американский орех",
-        slug="american-walnut",
-        category_id="cat-7",
-        style="Классика",
-        image="https://images.unsplash.com/photo-1611072337226-1140ab367200?w=600&h=600&fit=crop",
-        description="Роскошная накладка с текстурой американского ореха. Глубокий шоколадный оттенок для элегантных интерьеров.",
-        price=1200,
-        colors=[
-            Color("#3E2723", "Тёмный орех"),
-            Color("#5D4037", "Классический"),
-            Color("#4E342E", "Мокко"),
-        ],
-        rating=4.9, reviews_count=87,
+        id="tslat-s-02", name="Рейки", slug="tslat-s",
+        category_id="cat-30x30",
+        image=f"{_F30}/TSLAT-S-02 (фронтально).png",
+        preview_image=f"{_F30}/TSLAT-S-02 (фронтально).png",
+        description="Узкие вертикальные рейки с равномерным ритмом. Визуально вытягивают стену и добавляют глубину.",
+        price=1200, rating=4.7, reviews_count=42, is_new=True,
     ),
     Design(
-        id="design-ash",
-        name="Ясень скандинавский",
-        slug="scandinavian-ash",
-        category_id="cat-7",
-        style="Минимализм",
-        image="https://images.unsplash.com/photo-1763392199096-6efd9d28d8cc?w=600&h=600&fit=crop",
-        description="Светлая накладка в скандинавском стиле с текстурой ясеня. Минималистичный и воздушный дизайн.",
-        price=1200,
-        colors=[
-            Color("#F5DEB3", "Натуральный"),
-            Color("#FAEBD7", "Отбелённый"),
-            Color("#DEB887", "Медовый"),
-        ],
-        rating=4.7, reviews_count=56, is_new=True,
+        id="wslat-s-03", name="Трио", slug="wslat-s",
+        category_id="cat-30x30",
+        image=f"{_F30}/WSLAT-S-03 (франтально).png",
+        preview_image=f"{_F30}/WSLAT-S-03 (франтально).png",
+        description="Три широкие вертикальные секции с мягкими гранями. Сдержанный и уверенный рельеф.",
+        price=1200, rating=4.6, reviews_count=31,
+    ),
+    Design(
+        id="dslat-s-04", name="Диагональ", slug="dslat-s",
+        category_id="cat-30x30",
+        image=f"{_F30}/DSLAT-S-04 (фронтально).png",
+        preview_image=f"{_F30}/DSLAT-S-04 (фронтально).png",
+        description="Диагональная штриховка на плоскости — динамичный рельеф, который оживляет геометрию стены.",
+        price=1200, rating=4.9, reviews_count=58, is_popular=True,
+    ),
+    Design(
+        id="key-s-05", name="Грань", slug="key-s",
+        category_id="cat-30x30",
+        image=f"{_F30}/KEY-S-05 (фронтально).png",
+        preview_image=f"{_F30}/KEY-S-05 (фронтально).png",
+        description="Одиночная вертикальная грань делит панель надвое. Лаконичный акцент с игрой света и тени.",
+        price=1200, rating=4.5, reviews_count=28,
+    ),
+    Design(
+        id="col-s-06", name="Колонны", slug="col-s",
+        category_id="cat-30x30",
+        image=f"{_F30}/COL-S-06 (фронтально).png",
+        preview_image=f"{_F30}/COL-S-06 (фронтально).png",
+        description="Два вогнутых пилона напоминают классические колонны. Благородство архитектурных форм на стене.",
+        price=1200, rating=4.7, reviews_count=35, is_new=True,
+    ),
+    Design(
+        id="arc-s-07", name="Арка", slug="arc-s",
+        category_id="cat-30x30",
+        image=f"{_F30}/ARC-S-07 (фронтально).png",
+        preview_image=f"{_F30}/ARC-S-07 (фронтально).png",
+        description="Скруглённый верхний срез создаёт силуэт арки. Мягкая, почти романская форма.",
+        price=1200, rating=4.8, reviews_count=47,
+    ),
+    Design(
+        id="trap-s-08", name="Трапеция", slug="trap-s",
+        category_id="cat-30x30",
+        image=f"{_F30}/TRAP-S-08 (фронтально).png",
+        preview_image=f"{_F30}/TRAP-S-08 (фронтально).png",
+        description="Трапециевидный рельеф с фаской по периметру. Чёткая геометрия и объём при боковом свете.",
+        price=1200, rating=4.6, reviews_count=39, is_popular=True,
+    ),
+    Design(
+        id="zig-s-09", name="Зигзаг", slug="zig-s",
+        category_id="cat-30x30",
+        image=f"{_F30}/ZIG-S-09 (фронтально).png",
+        preview_image=f"{_F30}/ZIG-S-09 (фронтально).png",
+        description="Плавные вертикальные волны с выраженным зигзагообразным рельефом. Динамика и ритм в каждой панели.",
+        price=1200, rating=4.7, reviews_count=52,
+    ),
+    Design(
+        id="wav-s-10", name="Волна", slug="wav-s",
+        category_id="cat-30x30",
+        image=f"{_F30}/WAV-S-10 (фронтально).png",
+        preview_image=f"{_F30}/WAV-S-10 (фронтально).png",
+        description="Классическая волна — мягкие переливы поверхности, которые оживают в лучах бокового света.",
+        price=1200, rating=4.9, reviews_count=87, is_popular=True, is_new=True,
+    ),
+    Design(
+        id="sqr-s-11", name="Квадраты", slug="sqr-s",
+        category_id="cat-30x30",
+        image=f"{_F30}/SQR-S-11 (фронтально).png",
+        preview_image=f"{_F30}/SQR-S-11 (фронтально).png",
+        description="Четыре смещённых квадрата создают объёмную мозаику. Современный и динамичный паттерн.",
+        price=1200, rating=4.6, reviews_count=33,
+    ),
+    Design(
+        id="pyr-s-12", name="Кессон", slug="pyr-s",
+        category_id="cat-30x30",
+        image=f"{_F30}/PYR-S-12 (фронтально).png",
+        preview_image=f"{_F30}/PYR-S-12 (фронтально).png",
+        description="Классический кессон со ступенчатой рамкой. Придаёт стене торжественность дворцового потолка.",
+        price=1200, rating=4.8, reviews_count=61, is_popular=True,
+    ),
+    Design(
+        id="rdiv-s-13", name="Ригель", slug="rdiv-s",
+        category_id="cat-30x30",
+        image=f"{_F30}/RDIV-S-13 (фронтально).png",
+        preview_image=f"{_F30}/RDIV-S-13 (фронтально).png",
+        description="Горизонтальная прямоугольная перемычка — строгий минимализм для акцентных зон.",
+        price=1200, rating=4.5, reviews_count=22,
+    ),
+    Design(
+        id="cdiv-s-14", name="Цилиндр", slug="cdiv-s",
+        category_id="cat-30x30",
+        image=f"{_F30}/CDIV-S-14 (фронтально).png",
+        preview_image=f"{_F30}/CDIV-S-14 (фронтально).png",
+        description="Горизонтальный цилиндрический элемент — мягкая скульптурная форма, ловящая свет по дуге.",
+        price=1200, rating=4.6, reviews_count=26,
     ),
 
-    # ── stone ─────────────────────────────────────────────────────────
+    # ── 30×60 см (12 форм) ────────────────────────────────────────────
     Design(
-        id="design-marble",
-        name="Белый мрамор",
-        slug="white-marble",
-        category_id="cat-8",
-        style="Модерн",
-        image="https://images.unsplash.com/photo-1566041510394-cf7c8fe21800?w=600&h=600&fit=crop",
-        description="Изысканная мраморная текстура с тонкими прожилками. Элегантное решение для любого интерьера.",
-        price=1200,
-        colors=[
-            Color("#F5F5F5", "Каррара"),
-            Color("#E8E0D8", "Калакатта"),
-            Color("#D3D3D3", "Серый мрамор"),
-        ],
-        rating=4.8, reviews_count=156, is_new=True,
+        id="flat-m-01", name="Плоская", slug="flat-m",
+        category_id="cat-30x60",
+        image=f"{_F60R}/FLAT-M-01 (фронтально).png",
+        preview_image=f"{_F60R}/FLAT-M-01 (фронтально).png",
+        description="Гладкая прямоугольная панель — вертикальный формат для высоких стен и узких простенков.",
+        price=1200, rating=4.7, reviews_count=38,
     ),
     Design(
-        id="design-concrete",
-        name="Бетон лофт",
-        slug="concrete-loft",
-        category_id="cat-8",
-        style="Лофт",
-        image="https://images.unsplash.com/photo-1711606329941-63c1af645a53?w=600&h=600&fit=crop",
-        description="Имитация бетонной поверхности для стиля лофт. Современный индустриальный вид.",
-        price=1200,
-        colors=[
-            Color("#9E9E9E", "Светлый бетон"),
-            Color("#616161", "Тёмный бетон"),
-            Color("#BDBDBD", "Серый"),
-        ],
-        rating=4.5, reviews_count=203, is_popular=True,
+        id="rslat-m-02", name="Рейки", slug="rslat-m",
+        category_id="cat-30x60",
+        image=f"{_F60R}/RSLAT-M-02 (фронтально).png",
+        preview_image=f"{_F60R}/RSLAT-M-02 (фронтально).png",
+        description="Вертикальные рейки в удлинённом формате. Вытягивают пространство и задают ритм интерьеру.",
+        price=1200, rating=4.8, reviews_count=45, is_popular=True,
+    ),
+    Design(
+        id="cslat-m-03", name="Каскад", slug="cslat-m",
+        category_id="cat-30x60",
+        image=f"{_F60R}/CSLAT-M-03 (фронтально).png",
+        preview_image=f"{_F60R}/CSLAT-M-03 (фронтально).png",
+        description="Каскадные ступенчатые планки — рельеф нарастает волной, создавая глубину.",
+        price=1200, rating=4.6, reviews_count=29,
+    ),
+    Design(
+        id="ddia-m-04", name="Двойная диагональ", slug="ddia-m",
+        category_id="cat-30x60",
+        image=f"{_F60R}/DDIA-M-04 (фронтально).png",
+        preview_image=f"{_F60R}/DDIA-M-04 (фронтально).png",
+        description="Встречные диагональные штрихи создают сложный геометрический узор, напоминающий плетение.",
+        price=1200, rating=4.9, reviews_count=54, is_new=True,
+    ),
+    Design(
+        id="her-m-05", name="Ёлочка", slug="her-m",
+        category_id="cat-30x60",
+        image=f"{_F60R}/HER-M-05 (фронтально).png",
+        preview_image=f"{_F60R}/HER-M-05 (фронтально).png",
+        description="Диагональные линии в классическом паттерне «ёлочка». Вечная геометрия паркетного рисунка.",
+        price=1200, rating=4.7, reviews_count=41,
+    ),
+    Design(
+        id="clo-m-06", name="Кристалл", slug="clo-m",
+        category_id="cat-30x60",
+        image=f"{_F60R}/CLO-M-06 (фронтально).png",
+        preview_image=f"{_F60R}/CLO-M-06 (фронтально).png",
+        description="Объёмные грани, как срез драгоценного камня. Игра света на каждой плоскости.",
+        price=1200, rating=4.8, reviews_count=63, is_popular=True,
+    ),
+    Design(
+        id="seg-m-07", name="Сегмент", slug="seg-m",
+        category_id="cat-30x60",
+        image=f"{_F60R}/SEG-M-07 (фронтально).png",
+        preview_image=f"{_F60R}/SEG-M-07 (фронтально).png",
+        description="Вытянутые шестиугольные сегменты — архитектурная элегантность в каждом повторе.",
+        price=1200, rating=4.6, reviews_count=34, is_new=True,
+    ),
+    Design(
+        id="ncm-m-08", name="Узкий гребень", slug="ncm-m",
+        category_id="cat-30x60",
+        image=f"{_F60R}/NCM-M-08 (фронтально).png",
+        preview_image=f"{_F60R}/NCM-M-08 (фронтально).png",
+        description="Тонкие частые рёбра создают текстуру вельвета на стене. Тактильный и визуально тёплый рельеф.",
+        price=1200, rating=4.5, reviews_count=27,
+    ),
+    Design(
+        id="nmol-m-09", name="Узкий молдинг", slug="nmol-m",
+        category_id="cat-30x60",
+        image=f"{_F60R}/NMOL-M-09 (фронтально).png",
+        preview_image=f"{_F60R}/NMOL-M-09 (фронтально).png",
+        description="Деликатный молдинг по центру панели — классический приём с филёнкой в современном прочтении.",
+        price=1200, rating=4.7, reviews_count=36,
+    ),
+    Design(
+        id="wcm-m-10", name="Широкий гребень", slug="wcm-m",
+        category_id="cat-30x60",
+        image=f"{_F60R}/WCM-M-10 (фронтально).png",
+        preview_image=f"{_F60R}/WCM-M-10 (фронтально).png",
+        description="Широкие рёбра с плавным профилем — как застывшие волны на спокойной воде.",
+        price=1200, rating=4.6, reviews_count=31,
+    ),
+    Design(
+        id="wmol-m-11", name="Широкий молдинг", slug="wmol-m",
+        category_id="cat-30x60",
+        image=f"{_F60R}/WMOL-M-11 (фронтально).png",
+        preview_image=f"{_F60R}/WMOL-M-11 (фронтально).png",
+        description="Крупный молдинг с выраженной рамкой — для интерьеров, которые не боятся классики.",
+        price=1200, rating=4.7, reviews_count=43, is_popular=True,
+    ),
+    Design(
+        id="tet-m-12", name="Тетра", slug="tet-m",
+        category_id="cat-30x60",
+        image=f"{_F60R}/TET-M-12 (фронтально).png",
+        preview_image=f"{_F60R}/TET-M-12 (фронтально).png",
+        description="Четыре грани сходятся к центру — объёмная фигура, меняющая восприятие в зависимости от угла.",
+        price=1200, rating=4.8, reviews_count=49,
     ),
 
-    # ── wave (Волна) — real texture photos ─────────────────────────────
-    # The primary image (10000.png) + 51 gallery variants
+    # ── 60×60 см (11 форм) ────────────────────────────────────────────
     Design(
-        id="design-wave",
-        name="Волна",
-        slug="wave",
-        category_id="cat-9",
-        style="Текстура",
-        image="/uploads/wave_panels/10000.png",
-        description="Натуральная текстура волны с 52 вариантами цветовых решений. Каждая панель уникальна благодаря УФ-печати. Идеально для гостиных, спален и офисов.",
-        price=1200,
-        colors=[
-            Color("#1A5F7A", "Морская волна"),
-            Color("#2E8B8B", "Бирюзовый"),
-            Color("#5DADE2", "Небесный"),
-            Color("#85C1E9", "Ледяной"),
-            Color("#AED6F1", "Морской бриз"),
-            Color("#1C2833", "Глубокий океан"),
-            Color("#34495E", "Стальной"),
-            Color("#7FB3D5", "Разлив"),
-            Color("#5499C7", "Средиземный"),
-            Color("#2E86AB", "Фиолетовая волна"),
-            Color("#48C9B0", "Мятный прибой"),
-            Color("#F39C12", "Закат на воде"),
-            Color("#E74C3C", "Коралловый риф"),
-            Color("#9B59B6", "Фиалковый прилив"),
-            Color("#1ABC9C", "Изумрудный прибой"),
-            Color("#F1C40F", "Золото волн"),
-            Color("#E67E22", "Янтарный берег"),
-            Color("#2ECC71", "Лесная река"),
-        ],
-        rating=4.9, reviews_count=312, is_popular=True, is_new=True,
+        id="flat-l-01", name="Плоская", slug="flat-l",
+        category_id="cat-60x60",
+        image=f"{_F60S}/FLAT-L-01 (фронтально).png",
+        preview_image=f"{_F60S}/FLAT-L-01 (фронтально).png",
+        description="Крупная плоская панель — максимальная площадь покрытия за один элемент. Идеальна для больших стен.",
+        price=1200, rating=4.7, reviews_count=41,
+    ),
+    Design(
+        id="frel-l-02", name="Плавный рельеф", slug="frel-l",
+        category_id="cat-60x60",
+        image=f"{_F60S}/FREL-L-02 (фронтально).png",
+        preview_image=f"{_F60S}/FREL-L-02 (фронтально).png",
+        description="Мягкие волнообразные переходы по всей поверхности. Панель играет светом как шёлковая ткань.",
+        price=1200, rating=4.8, reviews_count=53, is_new=True,
+    ),
+    Design(
+        id="crel-l-03", name="Классический рельеф", slug="crel-l",
+        category_id="cat-60x60",
+        image=f"{_F60S}/CREL-L-03 (фронтально).png",
+        preview_image=f"{_F60S}/CREL-L-03 (фронтально).png",
+        description="Традиционный филёнчатый рельеф большого формата — основа классического интерьера.",
+        price=1200, rating=4.9, reviews_count=72, is_popular=True,
+    ),
+    Design(
+        id="brk-l-04", name="Кирпич", slug="brk-l",
+        category_id="cat-60x60",
+        image=f"{_F60S}/BRK-L-04 (фронтально).png",
+        preview_image=f"{_F60S}/BRK-L-04 (фронтально).png",
+        description="Имитация кирпичной кладки с объёмными швами. Лофт-эстетика без пыли и штукатурки.",
+        price=1200, rating=4.7, reviews_count=48, is_popular=True,
+    ),
+    Design(
+        id="lwav-l-05", name="Длинная волна", slug="lwav-l",
+        category_id="cat-60x60",
+        image=f"{_F60S}/LWAV-L-05 (фронтально).png",
+        preview_image=f"{_F60S}/LWAV-L-05 (фронтально).png",
+        description="Протяжённая волна крупного формата — амплитуда рельефа раскрывается на большой площади.",
+        price=1200, rating=4.8, reviews_count=56,
+    ),
+    Design(
+        id="cir-l-06", name="Круг", slug="cir-l",
+        category_id="cat-60x60",
+        image=f"{_F60S}/CIR-L-06 (фронтально).png",
+        preview_image=f"{_F60S}/CIR-L-06 (фронтально).png",
+        description="Вписанный круг с горизонтальной линией — спокойная, медитативная форма в духе дзен.",
+        price=1200, rating=4.9, reviews_count=67, is_new=True,
+    ),
+    Design(
+        id="rho-l-07", name="Ромб", slug="rho-l",
+        category_id="cat-60x60",
+        image=f"{_F60S}/RHO-L-07 (фронтально).png",
+        preview_image=f"{_F60S}/RHO-L-07 (фронтально).png",
+        description="Крупный ромб с фаской — строгая геометрия с отсылкой к art deco.",
+        price=1200, rating=4.6, reviews_count=34,
+    ),
+    Design(
+        id="mos-l-08", name="Мозаика", slug="mos-l",
+        category_id="cat-60x60",
+        image=f"{_F60S}/MOS-L-08 (фронтально).png",
+        preview_image=f"{_F60S}/MOS-L-08 (фронтально).png",
+        description="Мозаичный паттерн из прямоугольных элементов — каждая грань ловит свет под своим углом.",
+        price=1200, rating=4.7, reviews_count=39,
+    ),
+    Design(
+        id="ffrm-l-09", name="Плоская рамка", slug="ffrm-l",
+        category_id="cat-60x60",
+        image=f"{_F60S}/FFRM-L-09 (фронтально).png",
+        preview_image=f"{_F60S}/FFRM-L-09 (фронтально).png",
+        description="Минималистичная рамка с плоским профилем — границы формы без лишних деталей.",
+        price=1200, rating=4.5, reviews_count=25,
+    ),
+    Design(
+        id="pfrm-l-10", name="Профильная рамка", slug="pfrm-l",
+        category_id="cat-60x60",
+        image=f"{_F60S}/PFRM-L-10 (фронтально).png",
+        preview_image=f"{_F60S}/PFRM-L-10 (фронтально).png",
+        description="Рамка со скошенным профилем — объём и глубина за счёт фаски по внутреннему контуру.",
+        price=1200, rating=4.6, reviews_count=30,
+    ),
+    Design(
+        id="cfrm-l-11", name="Классическая рамка", slug="cfrm-l",
+        category_id="cat-60x60",
+        image=f"{_F60S}/CFRM-L-11 (фронтально).png",
+        preview_image=f"{_F60S}/CFRM-L-11 (фронтально).png",
+        description="Рамка с многоступенчатым профилем — классический буазери в современном формате.",
+        price=1200, rating=4.8, reviews_count=51, is_popular=True,
     ),
 ]
 
@@ -194,6 +368,99 @@ SEED_PANELS = [
 ]
 
 
+# ─── Textures & Colors ───────────────────────────────────────────────────────
+SEED_TEXTURES = [
+    {
+        "id": "tex-leather", "name": "Кожа", "slug": "leather",
+        "swatch_image": "", "sort_order": 0,
+        "colors": [
+            {"id": "clr-leather-1", "name": "Шоколад",         "hex": "#5C3317"},
+            {"id": "clr-leather-2", "name": "Карамель",         "hex": "#C68E5B"},
+            {"id": "clr-leather-3", "name": "Слоновая кость",   "hex": "#FFFFF0"},
+            {"id": "clr-leather-4", "name": "Чёрная кожа",      "hex": "#1A1A1A"},
+            {"id": "clr-leather-5", "name": "Бордо",            "hex": "#800020"},
+        ],
+    },
+    {
+        "id": "tex-textile", "name": "Текстиль", "slug": "textile",
+        "swatch_image": "", "sort_order": 1,
+        "colors": [
+            {"id": "clr-textile-1", "name": "Лён",              "hex": "#E8DCC8"},
+            {"id": "clr-textile-2", "name": "Графит",           "hex": "#4A4A4A"},
+            {"id": "clr-textile-3", "name": "Лаванда",          "hex": "#B8A9C9"},
+            {"id": "clr-textile-4", "name": "Изумруд",          "hex": "#2D7D46"},
+            {"id": "clr-textile-5", "name": "Терракот",         "hex": "#CC5C3C"},
+        ],
+    },
+    {
+        "id": "tex-wood", "name": "Дерево", "slug": "wood",
+        "swatch_image": "", "sort_order": 2,
+        "colors": [
+            {"id": "clr-wood-1", "name": "Натуральный дуб",    "hex": "#C4A882"},
+            {"id": "clr-wood-2", "name": "Тёмный орех",        "hex": "#5C4033"},
+            {"id": "clr-wood-3", "name": "Берёза",             "hex": "#F5E6CC"},
+            {"id": "clr-wood-4", "name": "Венге",              "hex": "#3C2415"},
+            {"id": "clr-wood-5", "name": "Ясень",              "hex": "#D4C5A9"},
+        ],
+    },
+    {
+        "id": "tex-metal", "name": "Металл", "slug": "metal",
+        "swatch_image": "", "sort_order": 3,
+        "colors": [
+            {"id": "clr-metal-1", "name": "Сталь",             "hex": "#71797E"},
+            {"id": "clr-metal-2", "name": "Бронза",            "hex": "#CD7F32"},
+            {"id": "clr-metal-3", "name": "Золото",            "hex": "#D4AF37"},
+            {"id": "clr-metal-4", "name": "Медь",              "hex": "#B87333"},
+            {"id": "clr-metal-5", "name": "Чернёный",          "hex": "#2C2C2C"},
+        ],
+    },
+    {
+        "id": "tex-stone", "name": "Природный камень", "slug": "natural-stone",
+        "swatch_image": "", "sort_order": 4,
+        "colors": [
+            {"id": "clr-stone-1", "name": "Каррарский мрамор", "hex": "#F0EDE5"},
+            {"id": "clr-stone-2", "name": "Серый гранит",      "hex": "#808080"},
+            {"id": "clr-stone-3", "name": "Оникс",             "hex": "#353839"},
+            {"id": "clr-stone-4", "name": "Травертин",         "hex": "#D2C6B2"},
+            {"id": "clr-stone-5", "name": "Сланец",            "hex": "#54585A"},
+        ],
+    },
+    {
+        "id": "tex-decorative", "name": "Декоративные фактуры", "slug": "decorative",
+        "swatch_image": "", "sort_order": 5,
+        "colors": [
+            {"id": "clr-deco-1", "name": "Белая штукатурка",   "hex": "#F5F2ED"},
+            {"id": "clr-deco-2", "name": "Серый бетон",        "hex": "#A0A0A0"},
+            {"id": "clr-deco-3", "name": "Терракотовая штукатурка", "hex": "#CC7755"},
+            {"id": "clr-deco-4", "name": "Песчаник",           "hex": "#D2B48C"},
+            {"id": "clr-deco-5", "name": "Антрацит",           "hex": "#293133"},
+        ],
+    },
+    {
+        "id": "tex-paint", "name": "Краска", "slug": "paint",
+        "swatch_image": "", "sort_order": 6,
+        "colors": [
+            {"id": "clr-paint-1", "name": "Белый",             "hex": "#FFFFFF"},
+            {"id": "clr-paint-2", "name": "Слоновая кость",    "hex": "#FAEBD7"},
+            {"id": "clr-paint-3", "name": "Пыльная роза",      "hex": "#DCAE96"},
+            {"id": "clr-paint-4", "name": "Серо-голубой",      "hex": "#6D8EA0"},
+            {"id": "clr-paint-5", "name": "Оливковый",         "hex": "#808000"},
+        ],
+    },
+    {
+        "id": "tex-graphics", "name": "Графика", "slug": "graphics",
+        "swatch_image": "", "sort_order": 7,
+        "colors": [
+            {"id": "clr-graph-1", "name": "Монохром",          "hex": "#2D2D2D"},
+            {"id": "clr-graph-2", "name": "Индиго",            "hex": "#3F51B5"},
+            {"id": "clr-graph-3", "name": "Терракот",          "hex": "#E07C5A"},
+            {"id": "clr-graph-4", "name": "Золотой орнамент",  "hex": "#C9A84C"},
+            {"id": "clr-graph-5", "name": "Изумрудный",        "hex": "#00695C"},
+        ],
+    },
+]
+
+
 def designs_as_dicts() -> list[dict]:
     """Convert domain designs to dicts for DB seeding (ORM model kwargs)."""
     result = []
@@ -204,6 +471,7 @@ def designs_as_dicts() -> list[dict]:
             "colors": [{"hex": c.hex, "name": c.name} for c in d.colors],
             "rating": d.rating, "reviews_count": d.reviews_count,
             "is_published": True,
+            "preview_image": d.preview_image,
         }
         if d.is_new:
             data["is_new"] = True

@@ -21,12 +21,20 @@ const fadeUpVariants: ComponentProps<typeof motion.div>['variants'] = {
   }),
 };
 
+const SIZE_TABS = [
+  { key: 'all', label: 'Все формы' },
+  { key: 'cat-30x30', label: '30×30 см' },
+  { key: 'cat-30x60', label: '30×60 см' },
+  { key: 'cat-60x60', label: '60×60 см' },
+] as const;
+
 export default function CatalogPage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
+  const [sizeTab, setSizeTab] = useState<string>('all');
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
 
-  const { data: designsData, isLoading } = useDesigns();
+  const { data: designsData, isLoading } = useDesigns({ limit: 50 });
 
   const products = useMemo(() => {
     if (designsData?.items) {
@@ -36,10 +44,16 @@ export default function CatalogPage() {
   }, [designsData]);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return products;
-    const q = search.toLowerCase();
-    return products.filter((p) => p.name.toLowerCase().includes(q));
-  }, [products, search]);
+    let result = products;
+    if (sizeTab !== 'all') {
+      result = result.filter((p) => p.category === sizeTab);
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter((p) => p.name.toLowerCase().includes(q));
+    }
+    return result;
+  }, [products, search, sizeTab]);
 
   return (
     <div style={{ paddingTop: 72, minHeight: '100vh', background: '#FFFFFF' }}>
@@ -104,6 +118,38 @@ export default function CatalogPage() {
               fontSize: 15,
             }}
           />
+        </div>
+
+        {/* Size Tabs */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: 8,
+            marginBottom: 40,
+            flexWrap: 'wrap',
+          }}
+        >
+          {SIZE_TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setSizeTab(tab.key)}
+              style={{
+                padding: '8px 20px',
+                borderRadius: 100,
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 14,
+                fontWeight: 500,
+                letterSpacing: '-0.01em',
+                transition: 'all 0.3s ease',
+                background: sizeTab === tab.key ? '#2D2D2D' : '#F0F0F0',
+                color: sizeTab === tab.key ? '#FFFFFF' : '#6B7280',
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         {/* Grid */}
