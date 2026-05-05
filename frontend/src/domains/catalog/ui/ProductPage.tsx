@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { message, Skeleton, Rate, Input, Button } from 'antd';
 import { PageMeta } from '../../../shared/ui/PageMeta';
-import { LeftOutlined, StarFilled, UserOutlined, CameraOutlined, LayoutOutlined } from '@ant-design/icons';
+import { LeftOutlined, StarFilled, UserOutlined, CameraOutlined, LayoutOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { motion, useScroll, useMotionValueEvent, AnimatePresence } from 'framer-motion';
 import { products as mockProducts } from '../model/data';
 import { useDesign, useDesigns, useDesignReviews, useAddReview, usePublicRecommendations, useFullConfig } from '../api/catalogApi';
@@ -390,7 +390,7 @@ export default function ProductPage() {
           background: 'linear-gradient(135deg, #2D2D2D 0%, #3a3a3c 100%)',
           display: 'flex', alignItems: 'center',
         }}>
-          <img src={product.image} alt={product.name} style={{ position: 'absolute', right: 0, top: 0, height: '100%', width: '55%', objectFit: 'cover', objectPosition: 'center', opacity: 0.5 }} />
+          <img src={product.image} alt={product.name} loading="lazy" decoding="async" style={{ position: 'absolute', right: 0, top: 0, height: '100%', width: '55%', objectFit: 'cover', objectPosition: 'center', opacity: 0.5 }} />
           <div style={{ position: 'relative', zIndex: 1, padding: '0 56px', maxWidth: 460 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
               Класс {product.specs['Класс'] ?? 'Премиум'}
@@ -539,7 +539,7 @@ export default function ProductPage() {
                   onClick={() => navigate(`/product/${related.id}`)}
                   style={{ borderRadius: 24, overflow: 'hidden', cursor: 'pointer', background: '#F5F5F5' }}
                 >
-                  <img src={related.image} alt={related.name} style={{ width: '100%', height: 220, objectFit: 'cover', display: 'block' }} />
+                  <img src={related.image} alt={related.name} loading="lazy" decoding="async" style={{ width: '100%', height: 220, objectFit: 'cover', display: 'block' }} />
                   <div style={{ padding: '16px 20px 20px' }}>
                     <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>{related.categoryLabel}</div>
                     <div style={{ fontSize: 17, fontWeight: 600, color: '#2D2D2D', marginBottom: 8 }}>{related.name}</div>
@@ -557,7 +557,7 @@ export default function ProductPage() {
 
       {/* ── Bottom rooms ──────────────────────────────────── */}
       {product.room.length > 0 && (
-        <div style={{ background: '#F5F5F5', padding: '48px 24px', textAlign: 'center' }}>
+        <div style={{ background: '#F5F5F5', padding: '48px 24px 120px', textAlign: 'center' }}>
           <div style={{ fontSize: 13, color: '#6B7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>Подходит для</div>
           <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 10 }}>
             {product.room.map((r) => (
@@ -566,6 +566,60 @@ export default function ProductPage() {
           </div>
         </div>
       )}
+
+      {/* ── Mobile sticky CTA bar ────────────────────────── */}
+      <AnimatePresence>
+        {stickyVisible && (
+          <motion.div
+            className="mobile-sticky-cta"
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ duration: 0.35, ease }}
+            style={{
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 900,
+              background: 'rgba(255,255,255,0.92)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              borderTop: '1px solid rgba(0,0,0,0.08)',
+              padding: '12px 20px',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 16,
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 13, color: '#6B7280', fontWeight: 500 }}>{product.name}</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: '#2D2D2D', letterSpacing: '-0.02em' }}>
+                от {product.price.toLocaleString('ru-RU')} ₽
+              </div>
+            </div>
+            <a
+              href="#configurator"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                background: '#4CAF50',
+                color: '#fff',
+                textDecoration: 'none',
+                height: 46,
+                borderRadius: 10,
+                fontWeight: 600,
+                fontSize: 15,
+                padding: '0 24px',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <ShoppingCartOutlined style={{ fontSize: 16 }} /> В корзину
+            </a>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );
@@ -655,7 +709,7 @@ function UsageHero({ ex }: { ex: { room: string; image: string; caption: string 
   return (
     <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.15 }} style={{ position: 'relative', borderRadius: 28, overflow: 'hidden' }}>
       <div style={{ overflow: 'hidden', borderRadius: 28 }}>
-        <motion.img src={ex.image} alt={ex.room} whileHover={{ scale: 1.03 }} transition={{ duration: 0.8, ease }} style={{ width: '100%', height: 520, objectFit: 'cover', display: 'block' }} />
+        <motion.img src={ex.image} alt={ex.room} loading="lazy" decoding="async" whileHover={{ scale: 1.03 }} transition={{ duration: 0.8, ease }} style={{ width: '100%', height: 520, objectFit: 'cover', display: 'block' }} />
       </div>
       <div style={{ position: 'absolute', inset: 0, borderRadius: 28, background: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.1) 45%, transparent 100%)', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '32px 40px' }}>
@@ -671,7 +725,7 @@ function UsageCard({ ex }: { ex: { room: string; image: string; caption: string 
   return (
     <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} style={{ position: 'relative', borderRadius: 24, overflow: 'hidden' }}>
       <div style={{ overflow: 'hidden', borderRadius: 24 }}>
-        <motion.img src={ex.image} alt={ex.room} whileHover={{ scale: 1.04 }} transition={{ duration: 0.8, ease }} style={{ width: '100%', height: 340, objectFit: 'cover', display: 'block' }} />
+        <motion.img src={ex.image} alt={ex.room} loading="lazy" decoding="async" whileHover={{ scale: 1.04 }} transition={{ duration: 0.8, ease }} style={{ width: '100%', height: 340, objectFit: 'cover', display: 'block' }} />
       </div>
       <div style={{ position: 'absolute', inset: 0, borderRadius: 24, background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.08) 50%, transparent 100%)', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '24px 28px' }}>

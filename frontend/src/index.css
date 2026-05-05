@@ -181,6 +181,18 @@ img {
   }
 }
 
+/* ─── Mobile sticky CTA bar ─────────────────────────────────────────────────── */
+
+.mobile-sticky-cta {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .mobile-sticky-cta {
+    display: flex;
+  }
+}
+
 /* ─── Small phone (≤480px) ─────────────────────────────────────────────────── */
 
 @media (max-width: 480px) {

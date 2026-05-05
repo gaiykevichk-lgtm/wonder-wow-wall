@@ -18,13 +18,17 @@ interface Props {
 
 function Stepper({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: '#E8E8ED', borderRadius: 8, padding: 4 }}>
+    <div role="group" aria-label="Количество" style={{ display: 'flex', alignItems: 'center', gap: 0, background: '#E8E8ED', borderRadius: 8, padding: 4 }}>
       <button
+        aria-label="Уменьшить количество"
+        disabled={value <= 1}
         onClick={() => onChange(Math.max(1, value - 1))}
-        style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: value <= 1 ? 'transparent' : '#fff', cursor: 'pointer', fontSize: 18, color: '#2D2D2D', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 400, lineHeight: 1, transition: 'background 0.2s' }}
+        style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: value <= 1 ? 'transparent' : '#fff', cursor: value <= 1 ? 'default' : 'pointer', fontSize: 18, color: '#2D2D2D', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 400, lineHeight: 1, transition: 'background 0.2s' }}
       >−</button>
-      <span style={{ width: 40, textAlign: 'center', fontSize: 15, fontWeight: 600, color: '#2D2D2D' }}>{value}</span>
+      <span aria-live="polite" style={{ width: 40, textAlign: 'center', fontSize: 15, fontWeight: 600, color: '#2D2D2D' }}>{value}</span>
       <button
+        aria-label="Увеличить количество"
+        disabled={value >= 100}
         onClick={() => onChange(Math.min(100, value + 1))}
         style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#fff', cursor: 'pointer', fontSize: 18, color: '#2D2D2D', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 400, lineHeight: 1, transition: 'background 0.2s' }}
       >+</button>
@@ -95,9 +99,25 @@ export default function ConfiguratorPanel({ config, designId, designImage, onVar
     return s?.label ?? sizeKey;
   }, [sizeKey]);
 
+  const prefetchImagesForTexture = useCallback((tid: string) => {
+    const texture = config.textures.find((t) => t.id === tid);
+    if (!texture) return;
+    for (const c of texture.colors) {
+      const path = variantImageMap.get(`${tid}:${c.id}`);
+      if (path) {
+        const img = new Image();
+        img.src = path;
+      }
+    }
+  }, [config.textures, variantImageMap]);
+
   const handleTextureChange = useCallback((id: string) => {
     setTextureId(id);
   }, []);
+
+  const handleTextureHover = useCallback((id: string) => {
+    prefetchImagesForTexture(id);
+  }, [prefetchImagesForTexture]);
 
   const handleColorChange = useCallback((id: string) => {
     setColorId(id);
@@ -130,7 +150,7 @@ export default function ConfiguratorPanel({ config, designId, designImage, onVar
     <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
       {hasTextures && (
         <>
-          <TextureSelector textures={config.textures} activeId={textureId} onChange={handleTextureChange} />
+          <TextureSelector textures={config.textures} activeId={textureId} onChange={handleTextureChange} onHover={handleTextureHover} />
           {activeTexture && activeTexture.colors.length > 0 && (
             <ColorSelector colors={activeTexture.colors} activeId={colorId} onChange={handleColorChange} />
           )}

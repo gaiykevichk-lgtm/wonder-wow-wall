@@ -26,6 +26,7 @@ export default function ProductPreview({ imagePath, fallbackImage, altText, isLo
             key={src}
             src={src}
             alt={altText}
+            decoding="async"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

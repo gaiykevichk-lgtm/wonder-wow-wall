@@ -26,15 +26,15 @@ describe('ColorSelector', () => {
     const onChange = vi.fn();
     render(<ColorSelector colors={colors} activeId="1" onChange={onChange} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Чёрный' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Чёрный' }));
     expect(onChange).toHaveBeenCalledWith('2');
   });
 
   it('shows checkmark SVG only for the active color', () => {
     render(<ColorSelector colors={colors} activeId="2" onChange={vi.fn()} />);
 
-    const buttons = screen.getAllByRole('button');
-    const svgs = buttons.map((btn) => btn.querySelector('svg'));
+    const radios = screen.getAllByRole('radio');
+    const svgs = radios.map((btn) => btn.querySelector('svg'));
 
     // Only the active button (index 1, id "2") should contain the checkmark SVG
     expect(svgs[0]).toBeNull();

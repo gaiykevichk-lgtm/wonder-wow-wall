@@ -1,3 +1,4 @@
+import { useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import type { Texture } from '../model/types';
 
@@ -5,23 +6,61 @@ interface Props {
   textures: Texture[];
   activeId: string;
   onChange: (id: string) => void;
+  onHover?: (id: string) => void;
 }
 
-export default function TextureSelector({ textures, activeId, onChange }: Props) {
+export default function TextureSelector({ textures, activeId, onChange, onHover }: Props) {
   if (textures.length === 0) return null;
+
+  const groupRef = useRef<HTMLDivElement>(null);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      const idx = textures.findIndex((t) => t.id === activeId);
+      let next = idx;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        next = (idx + 1) % textures.length;
+        e.preventDefault();
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        next = (idx - 1 + textures.length) % textures.length;
+        e.preventDefault();
+      } else {
+        return;
+      }
+      onChange(textures[next].id);
+      const el = groupRef.current?.querySelector(`[data-texture-id="${textures[next].id}"]`) as HTMLElement | null;
+      el?.focus();
+    },
+    [textures, activeId, onChange],
+  );
 
   return (
     <div>
-      <div style={{ fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16, textAlign: 'center' }}>
+      <div
+        id="texture-selector-label"
+        style={{ fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16, textAlign: 'center' }}
+      >
         Текстура
       </div>
-      <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-        {textures.map((t) => {
+      <div
+        ref={groupRef}
+        role="radiogroup"
+        aria-labelledby="texture-selector-label"
+        onKeyDown={handleKeyDown}
+        style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}
+      >
+        {textures.map((t, i) => {
           const active = t.id === activeId;
           return (
             <motion.button
               key={t.id}
+              data-texture-id={t.id}
+              role="radio"
+              aria-checked={active}
+              aria-label={t.name}
+              tabIndex={active ? 0 : -1}
               onClick={() => onChange(t.id)}
+              onMouseEnter={() => onHover?.(t.id)}
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.97 }}
               style={{
@@ -48,7 +87,7 @@ export default function TextureSelector({ textures, activeId, onChange }: Props)
                 }}
               >
                 {t.swatchImage ? (
-                  <img src={t.swatchImage} alt={t.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={t.swatchImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
                   <div style={{ width: '100%', height: '100%', background: '#E8E8ED', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
                     🧱

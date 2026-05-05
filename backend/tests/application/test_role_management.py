@@ -18,7 +18,7 @@ from app.application.user.use_cases import (
     RequireAdmin,
 )
 from app.domain.user.entities import User
-from app.domain.user.exceptions import LastAdminRemovalError, NotAuthorizedError
+from app.domain.user.exceptions import LastAdminRemovalError, NotAuthorizedError, UserNotFoundError
 from app.domain.user.value_objects import UserRole
 from app.infrastructure.persistence.repositories.memory import InMemoryUserRepository
 
@@ -78,9 +78,9 @@ class TestGrantAdminRole:
             await uc.execute(actor_id="does-not-exist", target_user_id=target.id)
 
     @pytest.mark.asyncio
-    async def test_grant_on_missing_target_raises_value_error(self, repo):
+    async def test_grant_on_missing_target_raises_not_found(self, repo):
         uc = GrantAdminRole(repo)
-        with pytest.raises(ValueError):
+        with pytest.raises(UserNotFoundError):
             await uc.execute(actor_id="SYSTEM", target_user_id="missing")
 
     @pytest.mark.asyncio
@@ -142,11 +142,11 @@ class TestRevokeAdminRole:
             await uc.execute(actor_id=actor.id, target_user_id=admin.id)
 
     @pytest.mark.asyncio
-    async def test_revoke_on_missing_target_raises_value_error(self, repo):
+    async def test_revoke_on_missing_target_raises_not_found(self, repo):
         admin = await _seed(repo, email="a@test.ru", role=UserRole.ADMIN)
         uc = RevokeAdminRole(repo)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(UserNotFoundError):
             await uc.execute(actor_id=admin.id, target_user_id="missing")
 
     @pytest.mark.asyncio

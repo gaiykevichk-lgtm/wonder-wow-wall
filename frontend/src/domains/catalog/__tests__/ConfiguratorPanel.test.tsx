@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import ConfiguratorPanel from '../ui/ConfiguratorPanel';
 import type { FullConfig, Texture } from '../model/types';
 import { useCartStore } from '../../order/model/cartStore';
@@ -49,7 +49,7 @@ beforeEach(() => {
 });
 
 describe('ConfiguratorPanel', () => {
-  it('renders texture, color, and size selectors when config has textures', () => {
+  it('renders texture, color, and size selectors when config has textures', async () => {
     render(
       <ConfiguratorPanel
         config={makeConfig()}
@@ -61,7 +61,7 @@ describe('ConfiguratorPanel', () => {
 
     expect(screen.getByText('Текстура')).toBeInTheDocument();
     expect(screen.getByText('Бетон')).toBeInTheDocument();
-    expect(screen.getByText('Серый')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Серый')).toBeInTheDocument());
     expect(screen.getByText('Размер')).toBeInTheDocument();
   });
 

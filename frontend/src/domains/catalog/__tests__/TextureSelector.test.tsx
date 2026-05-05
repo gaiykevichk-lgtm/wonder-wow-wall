@@ -61,7 +61,8 @@ describe('TextureSelector', () => {
       <TextureSelector textures={textures} activeId="tex-1" onChange={vi.fn()} />,
     );
 
-    const img = screen.getByAltText('Бетон');
+    const betonButton = screen.getByRole('radio', { name: 'Бетон' });
+    const img = betonButton.querySelector('img');
     expect(img).toBeInTheDocument();
     expect(img).toHaveAttribute('src', '/img/concrete.jpg');
 

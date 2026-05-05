@@ -33,6 +33,7 @@ function OrderCard({ order }: { order: Order }) {
           textureName: item.textureName,
           textureId: item.textureId,
           size: item.size,
+          sizeKey: item.size,
         },
         item.quantity,
       );
