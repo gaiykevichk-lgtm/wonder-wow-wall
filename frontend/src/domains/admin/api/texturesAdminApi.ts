@@ -233,7 +233,7 @@ export function useAdminVariantImages(params: {
   designId?: string;
   textureId?: string;
 }) {
-  const hasFilter = !!params.designId || !!params.textureId;
+  const hasFilter = !!params.designId && !!params.textureId;
   return useQuery({
     queryKey: texturesAdminKeys.variantsList(params),
     queryFn: () => {

@@ -1016,7 +1016,7 @@ export default function AdminTexturesPage() {
                             ) : (
                               <div>
                                 <AdminFileUpload
-                                  purpose="DESIGN_PREVIEW"
+                                  purpose="MISC"
                                   hint="JPG/PNG"
                                   disabled={isUploading}
                                   onUploaded={(asset) => {
