@@ -17,7 +17,10 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { products } from '../../catalog/model/data';
-import { useConfigColors } from '../../catalog/api/useConfigColors';
+import { useDesigns, useFullConfig } from '../../catalog/api/catalogApi';
+import { apiDesignToProduct } from '../../catalog/api/adapters';
+import TextureSelector from '../../catalog/ui/TextureSelector';
+import ColorSelector from '../../catalog/ui/ColorSelector';
 import { useShopSettings } from '../../../shared/api/shopApi';
 import { useSubscriptionStore } from '../../subscription/model/subscriptionStore';
 import { useCartStore } from '../../order/model/cartStore';
@@ -138,7 +141,8 @@ export default function ConstructorPage() {
     products.some((p) => p.id === initialDesignId) ? initialDesignId : products[0].id
   );
   const [selectedSizeKey, setSelectedSizeKey] = useState<PanelSizeKey>('30x30');
-  const [selectedColorIdx, setSelectedColorIdx] = useState(0);
+  const [selectedTextureId, setSelectedTextureId] = useState('');
+  const [selectedColorId, setSelectedColorId] = useState('');
 
   // Placed panels
   const [placedPanels, setPlacedPanels] = useState<PlacedPanel[]>([]);
@@ -168,9 +172,34 @@ export default function ConstructorPage() {
   // offline). Threaded through the cost calc + display below.
   const { designOverlayPrice } = useShopSettings();
 
-  const selectedDesign = products.find((p) => p.id === selectedDesignId) || products[0];
-  const { colors: designColors } = useConfigColors(selectedDesign.id, selectedDesign.colors);
-  const selectedColor = designColors[selectedColorIdx] || designColors[0] || { hex: '#CCCCCC', name: 'Загрузка…' };
+  // All designs from API (fallback to static products while loading)
+  const { data: designsData } = useDesigns({ limit: 200 });
+  const allDesigns = useMemo(() => {
+    if (designsData?.items?.length) return designsData.items.map(apiDesignToProduct);
+    return products;
+  }, [designsData]);
+  const selectedDesign = allDesigns.find((p) => p.id === selectedDesignId) || allDesigns[0];
+
+  // Full config: textures + colors + variant images
+  const { data: fullConfig } = useFullConfig(selectedDesign.id);
+  const textures = fullConfig?.textures ?? [];
+  const activeTexture = textures.find((t) => t.id === selectedTextureId) || textures[0];
+  const activeColors = activeTexture?.colors ?? [];
+  const selectedColor = activeColors.find((c) => c.id === selectedColorId) || activeColors[0] || { id: '', hex: '#CCCCCC', name: 'Загрузка…', swatchImage: '' };
+
+  // Auto-select first texture/color when config loads or design changes
+  const prevDesignRef = useRef(selectedDesign.id);
+  if (fullConfig && textures.length > 0) {
+    if (prevDesignRef.current !== selectedDesign.id || !textures.find((t) => t.id === selectedTextureId)) {
+      if (selectedTextureId !== textures[0].id) setSelectedTextureId(textures[0].id);
+      if (textures[0].colors.length > 0 && selectedColorId !== textures[0].colors[0].id) setSelectedColorId(textures[0].colors[0].id);
+      prevDesignRef.current = selectedDesign.id;
+    }
+    if (activeTexture && !activeTexture.colors.find((c) => c.id === selectedColorId) && activeTexture.colors.length > 0) {
+      if (selectedColorId !== activeTexture.colors[0].id) setSelectedColorId(activeTexture.colors[0].id);
+    }
+  }
+
   const selectedSize = SIZE_OPTIONS.find((s) => s.key === selectedSizeKey)!;
   const selectedPreset = selectedPresetId ? INTERIOR_PRESETS.find((p) => p.id === selectedPresetId) || null : null;
 
@@ -788,14 +817,16 @@ export default function ConstructorPage() {
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, fontWeight: 600, fontSize: 14, color: DARK }}>
               <AppstoreOutlined style={{ color: GRAY }} />
-              Дизайн накладки
+              Форма
             </div>
 
             <Select
               style={{ width: '100%', marginBottom: 12 }}
               value={selectedDesignId}
-              onChange={(v) => { setSelectedDesignId(v); setSelectedColorIdx(0); }}
-              options={products.map((p) => ({
+              onChange={(v) => { setSelectedDesignId(v); setSelectedTextureId(''); setSelectedColorId(''); }}
+              showSearch
+              filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+              options={allDesigns.map((p) => ({
                 value: p.id,
                 label: p.name,
               }))}
@@ -837,32 +868,27 @@ export default function ConstructorPage() {
               </div>
             </div>
 
+            {/* Texture */}
+            {textures.length > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <TextureSelector
+                  textures={textures}
+                  activeId={activeTexture?.id ?? ''}
+                  onChange={(id) => { setSelectedTextureId(id); setSelectedColorId(''); }}
+                />
+              </div>
+            )}
+
             {/* Color */}
-            <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 12, color: GRAY, marginBottom: 4 }}>
-                Оттенок: {selectedColor.name}
+            {activeColors.length > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <ColorSelector
+                  colors={activeColors}
+                  activeId={selectedColor.id ?? ''}
+                  onChange={setSelectedColorId}
+                />
               </div>
-              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                {designColors.map((c, idx) => (
-                  <Tooltip title={c.name} key={c.hex + idx}>
-                    <div
-                      onClick={() => setSelectedColorIdx(idx)}
-                      style={{
-                        width: 26,
-                        height: 26,
-                        borderRadius: '50%',
-                        background: c.hex,
-                        border: selectedColorIdx === idx ? `2px solid ${DARK}` : '1px solid #D1D5DB',
-                        cursor: 'pointer',
-                        boxSizing: 'border-box',
-                        transition: 'border-color 0.2s, transform 0.2s',
-                        transform: selectedColorIdx === idx ? 'scale(1.15)' : 'scale(1)',
-                      }}
-                    />
-                  </Tooltip>
-                ))}
-              </div>
-            </div>
+            )}
 
             {/* Size */}
             <div style={{ marginBottom: 12 }}>
