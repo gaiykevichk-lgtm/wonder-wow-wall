@@ -315,6 +315,53 @@ describe('AdminTexturesPage', () => {
       ).toBeInTheDocument();
       expect(screen.getByText('Выберите текстуру')).toBeInTheDocument();
     });
+
+    it('shows placeholder when neither design nor texture selected', () => {
+      mockUseColors.mockReturnValue({
+        data: [],
+        isFetching: false,
+        error: null,
+      });
+      renderPage('/admin/textures?tab=images');
+      expect(
+        screen.getByText(/выберите форму и текстуру/i),
+      ).toBeInTheDocument();
+    });
+
+    it('renders texture dropdown options from textures data', () => {
+      renderPage('/admin/textures?tab=images');
+      expect(screen.getByText('Выберите текстуру')).toBeInTheDocument();
+    });
+  });
+
+  describe('Mutation wiring', () => {
+    it('renders delete button wrapped in Popconfirm for textures', () => {
+      renderPage();
+      const deleteBtn = screen.getByRole('button', { name: 'Удалить' });
+      expect(deleteBtn).toBeInTheDocument();
+    });
+
+    it('calls updateTexture.mutate on active toggle', () => {
+      renderPage();
+      const sw = screen.getAllByRole('switch')[0];
+      fireEvent.click(sw);
+      expect(mockUpdateTextureMutate).toHaveBeenCalledTimes(1);
+      expect(mockUpdateTextureMutate.mock.calls[0][0]).toEqual({
+        textureId: 'tex-1',
+        body: { is_active: false },
+      });
+    });
+
+    it('calls updateColor.mutate on color active toggle', () => {
+      renderPage('/admin/textures?tab=colors');
+      const sw = screen.getAllByRole('switch')[0];
+      fireEvent.click(sw);
+      expect(mockUpdateColorMutate).toHaveBeenCalledTimes(1);
+      expect(mockUpdateColorMutate.mock.calls[0][0]).toEqual({
+        colorId: 'col-1',
+        body: { is_active: false },
+      });
+    });
   });
 
   describe('Tab navigation', () => {

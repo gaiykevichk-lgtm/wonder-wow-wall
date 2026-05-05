@@ -31,6 +31,7 @@ import { useSearchParams } from 'react-router-dom';
 
 import { ApiError } from '../../../shared/api';
 import { imageSrc } from '../../../shared/lib/imageSrc';
+import { slugify } from '../../../shared/lib/slugify';
 import { AdminFileUpload } from '../../../shared/ui/AdminFileUpload';
 import {
   type ApiTexture,
@@ -80,29 +81,6 @@ function parseTab(raw: string | null): TexturesTab {
 
 function formatDate(iso: string): string {
   return dayjs(iso).format('DD.MM.YYYY');
-}
-
-const CYR_MAP: Record<string, string> = {
-  а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh',
-  з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o',
-  п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'h', ц: 'ts',
-  ч: 'ch', ш: 'sh', щ: 'sch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu',
-  я: 'ya',
-};
-
-function slugify(input: string): string {
-  const lowered = input.toLowerCase();
-  let out = '';
-  for (const ch of lowered) {
-    if (CYR_MAP[ch] !== undefined) {
-      out += CYR_MAP[ch];
-    } else if (/[a-z0-9]/.test(ch)) {
-      out += ch;
-    } else if (/\s|-|_/.test(ch)) {
-      out += '-';
-    }
-  }
-  return out.replace(/-+/g, '-').replace(/^-|-$/g, '');
 }
 
 // ─── Texture Form ───────────────────────────────────────────────────────
@@ -422,6 +400,7 @@ export default function AdminTexturesPage() {
   const [colorDrawer, setColorDrawer] = useState(false);
   const [editingColorId, setEditingColorId] = useState<string | null>(null);
   const [colorForm] = Form.useForm<ColorFormValues>();
+  const watchedHex = Form.useWatch('hex', colorForm);
   const [colorSwatchPath, setColorSwatchPath] = useState('');
 
   function openCreateColor(): void {
@@ -686,6 +665,7 @@ export default function AdminTexturesPage() {
 
   function onVariantUploaded(colorId: string, imagePath: string): void {
     if (!viDesignId || !viTextureId) return;
+    setUploadingColorId(colorId);
     const payload: VariantImageCreatePayload = {
       design_id: viDesignId,
       texture_id: viTextureId,
@@ -1020,7 +1000,6 @@ export default function AdminTexturesPage() {
                                   hint="JPG/PNG"
                                   disabled={isUploading}
                                   onUploaded={(asset) => {
-                                    setUploadingColorId(color.id);
                                     onVariantUploaded(color.id, asset.path);
                                   }}
                                 />
@@ -1239,7 +1218,7 @@ export default function AdminTexturesPage() {
               addonAfter={
                 <ColorPicker
                   size="small"
-                  value={colorForm.getFieldValue('hex') || '#808080'}
+                  value={watchedHex || '#808080'}
                   onChange={(_, hex) =>
                     colorForm.setFieldsValue({ hex })
                   }
