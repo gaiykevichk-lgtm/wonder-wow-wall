@@ -205,7 +205,7 @@ async def seed_everything():
         ("tex-wood",     "Дерево",              "wood",         3),
         ("tex-metal",    "Металл",              "metal",        4),
         ("tex-stone",    "Природный камень",    "natural-stone", 5),
-        ("tex-decor",    "Декоративные фактуры","decorative",   6),
+        ("tex-decorative","Декоративные фактуры","decorative",   6),
         ("tex-paint",    "Краска",              "paint",        7),
         ("tex-graphics", "Графика",             "graphics",     8),
     ]
@@ -245,7 +245,7 @@ async def seed_everything():
             ("Травертин",         "#D2C6B2"),
             ("Сланец",            "#54585A"),
         ],
-        "tex-decor": [
+        "tex-decorative": [
             ("Белая штукатурка",       "#F5F2ED"),
             ("Серый бетон",            "#A0A0A0"),
             ("Терракотовая штукатурка", "#CC7755"),
@@ -289,6 +289,30 @@ async def seed_everything():
                 color_count += 1
 
     print(f"Textures seeded: {tex_count}, Colors seeded: {color_count}", file=sys.stderr)
+
+    # ── Variant Images (link every design to every texture+color) ─────
+    from app.domain.catalog.variant_image import VariantImage
+    from app.container import _mem_variant_image_repo
+    from app.seed_data import SEED_DESIGNS, SEED_TEXTURES
+
+    vi_count = 0
+    for design in SEED_DESIGNS:
+        for tex_data in SEED_TEXTURES:
+            for idx, color_data in enumerate(tex_data["colors"]):
+                vi_id = f"vi-{design.id}-{tex_data['id']}-{idx}"
+                vi = VariantImage(
+                    id=vi_id,
+                    design_id=design.id,
+                    texture_id=tex_data["id"],
+                    color_id=color_data["id"],
+                    image_path="",
+                )
+                try:
+                    await _mem_variant_image_repo.create(vi)
+                    vi_count += 1
+                except Exception:
+                    pass
+    print(f"Variant images seeded: {vi_count}", file=sys.stderr)
 
     # ── Recommendations ───────────────────────────────────────────────
     targets_data = [
