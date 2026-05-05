@@ -29,8 +29,11 @@ export const products: PanelProduct[] = [
     reviews: 87,
     badge: 'Новинка',
     inStock: true,
-    room: [],
-    usageExamples: [],
+    room: ['Гостиная', 'Спальня', 'Кабинет'],
+    usageExamples: [
+      { room: 'Гостиная', image: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800&h=500&fit=crop', caption: 'Волна в светлой гостиной' },
+      { room: 'Спальня', image: 'https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=800&h=500&fit=crop', caption: 'Акцентная стена в спальне' },
+    ],
   },
   {
     id: 'flat-s-01',
@@ -52,8 +55,11 @@ export const products: PanelProduct[] = [
     reviews: 64,
     badge: 'Популярное',
     inStock: true,
-    room: [],
-    usageExamples: [],
+    room: ['Гостиная', 'Холл', 'Офис'],
+    usageExamples: [
+      { room: 'Холл', image: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800&h=500&fit=crop', caption: 'Минимализм в холле' },
+      { room: 'Офис', image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&h=500&fit=crop', caption: 'Панели в офисном пространстве' },
+    ],
   },
   {
     id: 'crel-l-03',
@@ -75,8 +81,12 @@ export const products: PanelProduct[] = [
     reviews: 72,
     badge: 'Популярное',
     inStock: true,
-    room: [],
-    usageExamples: [],
+    room: ['Гостиная', 'Спальня', 'Ресторан'],
+    usageExamples: [
+      { room: 'Гостиная', image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&h=500&fit=crop', caption: 'Классика в просторной гостиной' },
+      { room: 'Ресторан', image: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&h=500&fit=crop', caption: 'Рельефная стена в ресторане' },
+      { room: 'Спальня', image: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=800&h=500&fit=crop', caption: 'Уютная спальня с панелями' },
+    ],
   },
 ];
 
