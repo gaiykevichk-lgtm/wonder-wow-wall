@@ -54,6 +54,7 @@ class DesignSchema(BaseModel):
     description: str
     price: int
     colors: list[ColorSchema]
+    default_colors: list[ColorSchema] = Field(default_factory=list)
     rating: float
     reviews_count: int
     is_new: bool
@@ -170,6 +171,51 @@ class FullConfigResponse(BaseModel):
     variant_images: list[dict] = Field(default_factory=list)
 
 
+# ─── Helpers ─────────────────────────────────────────────────────────
+
+
+async def _compute_default_colors_batch(
+    design_ids: list[str],
+    texture_repo,
+    color_repo,
+    variant_repo,
+) -> dict[str, list[dict]]:
+    """Return {design_id: [{hex, name}, ...]} from the first texture per design."""
+    all_textures = await ListTexturesPublic(texture_repo).execute()
+    if not all_textures:
+        return {}
+
+    texture_by_id = {t.id: t for t in all_textures}
+    texture_order = {t.id: i for i, t in enumerate(all_textures)}
+
+    result: dict[str, list[dict]] = {}
+    for design_id in design_ids:
+        variants = await ListVariantImagesByDesign(variant_repo).execute(design_id)
+        if not variants:
+            continue
+        texture_ids_for_design = {v.texture_id for v in variants if v.texture_id in texture_by_id}
+        if not texture_ids_for_design:
+            continue
+        first_texture_id = min(texture_ids_for_design, key=lambda tid: texture_order.get(tid, 9999))
+        colors = await ListTextureColorsPublic(color_repo).execute(first_texture_id)
+        if colors:
+            result[design_id] = [{"hex": c.hex, "name": c.name} for c in colors]
+
+    return result
+
+
+def _serialize_design(d, default_colors: list[dict] | None = None) -> dict:
+    return {
+        "id": d.id, "name": d.name, "slug": d.slug, "category_id": d.category_id,
+        "style": d.style, "image": d.image, "preview_image": d.preview_image,
+        "description": d.description,
+        "price": d.price, "colors": [{"hex": c.hex, "name": c.name} for c in d.colors],
+        "default_colors": default_colors or [],
+        "rating": d.rating, "reviews_count": d.reviews_count,
+        "is_new": d.is_new, "is_popular": d.is_popular,
+    }
+
+
 # ─── Endpoints ───────────────────────────────────────────────────────
 
 @router.get("/designs", response_model=DesignListResponse)
@@ -184,47 +230,41 @@ async def list_designs(
     style: str | None = None,
     is_new: bool | None = None,
     design_repo=Depends(get_design_repo),
+    texture_repo=Depends(get_texture_repo),
+    color_repo=Depends(get_texture_color_repo),
+    variant_repo=Depends(get_variant_image_repo),
 ):
     uc = ListDesigns(design_repo)
     designs, total = await uc.execute(
         category, search, sort, offset, limit,
         color=color, style=style, is_new=is_new,
     )
+    dc_map = await _compute_default_colors_batch(
+        [d.id for d in designs], texture_repo, color_repo, variant_repo,
+    )
     return {
-        "items": [
-            {
-                "id": d.id, "name": d.name, "slug": d.slug, "category_id": d.category_id,
-                "style": d.style, "image": d.image, "preview_image": d.preview_image,
-                "description": d.description,
-                "price": d.price, "colors": [{"hex": c.hex, "name": c.name} for c in d.colors],
-                "rating": d.rating, "reviews_count": d.reviews_count,
-                "is_new": d.is_new, "is_popular": d.is_popular,
-            }
-            for d in designs
-        ],
+        "items": [_serialize_design(d, dc_map.get(d.id)) for d in designs],
         "total": total,
     }
 
 
 @router.get("/designs/{design_id}", response_model=DesignSchema)
-async def get_design(request: Request, design_id: str, design_repo=Depends(get_design_repo)):
+async def get_design(
+    request: Request,
+    design_id: str,
+    design_repo=Depends(get_design_repo),
+    texture_repo=Depends(get_texture_repo),
+    color_repo=Depends(get_texture_color_repo),
+    variant_repo=Depends(get_variant_image_repo),
+):
     uc = GetDesignDetails(design_repo)
     d = await uc.execute(design_id)
-    # Phase 7A C1 — `GetDesignDetails` is the same use case the admin
-    # uses, so it returns the row regardless of `is_published`. The
-    # public endpoint must hide unpublished rows even when an attacker
-    # knows the UUID; treating it as 404 (not 403) so the existence of
-    # the row is not disclosed either. Pinned by `test_public_detail_404_for_unpublished`.
     if not d or not d.is_published:
         raise HTTPException(status_code=404, detail="Design not found")
-    return {
-        "id": d.id, "name": d.name, "slug": d.slug, "category_id": d.category_id,
-        "style": d.style, "image": d.image, "preview_image": d.preview_image,
-        "description": d.description,
-        "price": d.price, "colors": [{"hex": c.hex, "name": c.name} for c in d.colors],
-        "rating": d.rating, "reviews_count": d.reviews_count,
-        "is_new": d.is_new, "is_popular": d.is_popular,
-    }
+    dc_map = await _compute_default_colors_batch(
+        [d.id], texture_repo, color_repo, variant_repo,
+    )
+    return _serialize_design(d, dc_map.get(d.id))
 
 
 @router.get("/categories", response_model=list[CategorySchema])

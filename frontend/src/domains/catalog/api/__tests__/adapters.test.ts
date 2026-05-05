@@ -19,6 +19,7 @@ describe('Catalog API Adapters', () => {
         { hex: '#8B4513', name: 'Дуб' },
         { hex: '#D2B48C', name: 'Светлый дуб' },
       ],
+      default_colors: [],
       rating: 4.5,
       reviews_count: 23,
       is_new: true,
@@ -85,6 +86,26 @@ describe('Catalog API Adapters', () => {
       const result = apiDesignToProduct(apiDesign);
       expect(result.inStock).toBe(true);
       expect(result.priceUnit).toBe('/шт');
+    });
+
+    it('uses default_colors when available, falling back to colors', () => {
+      const withDefaultColors: ApiDesign = {
+        ...apiDesign,
+        default_colors: [
+          { hex: '#FFFFFF', name: 'Белый' },
+          { hex: '#000000', name: 'Чёрный' },
+        ],
+      };
+      const result = apiDesignToProduct(withDefaultColors);
+      expect(result.colors).toHaveLength(2);
+      expect(result.colors[0]).toEqual({ hex: '#FFFFFF', name: 'Белый' });
+      expect(result.colors[1]).toEqual({ hex: '#000000', name: 'Чёрный' });
+    });
+
+    it('falls back to legacy colors when default_colors is empty', () => {
+      const result = apiDesignToProduct(apiDesign);
+      expect(result.colors).toHaveLength(2);
+      expect(result.colors[0]).toEqual({ hex: '#8B4513', name: 'Дуб' });
     });
   });
 

@@ -32,6 +32,7 @@ export interface ApiDesign {
   description: string;
   price: number;
   colors: ApiColor[];
+  default_colors: ApiColor[];
   rating: number;
   reviews_count: number;
   is_new: boolean;

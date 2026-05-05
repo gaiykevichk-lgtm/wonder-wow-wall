@@ -161,7 +161,12 @@ export default function ProductPage() {
 
   return (
     <div style={{ paddingTop: 72, background: '#fff', minHeight: '100vh' }}>
-      <PageMeta title={product.name} description={product.description} ogImage={product.image} />
+      <PageMeta
+        title={`Панель ${product.name}`}
+        description={product.description || `Декоративная панель ${product.name} — ${product.sizes.length} размеров, магнитное крепление, монтаж за 2 часа.`}
+        ogImage={product.image}
+        ogType="product"
+      />
 
       {/* ── Sticky buy bar ──────────────────────────────── */}
       <AnimatePresence>

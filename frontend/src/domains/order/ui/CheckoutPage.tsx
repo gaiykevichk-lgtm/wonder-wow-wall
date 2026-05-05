@@ -763,6 +763,11 @@ const CheckoutPage: React.FC = () => {
                       >
                         {item.name}
                       </div>
+                      {(item.textureName || item.colorName || item.size) && (
+                        <div style={{ fontFamily: FONT, fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>
+                          {[item.textureName, item.colorName, item.size].filter(Boolean).join(' · ')}
+                        </div>
+                      )}
                       <div style={{ fontFamily: FONT, fontSize: 12, color: GRAY_TEXT, marginTop: 2 }}>
                         {item.quantity} × {item.price.toLocaleString('ru-RU')} ₽
                       </div>

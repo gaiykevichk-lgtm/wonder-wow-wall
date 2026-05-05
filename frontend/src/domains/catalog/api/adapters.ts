@@ -24,7 +24,7 @@ export function apiDesignToProduct(d: ApiDesign): PanelProduct {
       'Уход': 'Влажная уборка',
       'Монтаж': 'Магнитное крепление',
     },
-    colors: d.colors.map((c) => ({ hex: c.hex, name: c.name })),
+    colors: (d.default_colors?.length ? d.default_colors : d.colors).map((c) => ({ hex: c.hex, name: c.name })),
     sizes: PANEL_SIZES.map((s) => ({
       width: s.width,
       height: s.height,

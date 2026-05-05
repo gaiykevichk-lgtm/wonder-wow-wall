@@ -29,6 +29,9 @@ function OrderCard({ order }: { order: Order }) {
           area: 0,
           color: '',
           colorName: item.color,
+          colorId: item.colorId,
+          textureName: item.textureName,
+          textureId: item.textureId,
           size: item.size,
         },
         item.quantity,
@@ -101,7 +104,7 @@ function OrderCard({ order }: { order: Order }) {
                   <Text strong style={{ color: '#2D2D2D' }}>{item.name}</Text>
                   <div>
                     <Text type="secondary" style={{ fontSize: 13, color: '#6B7280' }}>
-                      {item.size} · {item.color} · {item.quantity} шт.
+                      {[item.textureName, item.color, item.size].filter(Boolean).join(' · ')} · {item.quantity} шт.
                     </Text>
                   </div>
                 </div>

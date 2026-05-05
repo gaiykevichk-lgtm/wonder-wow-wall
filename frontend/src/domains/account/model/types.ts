@@ -34,6 +34,9 @@ export interface OrderItem {
   color: string;
   quantity: number;
   price: number;
+  textureName?: string;
+  textureId?: string;
+  colorId?: string;
 }
 
 export interface SavedProject {

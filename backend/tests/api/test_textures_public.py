@@ -271,3 +271,60 @@ class TestDesignListPreviewImage:
         resp = await client.get(f"/api/designs/{d.id}")
         assert resp.status_code == 200
         assert resp.json()["preview_image"] == "/preview.png"
+
+
+# ─── default_colors — Phase 7 integration ─────────────────────────
+
+
+class TestDefaultColors:
+    @pytest.mark.asyncio
+    async def test_list_returns_default_colors_from_first_texture(self, client):
+        d = _ensure_design()
+        t = _seed_texture("stone", "Stone")
+        c1 = _seed_color(t.id, "Light", "#CCCCCC")
+        c2 = _seed_color(t.id, "Dark", "#333333")
+        _seed_variant(d.id, t.id, c1.id)
+        _seed_variant(d.id, t.id, c2.id)
+        resp = await client.get("/api/designs")
+        assert resp.status_code == 200
+        match = [i for i in resp.json()["items"] if i["id"] == d.id]
+        assert len(match) == 1
+        dc = match[0]["default_colors"]
+        assert len(dc) == 2
+        assert dc[0]["name"] == "Light"
+        assert dc[1]["name"] == "Dark"
+
+    @pytest.mark.asyncio
+    async def test_detail_returns_default_colors(self, client):
+        d = _ensure_design()
+        t = _seed_texture("marble", "Marble")
+        c = _seed_color(t.id, "White", "#FFFFFF")
+        _seed_variant(d.id, t.id, c.id)
+        resp = await client.get(f"/api/designs/{d.id}")
+        assert resp.status_code == 200
+        dc = resp.json()["default_colors"]
+        assert len(dc) == 1
+        assert dc[0]["hex"] == "#FFFFFF"
+
+    @pytest.mark.asyncio
+    async def test_empty_default_colors_when_no_textures(self, client):
+        d = _ensure_design()
+        resp = await client.get(f"/api/designs/{d.id}")
+        assert resp.status_code == 200
+        assert resp.json()["default_colors"] == []
+
+    @pytest.mark.asyncio
+    async def test_default_colors_uses_first_texture_by_sort_order(self, client):
+        d = _ensure_design()
+        t1 = _seed_texture("second-tex", "Second Texture")
+        t1.sort_order = 10
+        t2 = _seed_texture("first-tex", "First Texture")
+        t2.sort_order = 0
+        c1 = _seed_color(t1.id, "Red", "#FF0000")
+        c2 = _seed_color(t2.id, "Blue", "#0000FF")
+        _seed_variant(d.id, t1.id, c1.id)
+        _seed_variant(d.id, t2.id, c2.id)
+        resp = await client.get(f"/api/designs/{d.id}")
+        assert resp.status_code == 200
+        dc = resp.json()["default_colors"]
+        assert dc[0]["name"] == "Blue"
