@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  cacheDir: '/tmp/vite-user-cache',
+  cacheDir: '/home/user/.vite-cache',
   // opencv.js is shipped as a static asset in `public/opencv.js` and loaded
   // via a `<script>` tag from `opencvLsdAdapter.ts` (not via ESM import).
   // Keeping the ~11 MB Emscripten UMD out of Vite's module graph entirely
