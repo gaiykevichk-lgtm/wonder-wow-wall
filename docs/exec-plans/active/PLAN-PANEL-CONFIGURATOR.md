@@ -743,6 +743,23 @@ React Query хуки:
 - TypeScript: `tsc --noEmit` clean ✅
 - 0 regressions
 
+### 6.7 Post-review remediation (2026-05-05)
+
+**Проверка выполнена:** детальный code review line-by-line всех созданных и изменённых файлов.
+
+**Найдено и исправлено (критические):**
+- H1: `texturesAdminApi.ts:236` — `useAdminVariantImages` использовал `||` (OR) вместо `&&` (AND) в `enabled`. Запрос стрелял при выборе одного фильтра, хотя UI требует оба. Исправлено на `&&`.
+- H2: `AdminTexturesPage.tsx:1019` — variant image upload использовал `purpose="DESIGN_PREVIEW"`, файлы складывались в каталог preview дизайнов. Исправлено на `purpose="MISC"`.
+
+**Найдено (некритические, для будущих итераций):**
+- N1: ColorPicker не реактивно связан с полем hex (нужен `Form.useWatch`)
+- N2: `uploadingColorId` устанавливается до `mutate()` — минимальный timing gap в isUploading
+- N3: `slugify()` + `CYR_MAP` дублируется между AdminTexturesPage и AdminCatalogPage (DRY)
+- N4: Таблица цветов не показывает swatch_image (только hex-квадрат), хотя drawer preview — показывает
+- N5: Тестовое покрытие variant images таба минимально (только placeholder, нет тестов на create/delete)
+
+**Коммит:** `f136576` — fix(phase6): variant images query AND, upload purpose MISC
+
 ---
 
 ## Фаза 7: Интеграция и обратная совместимость
