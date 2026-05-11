@@ -10,6 +10,12 @@ import {
   SafetyCertificateOutlined,
   RocketOutlined,
   CheckOutlined,
+  SearchOutlined,
+  CameraOutlined,
+  ClockCircleOutlined,
+  SwapOutlined,
+  SettingOutlined,
+  LockOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { products, categories, clientReviews } from '../../catalog/model/data';
@@ -54,14 +60,11 @@ const heroImages = [
   'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=700&h=700&fit=crop',
 ];
 
-const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }> = ({
-  onCatalog,
-  onConstructor,
-}) => (
+const HeroSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => (
   <section
     style={{
       minHeight: '100vh',
-      background: `linear-gradient(180deg, #FFFFFF 0%, #F8FBF8 50%, #F0F7F0 100%)`,
+      background: `linear-gradient(180deg, #FFFFFF 0%, #F8FBF8 100%)`,
       display: 'flex',
       alignItems: 'center',
       ...SECTION_PADDING,
@@ -69,64 +72,48 @@ const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }
       overflow: 'hidden',
     }}
   >
-    {/* Decorative blobs */}
+    {/* Decorative accent */}
     <div style={{
       position: 'absolute',
-      top: '-20%',
-      right: '-10%',
-      width: '600px',
-      height: '600px',
-      background: 'radial-gradient(circle, rgba(76,175,80,0.08) 0%, transparent 70%)',
-      borderRadius: '50%',
-      pointerEvents: 'none',
-    }} />
-    <div style={{
-      position: 'absolute',
-      bottom: '-10%',
-      left: '-5%',
-      width: '400px',
-      height: '400px',
-      background: 'radial-gradient(circle, rgba(76,175,80,0.06) 0%, transparent 70%)',
-      borderRadius: '50%',
-      pointerEvents: 'none',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: '4px',
+      background: 'linear-gradient(90deg, #4CAF50 0%, #2E7D32 50%, #4CAF50 100%)',
     }} />
 
     <div
       style={{
         ...MAX_WIDTH,
         width: '100%',
-        display: 'grid',
-        gridTemplateColumns: '1.1fr 0.9fr',
-        gap: 80,
+        display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
+        textAlign: 'center',
         position: 'relative',
         zIndex: 1,
+        gap: 32,
       }}
-      className="hero-grid"
     >
-      {/* Left column */}
       <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        style={{ display: 'flex', flexDirection: 'column', gap: 32 }}
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28 }}
       >
         <motion.div variants={fadeUpVariants} custom={0}>
-          <Tag
+          <span
             style={{
-              background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: PILL_RADIUS,
-              padding: '6px 16px',
-              fontSize: 13,
               fontFamily: 'Inter, sans-serif',
+              fontSize: 13,
               fontWeight: 600,
-              boxShadow: '0 4px 14px rgba(76,175,80,0.3)',
+              color: ACCENT,
+              textTransform: 'uppercase',
+              letterSpacing: '3px',
             }}
           >
-            Сделано в России — 2026
-          </Tag>
+            Дизайн-платформа для стен
+          </span>
         </motion.div>
 
         <motion.h1
@@ -134,24 +121,24 @@ const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }
           custom={1}
           style={{
             fontFamily: 'Inter, sans-serif',
-            fontSize: 'clamp(48px, 5.5vw, 72px)',
+            fontSize: 'clamp(40px, 6vw, 72px)',
             fontWeight: 700,
             color: DARK,
             margin: 0,
-            lineHeight: 1.08,
+            lineHeight: 1.1,
             letterSpacing: '-0.03em',
+            maxWidth: 800,
           }}
         >
-          Стены, которые{' '}
+          Ремонт окончен.{' '}
           <span style={{
             background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
           }}>
-            меняют
-          </span>{' '}
-          всё
+            Начинается свобода.
+          </span>
         </motion.h1>
 
         <motion.p
@@ -159,20 +146,22 @@ const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }
           custom={2}
           style={{
             fontFamily: 'Inter, sans-serif',
-            fontSize: 19,
+            fontSize: 'clamp(17px, 2vw, 20px)',
             color: GRAY_TEXT,
             margin: 0,
             lineHeight: 1.65,
-            maxWidth: 500,
+            maxWidth: 560,
           }}
         >
-          Забудьте про обои. 3D-панели — это когда стена выглядит как произведение искусства. Приходите, потрогайте, оцените.
+          Новый интерьер – в один клик.
+          <br />
+          WONDER WOW WALL – первая платформа трансформации пространства.
         </motion.p>
 
         <motion.div
           variants={fadeUpVariants}
           custom={3}
-          style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}
+          style={{ display: 'flex', justifyContent: 'center' }}
         >
           <Button
             onClick={onCatalog}
@@ -182,192 +171,48 @@ const HeroSection: React.FC<{ onCatalog: () => void; onConstructor: () => void }
               color: '#fff',
               border: 'none',
               borderRadius: PILL_RADIUS,
-              height: 56,
-              padding: '0 32px',
+              height: 60,
+              padding: '0 48px',
               fontFamily: 'Inter, sans-serif',
-              fontWeight: 600,
-              fontSize: 16,
-              boxShadow: '0 8px 24px rgba(76,175,80,0.35)',
+              fontWeight: 700,
+              fontSize: 17,
+              boxShadow: '0 8px 28px rgba(76,175,80,0.35)',
+              letterSpacing: '0.5px',
             }}
           >
-            Выбрать панели
-          </Button>
-          <Button
-            onClick={onConstructor}
-            size="large"
-            style={{
-              background: 'transparent',
-              color: ACCENT,
-              border: '2px solid #E8F5E9',
-              borderRadius: PILL_RADIUS,
-              height: 56,
-              padding: '0 32px',
-              fontFamily: 'Inter, sans-serif',
-              fontWeight: 600,
-              fontSize: 16,
-            }}
-          >
-            Попробовать конструктор
+            выбрать свой WOW!
           </Button>
         </motion.div>
-
-        {/* Trust badges */}
-        <motion.div
-          variants={fadeUpVariants}
-          custom={4}
-          style={{
-            display: 'flex',
-            gap: 24,
-            borderTop: `1px solid ${SUBTLE_BORDER}`,
-            paddingTop: 24,
-            flexWrap: 'wrap',
-          }}
-        >
-          {[
-            { number: '200+', label: 'дизайнов в каталоге' },
-            { number: '50 000+', label: 'довольных клиентов' },
-            { number: '4.9', label: 'средний рейтинг' },
-          ].map((stat) => (
-            <div key={stat.label} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <span
-                style={{
-                  fontFamily: 'Inter, sans-serif',
-                  fontSize: 36,
-                  fontWeight: 700,
-                  color: DARK,
-                  letterSpacing: '-0.02em',
-                }}
-              >
-                {stat.number}
-              </span>
-              <span
-                style={{
-                  fontFamily: 'Inter, sans-serif',
-                  fontSize: 13,
-                  color: GRAY_TEXT,
-                }}
-              >
-                {stat.label}
-              </span>
-            </div>
-          ))}
-        </motion.div>
-      </motion.div>
-
-      {/* Right column — 2×2 photo grid with frames */}
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 16,
-        }}
-        className="hero-images"
-      >
-        {heroImages.map((src, i) => (
-          <motion.div
-            key={src}
-            variants={fadeUpVariants}
-            custom={i * 0.5}
-            whileHover={{
-              scale: 1.03,
-              transition: { duration: 0.4, ease: APPLE_EASE },
-            }}
-            style={{
-              borderRadius: CARD_RADIUS,
-              overflow: 'hidden',
-              aspectRatio: '1 / 1',
-              position: 'relative',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.12)',
-            }}
-          >
-            <img
-              src={src}
-              alt={`Пример интерьера ${i + 1}`}
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            />
-            {/* Corner accent */}
-            <div style={{
-              position: 'absolute',
-              top: 12,
-              left: 12,
-              width: 24,
-              height: 24,
-              borderLeft: '3px solid #4CAF50',
-              borderTop: '3px solid #4CAF50',
-            }} />
-            <div style={{
-              position: 'absolute',
-              bottom: 12,
-              right: 12,
-              width: 24,
-              height: 24,
-              borderRight: '3px solid #4CAF50',
-              borderBottom: '3px solid #4CAF50',
-            }} />
-          </motion.div>
-        ))}
       </motion.div>
     </div>
   </section>
 );
 
-// ─── Step Icons (flat style) ─────────────────────────────────────────────────
+// ─── Step Icons (Ant Design) ───────────────────────────────────────────────────
+
+const stepIcons: Record<string, React.ReactNode> = {
+  '1': <SearchOutlined style={{ fontSize: 32, color: '#fff' }} />,
+  '2': <CameraOutlined style={{ fontSize: 32, color: '#fff' }} />,
+  '3': <ClockCircleOutlined style={{ fontSize: 32, color: '#fff' }} />,
+  '4': <SwapOutlined style={{ fontSize: 32, color: '#fff' }} />,
+};
 
 const StepIcon: React.FC<{ num: string; hovered?: boolean }> = ({ num, hovered }) => {
-  const color = hovered ? '#fff' : '#fff';
-  const bgColor = hovered ? ACCENT : 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)';
-
-  const icons: Record<string, React.ReactNode> = {
-    '1': (
-      <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-        <rect x="8" y="12" width="32" height="28" rx="3" stroke={color} strokeWidth="2.5" fill="none"/>
-        <path d="M8 20 L24 12 L40 20" stroke={color} strokeWidth="2.5" strokeLinejoin="round" fill="none"/>
-        <circle cx="18" cy="28" r="3" fill={color}/>
-        <circle cx="30" cy="28" r="3" fill={color}/>
-      </svg>
-    ),
-    '2': (
-      <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-        <rect x="6" y="10" width="36" height="28" rx="3" stroke={color} strokeWidth="2.5" fill="none"/>
-        <circle cx="24" cy="24" r="10" stroke={color} strokeWidth="2.5" fill="none"/>
-        <path d="M30 30 L38 38" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
-        <circle cx="24" cy="24" r="4" fill={color}/>
-      </svg>
-    ),
-    '3': (
-      <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-        <rect x="8" y="8" width="32" height="32" rx="4" stroke={color} strokeWidth="2.5" fill="none"/>
-        <path d="M16 24 L22 30 L32 18" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M8 14 L24 8 L40 14" stroke={color} strokeWidth="2" strokeLinecap="round" fill="none"/>
-      </svg>
-    ),
-    '4': (
-      <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-        <rect x="10" y="16" width="28" height="24" rx="3" stroke={color} strokeWidth="2.5" fill="none"/>
-        <path d="M20 16 L20 10 Q24 6 28 10 L28 16" stroke={color} strokeWidth="2.5" fill="none"/>
-        <circle cx="19" cy="26" r="2" fill={color}/>
-        <circle cx="29" cy="26" r="2" fill={color}/>
-        <path d="M18 34 Q24 38 30 34" stroke={color} strokeWidth="2" strokeLinecap="round" fill="none"/>
-      </svg>
-    ),
-  };
-
   return (
     <div style={{
       width: 80,
       height: 80,
       borderRadius: '50%',
-      background: bgColor,
+      background: hovered
+        ? ACCENT
+        : 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       boxShadow: hovered ? '0 8px 24px rgba(76,175,80,0.5)' : '0 4px 12px rgba(76,175,80,0.3)',
       transition: 'all 0.4s ease',
     }}>
-      {icons[num] || icons['1']}
+      {stepIcons[num] || stepIcons['1']}
     </div>
   );
 };
@@ -377,23 +222,23 @@ const StepIcon: React.FC<{ num: string; hovered?: boolean }> = ({ num, hovered }
 const steps = [
   {
     num: '1',
-    title: 'Выбираете дизайн',
-    desc: 'Листаете каталог. Нравится — сохраняете. Не нравится — листаете дальше.',
+    title: 'Выбираете',
+    desc: 'Найдите текстуру, которая отражает Вас сегодня',
   },
   {
     num: '2',
-    title: 'Примеряете на стену',
-    desc: 'Загружаете фото комнаты — и видите, как панели смотрятся именно у вас.',
+    title: 'Примеряете',
+    desc: 'Загрузите фото и приложение мгновенно впишет новый интерьер в Ваше пространство',
   },
   {
     num: '3',
-    title: 'Оформляете заказ',
-    desc: 'Указываете размеры. Оплачиваете. Всё — за пять минут, без поездки в магазин.',
+    title: 'Обновляете',
+    desc: 'Мы превратили обновление интерьера в вопрос нескольких часов',
   },
   {
     num: '4',
-    title: 'Мы приезжаем и ставим',
-    desc: 'Через два дня вы пьёте кофе и любуетесь стеной. Без пыли, без грязи.',
+    title: 'Меняете',
+    desc: 'Одна бесплатная замена уже включена в подписку',
   },
 ];
 
@@ -421,7 +266,7 @@ const HowItWorksSection: React.FC = () => {
               display: 'block',
               marginBottom: 12,
             }}>
-              Прозрачно и просто
+              Платформа трансформации
             </span>
             <h2
               style={{
@@ -434,7 +279,7 @@ const HowItWorksSection: React.FC = () => {
                 lineHeight: 1.15,
               }}
             >
-              Четыре шага — и готово
+              Просто. Быстро. WOW
             </h2>
           </motion.div>
 
@@ -672,6 +517,233 @@ const AdvantagesSection: React.FC = () => (
             </motion.div>
           ))}
         </div>
+      </motion.div>
+    </div>
+  </section>
+);
+
+// ─── Service Banner Section — "Стены как сервис" (Слайд 3) ──────────────────
+
+const ServiceBannerSection: React.FC = () => (
+  <section style={{ background: '#fff', padding: '80px 24px', overflow: 'hidden' }}>
+    <div style={{ ...MAX_WIDTH }}>
+      <motion.div
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.3 }}
+        variants={fadeUpVariants}
+        custom={0}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          textAlign: 'center',
+          gap: 24,
+          position: 'relative',
+        }}
+      >
+        {/* Decorative green line */}
+        <div style={{
+          width: 64,
+          height: 4,
+          borderRadius: 2,
+          background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
+          marginBottom: 8,
+        }} />
+
+        <motion.div variants={fadeUpVariants} custom={1}>
+          <span style={{
+            fontFamily: 'Inter, sans-serif',
+            fontSize: 12,
+            fontWeight: 600,
+            color: ACCENT,
+            textTransform: 'uppercase',
+            letterSpacing: '3px',
+            display: 'block',
+            marginBottom: 16,
+          }}>
+            Впервые в индустрии
+          </span>
+        </motion.div>
+
+        <motion.h2 variants={fadeUpVariants} custom={2} style={{
+          fontFamily: 'Inter, sans-serif',
+          fontSize: 'clamp(36px, 5vw, 64px)',
+          fontWeight: 700,
+          color: DARK,
+          margin: 0,
+          lineHeight: 1.1,
+          letterSpacing: '-0.03em',
+        }}>
+          Стены как сервис
+        </motion.h2>
+
+        <motion.p variants={fadeUpVariants} custom={3} style={{
+          fontFamily: 'Inter, sans-serif',
+          fontSize: 18,
+          color: GRAY_TEXT,
+          margin: 0,
+          lineHeight: 1.65,
+          maxWidth: 520,
+        }}>
+          Мы создали будущее, в котором интерьер меняется без традиционного ремонта
+        </motion.p>
+
+        <motion.div variants={fadeUpVariants} custom={4} style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          marginTop: 8,
+        }}>
+          <span style={{
+            fontFamily: 'Inter, sans-serif',
+            fontSize: 13,
+            fontWeight: 600,
+            color: ACCENT,
+            textTransform: 'uppercase',
+            letterSpacing: '2px',
+          }}>
+            WONDER WOW WALL
+          </span>
+          <span style={{
+            fontFamily: 'Inter, sans-serif',
+            fontSize: 13,
+            color: GRAY_TEXT,
+          }}>
+            –
+          </span>
+          <span style={{
+            fontFamily: 'Inter, sans-serif',
+            fontSize: 13,
+            color: GRAY_TEXT,
+          }}>
+            новый стандарт трансформации пространства
+          </span>
+        </motion.div>
+      </motion.div>
+    </div>
+  </section>
+);
+
+// ─── Tech Section — "Технологии Вашей свободы" (Слайд 4) ───────────────────
+
+const techPoints = [
+  {
+    icon: <SettingOutlined style={{ fontSize: 28, color: ACCENT }} />,
+    title: 'Универсальная платформа монтажа',
+    desc: 'Адаптирована для любых поверхностей — бетон, кирпич, дерево, плитка.',
+  },
+  {
+    icon: <LockOutlined style={{ fontSize: 28, color: ACCENT }} />,
+    title: 'Запатентованная система креплений',
+    desc: 'Обеспечивает быструю замену без повреждения стены.',
+  },
+  {
+    icon: <AppstoreOutlined style={{ fontSize: 28, color: ACCENT }} />,
+    title: 'Безграничность фактур',
+    desc: 'Формируйте пространство под любой стиль — от минимализма до лофта.',
+  },
+];
+
+const TechSection: React.FC = () => (
+  <section style={{ background: LIGHT_BG, ...SECTION_PADDING }}>
+    <div style={{ ...MAX_WIDTH }}>
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.2 }}
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 56 }}
+      >
+        <motion.div variants={fadeUpVariants} custom={0} style={{ textAlign: 'center' }}>
+          <h2
+            style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: 'clamp(32px, 3.5vw, 44px)',
+              fontWeight: 700,
+              color: DARK,
+              margin: 0,
+              letterSpacing: '-0.03em',
+              lineHeight: 1.15,
+            }}
+          >
+            Технологии Вашей свободы
+          </h2>
+        </motion.div>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: 32,
+            width: '100%',
+          }}
+          className="tech-grid"
+        >
+          {techPoints.map((point, i) => (
+            <motion.div
+              key={point.title}
+              variants={fadeUpVariants}
+              custom={i + 1}
+              style={{
+                background: '#fff',
+                borderRadius: CARD_RADIUS,
+                padding: '40px 32px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                textAlign: 'center',
+                gap: 16,
+                boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
+                border: '1px solid rgba(0,0,0,0.04)',
+              }}
+            >
+              <div style={{
+                width: 64,
+                height: 64,
+                borderRadius: 20,
+                background: '#E8F5E9',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                {point.icon}
+              </div>
+              <span style={{
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 700,
+                fontSize: 18,
+                color: DARK,
+                lineHeight: 1.3,
+              }}>
+                {point.title}
+              </span>
+              <span style={{
+                fontFamily: 'Inter, sans-serif',
+                fontSize: 14,
+                color: GRAY_TEXT,
+                lineHeight: 1.6,
+              }}>
+                {point.desc}
+              </span>
+            </motion.div>
+          ))}
+        </div>
+
+        <motion.p
+          variants={fadeUpVariants}
+          custom={4}
+          style={{
+            fontFamily: 'Inter, sans-serif',
+            fontSize: 16,
+            color: GRAY_TEXT,
+            margin: 0,
+            textAlign: 'center',
+            maxWidth: 480,
+          }}
+        >
+          Вы сами решаете, о чём сегодня говорят Ваши стены
+        </motion.p>
       </motion.div>
     </div>
   </section>
@@ -1638,8 +1710,10 @@ const HomePage: React.FC = () => {
   return (
     <div style={{ fontFamily: 'Inter, sans-serif' }}>
       <PageMeta title="Wonder Wow Wall — 3D-панели для стен" description="Купить 3D-панели для стен с доставкой и монтажом. 200+ дизайнов, гарантия 5 лет, рассрочка 0%." />
-      <HeroSection onCatalog={handleCatalog} onConstructor={handleConstructor} />
+      <HeroSection onCatalog={handleCatalog} />
       <HowItWorksSection />
+      <ServiceBannerSection />
+      <TechSection />
       <AdvantagesSection />
       <PromoBannerSection onCatalog={handleCatalog} />
       <CategoriesSection onCategory={handleCategory} />
@@ -1655,6 +1729,7 @@ const HomePage: React.FC = () => {
           .cta-calc-grid { grid-template-columns: 1fr !important; padding: 28px 20px !important; }
           .cta-banner-inner { padding: 48px 20px !important; }
           .promo-banner-inner { padding: 36px 20px !important; flex-direction: column !important; text-align: center !important; }
+          .tech-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </div>
