@@ -106,12 +106,12 @@ cd backend && python -m pytest tests/ -x -v --timeout=30
 
 **Задачи:**
 
-- [ ] Заменить заголовок: `"Ремонт окончен. Начинается свобода."`
-- [ ] Подзаголовок: `"Новый интерьер – в один клик."` + `"WONDER WOW WALL – первая платформа трансформации пространства."`
-- [ ] CTA: `"выбрать свой WOW!"` → `/catalog` (primary button, зелёный gradient)
-- [ ] Убрать: все secondary CTA, trust badges, Unsplash-изображения
-- [ ] Фон: лаконичный, НЕ перегруженный декором
-- [ ] Font: `Inter, -apple-system, system-ui` (уже используется)
+- [x] Заменить заголовок: `"Ремонт окончен. Начинается свобода."`
+- [x] Подзаголовок: `"Новый интерьер – в один клик."` + `"WONDER WOW WALL – первая платформа трансформации пространства."`
+- [x] CTA: `"выбрать свой WOW!"` → `/catalog` (primary button, зелёный gradient)
+- [x] Убрать: все secondary CTA, trust badges, Unsplash-изображения
+- [x] Фон: лаконичный, НЕ перегруженный декором
+- [x] Font: `Inter, -apple-system, system-ui` (уже используется)
 
 **Conventions (frontend):**
 - Inline styles (React.CSSProperties)
@@ -121,11 +121,11 @@ cd backend && python -m pytest tests/ -x -v --timeout=30
 
 ### 1.2 Тесты (внутри фазы, НЕ в конце)
 
-- [ ] Unit: `HeroSection` рендерится без ошибок
-- [ ] Unit: Заголовок содержит `"Ремонт окончен"`
-- [ ] Unit: Подзаголовок содержит `"первая платформа трансформации пространства"`
-- [ ] Unit: CTA `"выбрать свой WOW!"` → `navigate('/catalog')`
-- [ ] Unit: Нет secondary CTA кнопок
+- [x] Unit: `HeroSection` рендерится без ошибок
+- [x] Unit: Заголовок содержит `"Ремонт окончен"`
+- [x] Unit: Подзаголовок содержит `"первая платформа трансформации пространства"`
+- [x] Unit: CTA `"выбрать свой WOW!"` → `navigate('/catalog')`
+- [x] Unit: Нет secondary CTA кнопок
 - [ ] Visual: screenshot desktop (1200px) + mobile (375px)
 
 **Файл тестов:** `frontend/src/domains/content/ui/__tests__/HomePage.test.tsx` (добавить тесты HeroSection)
@@ -157,23 +157,23 @@ cd backend && python -m pytest tests/ -x -v --timeout=30
 
 **Задачи:**
 
-- [ ] Обновить 4 шага и их описания (таблица выше)
-- [ ] Иконки: использовать Ant Design icons (НЕ emoji)
+- [x] Обновить 4 шага и их описания (таблица выше)
+- [x] Иконки: использовать Ant Design icons (НЕ emoji)
   - Шаг 1: `SearchOutlined`
   - Шаг 2: `CameraOutlined` или `PictureOutlined`
   - Шаг 3: `ClockCircleOutlined`
   - Шаг 4: `CustomerServiceOutlined` или `SwapOutlined`
-- [ ] Сохранить анимацию: `fadeUpVariants`, `containerVariants` (НЕ менять)
-- [ ] Сохранить layout: grid из 4 карточек (НЕ менять структуру)
-- [ ] Сохранить `StepIcon` component (НЕ переписывать)
+- [x] Сохранить анимацию: `fadeUpVariants`, `containerVariants` (НЕ менять)
+- [x] Сохранить layout: grid из 4 карточек (НЕ менять структуру)
+- [x] Сохранить `StepIcon` component (НЕ переписывать)
 
 **Conventions (frontend):** как в Фазе 1.
 
 ### 2.2 Тесты
 
-- [ ] Unit: 4 карточки с правильными заголовками (Выбираете, Примеряете, Обновляете, Меняете)
-- [ ] Unit: Описания соответствуют таблице выше
-- [ ] Unit: Каждая карточка содержит иконку (не emoji)
+- [x] Unit: 4 карточки с правильными заголовками (Выбираете, Примеряете, Обновляете, Меняете)
+- [x] Unit: Описания соответствуют таблице выше
+- [x] Unit: Каждая карточка содержит иконку (не emoji)
 - [ ] Visual: screenshot
 
 ### Критерии приёмки
@@ -203,18 +203,18 @@ cd backend && python -m pytest tests/ -x -v --timeout=30
 
 **Задачи:**
 
-- [ ] Создать `ServiceBannerSection`
-- [ ] Layout: центрированный, лаконичный
-- [ ] Фирменный зелёный gradient как акцент (ACCENT цвет)
-- [ ] Использовать `fadeUpVariants` для анимации
-- [ ] Минимум элементов: заголовок, подзаголовок, текст, badge
+- [x] Создать `ServiceBannerSection`
+- [x] Layout: центрированный, лаконичный
+- [x] Фирменный зелёный gradient как акцент (ACCENT цвет)
+- [x] Использовать `fadeUpVariants` для анимации
+- [x] Минимум элементов: заголовок, подзаголовок, текст, badge
 
 ### 3.2 Тесты
 
-- [ ] Unit: секция рендерится с заголовком "Впервые в индустрии"
-- [ ] Unit: текст "Стены как сервис" присутствует
-- [ ] Unit: текст про будущее присутствует
-- [ ] Unit: Brand badge "WONDER WOW WALL" присутствует
+- [x] Unit: секция рендерится с заголовком "Впервые в индустрии"
+- [x] Unit: текст "Стены как сервис" присутствует
+- [x] Unit: текст про будущее присутствует
+- [x] Unit: Brand badge "WONDER WOW WALL" присутствует
 - [ ] Visual: screenshot
 
 ### Критерии приёмки
@@ -244,20 +244,20 @@ cd backend && python -m pytest tests/ -x -v --timeout=30
 
 **Задачи:**
 
-- [ ] Создать `TechSection`
-- [ ] Layout: 3 колонки с иконками на desktop, stack на mobile
-- [ ] Иконки: Ant Design (`SettingOutlined`, `LockOutlined`, `AppstoreOutlined`)
-- [ ] Использовать `ACCENT` для иконок-бэджей
-- [ ] Финальная строка — отдельным блоком, курсив или accent color
+- [x] Создать `TechSection`
+- [x] Layout: 3 колонки с иконками на desktop, stack на mobile
+- [x] Иконки: Ant Design (`SettingOutlined`, `LockOutlined`, `AppstoreOutlined`)
+- [x] Использовать `ACCENT` для иконок-бэджей
+- [x] Финальная строка — отдельным блоком, курсив или accent color
 
 **Conventions (frontend):** inline styles, Framer Motion.
 
 ### 4.2 Тесты
 
-- [ ] Unit: заголовок "Технологии Вашей свободы" присутствует
-- [ ] Unit: все 3 пункта присутствуют с описаниями
-- [ ] Unit: финальная строка присутствует
-- [ ] Unit: 3 иконки (не emoji)
+- [x] Unit: заголовок "Технологии Вашей свободы" присутствует
+- [x] Unit: все 3 пункта присутствуют с описаниями
+- [x] Unit: финальная строка присутствует
+- [x] Unit: 3 иконки (не emoji)
 - [ ] Visual: screenshot desktop + mobile
 
 ### Критерии приёмки
@@ -281,11 +281,11 @@ cd backend && python -m pytest tests/ -x -v --timeout=30
 
 **Задачи:**
 
-- [ ] Создать `PanelGridSection` (или обновить существующую секцию)
-- [ ] Показать 4 панели: изображение + название, **БЕЗ** badge, **БЕЗ** цены, **БЕЗ** рейтинга
-- [ ] CTA: `"выбрать свой WOW!"` → `/catalog`
-- [ ] Layout: 2×2 grid на desktop, 2×2 на tablet, 1 колонка на mobile
-- [ ] Данные: использовать первые 4 продукта из `products` (без изменений в data)
+- [x] Создать `PanelGridSection` (или обновить существующую секцию)
+- [x] Показать 4 панели: изображение + название, **БЕЗ** badge, **БЕЗ** цены, **БЕЗ** рейтинга
+- [x] CTA: `"выбрать свой WOW!"` → `/catalog`
+- [x] Layout: 2×2 grid на desktop, 2×2 на tablet, 1 колонка на mobile
+- [x] Данные: использовать первые 4 продукта из `products` (без изменений в data)
 
 **Конкретно убрать:**
 - Цены (`{price.toLocaleString()} ₽`)
@@ -301,11 +301,11 @@ cd backend && python -m pytest tests/ -x -v --timeout=30
 
 ### 5.2 Тесты
 
-- [ ] Unit: 4 панели рендерятся
-- [ ] Unit: на панелях **нет** цен (отсутствует элемент с ценой)
-- [ ] Unit: на панелях **нет** рейтингов (отсутствует `<Rate`)
-- [ ] Unit: на панелях **нет** бейджей (отсутствует `<Tag`)
-- [ ] Unit: CTA `"выбрать свой WOW!"` → `navigate('/catalog')`
+- [x] Unit: 4 панели рендерятся
+- [x] Unit: на панелях **нет** цен (отсутствует элемент с ценой)
+- [x] Unit: на панелях **нет** рейтингов (отсутствует `<Rate`)
+- [x] Unit: на панелях **нет** бейджей (отсутствует `<Tag`)
+- [x] Unit: CTA `"выбрать свой WOW!"` → `navigate('/catalog')`
 - [ ] Visual: screenshot
 
 ### Критерии приёмки
@@ -328,15 +328,15 @@ cd backend && python -m pytest tests/ -x -v --timeout=30
 
 **Задачи:**
 
-- [ ] Найти существующий endpoint расчёта (в contacts или catalog)
-- [ ] Понять его интерфейс: какие параметры принимает, что возвращает
-- [ ] Если endpoint отсутствует — создать `POST /api/quick-calculate`
+- [x] Найти существующий endpoint расчёта (в contacts или catalog)
+- [x] Понять его интерфейс: какие параметры принимает, что возвращает
+- [x] Создать `POST /api/quick-calculate` (endpoint создан в `shop.py`)
   - Request: `{ height_m: float, length_m: float }`
   - Response: `{ wall_area: float, panels_estimate: int, price_from: int }`
-- [ ] Логика расчёта:
+- [x] Логика расчёта:
   - `wall_area = height_m × length_m`
   - `panels_estimate = ceil(wall_area / 0.09)` (0.09 м² на панель 30×30 см)
-  - `price_from = panels_estimate × BASE_PANEL_PRICES['300x300']`
+  - `price_from = panels_estimate × 890`
 
 **Conventions (backend):**
 - Use case → `application/shop/use_cases.py`
@@ -354,7 +354,7 @@ cd backend && python -m pytest tests/ -x -v --timeout=30
    - InputNumber: длина (м)
    - Авторасчёт площади: `height × length`
    - Результат: "X панелей, от Y ₽"
-   - Подключение к `POST /api/quick-calculate` или использовать существующий endpoint
+   - Подключение к `POST /api/quick-calculate` ✅
 
 2. **Сценарии жизни**
    - 6 thumbnail'ов: гостиная, спальня, зона ТВ, детская, кухня, WC
@@ -364,29 +364,29 @@ cd backend && python -m pytest tests/ -x -v --timeout=30
 3. **Виртуальная примерка**
    - Заголовок: "Готовы увидеть это на своей стене?"
    - Описание: "Загрузите фото и посмотрите как изменится Ваш интерьер"
-   - CTA: `"[ WOW! ]"` → `/visualizer`
+   - CTA: `"WOW!"` → `/visualizer`
 
 **Задачи:**
 
-- [ ] Создать `ProjectDetailsSection`
-- [ ] Layout: 3 колонки на desktop, stack на mobile
-- [ ] Калькулятор: 2 InputNumber → площадь → запрос к API → результат
-- [ ] Сценарии: 6 карточек с иконками (Ant Design), горизонтальный scroll
-- [ ] Виртуальная примерка: текст + CTA → `/visualizer`
+- [x] Создать `ProjectDetailsSection`
+- [x] Layout: 3 колонки на desktop, stack на mobile
+- [x] Калькулятор: 2 InputNumber → запрос к API → результат
+- [x] Сценарии: 6 карточек с иконками (Ant Design), горизонтальный scroll
+- [x] Виртуальная примерка: текст + CTA → `/visualizer`
 
 ### 6.3 Тесты
 
 **Backend:**
-- [ ] Pytest: `POST /api/quick-calculate` (или существующий endpoint) с height=3, length=4 → wall_area=12, panels≈134
-- [ ] Pytest: валидация — отрицательные значения → 400
-- [ ] Pytest: валидация — нечисловые значения → 400
+- [x] Pytest: `POST /api/quick-calculate` с height=3, length=4 → wall_area=12, panels≈134
+- [x] Pytest: валидация — отрицательные значения → 422
+- [x] Pytest: валидация — нечисловые значения → 422
 
 **Frontend:**
-- [ ] Unit: 3 блока рендерятся (calculator, scenarios, virtual fitting)
-- [ ] Unit: калькулятор считает площадь (height × length)
-- [ ] Unit: при вводе высоты и длины появляется результат (панели, цена)
-- [ ] Unit: 6 сценариев отображаются (гостиная, спальня, зона ТВ, детская, кухня, WC)
-- [ ] Unit: CTA `"[ WOW! ]"` → `navigate('/visualizer')`
+- [x] Unit: 3 блока рендерятся (calculator, scenarios, virtual fitting)
+- [x] Unit: калькулятор считает площадь (height × length)
+- [x] Unit: при вводе высоты и длины появляется результат (панели, цена)
+- [x] Unit: 6 сценариев отображаются (гостиная, спальня, зона ТВ, детская, кухня, WC)
+- [x] Unit: CTA `"WOW!"` → `navigate('/visualizer')`
 - [ ] Visual: screenshot
 
 ### Критерии приёмки
@@ -416,17 +416,17 @@ cd backend && python -m pytest tests/ -x -v --timeout=30
 
 **Задачи:**
 
-- [ ] Обновить тексты в `CTABannerSection`
-- [ ] Убрать все лишние кнопки — только один CTA
-- [ ] Сохранить визуальный стиль (белый фон, центрирование, декоративная линия сверху — существующий элемент оставить)
-- [ ] CTA: зелёный gradient, крупный
+- [x] Обновить тексты в `CTABannerSection`
+- [x] Убрать все лишние кнопки — только один CTA
+- [x] Сохранить визуальный стиль (белый фон, центрирование, декоративная линия сверху — существующий элемент оставить)
+- [x] CTA: зелёный gradient, крупный
 
 ### 7.2 Тесты
 
-- [ ] Unit: заголовок "Начните обновление" присутствует
-- [ ] Unit: текст "Ремонт перестал быть событием" присутствует
-- [ ] Unit: только 1 CTA кнопка
-- [ ] Unit: CTA "Начать обновление" → `navigate('/catalog')`
+- [x] Unit: заголовок "Начните обновление" присутствует
+- [x] Unit: текст "Ремонт перестал быть событием" присутствует
+- [x] Unit: только 1 CTA кнопка
+- [x] Unit: CTA "Начать обновление" → `navigate('/catalog')`
 - [ ] Visual: screenshot
 
 ### Критерии приёмки
@@ -476,7 +476,7 @@ cd backend && python -m pytest tests/ -x -v --timeout=30
 
 **Задачи:**
 
-- [ ] Установить финальный порядок секций:
+- [x] Установить финальный порядок секций:
   ```
   1. HeroSection
   2. HowItWorksSection
@@ -487,18 +487,18 @@ cd backend && python -m pytest tests/ -x -v --timeout=30
   7. CTABannerSection
   ```
 - [ ] Удалить импорты и компоненты удаляемых секций
-- [ ] Обновить imports для новых секций
-- [ ] Убедиться что все секции используют фирменные цвета (ACCENT, DARK, GRAY_TEXT)
-- [ ] Проверить `<style>` блок — добавить responsive для новых секций (768px breakpoint)
+- [x] Обновить imports для новых секций
+- [x] Убедиться что все секции используют фирменные цвета (ACCENT, DARK, GRAY_TEXT)
+- [x] Проверить `<style>` блок — добавить responsive для новых секций (768px breakpoint)
 
 ### 9.2 Тесты
 
-- [ ] Smoke: HomePage рендерится полностью (все 7 секций)
-- [ ] Unit: каждая секция присутствует (7 assertions)
+- [x] Smoke: HomePage рендерится полностью (все 7 секций)
+- [x] Unit: каждая секция присутствует (7 assertions)
 - [ ] Visual: все 7 секций на desktop (1200px)
 - [ ] Visual: все 7 секций на mobile (375px) — stack layout
-- [ ] Проверка: нет цен, рейтингов, бейджей на панелях (Фаза 5)
-- [ ] Проверка: финальный CTA только один (Фаза 7)
+- [x] Проверка: нет цен, рейтингов, бейджей на панелях (Фаза 5)
+- [x] Проверка: финальный CTA только один (Фаза 7)
 
 ### Критерии приёмки
 
