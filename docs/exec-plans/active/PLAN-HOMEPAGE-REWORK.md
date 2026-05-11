@@ -449,10 +449,10 @@ cd backend && python -m pytest tests/ -x -v --timeout=30
 
 **Задачи:**
 
-- [ ] Логотип: зелёный, использовать `wonderWall__logotype.png`
-- [ ] Шрифт: убедиться что Inter используется глобально (fallback: -apple-system, system-ui)
-- [ ] Убрать все сторонние шрифты (Google Fonts и т.д.)
-- [ ] Проверить консистентность: все заголовки используют тот же font-family
+- [x] Логотип: зелёный, `logo.png` уже используется в ShopHeader
+- [x] Шрифт: Inter используется глобально (index.css `font-family`, theme.ts `FONT_FAMILY`, HomePage inline)
+- [x] Убрать все сторонние шрифты (Google Fonts) — `@import` удалён из index.css
+- [x] Проверить консистентность: все заголовки используют тот же font-family
 
 ### 8.2 Тесты
 
