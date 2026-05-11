@@ -49,6 +49,80 @@
 
 ---
 
+## Дизайн-система
+
+### Фирменные цвета
+
+Мы сохраняем существующую фирменную палитру Wonder Wow Wall. Все секции **обязаны** использовать только эти цвета — никаких отступлений на усмотрение разработчика:
+
+| Константа | Значение | Использование |
+|---|---|---|
+| `ACCENT` | `#4CAF50` | Основной зелёный, CTA, акценты |
+| `ACCENT_DARK` | `#2E7D32` | Hover-состояния, градиенты |
+| `DARK` | `#2D2D2D` | Основной текст |
+| `GRAY_TEXT` | `#6B7280` | Вторичный текст, описания |
+| `LIGHT_BG` | `#F5F5F5` | Фоновые секции |
+| `SUBTLE_BORDER` | `rgba(0,0,0,0.04)` | Разделители, карточки |
+
+Эти константы уже определены в текущем `HomePage.tsx`. При добавлении новых секций — использовать их, **не добавлять новые цвета**.
+
+### UI/UX Pro Max
+
+При разработке каждой секции — применять рекомендации из скилла `ui-ux-pro-max`:
+
+```bash
+# Перед началом работы над секцией — поиск релевантных стилей
+python3 ~/.claude/skills/ui-ux-pro-max/scripts/search.py "<ключевые слова>" --domain <домен>
+```
+
+**Порядок применения для каждой секции:**
+
+1. **Style** — поиск стилей, релевантных продукту (например, "e-commerce landing minimal")
+2. **Color** — уточнить палитру для нашего product type (saas, e-commerce)
+3. **Typography** — подобрать font pairing (если меняем шрифты)
+4. **UX** — проверить accessibility, animation, spacing
+5. **Stack (react)** — применить React-specific гайдлайны
+
+**Домены для поиска:**
+
+| Домен | Когда использовать |
+|---|---|
+| `style` | Glassmorphism, minimalism, bento grid и т.д. |
+| `color` | Палитры для e-commerce, service |
+| `typography` | Font pairings для landing pages |
+| `landing` | Структура страниц, CTA-стратегии |
+| `ux` | Accessibility, animation, spacing rules |
+| `react` | React-специфичные паттерны |
+
+### Responsive breakpoints
+
+Использовать только `768px` breakpoint (как в текущем коде). Дополнительные breakpoint'ы не добавлять.
+
+### Sandbox-ограничения (ТЕСТЫ)
+
+**⚠️ ВНИМАНИЕ: Слабый sandbox**
+
+Наш sandbox имеет ограниченные ресурсы. При запуске тестов **обязательно** соблюдать следующие правила:
+
+- **Запускать не более 1 теста за раз** или батчами по 2–5 тестов
+- **Не запускать тяжёлые тесты** (с множеством renders, snapshot-тесты) параллельно
+- Если sandbox крашится (`kill` или OOM) — уменьшить batch до 1 и добавить `sleep 5` между запусками
+- Для frontend: `NODE_OPTIONS='--max-old-space-size=512'` при запуске через vitest
+- Для backend: запускать pytest с `--timeout=30` и `-x` (остановиться на первом failure)
+- Все long-running commands (>2 min) запускать через `run_in_background: true`
+
+**Команды запуска тестов:**
+
+```bash
+# Frontend (vitest) — по 1 тесту
+NODE_OPTIONS='--max-old-space-size=512' npx vitest run src/domains/content/ui/__tests__/HomePage.test.tsx --reporter=verbose
+
+# Backend (pytest) — по 1 тесту, с остановкой на первом failure
+cd backend && python -m pytest tests/ -x -v --timeout=30
+```
+
+---
+
 ## Фаза 1: Hero Section — Новое позиционирование
 
 **Цель:** Обновить первый экран для отражения полного спектра возможностей платформы.
