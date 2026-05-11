@@ -43,12 +43,12 @@ const SECTION_PADDING: React.CSSProperties = { padding: '100px 24px' };
 const MAX_WIDTH: React.CSSProperties = { maxWidth: 1200, margin: '0 auto' };
 const ACCENT = '#4CAF50';
 const ACCENT_DARK = '#2E7D32';
-const DARK = '#2D2D2D';
-const GRAY_TEXT = '#6B7280';
-const LIGHT_BG = '#F5F5F5';
-const SUBTLE_BORDER = 'rgba(0,0,0,0.04)';
+const DARK = '#1D1D1F';
+const GRAY_TEXT = '#6E6E73';
+const LIGHT_BG = '#F5F5F7';
+const SUBTLE_BORDER = 'rgba(0,0,0,0.06)';
 const CARD_RADIUS = 20;
-const PILL_RADIUS = 10;
+const PILL_RADIUS = 980;
 
 // ─── Hero Section ────────────────────────────────────────────────────────────────
 
@@ -56,7 +56,7 @@ const HeroSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => (
   <section
     style={{
       minHeight: '100vh',
-      background: `linear-gradient(180deg, #FFFFFF 0%, #F8FBF8 100%)`,
+      background: '#FFFFFF',
       display: 'flex',
       alignItems: 'center',
       ...SECTION_PADDING,
@@ -64,16 +64,6 @@ const HeroSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => (
       overflow: 'hidden',
     }}
   >
-    {/* Decorative accent */}
-    <div style={{
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      height: '4px',
-      background: 'linear-gradient(90deg, #4CAF50 0%, #2E7D32 50%, #4CAF50 100%)',
-    }} />
-
     <div
       style={{
         ...MAX_WIDTH,
@@ -99,7 +89,7 @@ const HeroSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => (
               fontFamily: 'Inter, sans-serif',
               fontSize: 13,
               fontWeight: 600,
-              color: ACCENT,
+              color: GRAY_TEXT,
               textTransform: 'uppercase',
               letterSpacing: '3px',
             }}
@@ -123,12 +113,7 @@ const HeroSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => (
           }}
         >
           Ремонт окончен.{' '}
-          <span style={{
-            background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-          }}>
+          <span style={{ color: ACCENT_DARK }}>
             Начинается свобода.
           </span>
         </motion.h1>
@@ -163,13 +148,13 @@ const HeroSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => (
               color: '#fff',
               border: 'none',
               borderRadius: PILL_RADIUS,
-              height: 60,
-              padding: '0 48px',
+              height: 56,
+              padding: '0 44px',
               fontFamily: 'Inter, sans-serif',
-              fontWeight: 700,
+              fontWeight: 600,
               fontSize: 17,
-              boxShadow: '0 8px 28px rgba(76,175,80,0.35)',
-              letterSpacing: '0.5px',
+              boxShadow: 'none',
+              letterSpacing: '-0.01em',
             }}
           >
             выбрать свой WOW!
@@ -183,25 +168,23 @@ const HeroSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => (
 // ─── Step Icons (Ant Design) ───────────────────────────────────────────────────
 
 const stepIcons: Record<string, React.ReactNode> = {
-  '1': <SearchOutlined style={{ fontSize: 32, color: '#fff' }} />,
-  '2': <CameraOutlined style={{ fontSize: 32, color: '#fff' }} />,
-  '3': <ClockCircleOutlined style={{ fontSize: 32, color: '#fff' }} />,
-  '4': <SwapOutlined style={{ fontSize: 32, color: '#fff' }} />,
+  '1': <SearchOutlined style={{ fontSize: 28 }} />,
+  '2': <CameraOutlined style={{ fontSize: 28 }} />,
+  '3': <ClockCircleOutlined style={{ fontSize: 28 }} />,
+  '4': <SwapOutlined style={{ fontSize: 28 }} />,
 };
 
 const StepIcon: React.FC<{ num: string; hovered?: boolean }> = ({ num, hovered }) => {
   return (
     <div style={{
-      width: 80,
-      height: 80,
-      borderRadius: '50%',
-      background: hovered
-        ? ACCENT
-        : 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
+      width: 72,
+      height: 72,
+      borderRadius: 20,
+      background: hovered ? '#E8F5E9' : LIGHT_BG,
+      color: hovered ? ACCENT_DARK : DARK,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      boxShadow: hovered ? '0 8px 24px rgba(76,175,80,0.5)' : '0 4px 12px rgba(76,175,80,0.3)',
       transition: 'all 0.4s ease',
     }}>
       {stepIcons[num] || stepIcons['1']}
@@ -252,7 +235,7 @@ const HowItWorksSection: React.FC = () => {
               fontFamily: 'Inter, sans-serif',
               fontSize: 12,
               fontWeight: 600,
-              color: ACCENT,
+              color: GRAY_TEXT,
               textTransform: 'uppercase',
               letterSpacing: '3px',
               display: 'block',
@@ -299,19 +282,17 @@ const HowItWorksSection: React.FC = () => {
                   borderRadius: CARD_RADIUS,
                   overflow: 'hidden',
                   background: '#fff',
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
                   transition: `box-shadow 0.5s cubic-bezier(${APPLE_EASE.join(',')})`,
-                  border: hoveredStep === step.num ? `2px solid ${ACCENT}30` : '2px solid transparent',
+                  border: `1px solid ${SUBTLE_BORDER}`,
                 }}
               >
                 <div style={{
-                  height: 180,
+                  height: 160,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  background: hoveredStep === step.num
-                    ? `linear-gradient(135deg, ${ACCENT}10 0%, ${ACCENT}20 100%)`
-                    : 'linear-gradient(135deg, #f8f9fa 0%, #f0f1f2 100%)',
+                  background: LIGHT_BG,
                   transition: 'background 0.4s ease',
                 }}>
                   <StepIcon num={step.num} hovered={hoveredStep === step.num} />
@@ -350,7 +331,7 @@ const HowItWorksSection: React.FC = () => {
 // ─── Service Banner Section — "Стены как сервис" (Слайд 3) ──────────────────
 
 const ServiceBannerSection: React.FC = () => (
-  <section style={{ background: '#fff', padding: '80px 24px', overflow: 'hidden' }}>
+  <section style={{ background: '#fff', padding: '100px 24px', overflow: 'hidden' }}>
     <div style={{ ...MAX_WIDTH }}>
       <motion.div
         initial="hidden"
@@ -363,29 +344,20 @@ const ServiceBannerSection: React.FC = () => (
           flexDirection: 'column',
           alignItems: 'center',
           textAlign: 'center',
-          gap: 24,
+          gap: 20,
           position: 'relative',
         }}
       >
-        {/* Decorative green line */}
-        <div style={{
-          width: 64,
-          height: 4,
-          borderRadius: 2,
-          background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
-          marginBottom: 8,
-        }} />
-
         <motion.div variants={fadeUpVariants} custom={1}>
           <span style={{
             fontFamily: 'Inter, sans-serif',
             fontSize: 12,
             fontWeight: 600,
-            color: ACCENT,
+            color: GRAY_TEXT,
             textTransform: 'uppercase',
             letterSpacing: '3px',
             display: 'block',
-            marginBottom: 16,
+            marginBottom: 12,
           }}>
             Впервые в индустрии
           </span>
@@ -393,7 +365,7 @@ const ServiceBannerSection: React.FC = () => (
 
         <motion.h2 variants={fadeUpVariants} custom={2} style={{
           fontFamily: 'Inter, sans-serif',
-          fontSize: 'clamp(36px, 5vw, 64px)',
+          fontSize: 'clamp(40px, 6vw, 80px)',
           fontWeight: 700,
           color: DARK,
           margin: 0,
@@ -424,7 +396,7 @@ const ServiceBannerSection: React.FC = () => (
             fontFamily: 'Inter, sans-serif',
             fontSize: 13,
             fontWeight: 600,
-            color: ACCENT,
+            color: DARK,
             textTransform: 'uppercase',
             letterSpacing: '2px',
           }}>
@@ -435,7 +407,7 @@ const ServiceBannerSection: React.FC = () => (
             fontSize: 13,
             color: GRAY_TEXT,
           }}>
-            –
+            —
           </span>
           <span style={{
             fontFamily: 'Inter, sans-serif',
@@ -454,17 +426,17 @@ const ServiceBannerSection: React.FC = () => (
 
 const techPoints = [
   {
-    icon: <SettingOutlined style={{ fontSize: 28, color: ACCENT }} />,
+    icon: <SettingOutlined style={{ fontSize: 28, color: DARK }} />,
     title: 'Универсальная платформа монтажа',
     desc: 'Адаптирована для любых поверхностей — бетон, кирпич, дерево, плитка.',
   },
   {
-    icon: <LockOutlined style={{ fontSize: 28, color: ACCENT }} />,
+    icon: <LockOutlined style={{ fontSize: 28, color: DARK }} />,
     title: 'Запатентованная система креплений',
     desc: 'Обеспечивает быструю замену без повреждения стены.',
   },
   {
-    icon: <AppstoreOutlined style={{ fontSize: 28, color: ACCENT }} />,
+    icon: <AppstoreOutlined style={{ fontSize: 28, color: DARK }} />,
     title: 'Безграничность фактур',
     desc: 'Формируйте пространство под любой стиль — от минимализма до лофта.',
   },
@@ -519,15 +491,15 @@ const TechSection: React.FC = () => (
                 alignItems: 'center',
                 textAlign: 'center',
                 gap: 16,
-                boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
-                border: '1px solid rgba(0,0,0,0.04)',
+                boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+                border: `1px solid ${SUBTLE_BORDER}`,
               }}
             >
               <div style={{
                 width: 64,
                 height: 64,
                 borderRadius: 20,
-                background: '#E8F5E9',
+                background: LIGHT_BG,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -624,7 +596,7 @@ const PanelGridSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) =>
                   overflow: 'hidden',
                   aspectRatio: '3 / 4',
                   position: 'relative',
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
                 }}
               >
                 <img
@@ -676,9 +648,10 @@ const PanelGridSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) =>
                 height: 56,
                 padding: '0 40px',
                 fontFamily: 'Inter, sans-serif',
-                fontWeight: 700,
+                fontWeight: 600,
                 fontSize: 16,
-                boxShadow: '0 8px 24px rgba(76,175,80,0.3)',
+                boxShadow: 'none',
+                letterSpacing: '-0.01em',
               }}
             >
               выбрать свой WOW!
@@ -693,12 +666,12 @@ const PanelGridSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) =>
 // ─── Life Scenarios (for ProjectDetailsSection) ──────────────────────────────
 
 const lifeScenarios = [
-  { icon: <DesktopOutlined style={{ fontSize: 32, color: ACCENT }} />, label: 'Гостиная' },
-  { icon: <AppstoreOutlined style={{ fontSize: 32, color: ACCENT }} />, label: 'Спальня' },
-  { icon: <CameraOutlined style={{ fontSize: 32, color: ACCENT }} />, label: 'Зона ТВ' },
-  { icon: <ExperimentOutlined style={{ fontSize: 32, color: ACCENT }} />, label: 'Детская' },
-  { icon: <ThunderboltOutlined style={{ fontSize: 32, color: ACCENT }} />, label: 'Кухня' },
-  { icon: <WifiOutlined style={{ fontSize: 32, color: ACCENT }} />, label: 'WC' },
+  { icon: <DesktopOutlined style={{ fontSize: 28, color: DARK }} />, label: 'Гостиная' },
+  { icon: <AppstoreOutlined style={{ fontSize: 28, color: DARK }} />, label: 'Спальня' },
+  { icon: <CameraOutlined style={{ fontSize: 28, color: DARK }} />, label: 'Зона ТВ' },
+  { icon: <ExperimentOutlined style={{ fontSize: 28, color: DARK }} />, label: 'Детская' },
+  { icon: <ThunderboltOutlined style={{ fontSize: 28, color: DARK }} />, label: 'Кухня' },
+  { icon: <WifiOutlined style={{ fontSize: 28, color: DARK }} />, label: 'WC' },
 ];
 
 // ─── Project Details Section — калькулятор + сценарии (Слайд 6) ─────────────
@@ -768,8 +741,8 @@ const ProjectDetailsSection: React.FC = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 20,
-                boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
-                border: '1px solid rgba(0,0,0,0.04)',
+                boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+                border: `1px solid ${SUBTLE_BORDER}`,
               }}
             >
               <span style={{
@@ -822,7 +795,8 @@ const ProjectDetailsSection: React.FC = () => {
                     borderRadius: PILL_RADIUS,
                     height: 44,
                     fontFamily: 'Inter, sans-serif',
-                    fontWeight: 700,
+                    fontWeight: 600,
+                    boxShadow: 'none',
                   }}
                 >
                   Рассчитать
@@ -830,7 +804,7 @@ const ProjectDetailsSection: React.FC = () => {
               </div>
               {calcResult && (
                 <div style={{
-                  background: '#E8F5E9',
+                  background: LIGHT_BG,
                   borderRadius: 12,
                   padding: '16px',
                   display: 'flex',
@@ -861,8 +835,8 @@ const ProjectDetailsSection: React.FC = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 20,
-                boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
-                border: '1px solid rgba(0,0,0,0.04)',
+                boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+                border: `1px solid ${SUBTLE_BORDER}`,
               }}
             >
               <span style={{
@@ -924,8 +898,8 @@ const ProjectDetailsSection: React.FC = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 20,
-                boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
-                border: '1px solid rgba(0,0,0,0.04)',
+                boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+                border: `1px solid ${SUBTLE_BORDER}`,
               }}
             >
               <span style={{
@@ -953,12 +927,13 @@ const ProjectDetailsSection: React.FC = () => {
                     color: '#fff',
                     border: 'none',
                     borderRadius: PILL_RADIUS,
-                    height: 60,
+                    height: 56,
                     padding: '0 40px',
                     fontFamily: 'Inter, sans-serif',
-                    fontWeight: 700,
+                    fontWeight: 600,
                     fontSize: 17,
-                    boxShadow: '0 8px 28px rgba(76,175,80,0.35)',
+                    boxShadow: 'none',
+                    letterSpacing: '-0.01em',
                   }}
                 >
                   WOW!
@@ -992,23 +967,12 @@ const CTABannerSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) =>
           alignItems: 'center',
           gap: 28,
           textAlign: 'center',
-          boxShadow: '0 12px 60px rgba(0,0,0,0.04)',
-          border: '1px solid rgba(0,0,0,0.04)',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
+          border: `1px solid ${SUBTLE_BORDER}`,
           position: 'relative',
           overflow: 'hidden',
         }}
       >
-        {/* Decorative element */}
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '200px',
-          height: '4px',
-          background: 'linear-gradient(90deg, transparent 0%, #4CAF50 50%, transparent 100%)',
-          borderRadius: '0 0 4px 4px',
-        }} />
 
         <div>
           <h2
@@ -1060,9 +1024,10 @@ const CTABannerSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) =>
             height: 56,
             padding: '0 36px',
             fontFamily: 'Inter, sans-serif',
-            fontWeight: 700,
+            fontWeight: 600,
             fontSize: 16,
-            boxShadow: '0 8px 24px rgba(76,175,80,0.3)',
+            boxShadow: 'none',
+            letterSpacing: '-0.01em',
           }}
         >
           Начать обновление
@@ -1090,7 +1055,6 @@ const HomePage: React.FC = () => {
       <TechSection />
       <PanelGridSection onCatalog={handleCatalog} />
       <ProjectDetailsSection />
-      <CTABannerSection onCatalog={handleCatalog} />
       <CTABannerSection onCatalog={handleCatalog} />
 
       <style>{`
