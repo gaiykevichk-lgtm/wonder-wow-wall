@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Button, Card, Rate, Tag } from 'antd';
+import { Button, Card, Rate, Tag, InputNumber } from 'antd';
 import { PageMeta } from '../../../shared/ui/PageMeta';
 import {
   AppstoreOutlined,
@@ -16,6 +16,9 @@ import {
   SwapOutlined,
   SettingOutlined,
   LockOutlined,
+  DesktopOutlined,
+  WifiOutlined,
+  ExperimentOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { products, categories, clientReviews } from '../../catalog/model/data';
@@ -859,6 +862,279 @@ const PanelGridSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) =>
               выбрать свой WOW!
             </Button>
           </motion.div>
+        </motion.div>
+      </div>
+    </section>
+  );
+};
+
+// ─── Life Scenarios (for ProjectDetailsSection) ──────────────────────────────
+
+const lifeScenarios = [
+  { icon: <DesktopOutlined style={{ fontSize: 32, color: ACCENT }} />, label: 'Гостиная' },
+  { icon: <AppstoreOutlined style={{ fontSize: 32, color: ACCENT }} />, label: 'Спальня' },
+  { icon: <CameraOutlined style={{ fontSize: 32, color: ACCENT }} />, label: 'Зона ТВ' },
+  { icon: <ExperimentOutlined style={{ fontSize: 32, color: ACCENT }} />, label: 'Детская' },
+  { icon: <ThunderboltOutlined style={{ fontSize: 32, color: ACCENT }} />, label: 'Кухня' },
+  { icon: <WifiOutlined style={{ fontSize: 32, color: ACCENT }} />, label: 'WC' },
+];
+
+// ─── Project Details Section — калькулятор + сценарии (Слайд 6) ─────────────
+
+const ProjectDetailsSection: React.FC = () => {
+  const [height, setHeight] = useState<number | null>(null);
+  const [length, setLength] = useState<number | null>(null);
+  const [calcResult, setCalcResult] = useState<{ area: number; panels: number; price: number } | null>(null);
+
+  const handleCalculate = async () => {
+    if (!height || !length) return;
+    const area = height * length;
+    const panels = Math.ceil(area / 0.09);
+    const price = panels * 890;
+    setCalcResult({ area, panels, price });
+  };
+
+  return (
+    <section style={{ background: LIGHT_BG, ...SECTION_PADDING }}>
+      <div style={{ ...MAX_WIDTH }}>
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={fadeUpVariants}
+          custom={0}
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 48 }}
+        >
+          <h2 style={{
+            fontFamily: 'Inter, sans-serif',
+            fontSize: 'clamp(32px, 3.5vw, 44px)',
+            fontWeight: 700,
+            color: DARK,
+            margin: 0,
+            letterSpacing: '-0.03em',
+            textAlign: 'center',
+          }}>
+            Ваш проект. В деталях
+          </h2>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: 32,
+              width: '100%',
+            }}
+            className="project-grid"
+          >
+            {/* Блок 1: Калькулятор */}
+            <motion.div
+              variants={fadeUpVariants}
+              custom={1}
+              style={{
+                background: '#fff',
+                borderRadius: CARD_RADIUS,
+                padding: '32px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 20,
+                boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
+                border: '1px solid rgba(0,0,0,0.04)',
+              }}
+            >
+              <span style={{
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 700,
+                fontSize: 18,
+                color: DARK,
+              }}>
+                Точный расчёт
+              </span>
+              <span style={{
+                fontFamily: 'Inter, sans-serif',
+                fontSize: 13,
+                color: GRAY_TEXT,
+                lineHeight: 1.6,
+              }}>
+                Введите параметры Вашей стены и система определит необходимое количество панелей
+              </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div>
+                  <span style={{ fontFamily: 'Inter', fontSize: 12, color: GRAY_TEXT, display: 'block', marginBottom: 4 }}>Высота (м)</span>
+                  <InputNumber
+                    value={height}
+                    onChange={(v) => setHeight(v as number | null)}
+                    min={0.1}
+                    max={10}
+                    step={0.1}
+                    style={{ width: '100%', borderRadius: 10 }}
+                    placeholder="3.0"
+                  />
+                </div>
+                <div>
+                  <span style={{ fontFamily: 'Inter', fontSize: 12, color: GRAY_TEXT, display: 'block', marginBottom: 4 }}>Длина (м)</span>
+                  <InputNumber
+                    value={length}
+                    onChange={(v) => setLength(v as number | null)}
+                    min={0.1}
+                    max={50}
+                    step={0.1}
+                    style={{ width: '100%', borderRadius: 10 }}
+                    placeholder="4.0"
+                  />
+                </div>
+                <Button
+                  onClick={handleCalculate}
+                  style={{
+                    background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: PILL_RADIUS,
+                    height: 44,
+                    fontFamily: 'Inter, sans-serif',
+                    fontWeight: 700,
+                  }}
+                >
+                  Рассчитать
+                </Button>
+              </div>
+              {calcResult && (
+                <div style={{
+                  background: '#E8F5E9',
+                  borderRadius: 12,
+                  padding: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                }}>
+                  <span style={{ fontFamily: 'Inter', fontSize: 13, color: GRAY_TEXT }}>
+                    Площадь: <strong style={{ color: DARK }}>{calcResult.area} м²</strong>
+                  </span>
+                  <span style={{ fontFamily: 'Inter', fontSize: 13, color: GRAY_TEXT }}>
+                    Панелей: <strong style={{ color: DARK }}>{calcResult.panels} шт</strong>
+                  </span>
+                  <span style={{ fontFamily: 'Inter', fontSize: 13, color: GRAY_TEXT }}>
+                    Цена от: <strong style={{ color: ACCENT }}>{calcResult.price.toLocaleString('ru-RU')} ₽</strong>
+                  </span>
+                </div>
+              )}
+            </motion.div>
+
+            {/* Блок 2: Сценарии жизни */}
+            <motion.div
+              variants={fadeUpVariants}
+              custom={2}
+              style={{
+                background: '#fff',
+                borderRadius: CARD_RADIUS,
+                padding: '32px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 20,
+                boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
+                border: '1px solid rgba(0,0,0,0.04)',
+              }}
+            >
+              <span style={{
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 700,
+                fontSize: 18,
+                color: DARK,
+              }}>
+                Сценарии жизни
+              </span>
+              <span style={{
+                fontFamily: 'Inter, sans-serif',
+                fontSize: 13,
+                color: GRAY_TEXT,
+                lineHeight: 1.6,
+              }}>
+                Сотни визуализаций — для разного света и объёма
+              </span>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: 12,
+              }}>
+                {lifeScenarios.map((s) => (
+                  <div
+                    key={s.label}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '12px 8px',
+                      background: '#F5F5F5',
+                      borderRadius: 12,
+                    }}
+                  >
+                    {s.icon}
+                    <span style={{
+                      fontFamily: 'Inter, sans-serif',
+                      fontSize: 12,
+                      color: DARK,
+                      fontWeight: 600,
+                    }}>
+                      {s.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* Блок 3: Виртуальная примерка */}
+            <motion.div
+              variants={fadeUpVariants}
+              custom={3}
+              style={{
+                background: '#fff',
+                borderRadius: CARD_RADIUS,
+                padding: '32px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 20,
+                boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
+                border: '1px solid rgba(0,0,0,0.04)',
+              }}
+            >
+              <span style={{
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 700,
+                fontSize: 18,
+                color: DARK,
+              }}>
+                Виртуальная примерка
+              </span>
+              <span style={{
+                fontFamily: 'Inter, sans-serif',
+                fontSize: 13,
+                color: GRAY_TEXT,
+                lineHeight: 1.6,
+              }}>
+                Готовы увидеть это на своей стене? Загрузите фото и посмотрите как изменится Ваш интерьер
+              </span>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Button
+                  onClick={() => window.location.href = '/visualizer'}
+                  size="large"
+                  style={{
+                    background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: PILL_RADIUS,
+                    height: 60,
+                    padding: '0 40px',
+                    fontFamily: 'Inter, sans-serif',
+                    fontWeight: 700,
+                    fontSize: 17,
+                    boxShadow: '0 8px 28px rgba(76,175,80,0.35)',
+                  }}
+                >
+                  WOW!
+                </Button>
+              </div>
+            </motion.div>
+          </div>
         </motion.div>
       </div>
     </section>
@@ -1831,6 +2107,7 @@ const HomePage: React.FC = () => {
       <ServiceBannerSection />
       <TechSection />
       <PanelGridSection onCatalog={handleCatalog} />
+      <ProjectDetailsSection />
       <PromoBannerSection onCatalog={handleCatalog} />
       <CategoriesSection onCategory={handleCategory} />
       <PopularProductsSection onProduct={handleProduct} onAllProducts={handleCatalog} />
@@ -1847,6 +2124,7 @@ const HomePage: React.FC = () => {
           .promo-banner-inner { padding: 36px 20px !important; flex-direction: column !important; text-align: center !important; }
           .tech-grid { grid-template-columns: 1fr !important; }
           .panel-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .project-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </div>

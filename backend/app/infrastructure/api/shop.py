@@ -168,3 +168,36 @@ async def list_plans_public(
             for p in plans
         ],
     )
+
+
+class QuickCalculateRequest(BaseModel):
+    height_m: float = Field(..., gt=0, le=10, description="Высота стены в метрах")
+    length_m: float = Field(..., gt=0, le=50, description="Длина стены в метрах")
+
+
+class QuickCalculateResponse(BaseModel):
+    wall_area: float = Field(..., description="Площадь стены в м²")
+    panels_estimate: int = Field(..., description="Ориентировочное количество панелей 30×30 см")
+    price_from: int = Field(..., description="Цена от в рублях")
+
+
+@router.post("/quick-calculate", response_model=QuickCalculateResponse)
+async def quick_calculate(body: QuickCalculateRequest):
+    """Упрощённый расчёт панелей по размерам стены.
+
+    Использует формулу:
+      wall_area = height × length
+      panels_estimate = ceil(wall_area / 0.09)  — панель 30×30 см = 0.09 м²
+      price_from = panels_estimate × 890  — базовая цена панели 300×300
+    """
+    import math
+
+    wall_area = round(body.height_m * body.length_m, 2)
+    panels_estimate = math.ceil(wall_area / 0.09)
+    price_from = panels_estimate * 890
+
+    return QuickCalculateResponse(
+        wall_area=wall_area,
+        panels_estimate=panels_estimate,
+        price_from=price_from,
+    )
