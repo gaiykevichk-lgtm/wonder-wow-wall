@@ -54,14 +54,7 @@ const SUBTLE_BORDER = 'rgba(0,0,0,0.04)';
 const CARD_RADIUS = 20;
 const PILL_RADIUS = 10;
 
-// ─── Hero Section (Сочная версия) ─────────────────────────────────────────────
-
-const heroImages = [
-  'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=700&h=700&fit=crop',
-  'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=700&h=700&fit=crop',
-  'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=700&h=700&fit=crop',
-  'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=700&h=700&fit=crop',
-];
+// ─── Hero Section ────────────────────────────────────────────────────────────────
 
 const HeroSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => (
   <section
@@ -882,16 +875,25 @@ const lifeScenarios = [
 // ─── Project Details Section — калькулятор + сценарии (Слайд 6) ─────────────
 
 const ProjectDetailsSection: React.FC = () => {
+  const navigate = useNavigate();
   const [height, setHeight] = useState<number | null>(null);
   const [length, setLength] = useState<number | null>(null);
   const [calcResult, setCalcResult] = useState<{ area: number; panels: number; price: number } | null>(null);
 
   const handleCalculate = async () => {
     if (!height || !length) return;
-    const area = height * length;
-    const panels = Math.ceil(area / 0.09);
-    const price = panels * 890;
-    setCalcResult({ area, panels, price });
+    try {
+      const res = await fetch('/api/quick-calculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ height_m: height, length_m: length }),
+      });
+      if (!res.ok) throw new Error('Calculation failed');
+      const data = await res.json();
+      setCalcResult({ area: data.wall_area, panels: data.panels_estimate, price: data.price_from });
+    } catch (err) {
+      console.error('quick-calculate error:', err);
+    }
   };
 
   return (
@@ -1115,7 +1117,7 @@ const ProjectDetailsSection: React.FC = () => {
               </span>
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Button
-                  onClick={() => window.location.href = '/visualizer'}
+                  onClick={() => navigate('/visualizer')}
                   size="large"
                   style={{
                     background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
@@ -1977,12 +1979,9 @@ const ReviewsSection: React.FC = () => {
   );
 };
 
-// ─── CTA Banner Section ───────────────────────────────────────────────────────
+// ─── CTA Banner Section (Слайд 7) ───────────────────────────────────────────────
 
-const CTABannerSection: React.FC<{ onCatalog: () => void; onContact: () => void }> = ({
-  onCatalog,
-  onContact,
-}) => (
+const CTABannerSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => (
   <section style={{ background: LIGHT_BG, padding: '100px 24px' }}>
     <div style={{ ...MAX_WIDTH }}>
       <motion.div
@@ -1991,7 +1990,6 @@ const CTABannerSection: React.FC<{ onCatalog: () => void; onContact: () => void 
         viewport={{ once: true, amount: 0.3 }}
         variants={fadeUpVariants}
         custom={0}
-        className="cta-banner-inner"
         style={{
           background: '#fff',
           borderRadius: CARD_RADIUS,
@@ -2031,7 +2029,7 @@ const CTABannerSection: React.FC<{ onCatalog: () => void; onContact: () => void 
               letterSpacing: '-0.03em',
             }}
           >
-            Готовы преобразить стены?
+            Начните обновление
           </h2>
           <p
             style={{
@@ -2043,46 +2041,39 @@ const CTABannerSection: React.FC<{ onCatalog: () => void; onContact: () => void 
               lineHeight: 1.6,
             }}
           >
-            Выберите панели в каталоге — или напишите нам. Подскажем, поможем, рассчитаем.
+            Присоединяйтесь к новой культуре взаимодействия с пространством
+          </p>
+          <p
+            style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: 16,
+              color: GRAY_TEXT,
+              margin: '8px 0 0',
+              maxWidth: 480,
+              lineHeight: 1.6,
+            }}
+          >
+            Ремонт перестал быть событием. Вам нужно только выбрать настроение.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center' }}>
-          <Button
-            onClick={onCatalog}
-            size="large"
-            style={{
-              background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: PILL_RADIUS,
-              height: 56,
-              padding: '0 36px',
-              fontFamily: 'Inter, sans-serif',
-              fontWeight: 700,
-              fontSize: 16,
-              boxShadow: '0 8px 24px rgba(76,175,80,0.3)',
-            }}
-          >
-            Смотреть каталог
-          </Button>
-          <Button
-            onClick={onContact}
-            size="large"
-            style={{
-              background: 'transparent',
-              color: ACCENT,
-              border: '2px solid #E8F5E9',
-              borderRadius: PILL_RADIUS,
-              height: 56,
-              padding: '0 36px',
-              fontFamily: 'Inter, sans-serif',
-              fontWeight: 700,
-              fontSize: 16,
-            }}
-          >
-            Написать нам
-          </Button>
-        </div>
+        <Button
+          onClick={onCatalog}
+          size="large"
+          style={{
+            background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
+            color: '#fff',
+            border: 'none',
+            borderRadius: PILL_RADIUS,
+            height: 56,
+            padding: '0 36px',
+            fontFamily: 'Inter, sans-serif',
+            fontWeight: 700,
+            fontSize: 16,
+            boxShadow: '0 8px 24px rgba(76,175,80,0.3)',
+          }}
+        >
+          Начать обновление
+        </Button>
       </motion.div>
     </div>
   </section>
@@ -2094,10 +2085,8 @@ const HomePage: React.FC = () => {
   const navigate = useNavigate();
 
   const handleCatalog = () => navigate('/catalog');
-  const handleConstructor = () => navigate('/constructor');
   const handleCategory = (key: string) => navigate(`/catalog?category=${key}`);
   const handleProduct = (id: string) => navigate(`/product/${id}`);
-  const handleContact = () => navigate('/contacts');
 
   return (
     <div style={{ fontFamily: 'Inter, sans-serif' }}>
@@ -2108,20 +2097,13 @@ const HomePage: React.FC = () => {
       <TechSection />
       <PanelGridSection onCatalog={handleCatalog} />
       <ProjectDetailsSection />
-      <PromoBannerSection onCatalog={handleCatalog} />
-      <CategoriesSection onCategory={handleCategory} />
-      <PopularProductsSection onProduct={handleProduct} onAllProducts={handleCatalog} />
-      <CalculatorCTASection onConstructor={handleConstructor} />
-      <ReviewsSection />
-      <CTABannerSection onCatalog={handleCatalog} onContact={handleContact} />
+      <CTABannerSection onCatalog={handleCatalog} />
+      <CTABannerSection onCatalog={handleCatalog} />
 
       <style>{`
         @media (max-width: 768px) {
           .hero-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
           .hero-images { order: -1; }
-          .cta-calc-grid { grid-template-columns: 1fr !important; padding: 28px 20px !important; }
-          .cta-banner-inner { padding: 48px 20px !important; }
-          .promo-banner-inner { padding: 36px 20px !important; flex-direction: column !important; text-align: center !important; }
           .tech-grid { grid-template-columns: 1fr !important; }
           .panel-grid { grid-template-columns: repeat(2, 1fr) !important; }
           .project-grid { grid-template-columns: 1fr !important; }

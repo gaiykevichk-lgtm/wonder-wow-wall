@@ -1,7 +1,8 @@
 # PLAN: Переработка главной страницы — по слайдам заказчика
 
-**Статус:** Pending
+**Статус:** Фазы 1–7 Complete ✅, Фазы 8–9 требуют реализации
 **Дата создания:** 2026-05-11
+**Дата завершения Фаз 1–7:** 2026-05-11
 **Источник:** Слайды заказчика (файл "Правки для сайта.docx", pasted-1778496112784.txt)
 
 ---
@@ -714,6 +715,144 @@ frontend/src/domains/content/ui/home/
 - Unit tests для других фаз — только ручная проверка (screenshot секции)
 
 ---
+
+## Verification Report — Phase 1 Audit + Fixes (2026-05-11)
+
+### Файлы проверенные line-by-line
+
+| Файл | Коммит | Изменения |
+|---|---|---|
+| `frontend/src/domains/content/ui/HomePage.tsx` | 25d4c10, bd1881f, e549ae8 + fixes | +920 строк (Фазы 1–6) |
+| `frontend/src/domains/content/ui/__tests__/HomePage.test.tsx` | e549ae8 + fixes | +213 строк |
+| `backend/app/infrastructure/api/shop.py` | e549ae8 | +33 строки (quick-calculate) |
+| `backend/tests/api/test_quick_calculate.py` | NEW | +93 строки |
+| `frontend/vite.config.ts` | e549ae8 | cache dir fix |
+
+### Проверено
+
+**HeroSection (Фаза 1):**
+- Заголовок: `"Ремонт окончен. Начинается свобода."` — соответствует плану
+- Подзаголовок: `"Новый интерьер – в один клик."` + `"WONDER WOW WALL – первая платформа трансформации пространства."` — соответствует плану
+- CTA: `"выбрать свой WOW!"` → `navigate('/catalog')` — соответствует плану
+- Фон: лаконичный, НЕ перегруженный декором (только декоративная линия сверху)
+- Нет Unsplash-изображений, нет trust badges, нет secondary CTA — соответствует плану
+- Font: Inter — соответствует плану
+
+**HowItWorksSection (Фаза 2):**
+- 4 шага точно по плану: Выбираете / Примеряете / Обновляете / Меняете — соответствует
+- Описания точно по плану — соответствует
+- Иконки: Ant Design (`SearchOutlined`, `CameraOutlined`, `ClockCircleOutlined`, `SwapOutlined`) — соответствует плану
+- Анимация `fadeUpVariants`, `containerVariants` сохранена — соответствует
+
+**ServiceBannerSection (Фаза 3):**
+- Заголовок "Впервые в индустрии" — соответствует
+- Подзаголовок "Стены как сервис" — соответствует
+- Текст про будущее — соответствует
+- Brand badge "WONDER WOW WALL – новый стандарт трансформации пространства" — соответствует
+
+**TechSection (Фаза 4):**
+- Заголовок "Технологии Вашей свободы" — соответствует
+- 3 пункта с иконками `SettingOutlined`, `LockOutlined`, `AppstoreOutlined` — соответствует плану
+- Финальная строка "Вы сами решаете, о чём сегодня говорят Ваши стены" — соответствует
+- 3 колонки на desktop → stack на 768px — соответствует (CSS className="tech-grid")
+
+**PanelGridSection (Фаза 5):**
+- 4 панели из `products.slice(0, 4)` — соответствует
+- **БЕЗ цен** — проверено: нет `toLocaleString('ru-RU')` в секции — соответствует
+- **БЕЗ рейтингов** — проверено: нет `<Rate>` в секции — соответствует
+- **БЕЗ бейджей** — проверено: нет `<Tag>` в секции — соответствует
+- CTA "выбрать свой WOW!" → `navigate('/catalog')` — соответствует
+- Layout: 4 колонки desktop, 2 колонки mobile (CSS .panel-grid) — соответствует
+
+**ProjectDetailsSection (Фаза 6):**
+- Калькулятор: 2 InputNumber (height, length) → `POST /api/quick-calculate` → результат
+- 6 сценариев жизни (гостиная, спальня, зона ТВ, детская, кухня, WC) — соответствует
+- Виртуальная примерка: кнопка "WOW!" → `navigate('/visualizer')` — соответствует
+
+**Backend API `/api/quick-calculate` (Фаза 6):**
+- Request: `{ height_m: float, length_m: float }` — соответствует плану
+- Response: `{ wall_area, panels_estimate, price_from }` — соответствует плану
+- Валидация: `gt=0, le=10` для height, `gt=0, le=50` для length — соответствует плану
+- Формула: `wall_area = height × length`, `panels_estimate = ceil(wall_area / 0.09)`, `price_from = panels_estimate * 890` — соответствует плану
+- **10 backend tests added** (`test_quick_calculate.py`): passed ✅
+
+**CTABannerSection (Фаза 7):**
+- Заголовок "Начните обновление" — соответствует
+- Текст "Ремонт перестал быть событием" — соответствует
+- CTA "Начать обновление" → `navigate('/catalog')` — соответствует
+- **Добавлена в финальный рендер HomePage** — ✅ Исправлено
+
+**HomePage рендер (финальная сборка):**
+```tsx
+<HeroSection onCatalog={handleCatalog} />
+<HowItWorksSection />
+<ServiceBannerSection />
+<TechSection />
+<PanelGridSection onCatalog={handleCatalog} />
+<ProjectDetailsSection />
+<CTABannerSection onCatalog={handleCatalog} />
+```
+- 7 секций в правильном порядке — соответствует плану Фазы 9
+
+---
+
+### Исправленные проблемы
+
+**1. ✅ CTABannerSection добавлена в финальный рендер HomePage**
+- Добавлена в `return` после `<ProjectDetailsSection />`
+
+**2. ✅ Калькулятор подключён к backend API `/api/quick-calculate`**
+- `handleCalculate` теперь делает `fetch('/api/quick-calculate', ...)` вместо client-side расчёта
+
+**3. ✅ Virtual fitting использует `navigate()` вместо `window.location.href`**
+- `onClick={() => navigate('/visualizer')}` — добавлен `useNavigate()` в `ProjectDetailsSection`
+
+**4. ✅ Удалён мёртвый код `heroImages`**
+- 4 Unsplash URL удалены из файла
+
+**5. ✅ Добавлены backend тесты для `POST /api/quick-calculate`**
+- 10 тестов в `backend/tests/api/test_quick_calculate.py` — все passed
+
+**6. ✅ Исправлен тест "6 сценариев"**
+- Теперь проверяет точный count: все 6 названий (Гостиная, Спальня, Зона ТВ, Детская, Кухня, WC)
+
+---
+
+### Некритические проблемы (технический долг)
+
+**7. Все удаляемые секции остались в файле**
+- `PromoBannerSection`, `CategoriesSection`, `PopularProductsSection`, `CalculatorCTASection`, `AdvantagesSection`, `ReviewsSection` — все определены, не рендерятся
+- План Фазы 9 требует удаления кода удалённых секций
+
+**8. vite.config.ts cacheDir изменён на `/tmp`**
+- Изменение `/home/user/wonder-wow-wall/frontend/.vite-new-cache` → `/tmp/vite-cache-5521` — это правильно для sandbox, но изменение не связано с Homepage Rework
+
+---
+
+### Регрессии (проверены)
+
+- **Удалённые секции не рендерятся:** подтверждено — `PromoBannerSection`, `CategoriesSection`, `PopularProductsSection`, `CalculatorCTASection`, `AdvantagesSection`, `ReviewsSection` не указаны в финальном return
+- **HeroSection:** старый Hero с 2-колоночным grid и Unsplash-изображениями заменён на новый (лаконичный)
+- **Existing imports:** все существующие импорты сохранены
+- **Animation variants:** `fadeUpVariants`, `containerVariants` не изменены
+
+---
+
+### Актуализированный статус
+
+| Фаза | План task | Реализация | Тесты | Статус |
+|---|---|---|---|---|
+| 1 | HeroSection | ✅ Завершена | ✅ 6 unit | ✅ |
+| 2 | HowItWorksSection | ✅ Завершена | ✅ 4 unit | ✅ |
+| 3 | ServiceBannerSection | ✅ Завершена | ✅ 4 unit | ✅ |
+| 4 | TechSection | ✅ Завершена | ✅ 4 unit | ✅ |
+| 5 | PanelGridSection | ✅ Завершена | ✅ 5 unit | ✅ |
+| 6 | ProjectDetailsSection + API | ✅ Завершена (API подключён) | ✅ 4 unit + 10 backend | ✅ |
+| 7 | CTABannerSection | ✅ Завершена (в рендере) | ✅ 4 unit | ✅ |
+| 8 | Глобальные фирменные элементы | ❌ Не реализована | ❌ | ❌ |
+| 9 | Финальная интеграция | ⚠️ Рендер готов, секции не удалены | ❌ | ⚠️ |
+
+**Реальный прогресс:** Фазы 1–7 полностью завершены. Фазы 8–9 требуют реализации.
 
 ## Notes
 
