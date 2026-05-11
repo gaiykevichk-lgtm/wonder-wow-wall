@@ -580,9 +580,10 @@ const PanelGridSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) =>
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
+              gridTemplateColumns: `repeat(${Math.min(first4.length, 4)}, minmax(200px, 280px))`,
               gap: 20,
               width: '100%',
+              justifyContent: 'center',
             }}
             className="panel-grid"
           >
