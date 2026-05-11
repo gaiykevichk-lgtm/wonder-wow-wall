@@ -749,6 +749,122 @@ const TechSection: React.FC = () => (
   </section>
 );
 
+// ─── Panel Grid Section — 4 панели чистый визуал (Слайд 5) ──────────────────
+
+const PanelGridSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => {
+  const first4 = products.slice(0, 4);
+
+  return (
+    <section style={{ background: '#fff', ...SECTION_PADDING }}>
+      <div style={{ ...MAX_WIDTH }}>
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.15 }}
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 48 }}
+        >
+          <motion.div variants={fadeUpVariants} custom={0} style={{ textAlign: 'center' }}>
+            <h2
+              style={{
+                fontFamily: 'Inter, sans-serif',
+                fontSize: 'clamp(32px, 3.5vw, 44px)',
+                fontWeight: 700,
+                color: DARK,
+                margin: 0,
+                letterSpacing: '-0.03em',
+                lineHeight: 1.15,
+              }}
+            >
+              Время выбирать
+            </h2>
+          </motion.div>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: 20,
+              width: '100%',
+            }}
+            className="panel-grid"
+          >
+            {first4.map((product, i) => (
+              <motion.div
+                key={product.id}
+                variants={fadeUpVariants}
+                custom={i + 1}
+                style={{
+                  borderRadius: CARD_RADIUS,
+                  overflow: 'hidden',
+                  aspectRatio: '3 / 4',
+                  position: 'relative',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
+                }}
+              >
+                <img
+                  src={product.image}
+                  alt={product.name}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 60%)',
+                  }}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    padding: '20px 16px',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: 'Inter, sans-serif',
+                      fontWeight: 700,
+                      fontSize: 16,
+                      color: '#fff',
+                      display: 'block',
+                    }}
+                  >
+                    {product.name}
+                  </span>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          <motion.div variants={fadeUpVariants} custom={5}>
+            <Button
+              onClick={onCatalog}
+              size="large"
+              style={{
+                background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: PILL_RADIUS,
+                height: 56,
+                padding: '0 40px',
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 700,
+                fontSize: 16,
+                boxShadow: '0 8px 24px rgba(76,175,80,0.3)',
+              }}
+            >
+              выбрать свой WOW!
+            </Button>
+          </motion.div>
+        </motion.div>
+      </div>
+    </section>
+  );
+};
+
 // ─── Promo Banner Section ────────────────────────────────────────────────────
 
 const PromoBannerSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => (
@@ -1714,7 +1830,7 @@ const HomePage: React.FC = () => {
       <HowItWorksSection />
       <ServiceBannerSection />
       <TechSection />
-      <AdvantagesSection />
+      <PanelGridSection onCatalog={handleCatalog} />
       <PromoBannerSection onCatalog={handleCatalog} />
       <CategoriesSection onCategory={handleCategory} />
       <PopularProductsSection onProduct={handleProduct} onAllProducts={handleCatalog} />
@@ -1730,6 +1846,7 @@ const HomePage: React.FC = () => {
           .cta-banner-inner { padding: 48px 20px !important; }
           .promo-banner-inner { padding: 36px 20px !important; flex-direction: column !important; text-align: center !important; }
           .tech-grid { grid-template-columns: 1fr !important; }
+          .panel-grid { grid-template-columns: repeat(2, 1fr) !important; }
         }
       `}</style>
     </div>

@@ -160,3 +160,53 @@ describe('HomePage — TechSection (Phase 4)', () => {
     expect(icons.length).toBeGreaterThanOrEqual(3);
   });
 });
+
+describe('HomePage — PanelGridSection (Phase 5)', () => {
+  beforeEach(() => {
+    mockNavigate.mockClear();
+  });
+
+  it('4 панели рендерятся (по заголовку "Время выбирать")', () => {
+    renderHomePage();
+    expect(screen.getByText(/Время выбирать/)).toBeTruthy();
+    // Ищем все img на странице (4 продукта)
+    const images = document.querySelectorAll('img');
+    expect(images.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('на панелях нет цен', () => {
+    renderHomePage();
+    screen.getByText(/Время выбирать/);
+    // Проверяем что секция PanelGridSection существует и не содержит цену
+    const bodyText = document.body.textContent || '';
+    const hasPrice = /\d+\s*\d{3}\s*₽/.test(bodyText);
+    expect(hasPrice).toBe(false);
+  });
+
+  it('на панелях нет рейтингов', () => {
+    renderHomePage();
+    screen.getByText(/Время выбирать/);
+    // Ant Design Rate рендерит [role="radiogroup"]
+    const rateGroups = document.querySelectorAll('[role="radiogroup"]');
+    expect(rateGroups.length).toBe(0);
+  });
+
+  it('на панелях нет бейджей (нет Tag)', () => {
+    renderHomePage();
+    screen.getByText(/Время выбирать/);
+    const tags = document.querySelectorAll('.ant-tag');
+    expect(tags.length).toBe(0);
+  });
+
+  it('CTA "выбрать свой WOW!" ведёт на /catalog', () => {
+    renderHomePage();
+    const buttons = screen.getAllByRole('button');
+    const wowButtons = buttons.filter(b =>
+      b.textContent?.toLowerCase().includes('выбрать свой wow')
+    );
+    // Может быть 2 кнопки (hero + panel grid), обе ведут на /catalog
+    expect(wowButtons.length).toBeGreaterThanOrEqual(1);
+    fireEvent.click(wowButtons[0]);
+    expect(mockNavigate).toHaveBeenCalledWith('/catalog');
+  });
+});
