@@ -1,7 +1,7 @@
 import type { ThemeConfig } from 'antd';
 
 const FONT_FAMILY =
-  "-apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', system-ui, sans-serif";
+  "'SF Pro Display', -apple-system, BlinkMacSystemFont, system-ui, sans-serif";
 
 const theme: ThemeConfig = {
   token: {

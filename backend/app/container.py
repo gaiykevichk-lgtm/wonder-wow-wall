@@ -197,9 +197,14 @@ async def get_db_session():
 
     FastAPI caches Depends() results per request, so all repos
     in the same request share this session — single transaction.
+    Returns None when in-memory repos are active (no DB needed).
     """
     from app.infrastructure.persistence.database import async_session
     async with async_session() as session:
+        if session is None:
+            # In-memory repos mode — no real DB session needed
+            yield None
+            return
         try:
             yield session
             await session.commit()

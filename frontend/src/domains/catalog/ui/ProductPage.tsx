@@ -257,6 +257,7 @@ export default function ProductPage() {
         )}
 
         <motion.div
+          className="product-hero-actions"
           variants={fadeUp} initial="hidden" animate="show" custom={0.3}
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}
         >
