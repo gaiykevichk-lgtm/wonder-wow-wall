@@ -802,7 +802,7 @@ export function TechSection() {
 								lineHeight: 1.15,
 							}}
 						>
-							Технологии Вашей свободы
+							Технологии вашей свободы
 						</h2>
 					</motion.div>
 					<div
