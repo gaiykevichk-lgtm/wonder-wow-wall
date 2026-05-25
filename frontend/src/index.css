@@ -1,350 +1,382 @@
 /* SF Pro Display — local font faces */
 /* SF Pro Display — local fonts */
 @font-face {
-  font-family: 'SF Pro Display';
-  font-style: normal;
-  font-weight: 100;
-  font-display: swap;
-  src: url('/fonts/SF-Pro-Display-Ultralight.otf') format('opentype');
+	font-family: "SF Pro Display";
+	font-style: normal;
+	font-weight: 100;
+	font-display: swap;
+	src: url("/fonts/SF-Pro-Display-Ultralight.otf") format("opentype");
 }
 @font-face {
-  font-family: 'SF Pro Display';
-  font-style: italic;
-  font-weight: 100;
-  font-display: swap;
-  src: url('/fonts/SF-Pro-Display-UltralightItalic.otf') format('opentype');
+	font-family: "SF Pro Display";
+	font-style: italic;
+	font-weight: 100;
+	font-display: swap;
+	src: url("/fonts/SF-Pro-Display-UltralightItalic.otf") format("opentype");
 }
 @font-face {
-  font-family: 'SF Pro Display';
-  font-style: normal;
-  font-weight: 200;
-  font-display: swap;
-  src: url('/fonts/SF-Pro-Display-Thin.otf') format('opentype');
+	font-family: "SF Pro Display";
+	font-style: normal;
+	font-weight: 200;
+	font-display: swap;
+	src: url("/fonts/SF-Pro-Display-Thin.otf") format("opentype");
 }
 @font-face {
-  font-family: 'SF Pro Display';
-  font-style: italic;
-  font-weight: 200;
-  font-display: swap;
-  src: url('/fonts/SF-Pro-Display-ThinItalic.otf') format('opentype');
+	font-family: "SF Pro Display";
+	font-style: italic;
+	font-weight: 200;
+	font-display: swap;
+	src: url("/fonts/SF-Pro-Display-ThinItalic.otf") format("opentype");
 }
 @font-face {
-  font-family: 'SF Pro Display';
-  font-style: normal;
-  font-weight: 300;
-  font-display: swap;
-  src: url('/fonts/SF-Pro-Display-Light.otf') format('opentype');
+	font-family: "SF Pro Display";
+	font-style: normal;
+	font-weight: 300;
+	font-display: swap;
+	src: url("/fonts/SF-Pro-Display-Light.otf") format("opentype");
 }
 @font-face {
-  font-family: 'SF Pro Display';
-  font-style: italic;
-  font-weight: 300;
-  font-display: swap;
-  src: url('/fonts/SF-Pro-Display-LightItalic.otf') format('opentype');
+	font-family: "SF Pro Display";
+	font-style: italic;
+	font-weight: 300;
+	font-display: swap;
+	src: url("/fonts/SF-Pro-Display-LightItalic.otf") format("opentype");
 }
 @font-face {
-  font-family: 'SF Pro Display';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('/fonts/SF-Pro-Display-Regular.otf') format('opentype');
+	font-family: "SF Pro Display";
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url("/fonts/SF-Pro-Display-Regular.otf") format("opentype");
 }
 @font-face {
-  font-family: 'SF Pro Display';
-  font-style: italic;
-  font-weight: 400;
-  font-display: swap;
-  src: url('/fonts/SF-Pro-Display-RegularItalic.otf') format('opentype');
+	font-family: "SF Pro Display";
+	font-style: italic;
+	font-weight: 400;
+	font-display: swap;
+	src: url("/fonts/SF-Pro-Display-RegularItalic.otf") format("opentype");
 }
 @font-face {
-  font-family: 'SF Pro Display';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url('/fonts/SF-Pro-Display-Medium.otf') format('opentype');
+	font-family: "SF Pro Display";
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url("/fonts/SF-Pro-Display-Medium.otf") format("opentype");
 }
 @font-face {
-  font-family: 'SF Pro Display';
-  font-style: italic;
-  font-weight: 500;
-  font-display: swap;
-  src: url('/fonts/SF-Pro-Display-MediumItalic.otf') format('opentype');
+	font-family: "SF Pro Display";
+	font-style: italic;
+	font-weight: 500;
+	font-display: swap;
+	src: url("/fonts/SF-Pro-Display-MediumItalic.otf") format("opentype");
 }
 @font-face {
-  font-family: 'SF Pro Display';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('/fonts/SF-Pro-Display-Semibold.otf') format('opentype');
+	font-family: "SF Pro Display";
+	font-style: normal;
+	font-weight: 600;
+	font-display: swap;
+	src: url("/fonts/SF-Pro-Display-Semibold.otf") format("opentype");
 }
 @font-face {
-  font-family: 'SF Pro Display';
-  font-style: italic;
-  font-weight: 600;
-  font-display: swap;
-  src: url('/fonts/SF-Pro-Display-SemiboldItalic.otf') format('opentype');
+	font-family: "SF Pro Display";
+	font-style: italic;
+	font-weight: 600;
+	font-display: swap;
+	src: url("/fonts/SF-Pro-Display-SemiboldItalic.otf") format("opentype");
 }
 @font-face {
-  font-family: 'SF Pro Display';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('/fonts/SF-Pro-Display-Bold.otf') format('opentype');
+	font-family: "SF Pro Display";
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url("/fonts/SF-Pro-Display-Bold.otf") format("opentype");
 }
 @font-face {
-  font-family: 'SF Pro Display';
-  font-style: italic;
-  font-weight: 700;
-  font-display: swap;
-  src: url('/fonts/SF-Pro-Display-BoldItalic.otf') format('opentype');
+	font-family: "SF Pro Display";
+	font-style: italic;
+	font-weight: 700;
+	font-display: swap;
+	src: url("/fonts/SF-Pro-Display-BoldItalic.otf") format("opentype");
 }
 @font-face {
-  font-family: 'SF Pro Display';
-  font-style: normal;
-  font-weight: 800;
-  font-display: swap;
-  src: url('/fonts/SF-Pro-Display-Heavy.otf') format('opentype');
+	font-family: "SF Pro Display";
+	font-style: normal;
+	font-weight: 800;
+	font-display: swap;
+	src: url("/fonts/SF-Pro-Display-Heavy.otf") format("opentype");
 }
 @font-face {
-  font-family: 'SF Pro Display';
-  font-style: italic;
-  font-weight: 800;
-  font-display: swap;
-  src: url('/fonts/SF-Pro-Display-HeavyItalic.otf') format('opentype');
+	font-family: "SF Pro Display";
+	font-style: italic;
+	font-weight: 800;
+	font-display: swap;
+	src: url("/fonts/SF-Pro-Display-HeavyItalic.otf") format("opentype");
 }
 @font-face {
-  font-family: 'SF Pro Display';
-  font-style: normal;
-  font-weight: 900;
-  font-display: swap;
-  src: url('/fonts/SF-Pro-Display-Black.otf') format('opentype');
+	font-family: "SF Pro Display";
+	font-style: normal;
+	font-weight: 900;
+	font-display: swap;
+	src: url("/fonts/SF-Pro-Display-Black.otf") format("opentype");
 }
 @font-face {
-  font-family: 'SF Pro Display';
-  font-style: italic;
-  font-weight: 900;
-  font-display: swap;
-  src: url('/fonts/SF-Pro-Display-BlackItalic.otf') format('opentype');
+	font-family: "SF Pro Display";
+	font-style: italic;
+	font-weight: 900;
+	font-display: swap;
+	src: url("/fonts/SF-Pro-Display-BlackItalic.otf") format("opentype");
 }
 
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
-
-html { scroll-behavior: smooth; }
+html {
+	scroll-behavior: smooth;
+}
 
 body {
-  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  color: #2D2D2D;
-  background: #FFFFFF;
-  font-size: 17px;
-  line-height: 1.47;
-  letter-spacing: -0.022em;
+	font-family:
+		"SF Pro Display", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	color: #2d2d2d;
+	background: #ffffff;
+	font-size: 17px;
+	line-height: 1.47;
+	letter-spacing: -0.022em;
 }
 
-#root { min-height: 100vh; }
+#root {
+	min-height: 100vh;
+}
 
 /* Constructor: size switcher full width */
 .size-switcher .ant-radio-button-wrapper {
-  flex: 1;
-  text-align: center;
+	flex: 1;
+	text-align: center;
 }
 
 /* Constructor: show delete button only on panel hover */
-.placed-panel .panel-delete-btn { opacity: 0; transition: opacity 0.15s; }
-.placed-panel:hover .panel-delete-btn { opacity: 1; }
+.placed-panel .panel-delete-btn {
+	opacity: 0;
+	transition: opacity 0.15s;
+}
+.placed-panel:hover .panel-delete-btn {
+	opacity: 1;
+}
 
-::selection { background: #4CAF50; color: #fff; }
+::selection {
+	background: #4caf50;
+	color: #fff;
+}
 
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #E5E7EB; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #6B7280; }
+::-webkit-scrollbar {
+	width: 6px;
+}
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+::-webkit-scrollbar-thumb {
+	background: #e5e7eb;
+	border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+	background: #6b7280;
+}
 
 /* Carousel: hide scrollbar */
-.carousel::-webkit-scrollbar { display: none; }
-.carousel { -ms-overflow-style: none; scrollbar-width: none; }
+.carousel::-webkit-scrollbar {
+	display: none;
+}
+.carousel {
+	-ms-overflow-style: none;
+	scrollbar-width: none;
+}
 
 .ant-card.ant-card-hoverable:hover {
-  transform: translateY(-2px) scale(1.01);
-  box-shadow: 0 4px 24px rgba(0,0,0,0.06) !important;
-  transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1.0);
+	transform: translateY(-2px) scale(1.01);
+	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06) !important;
+	transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
-.ant-card { transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1.0); }
+.ant-card {
+	transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
 
 img {
-  background: linear-gradient(135deg, #FAFAFA 0%, #F5F5F5 100%);
+	background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
 }
 
 /* ─── Tablet (≤1024px) ─────────────────────────────────────────────────────── */
 
 @media (max-width: 1024px) {
-  .account-layout {
-    flex-direction: column !important;
-    gap: 16px !important;
-  }
-  .account-sidebar {
-    width: 100% !important;
-    position: static !important;
-    height: auto !important;
-  }
-  .account-sidebar .ant-menu-inline {
-    display: flex;
-    flex-wrap: wrap;
-  }
-  .visualizer-layout {
-    grid-template-columns: 1fr !important;
-  }
+	.account-layout {
+		flex-direction: column !important;
+		gap: 16px !important;
+	}
+	.account-sidebar {
+		width: 100% !important;
+		position: static !important;
+		height: auto !important;
+	}
+	.account-sidebar .ant-menu-inline {
+		display: flex;
+		flex-wrap: wrap;
+	}
+	.visualizer-layout {
+		grid-template-columns: 1fr !important;
+	}
 }
 
 /* ─── Mobile (≤768px) ──────────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {
-  body {
-    font-size: 15px;
-  }
+	body {
+		font-size: 15px;
+	}
 
-  .hero-grid,
-  .product-layout,
-  .checkout-layout,
-  .constructor-layout {
-    grid-template-columns: 1fr !important;
-    gap: 24px !important;
-  }
+	.hero-grid,
+	.product-layout,
+	.checkout-layout,
+	.constructor-layout {
+		grid-template-columns: 1fr !important;
+		gap: 24px !important;
+	}
 
-  .cta-calc-grid {
-    grid-template-columns: 1fr !important;
-    padding: 24px 20px !important;
-  }
+	.cta-calc-grid {
+		grid-template-columns: 1fr !important;
+		padding: 24px 20px !important;
+	}
 
-  .cta-banner-inner {
-    padding: 36px 20px !important;
-  }
+	.cta-banner-inner {
+		padding: 36px 20px !important;
+	}
 
-  header {
-    padding: 0 16px !important;
-  }
+	header {
+		padding: 0 16px !important;
+	}
 
-  section {
-    padding-left: 16px !important;
-    padding-right: 16px !important;
-  }
+	section {
+		padding-left: 16px !important;
+		padding-right: 16px !important;
+	}
 
-  footer [style*="justify-content: space-between"] {
-    flex-direction: column;
-    align-items: flex-start !important;
-  }
+	footer [style*="justify-content: space-between"] {
+		flex-direction: column;
+		align-items: flex-start !important;
+	}
 
-  /* Account sidebar → horizontal scroll tab bar */
-  .account-layout {
-    flex-direction: column !important;
-    gap: 0 !important;
-    padding-top: 72px !important;
-    padding-left: 8px !important;
-    padding-right: 8px !important;
-  }
-  .account-sidebar {
-    width: 100% !important;
-    position: static !important;
-    height: auto !important;
-    padding: 12px 0 !important;
-    border-radius: 12px !important;
-    margin-bottom: 16px;
-  }
-  .account-sidebar .ant-menu-inline {
-    display: flex !important;
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-  .account-sidebar .ant-menu-inline::-webkit-scrollbar {
-    display: none;
-  }
-  .account-sidebar .ant-menu-item {
-    flex-shrink: 0 !important;
-    white-space: nowrap !important;
-  }
-  .account-sidebar .user-info-block {
-    display: none !important;
-  }
+	/* Account sidebar → horizontal scroll tab bar */
+	.account-layout {
+		flex-direction: column !important;
+		gap: 0 !important;
+		padding-top: 72px !important;
+		padding-left: 8px !important;
+		padding-right: 8px !important;
+	}
+	.account-sidebar {
+		width: 100% !important;
+		position: static !important;
+		height: auto !important;
+		padding: 12px 0 !important;
+		border-radius: 12px !important;
+		margin-bottom: 16px;
+	}
+	.account-sidebar .ant-menu-inline {
+		display: flex !important;
+		overflow-x: auto;
+		flex-wrap: nowrap;
+		-webkit-overflow-scrolling: touch;
+		scrollbar-width: none;
+	}
+	.account-sidebar .ant-menu-inline::-webkit-scrollbar {
+		display: none;
+	}
+	.account-sidebar .ant-menu-item {
+		flex-shrink: 0 !important;
+		white-space: nowrap !important;
+	}
+	.account-sidebar .user-info-block {
+		display: none !important;
+	}
 
-  /* Pricing cards horizontal */
-  .pricing-cards-grid {
-    grid-template-columns: 1fr !important;
-  }
+	/* Pricing cards horizontal */
+	.pricing-cards-grid {
+		grid-template-columns: 1fr !important;
+	}
 
-  /* Visualizer → single column on mobile */
-  .visualizer-layout {
-    grid-template-columns: 1fr !important;
-    min-height: auto !important;
-  }
+	/* Visualizer → single column on mobile */
+	.visualizer-layout {
+		grid-template-columns: 1fr !important;
+		min-height: auto !important;
+	}
 }
 
 /* ─── Catalog forms grid ──────────────────────────────────────────────────── */
 
 .catalog-forms-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 28px;
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 28px;
 }
 
 @media (max-width: 1024px) {
-  .catalog-forms-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
-  }
+	.catalog-forms-grid {
+		grid-template-columns: repeat(2, 1fr);
+		gap: 20px;
+	}
 }
 
 @media (max-width: 640px) {
-  .catalog-forms-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
+	.catalog-forms-grid {
+		grid-template-columns: 1fr;
+		gap: 16px;
+	}
 }
 
 /* ─── Configurator responsive (≤860px) ────────────────────────────────────── */
 
 @media (max-width: 860px) {
-  .configurator-grid {
-    grid-template-columns: 1fr !important;
-    gap: 24px !important;
-    margin-top: 32px !important;
-  }
+	.configurator-grid {
+		grid-template-columns: 1fr !important;
+		gap: 24px !important;
+		margin-top: 32px !important;
+	}
 
-  .configurator-grid > *:first-child {
-    position: static !important;
-    top: auto !important;
-  }
+	.configurator-grid > *:first-child {
+		position: static !important;
+		top: auto !important;
+	}
 
-  .product-hero-actions {
-    flex-direction: column !important;
-    gap: 8px !important;
-  }
+	.product-hero-actions {
+		flex-direction: column !important;
+		gap: 8px !important;
+	}
 
-  .product-hero-actions button {
-    width: 100% !important;
-    justify-content: center !important;
-  }
+	.product-hero-actions button {
+		width: 100% !important;
+		justify-content: center !important;
+	}
 }
 
 /* ─── Mobile sticky CTA bar ─────────────────────────────────────────────────── */
 
 .mobile-sticky-cta {
-  display: none;
+	display: none;
 }
 
 @media (max-width: 860px) {
-  .mobile-sticky-cta {
-    display: flex;
-  }
+	.mobile-sticky-cta {
+		display: flex;
+	}
 }
 
 /* ─── Small phone (≤480px) ─────────────────────────────────────────────────── */
 
 @media (max-width: 480px) {
-  .hero-grid h1 {
-    font-size: 32px !important;
-  }
+	.hero-grid h1 {
+		font-size: 32px !important;
+	}
 }

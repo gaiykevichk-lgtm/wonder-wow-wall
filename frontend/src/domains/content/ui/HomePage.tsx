@@ -251,6 +251,27 @@ export function HowItWorksSection() {
 		el.addEventListener("scroll", onScroll, { passive: true });
 		return () => el.removeEventListener("scroll", onScroll);
 	}, []);
+
+	// Touch/swipe handlers for mobile
+	const touchStartX = useRef(0);
+	const touchStartY = useRef(0);
+	const handleTouchStart = (e: React.TouchEvent) => {
+		touchStartX.current = e.touches[0].clientX;
+		touchStartY.current = e.touches[0].clientY;
+	};
+	const handleTouchEnd = (e: React.TouchEvent) => {
+		const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+		const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+		// Only swipe if horizontal movement > vertical
+		if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+			if (deltaX < 0 && activeIndex < steps.length - 1) {
+				goToSlide(activeIndex + 1);
+			} else if (deltaX > 0 && activeIndex > 0) {
+				goToSlide(activeIndex - 1);
+			}
+		}
+	};
+
 	const goToSlide = (i: number) => {
 		const el = carouselRef.current;
 		if (!el) return;
@@ -311,12 +332,14 @@ export function HowItWorksSection() {
 						letterSpacing: "0.02em",
 					}}
 				>
-					{activeIndex + 1} / {steps.length}
+					{activeIndex + 1} / {steps.length} — свайпните влево
 				</span>
 			</div>
 			<div
 				ref={carouselRef}
-					className="carousel"
+				className="carousel"
+					onTouchStart={handleTouchStart}
+					onTouchEnd={handleTouchEnd}
 				style={{
 					overflowX: "scroll",
 					overflowY: "hidden",
