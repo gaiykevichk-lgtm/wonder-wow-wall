@@ -86,7 +86,7 @@ const HeroSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => (
         <motion.div variants={fadeUpVariants} custom={0}>
           <span
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: "'SF Pro Display', sans-serif",
               fontSize: 13,
               fontWeight: 600,
               color: GRAY_TEXT,
@@ -102,7 +102,7 @@ const HeroSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => (
           variants={fadeUpVariants}
           custom={1}
           style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: "'SF Pro Display', sans-serif",
             fontSize: 'clamp(40px, 6vw, 72px)',
             fontWeight: 700,
             color: DARK,
@@ -122,7 +122,7 @@ const HeroSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => (
           variants={fadeUpVariants}
           custom={2}
           style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: "'SF Pro Display', sans-serif",
             fontSize: 'clamp(17px, 2vw, 20px)',
             color: GRAY_TEXT,
             margin: 0,
@@ -150,7 +150,7 @@ const HeroSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => (
               borderRadius: PILL_RADIUS,
               height: 56,
               padding: '0 44px',
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: "'SF Pro Display', sans-serif",
               fontWeight: 600,
               fontSize: 17,
               boxShadow: 'none',
@@ -232,7 +232,7 @@ const HowItWorksSection: React.FC = () => {
         >
           <motion.div variants={fadeUpVariants} custom={0} style={{ textAlign: 'center' }}>
             <span style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: "'SF Pro Display', sans-serif",
               fontSize: 12,
               fontWeight: 600,
               color: GRAY_TEXT,
@@ -245,7 +245,7 @@ const HowItWorksSection: React.FC = () => {
             </span>
             <h2
               style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: "'SF Pro Display', sans-serif",
                 fontSize: 'clamp(32px, 3.5vw, 44px)',
                 fontWeight: 700,
                 color: DARK,
@@ -300,7 +300,7 @@ const HowItWorksSection: React.FC = () => {
                 <div style={{ padding: '20px 20px 24px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <span
                     style={{
-                      fontFamily: 'Inter, sans-serif',
+                      fontFamily: "'SF Pro Display', sans-serif",
                       fontWeight: 700,
                       fontSize: 18,
                       color: DARK,
@@ -310,7 +310,7 @@ const HowItWorksSection: React.FC = () => {
                   </span>
                   <span
                     style={{
-                      fontFamily: 'Inter, sans-serif',
+                      fontFamily: "'SF Pro Display', sans-serif",
                       fontSize: 14,
                       color: GRAY_TEXT,
                       lineHeight: 1.6,
@@ -350,7 +350,7 @@ const ServiceBannerSection: React.FC = () => (
       >
         <motion.div variants={fadeUpVariants} custom={1}>
           <span style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: "'SF Pro Display', sans-serif",
             fontSize: 12,
             fontWeight: 600,
             color: GRAY_TEXT,
@@ -364,7 +364,7 @@ const ServiceBannerSection: React.FC = () => (
         </motion.div>
 
         <motion.h2 variants={fadeUpVariants} custom={2} style={{
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: "'SF Pro Display', sans-serif",
           fontSize: 'clamp(40px, 6vw, 80px)',
           fontWeight: 700,
           color: DARK,
@@ -376,7 +376,7 @@ const ServiceBannerSection: React.FC = () => (
         </motion.h2>
 
         <motion.p variants={fadeUpVariants} custom={3} style={{
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: "'SF Pro Display', sans-serif",
           fontSize: 18,
           color: GRAY_TEXT,
           margin: 0,
@@ -393,7 +393,7 @@ const ServiceBannerSection: React.FC = () => (
           marginTop: 8,
         }}>
           <span style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: "'SF Pro Display', sans-serif",
             fontSize: 13,
             fontWeight: 600,
             color: DARK,
@@ -403,14 +403,14 @@ const ServiceBannerSection: React.FC = () => (
             WONDER WOW WALL
           </span>
           <span style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: "'SF Pro Display', sans-serif",
             fontSize: 13,
             color: GRAY_TEXT,
           }}>
             —
           </span>
           <span style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: "'SF Pro Display', sans-serif",
             fontSize: 13,
             color: GRAY_TEXT,
           }}>
@@ -455,7 +455,7 @@ const TechSection: React.FC = () => (
         <motion.div variants={fadeUpVariants} custom={0} style={{ textAlign: 'center' }}>
           <h2
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: "'SF Pro Display', sans-serif",
               fontSize: 'clamp(32px, 3.5vw, 44px)',
               fontWeight: 700,
               color: DARK,
@@ -507,7 +507,7 @@ const TechSection: React.FC = () => (
                 {point.icon}
               </div>
               <span style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: "'SF Pro Display', sans-serif",
                 fontWeight: 700,
                 fontSize: 18,
                 color: DARK,
@@ -516,7 +516,7 @@ const TechSection: React.FC = () => (
                 {point.title}
               </span>
               <span style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: "'SF Pro Display', sans-serif",
                 fontSize: 14,
                 color: GRAY_TEXT,
                 lineHeight: 1.6,
@@ -531,7 +531,7 @@ const TechSection: React.FC = () => (
           variants={fadeUpVariants}
           custom={4}
           style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: "'SF Pro Display', sans-serif",
             fontSize: 16,
             color: GRAY_TEXT,
             margin: 0,
@@ -564,7 +564,7 @@ const PanelGridSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) =>
           <motion.div variants={fadeUpVariants} custom={0} style={{ textAlign: 'center' }}>
             <h2
               style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: "'SF Pro Display', sans-serif",
                 fontSize: 'clamp(32px, 3.5vw, 44px)',
                 fontWeight: 700,
                 color: DARK,
@@ -623,7 +623,7 @@ const PanelGridSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) =>
                 >
                   <span
                     style={{
-                      fontFamily: 'Inter, sans-serif',
+                      fontFamily: "'SF Pro Display', sans-serif",
                       fontWeight: 700,
                       fontSize: 16,
                       color: '#fff',
@@ -648,7 +648,7 @@ const PanelGridSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) =>
                 borderRadius: PILL_RADIUS,
                 height: 56,
                 padding: '0 40px',
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: "'SF Pro Display', sans-serif",
                 fontWeight: 600,
                 fontSize: 16,
                 boxShadow: 'none',
@@ -711,7 +711,7 @@ const ProjectDetailsSection: React.FC = () => {
           style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 48 }}
         >
           <h2 style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: "'SF Pro Display', sans-serif",
             fontSize: 'clamp(32px, 3.5vw, 44px)',
             fontWeight: 700,
             color: DARK,
@@ -747,7 +747,7 @@ const ProjectDetailsSection: React.FC = () => {
               }}
             >
               <span style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: "'SF Pro Display', sans-serif",
                 fontWeight: 700,
                 fontSize: 18,
                 color: DARK,
@@ -755,7 +755,7 @@ const ProjectDetailsSection: React.FC = () => {
                 Точный расчёт
               </span>
               <span style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: "'SF Pro Display', sans-serif",
                 fontSize: 13,
                 color: GRAY_TEXT,
                 lineHeight: 1.6,
@@ -764,7 +764,7 @@ const ProjectDetailsSection: React.FC = () => {
               </span>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div>
-                  <span style={{ fontFamily: 'Inter', fontSize: 12, color: GRAY_TEXT, display: 'block', marginBottom: 4 }}>Высота (м)</span>
+                  <span style={{ fontFamily: "'SF Pro Display'", fontSize: 12, color: GRAY_TEXT, display: 'block', marginBottom: 4 }}>Высота (м)</span>
                   <InputNumber
                     value={height}
                     onChange={(v) => setHeight(v as number | null)}
@@ -776,7 +776,7 @@ const ProjectDetailsSection: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <span style={{ fontFamily: 'Inter', fontSize: 12, color: GRAY_TEXT, display: 'block', marginBottom: 4 }}>Длина (м)</span>
+                  <span style={{ fontFamily: "'SF Pro Display'", fontSize: 12, color: GRAY_TEXT, display: 'block', marginBottom: 4 }}>Длина (м)</span>
                   <InputNumber
                     value={length}
                     onChange={(v) => setLength(v as number | null)}
@@ -795,7 +795,7 @@ const ProjectDetailsSection: React.FC = () => {
                     border: 'none',
                     borderRadius: PILL_RADIUS,
                     height: 44,
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: "'SF Pro Display', sans-serif",
                     fontWeight: 600,
                     boxShadow: 'none',
                   }}
@@ -812,13 +812,13 @@ const ProjectDetailsSection: React.FC = () => {
                   flexDirection: 'column',
                   gap: 8,
                 }}>
-                  <span style={{ fontFamily: 'Inter', fontSize: 13, color: GRAY_TEXT }}>
+                  <span style={{ fontFamily: "'SF Pro Display'", fontSize: 13, color: GRAY_TEXT }}>
                     Площадь: <strong style={{ color: DARK }}>{calcResult.area} м²</strong>
                   </span>
-                  <span style={{ fontFamily: 'Inter', fontSize: 13, color: GRAY_TEXT }}>
+                  <span style={{ fontFamily: "'SF Pro Display'", fontSize: 13, color: GRAY_TEXT }}>
                     Панелей: <strong style={{ color: DARK }}>{calcResult.panels} шт</strong>
                   </span>
-                  <span style={{ fontFamily: 'Inter', fontSize: 13, color: GRAY_TEXT }}>
+                  <span style={{ fontFamily: "'SF Pro Display'", fontSize: 13, color: GRAY_TEXT }}>
                     Цена от: <strong style={{ color: ACCENT }}>{calcResult.price.toLocaleString('ru-RU')} ₽</strong>
                   </span>
                 </div>
@@ -841,7 +841,7 @@ const ProjectDetailsSection: React.FC = () => {
               }}
             >
               <span style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: "'SF Pro Display', sans-serif",
                 fontWeight: 700,
                 fontSize: 18,
                 color: DARK,
@@ -849,7 +849,7 @@ const ProjectDetailsSection: React.FC = () => {
                 Сценарии жизни
               </span>
               <span style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: "'SF Pro Display', sans-serif",
                 fontSize: 13,
                 color: GRAY_TEXT,
                 lineHeight: 1.6,
@@ -876,7 +876,7 @@ const ProjectDetailsSection: React.FC = () => {
                   >
                     {s.icon}
                     <span style={{
-                      fontFamily: 'Inter, sans-serif',
+                      fontFamily: "'SF Pro Display', sans-serif",
                       fontSize: 12,
                       color: DARK,
                       fontWeight: 600,
@@ -904,7 +904,7 @@ const ProjectDetailsSection: React.FC = () => {
               }}
             >
               <span style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: "'SF Pro Display', sans-serif",
                 fontWeight: 700,
                 fontSize: 18,
                 color: DARK,
@@ -912,7 +912,7 @@ const ProjectDetailsSection: React.FC = () => {
                 Виртуальная примерка
               </span>
               <span style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: "'SF Pro Display', sans-serif",
                 fontSize: 13,
                 color: GRAY_TEXT,
                 lineHeight: 1.6,
@@ -930,7 +930,7 @@ const ProjectDetailsSection: React.FC = () => {
                     borderRadius: PILL_RADIUS,
                     height: 56,
                     padding: '0 40px',
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: "'SF Pro Display', sans-serif",
                     fontWeight: 600,
                     fontSize: 17,
                     boxShadow: 'none',
@@ -978,7 +978,7 @@ const CTABannerSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) =>
         <div>
           <h2
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: "'SF Pro Display', sans-serif",
               fontSize: 'clamp(32px, 3vw, 44px)',
               fontWeight: 700,
               color: DARK,
@@ -991,7 +991,7 @@ const CTABannerSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) =>
           </h2>
           <p
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: "'SF Pro Display', sans-serif",
               fontSize: 18,
               color: GRAY_TEXT,
               margin: '12px 0 0',
@@ -1003,7 +1003,7 @@ const CTABannerSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) =>
           </p>
           <p
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: "'SF Pro Display', sans-serif",
               fontSize: 16,
               color: GRAY_TEXT,
               margin: '8px 0 0',
@@ -1024,7 +1024,7 @@ const CTABannerSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) =>
             borderRadius: PILL_RADIUS,
             height: 56,
             padding: '0 36px',
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: "'SF Pro Display', sans-serif",
             fontWeight: 600,
             fontSize: 16,
             boxShadow: 'none',
@@ -1048,7 +1048,7 @@ const HomePage: React.FC = () => {
   const handleProduct = (id: string) => navigate(`/product/${id}`);
 
   return (
-    <div style={{ fontFamily: 'Inter, sans-serif' }}>
+    <div style={{ fontFamily: "'SF Pro Display', sans-serif" }}>
       <PageMeta title="Wonder Wow Wall — 3D-панели для стен" description="Купить 3D-панели для стен с доставкой и монтажом. 200+ дизайнов, гарантия 5 лет, рассрочка 0%." />
       <HeroSection onCatalog={handleCatalog} />
       <HowItWorksSection />

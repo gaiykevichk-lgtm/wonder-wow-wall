@@ -4,7 +4,7 @@ import { PageMeta } from '../../../shared/ui/PageMeta';
 
 const DARK = '#2D2D2D';
 const GRAY_TEXT = '#6B7280';
-const FONT = 'Inter, sans-serif';
+const FONT = "'SF Pro Display', sans-serif";
 const MAX_WIDTH: React.CSSProperties = { maxWidth: 800, margin: '0 auto' };
 
 const sections = [

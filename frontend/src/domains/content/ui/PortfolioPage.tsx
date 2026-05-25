@@ -8,7 +8,7 @@ import { motion } from 'framer-motion';
 const ACCENT = '#4CAF50';
 const DARK = '#2D2D2D';
 const GRAY_TEXT = '#6B7280';
-const FONT = 'Inter, sans-serif';
+const FONT = "'SF Pro Display', sans-serif";
 const MAX_WIDTH: React.CSSProperties = { maxWidth: 1080, margin: '0 auto' };
 
 const fadeUp = {

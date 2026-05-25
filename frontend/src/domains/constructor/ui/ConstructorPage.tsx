@@ -81,7 +81,7 @@ const SIZE_OPTIONS: { key: PanelSizeKey; label: string; wCells: number; hCells: 
   { key: '60x60', label: '60×60 см', wCells: 2, hCells: 2, widthMm: 600, heightMm: 600 },
 ];
 
-const FONT = 'Inter, sans-serif';
+const FONT = "'SF Pro Display', sans-serif";
 
 // ─── Interior Presets ────────────────────────────────────────────────────────
 

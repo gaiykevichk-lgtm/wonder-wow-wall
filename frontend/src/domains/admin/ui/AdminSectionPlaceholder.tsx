@@ -3,7 +3,7 @@ import { Typography } from 'antd';
 const DARK = '#2D2D2D';
 const GREEN = '#4CAF50';
 const GRAY_TEXT = '#6B7280';
-const FONT = 'Inter, sans-serif';
+const FONT = "'SF Pro Display', sans-serif";
 
 /**
  * Shared empty-state card used by all 8 Phase-2 section pages.

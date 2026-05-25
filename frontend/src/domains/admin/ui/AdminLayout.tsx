@@ -29,7 +29,7 @@ const { Title, Text } = Typography;
 const DARK = '#2D2D2D';
 const GREEN = '#4CAF50';
 const GRAY_TEXT = '#6B7280';
-const FONT = 'Inter, sans-serif';
+const FONT = "'SF Pro Display', sans-serif";
 
 const ICONS: Record<AdminSectionKey, React.ReactNode> = {
   dashboard: <DashboardOutlined />,

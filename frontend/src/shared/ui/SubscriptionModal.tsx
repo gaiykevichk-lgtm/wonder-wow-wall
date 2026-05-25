@@ -8,7 +8,7 @@ import { BrandedFrame } from './BrandedFrame';
 
 const ACCENT = '#4CAF50';
 const DARK = '#2D2D2D';
-const FONT = 'Inter, sans-serif';
+const FONT = "'SF Pro Display', sans-serif";
 
 const PLAN_ICONS: Record<string, React.ReactNode> = {
   starter: <ThunderboltOutlined style={{ fontSize: 22 }} />,

@@ -585,7 +585,7 @@ export default function PhotoEditorPage() {
               borderRadius: 8,
               background: '#F1F8E9',
               color: '#2E7D32',
-              font: '400 13px/1.4 Inter, sans-serif',
+              font: '400 13px/1.4 "SF Pro Display", sans-serif',
             }}
           >
             <Spin size="small" />
@@ -687,7 +687,7 @@ export default function PhotoEditorPage() {
                   borderRadius: 12,
                   background: '#E8F5E9',
                   color: '#2E7D32',
-                  font: '400 14px/1.4 Inter, sans-serif',
+                  font: '400 14px/1.4 "SF Pro Display", sans-serif',
                 }}
               >
                 <span>
@@ -702,7 +702,7 @@ export default function PhotoEditorPage() {
                     color: '#2E7D32',
                     textDecoration: 'underline',
                     cursor: 'pointer',
-                    font: '500 14px/1.4 Inter, sans-serif',
+                    font: '500 14px/1.4 "SF Pro Display", sans-serif',
                     padding: 0,
                   }}
                 >
@@ -726,7 +726,7 @@ export default function PhotoEditorPage() {
                   borderRadius: 12,
                   background: '#E8F5E9',
                   color: '#2E7D32',
-                  font: '400 14px/1.4 Inter, sans-serif',
+                  font: '400 14px/1.4 "SF Pro Display", sans-serif',
                 }}
               >
                 <span>
@@ -742,7 +742,7 @@ export default function PhotoEditorPage() {
                     color: '#2E7D32',
                     textDecoration: 'underline',
                     cursor: 'pointer',
-                    font: '500 14px/1.4 Inter, sans-serif',
+                    font: '500 14px/1.4 "SF Pro Display", sans-serif',
                     padding: 0,
                   }}
                 >
@@ -768,7 +768,7 @@ export default function PhotoEditorPage() {
                   borderRadius: 12,
                   background: '#FFF8E1',
                   color: '#6B5500',
-                  font: '400 14px/1.4 Inter, sans-serif',
+                  font: '400 14px/1.4 "SF Pro Display", sans-serif',
                 }}
               >
                 <span>
@@ -786,7 +786,7 @@ export default function PhotoEditorPage() {
                     color: '#6B5500',
                     textDecoration: 'underline',
                     cursor: 'pointer',
-                    font: '500 14px/1.4 Inter, sans-serif',
+                    font: '500 14px/1.4 "SF Pro Display", sans-serif',
                     padding: 0,
                   }}
                 >
