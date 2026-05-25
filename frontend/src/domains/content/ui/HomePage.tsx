@@ -228,15 +228,15 @@ export function HowItWorksSection() {
 			(entries) => {
 				entries.forEach((entry) => {
 					const vid = entry.target as HTMLVideoElement;
-					console.log('Video intersection:', entry.target, entry.isIntersecting, entry.intersectionRatio);
-					if (entry.isIntersecting && entry.intersectionRatio >= 0.1) {
-						vid.play().catch((e) => console.warn('Play error:', e));
+					
+					if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+						vid.play().catch(() => {});
 					} else {
 						vid.pause();
 					}
 				});
 			},
-			{ threshold: 0.1 },
+			{ threshold: 0.5 },
 		);
 		videoRefs.current.forEach((v) => {
 			if (v) observer.observe(v);
@@ -470,7 +470,7 @@ export function HowItWorksSection() {
 						>
 							<video
 								ref={(el) => {
-									console.log('Video ref', i, step.video, !!el);
+									
 									videoRefs.current[i] = el;
 								}}
 								src={`/tpvideo/${step.video}`}
@@ -478,9 +478,6 @@ export function HowItWorksSection() {
 								loop
 								playsInline
 								preload="auto"
-								onCanPlay={() => console.log('Video can play:', step.video)}
-								onError={(e) => console.error('Video ERROR:', step.video, e)}
-								onLoadedData={() => console.log('Video loaded:', step.video)}
 								style={{
 									width: "100%",
 									height: "100%",
@@ -488,12 +485,7 @@ export function HowItWorksSection() {
 									display: "block",
 								}}
 							/>
-							{i === 3 && <div style={{
-								position: "absolute", bottom: 8, left: 8,
-								background: "rgba(0,0,0,0.6)", color: "#fff",
-								fontSize: 10, padding: "2px 6px", borderRadius: 3,
-								fontFamily: "monospace"
-							}}>{step.video}</div>}
+							
 						</div>
 					</div>
 				))}
