@@ -527,24 +527,6 @@ export function HowItWorksSection() {
 						/>
 					</div>
 				</div>
-				<div style={{ display: "flex", gap: 10 }}>
-					{steps.map((_, i) => (
-						<button
-							key={i}
-							onClick={() => goToSlide(i)}
-							style={{
-								width: i === activeIndex ? 32 : 8,
-								height: 8,
-								borderRadius: 4,
-								background: i === activeIndex ? DARK : "rgba(0,0,0,0.18)",
-								border: "none",
-								cursor: "pointer",
-								padding: 0,
-								transition: "all 0.35s cubic-bezier(0.25, 0.1, 0.25, 1)",
-							}}
-							aria-label={`Слайд ${i + 1}`}
-						/>
-					))}
 				</div>
 			</div>
 		</section>
