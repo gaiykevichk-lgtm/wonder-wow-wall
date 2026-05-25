@@ -607,29 +607,29 @@ export function ServiceBannerSection() {
 						style={{
 							display: "grid",
 							gridTemplateColumns: "repeat(2, 1fr)",
-							gap: 24,
+							gap: 20,
 							width: "100%",
-							maxWidth: 800,
-							margin: "8px 0 0",
+							maxWidth: 1000,
+							margin: "24px 0 0",
 						}}
 					>
 						<div
 							style={{
 								background: "#f5f5f7",
-								borderRadius: 20,
-								padding: "32px 28px",
-								textAlign: "left",
+								borderRadius: 24,
+								padding: "48px 40px",
+								textAlign: "center",
 							}}
 						>
 							<div
 								style={{
 									fontFamily: "'SF Pro Display', sans-serif",
-									fontSize: 11,
-									fontWeight: 600,
+									fontSize: 15,
+									fontWeight: 500,
 									color: ACCENT,
 									textTransform: "uppercase",
-									letterSpacing: "2px",
-									marginBottom: 16,
+									letterSpacing: "3px",
+									marginBottom: 24,
 								}}
 							>
 								Цифровой интеллект
@@ -637,11 +637,12 @@ export function ServiceBannerSection() {
 							<div
 								style={{
 									fontFamily: "'SF Pro Display', sans-serif",
-									fontSize: 22,
-									fontWeight: 600,
+									fontSize: 32,
+									fontWeight: 700,
 									color: DARK,
-									lineHeight: 1.3,
-									marginBottom: 8,
+									lineHeight: 1.2,
+									marginBottom: 12,
+									letterSpacing: "-0.02em",
 								}}
 							>
 								Ваш смартфон — Ваш дизайнер
@@ -649,7 +650,7 @@ export function ServiceBannerSection() {
 							<div
 								style={{
 									fontFamily: "'SF Pro Display', sans-serif",
-									fontSize: 15,
+									fontSize: 19,
 									color: GRAY_TEXT,
 									lineHeight: 1.5,
 								}}
@@ -660,20 +661,20 @@ export function ServiceBannerSection() {
 						<div
 							style={{
 								background: "#f5f5f7",
-								borderRadius: 20,
-								padding: "32px 28px",
-								textAlign: "left",
+								borderRadius: 24,
+								padding: "48px 40px",
+								textAlign: "center",
 							}}
 						>
 							<div
 								style={{
 									fontFamily: "'SF Pro Display', sans-serif",
-									fontSize: 11,
-									fontWeight: 600,
+									fontSize: 15,
+									fontWeight: 500,
 									color: ACCENT,
 									textTransform: "uppercase",
-									letterSpacing: "2px",
-									marginBottom: 16,
+									letterSpacing: "3px",
+									marginBottom: 24,
 								}}
 							>
 								Экосистема полного цикла
@@ -681,11 +682,12 @@ export function ServiceBannerSection() {
 							<div
 								style={{
 									fontFamily: "'SF Pro Display', sans-serif",
-									fontSize: 22,
-									fontWeight: 600,
+									fontSize: 32,
+									fontWeight: 700,
 									color: DARK,
-									lineHeight: 1.3,
-									marginBottom: 8,
+									lineHeight: 1.2,
+									marginBottom: 12,
+									letterSpacing: "-0.02em",
 								}}
 							>
 								Единый механизм трансформации
@@ -693,7 +695,7 @@ export function ServiceBannerSection() {
 							<div
 								style={{
 									fontFamily: "'SF Pro Display', sans-serif",
-									fontSize: 15,
+									fontSize: 19,
 									color: GRAY_TEXT,
 									lineHeight: 1.5,
 								}}
