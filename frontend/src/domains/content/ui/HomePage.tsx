@@ -228,14 +228,15 @@ export function HowItWorksSection() {
 			(entries) => {
 				entries.forEach((entry) => {
 					const vid = entry.target as HTMLVideoElement;
-					if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
-						vid.play().catch(() => {});
+					console.log('Video intersection:', entry.target, entry.isIntersecting, entry.intersectionRatio);
+					if (entry.isIntersecting && entry.intersectionRatio >= 0.1) {
+						vid.play().catch((e) => console.warn('Play error:', e));
 					} else {
 						vid.pause();
 					}
 				});
 			},
-			{ threshold: 0.5 },
+			{ threshold: 0.1 },
 		);
 		videoRefs.current.forEach((v) => {
 			if (v) observer.observe(v);
@@ -464,17 +465,19 @@ export function HowItWorksSection() {
 								boxShadow: "0 24px 80px rgba(0,0,0,0.14)",
 								background: LIGHT_BG,
 								aspectRatio: "16 / 9",
+						position: "relative",
 							}}
 						>
 							<video
 								ref={(el) => {
+									console.log('Video', i, '/tpvideo/' + step.video);
 									videoRefs.current[i] = el;
 								}}
 								src={`/tpvideo/${step.video}`}
 								muted
 								loop
 								playsInline
-								preload="metadata"
+								preload="auto"
 								style={{
 									width: "100%",
 									height: "100%",
@@ -482,6 +485,12 @@ export function HowItWorksSection() {
 									display: "block",
 								}}
 							/>
+							{i === 3 && <div style={{
+								position: "absolute", bottom: 8, left: 8,
+								background: "rgba(0,0,0,0.6)", color: "#fff",
+								fontSize: 10, padding: "2px 6px", borderRadius: 3,
+								fontFamily: "monospace"
+							}}>{step.video}</div>}
 						</div>
 					</div>
 				))}
