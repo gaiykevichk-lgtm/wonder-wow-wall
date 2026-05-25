@@ -1303,20 +1303,30 @@ export function ProjectDetailsSection() {
 										style={{
 											display: "flex",
 											flexDirection: "column",
-											alignItems: "center",
-											gap: 8,
-											padding: "12px 8px",
-											background: "#F5F5F5",
+											gap: 0,
 											borderRadius: 12,
+											overflow: "hidden",
+											background: "#F5F5F5",
 										}}
 									>
-										{s.icon}
+										<img
+											src={s.image}
+											alt={s.label}
+											style={{
+												width: "100%",
+												height: 80,
+												objectFit: "cover",
+												display: "block",
+											}}
+										/>
 										<span
 											style={{
 												fontFamily: "'SF Pro Display', sans-serif",
-												fontSize: 12,
+												fontSize: 11,
 												color: DARK,
 												fontWeight: 600,
+												padding: "8px 4px",
+												textAlign: "center",
 											}}
 										>
 											{s.label}
