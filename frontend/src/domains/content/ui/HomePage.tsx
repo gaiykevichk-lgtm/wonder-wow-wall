@@ -340,7 +340,7 @@ export function HowItWorksSection() {
 					<h2
 						style={{
 							fontFamily: "'SF Pro Display', sans-serif",
-							fontSize: "clamp(32px, 3.5vw, 44px)",
+							fontSize: "clamp(40px, 6vw, 80px)",
 							fontWeight: 700,
 							color: DARK,
 							margin: 0,
@@ -789,7 +789,7 @@ export function TechSection() {
 						<h2
 							style={{
 								fontFamily: "'SF Pro Display', sans-serif",
-								fontSize: "clamp(32px, 3.5vw, 44px)",
+								fontSize: "clamp(40px, 6vw, 80px)",
 								fontWeight: 700,
 								color: DARK,
 								margin: 0,
@@ -909,7 +909,7 @@ export function PanelGridSection({ onCatalog }: { onCatalog: () => void }) {
 						<h2
 							style={{
 								fontFamily: "'SF Pro Display', sans-serif",
-								fontSize: "clamp(32px, 3.5vw, 44px)",
+								fontSize: "clamp(40px, 6vw, 80px)",
 								fontWeight: 700,
 								color: DARK,
 								margin: 0,
@@ -1171,7 +1171,7 @@ export function ProjectDetailsSection() {
 					<h2
 						style={{
 							fontFamily: "'SF Pro Display', sans-serif",
-							fontSize: "clamp(32px, 3.5vw, 44px)",
+							fontSize: "clamp(40px, 6vw, 80px)",
 							fontWeight: 700,
 							color: DARK,
 							margin: 0,
@@ -1505,16 +1505,17 @@ export function CTABannerSection({ onCatalog }: { onCatalog: () => void }) {
 						overflow: "hidden",
 					}}
 				>
-					<div>
+					<div style={{ textAlign: "center" }}>
 						<h2
 							style={{
 								fontFamily: "'SF Pro Display', sans-serif",
-								fontSize: "clamp(32px, 3vw, 44px)",
+								fontSize: "clamp(40px, 6vw, 80px)",
 								fontWeight: 700,
 								color: DARK,
 								margin: 0,
 								lineHeight: 1.15,
 								letterSpacing: "-0.03em",
+								whiteSpace: "nowrap",
 							}}
 						>
 							Начните обновление
@@ -1524,8 +1525,8 @@ export function CTABannerSection({ onCatalog }: { onCatalog: () => void }) {
 								fontFamily: "'SF Pro Display', sans-serif",
 								fontSize: 18,
 								color: GRAY_TEXT,
-								margin: "12px 0 0",
-								maxWidth: 480,
+								margin: "12px auto 0",
+								textAlign: "center",
 								lineHeight: 1.6,
 							}}
 						>
@@ -1538,8 +1539,8 @@ export function CTABannerSection({ onCatalog }: { onCatalog: () => void }) {
 								fontFamily: "'SF Pro Display', sans-serif",
 								fontSize: 16,
 								color: GRAY_TEXT,
-								margin: "8px 0 0",
-								maxWidth: 480,
+								margin: "8px auto 0",
+								textAlign: "center",
 								lineHeight: 1.6,
 							}}
 						>
