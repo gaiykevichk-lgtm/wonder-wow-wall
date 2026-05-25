@@ -53,6 +53,14 @@ const PILL_RADIUS = 10;
 // Video files pre-uploaded by customer
 const HERO_VIDEOS = ["/herovideo/IMG_6429.MP4", "/herovideo/IMG_6431.MP4"];
 
+// 4 step videos (one per card in HowItWorksSection)
+const STEP_VIDEOS: Record<string, string> = {
+	'1': '/tpvideo/Выбираете.MP4',
+	'2': '/tpvideo/Примеряете.MP4',
+	'3': '/tpvideo/Обновляете.MP4',
+	'4': '/tpvideo/Меняете.MOV',
+};
+
 const HeroSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => {
 	// Index set by synchronous script in index.html — before React boots
 	const heroVideoIdx =
