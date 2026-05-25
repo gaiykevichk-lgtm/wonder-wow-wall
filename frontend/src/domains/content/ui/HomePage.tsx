@@ -126,9 +126,24 @@ export function ServiceBannerSection() {
       <div style={{ ...MAX_WIDTH }}>
         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }} variants={fadeUpVariants} custom={0} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 20, position: "relative" }}>
           <motion.div variants={fadeUpVariants} custom={1}><span style={{ fontFamily: "'SF Pro Display', sans-serif", fontSize: 12, fontWeight: 600, color: GRAY_TEXT, textTransform: "uppercase", letterSpacing: "3px", display: "block", marginBottom: 12 }}>Впервые в индустрии</span></motion.div>
-          <motion.h2 variants={fadeUpVariants} custom={2} style={{ fontFamily: "'SF Pro Display', sans-serif", fontSize: "clamp(40px, 6vw, 80px)", fontWeight: 700, color: DARK, margin: 0, lineHeight: 1.1, letterSpacing: "-0.03em" }}>Стены как сервис</motion.h2>
+          <motion.h2 variants={fadeUpVariants} custom={2} style={{ fontFamily: "'SF Pro Display', sans-serif", fontSize: "clamp(40px, 6vw, 80px)", fontWeight: 700, color: DARK, margin: 0, lineHeight: 1.1, letterSpacing: "-0.03em" }}>Стены как сервис.</motion.h2>
           <motion.p variants={fadeUpVariants} custom={3} style={{ fontFamily: "'SF Pro Display', sans-serif", fontSize: 18, color: GRAY_TEXT, margin: 0, lineHeight: 1.65, maxWidth: 520 }}>Мы создали будущее, в котором интерьер меняется без традиционного ремонта</motion.p>
-          <motion.div variants={fadeUpVariants} custom={4} style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+
+          {/* Apple-style feature cards */}
+          <motion.div variants={fadeUpVariants} custom={3.5} style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 24, width: "100%", maxWidth: 800, margin: "8px 0 0" }}>
+            <div style={{ background: "#f5f5f7", borderRadius: 20, padding: "32px 28px", textAlign: "left" }}>
+              <div style={{ fontFamily: "'SF Pro Display', sans-serif", fontSize: 11, fontWeight: 600, color: ACCENT, textTransform: "uppercase", letterSpacing: "2px", marginBottom: 16 }}>Цифровой интеллект</div>
+              <div style={{ fontFamily: "'SF Pro Display', sans-serif", fontSize: 22, fontWeight: 600, color: DARK, lineHeight: 1.3, marginBottom: 8 }}>Ваш смартфон — Ваш дизайнер</div>
+              <div style={{ fontFamily: "'SF Pro Display', sans-serif", fontSize: 15, color: GRAY_TEXT, lineHeight: 1.5 }}>мгновенная визуализация решений</div>
+            </div>
+            <div style={{ background: "#f5f5f7", borderRadius: 20, padding: "32px 28px", textAlign: "left" }}>
+              <div style={{ fontFamily: "'SF Pro Display', sans-serif", fontSize: 11, fontWeight: 600, color: ACCENT, textTransform: "uppercase", letterSpacing: "2px", marginBottom: 16 }}>Экосистема полного цикла</div>
+              <div style={{ fontFamily: "'SF Pro Display', sans-serif", fontSize: 22, fontWeight: 600, color: DARK, lineHeight: 1.3, marginBottom: 8 }}>Единый механизм трансформации</div>
+              <div style={{ fontFamily: "'SF Pro Display', sans-serif", fontSize: 15, color: GRAY_TEXT, lineHeight: 1.5 }}>безупречная реализация обновлений</div>
+            </div>
+          </motion.div>
+
+          <motion.div variants={fadeUpVariants} custom={4} style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 32 }}>
             <span style={{ fontFamily: "'SF Pro Display', sans-serif", fontSize: 13, fontWeight: 600, color: DARK, textTransform: "uppercase", letterSpacing: "2px" }}>WONDER WOW WALL</span>
             <span style={{ fontFamily: "'SF Pro Display', sans-serif", fontSize: 13, color: GRAY_TEXT }}>—</span>
             <span style={{ fontFamily: "'SF Pro Display', sans-serif", fontSize: 13, color: GRAY_TEXT }}>новый стандарт трансформации пространства</span>
