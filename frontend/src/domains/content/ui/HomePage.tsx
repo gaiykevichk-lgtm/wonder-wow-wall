@@ -256,9 +256,7 @@ export function HowItWorksSection() {
 	const touchStartX = useRef(0);
 	const touchStartY = useRef(0);
 	const activeIndexRef = useRef(activeIndex);
-	React.useEffect(() => {
-		activeIndexRef.current = activeIndex;
-	}, [activeIndex]);
+	React.useEffect(() => { activeIndexRef.current = activeIndex; }, [activeIndex]);
 
 	const handleTouchStart = (e: React.TouchEvent) => {
 		touchStartX.current = e.touches[0].clientX;
@@ -268,7 +266,6 @@ export function HowItWorksSection() {
 		e.preventDefault();
 		const deltaX = e.changedTouches[0].clientX - touchStartX.current;
 		const deltaY = e.changedTouches[0].clientY - touchStartY.current;
-		// Only swipe if horizontal movement > vertical
 		if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
 			const currentIndex = activeIndexRef.current;
 			if (deltaX < 0 && currentIndex < steps.length - 1) {
@@ -281,7 +278,6 @@ export function HowItWorksSection() {
 	const handleTouchMove = (e: React.TouchEvent) => {
 		const deltaX = e.touches[0].clientX - touchStartX.current;
 		const deltaY = e.touches[0].clientY - touchStartY.current;
-		// If mostly horizontal swipe, prevent native scroll
 		if (Math.abs(deltaX) > Math.abs(deltaY)) {
 			e.preventDefault();
 		}
@@ -379,13 +375,13 @@ export function HowItWorksSection() {
 			<div
 				ref={carouselRef}
 				className="carousel"
-				onTouchStart={handleTouchStart}
-				onTouchEnd={handleTouchEnd}
-				onTouchMove={handleTouchMove}
-				onMouseDown={handleMouseDown}
-				onMouseMove={handleMouseMove}
-				onMouseUp={handleMouseUp}
-				onMouseLeave={handleMouseUp}
+					onTouchStart={handleTouchStart}
+					onTouchEnd={handleTouchEnd}
+					onTouchMove={handleTouchMove}
+					onMouseDown={handleMouseDown}
+					onMouseMove={handleMouseMove}
+					onMouseUp={handleMouseUp}
+					onMouseLeave={handleMouseUp}
 				style={{
 					overflowX: "scroll",
 					overflowY: "hidden",
@@ -527,6 +523,7 @@ export function HowItWorksSection() {
 						/>
 					</div>
 				</div>
+			</div>
 		</section>
 	);
 }
