@@ -1,15 +1,11 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { Button, InputNumber } from "antd";
 import { PageMeta } from "../../../shared/ui/PageMeta";
 import {
 	AppstoreOutlined,
 	ThunderboltOutlined,
-	CheckOutlined,
-	SearchOutlined,
 	CameraOutlined,
-	ClockCircleOutlined,
-	SwapOutlined,
 	SettingOutlined,
 	LockOutlined,
 	DesktopOutlined,
@@ -42,7 +38,7 @@ const containerVariants = {
 const SECTION_PADDING: React.CSSProperties = { padding: "100px 24px" };
 const MAX_WIDTH: React.CSSProperties = { maxWidth: 1200, margin: "0 auto" };
 const ACCENT = "#4CAF50";
-const ACCENT_DARK = "#2E7D32";
+
 const DARK = "#1D1D1F";
 const GRAY_TEXT = "#6E6E73";
 const LIGHT_BG = "#F5F5F7";
@@ -64,7 +60,7 @@ const STEP_VIDEOS: Record<string, string> = {
 const HeroSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => {
 	// Index set by synchronous script in index.html — before React boots
 	const heroVideoIdx =
-		typeof window !== "undefined" ? ((window as any).__heroIdx ?? 0) : 0;
+		typeof window !== "undefined" ? (window as { __heroIdx?: number }).__heroIdx ?? 0 : 0;
 
 	return (
 		<section
@@ -205,83 +201,8 @@ const HeroSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => {
 	);
 };
 
-// ─── Step Icons (Ant Design) ───────────────────────────────────────────────────
 
-const stepIcons: Record<string, React.ReactNode> = {
-	"1": <SearchOutlined style={{ fontSize: 28 }} />,
-	"2": <CameraOutlined style={{ fontSize: 28 }} />,
-	"3": <ClockCircleOutlined style={{ fontSize: 28 }} />,
-	"4": <SwapOutlined style={{ fontSize: 28 }} />,
-};
-
-const StepIcon: React.FC<{
-	num: string;
-	hovered?: boolean;
-	stepVideoRef?: React.RefObject<HTMLVideoElement | null>;
-}> = ({ num, hovered, stepVideoRef }) => {
-	return (
-		<div
-			style={{
-				width: 160,
-				height: 160,
-				borderRadius: 20,
-				background: "#F5F5F7",
-				overflow: "hidden",
-				position: "relative",
-				display: "flex",
-				alignItems: "center",
-				justifyContent: "center",
-				transition: "all 0.4s ease",
-			}}
-		>
-			{hovered ? (
-				<>
-					<video
-						ref={stepVideoRef ?? null}
-						src={STEP_VIDEOS[num]}
-						autoPlay
-						muted
-						loop
-						playsInline
-						style={{
-							position: "absolute",
-							inset: 0,
-							width: "100%",
-							height: "100%",
-							objectFit: "cover",
-							borderRadius: 20,
-						}}
-					/>
-					<div
-						style={{
-							position: "absolute",
-							inset: 0,
-							background: "rgba(0,0,0,0.35)",
-							borderRadius: 20,
-						}}
-					/>
-				</>
-			) : (
-				<div
-					style={{
-						width: 72,
-						height: 72,
-						borderRadius: 20,
-						background: LIGHT_BG,
-						color: DARK,
-						display: "flex",
-						alignItems: "center",
-						justifyContent: "center",
-					}}
-				>
-					{stepIcons[num]}
-				</div>
-			)}
-		</div>
-	);
-};
-
-// ─── How It Works Section ─────────────────────────────────────────────────────
+// ─── Steps data ───────────────────────────────────────────────────────────────
 
 const steps = [
 	{
@@ -306,34 +227,30 @@ const steps = [
 	},
 ];
 
+// ─── How It Works Section — horizontal slider ─────────────────────────────────
+
 const HowItWorksSection: React.FC = () => {
-	const [hoveredStep, setHoveredStep] = useState<string | null>(null);
-	const ref1 = useRef<HTMLVideoElement>(null);
-	const ref2 = useRef<HTMLVideoElement>(null);
-	const ref3 = useRef<HTMLVideoElement>(null);
-	const ref4 = useRef<HTMLVideoElement>(null);
-	const stepVideoRefs = [ref1, ref2, ref3, ref4];
+	const [activeIndex, setActiveIndex] = useState(0);
+	const sliderRef = useRef<HTMLDivElement>(null);
+
+	const scrollTo = (index: number) => {
+		if (!sliderRef.current) return;
+		const cardWidth = sliderRef.current.offsetWidth;
+		sliderRef.current.scrollTo({ left: index * cardWidth, behavior: "smooth" });
+		setActiveIndex(index);
+	};
 
 	return (
-		<section style={{ background: "#fff", ...SECTION_PADDING }}>
+		<section style={{ background: "#fff", ...SECTION_PADDING, overflow: "hidden" }}>
 			<div style={{ ...MAX_WIDTH }}>
 				<motion.div
-					variants={containerVariants}
 					initial="hidden"
 					whileInView="visible"
 					viewport={{ once: true, amount: 0.2 }}
-					style={{
-						display: "flex",
-						flexDirection: "column",
-						alignItems: "center",
-						gap: 56,
-					}}
+					style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 48 }}
 				>
-					<motion.div
-						variants={fadeUpVariants}
-						custom={0}
-						style={{ textAlign: "center" }}
-					>
+					{/* Header */}
+					<motion.div variants={fadeUpVariants} custom={0} style={{ textAlign: "center" }}>
 						<span
 							style={{
 								fontFamily: "'SF Pro Display', sans-serif",
@@ -363,82 +280,172 @@ const HowItWorksSection: React.FC = () => {
 						</h2>
 					</motion.div>
 
-					<div
-						style={{
-							display: "grid",
-							gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-							gap: 24,
-							width: "100%",
-						}}
-					>
-						{steps.map((step, i) => (
-							<motion.div
-								key={step.num}
-								variants={fadeUpVariants}
-								custom={i + 1}
-								whileHover={{
-									translateY: -4,
-									boxShadow: "0 20px 50px rgba(0,0,0,0.08)",
-									transition: { duration: 0.5, ease: APPLE_EASE },
-								}}
-								onHoverStart={() => setHoveredStep(step.num)}
-								onHoverEnd={() => setHoveredStep(null)}
-								style={{
-									borderRadius: CARD_RADIUS,
-									overflow: "hidden",
-									background: "#fff",
-									boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-									transition: `box-shadow 0.5s cubic-bezier(${APPLE_EASE.join(",")})`,
-									border: `1px solid ${SUBTLE_BORDER}`,
-								}}
-							>
+					{/* Slider */}
+					<div style={{ width: "100%", position: "relative" }}>
+						{/* Scroll snap container */}
+						<div
+							ref={sliderRef}
+							onScroll={() => {
+								if (!sliderRef.current) return;
+								const idx = Math.round(
+									sliderRef.current.scrollLeft / sliderRef.current.offsetWidth
+								);
+								setActiveIndex(idx);
+							}}
+							style={{
+								display: "flex",
+								overflowX: "auto",
+								scrollSnapType: "x mandatory",
+								scrollBehavior: "smooth",
+								WebkitOverflowScrolling: "touch",
+								gap: 16,
+								padding: "8px 0 16px",
+								margin: "0 -12px",
+								paddingLeft: "calc(50vw - 260px)",
+								paddingRight: "calc(50vw - 260px)",
+								cursor: "grab",
+							}}
+						>
+							{steps.map((step, i) => (
 								<div
+									key={step.num}
+									onClick={() => scrollTo(i)}
 									style={{
-										height: 160,
-										display: "flex",
-										alignItems: "center",
-										justifyContent: "center",
-										background: LIGHT_BG,
-										transition: "background 0.4s ease",
+										flex: "0 0 auto",
+										width: "520px",
+										height: "360px",
+										borderRadius: CARD_RADIUS,
+										overflow: "hidden",
+										position: "relative",
+										scrollSnapAlign: "center",
+										cursor: "pointer",
+										// Video background via background-image
+										backgroundImage: `url(${STEP_VIDEOS[step.num]})`,
+										backgroundSize: "cover",
+										backgroundPosition: "center",
+										backgroundRepeat: "no-repeat",
+										backgroundColor: "#1D1D1F",
+										boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+										transition: "transform 0.4s cubic-bezier(0.25,0.1,0.25,1)",
 									}}
 								>
-									<StepIcon
-										num={step.num}
-										hovered={hoveredStep === step.num}
-										stepVideoRef={stepVideoRefs[i]}
+									{/* Dark overlay */}
+									<div
+										style={{
+											position: "absolute",
+											inset: 0,
+											background:
+												"linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.1) 100%)",
+											zIndex: 1,
+										}}
 									/>
+									{/* Content */}
+									<div
+										style={{
+											position: "absolute",
+											inset: 0,
+											display: "flex",
+											flexDirection: "column",
+											justifyContent: "flex-end",
+											padding: "32px",
+											zIndex: 2,
+										}}
+									>
+										{/* Step number badge */}
+										<div
+											style={{
+												display: "inline-flex",
+												alignItems: "center",
+												gap: 8,
+												marginBottom: 16,
+											}}
+										>
+											<div
+												style={{
+													width: 32,
+													height: 32,
+													borderRadius: "50%",
+													background: ACCENT,
+													color: "#fff",
+													display: "flex",
+													alignItems: "center",
+													justifyContent: "center",
+													fontFamily: "'SF Pro Display', sans-serif",
+													fontWeight: 700,
+													fontSize: 14,
+												}}
+											>
+												{step.num}
+											</div>
+											<span
+												style={{
+													fontFamily: "'SF Pro Display', sans-serif",
+													fontSize: 11,
+													fontWeight: 600,
+													color: "rgba(255,255,255,0.6)",
+													textTransform: "uppercase",
+													letterSpacing: "2px",
+												}}
+											>
+												шаг {step.num}
+											</span>
+										</div>
+										<h3
+											style={{
+												fontFamily: "'SF Pro Display', sans-serif",
+												fontSize: 28,
+												fontWeight: 700,
+												color: "#fff",
+												margin: "0 0 10px",
+												letterSpacing: "-0.02em",
+												lineHeight: 1.2,
+											}}
+										>
+											{step.title}
+										</h3>
+										<p
+											style={{
+												fontFamily: "'SF Pro Display', sans-serif",
+												fontSize: 15,
+												color: "rgba(255,255,255,0.8)",
+												margin: 0,
+												lineHeight: 1.6,
+											}}
+										>
+											{step.desc}
+										</p>
+									</div>
 								</div>
-								<div
+							))}
+						</div>
+
+						{/* Navigation dots */}
+						<div
+							style={{
+								display: "flex",
+								justifyContent: "center",
+								gap: 10,
+								marginTop: 20,
+							}}
+						>
+							{steps.map((step, i) => (
+								<button
+									key={step.num}
+									onClick={() => scrollTo(i)}
 									style={{
-										padding: "20px 20px 24px",
-										display: "flex",
-										flexDirection: "column",
-										gap: 8,
+										width: activeIndex === i ? 28 : 8,
+										height: 8,
+										borderRadius: 4,
+										border: "none",
+										background: activeIndex === i ? ACCENT : "rgba(0,0,0,0.18)",
+										cursor: "pointer",
+										padding: 0,
+										transition: "all 0.35s cubic-bezier(0.25,0.1,0.25,1)",
 									}}
-								>
-									<span
-										style={{
-											fontFamily: "'SF Pro Display', sans-serif",
-											fontWeight: 700,
-											fontSize: 18,
-											color: DARK,
-										}}
-									>
-										{step.title}
-									</span>
-									<span
-										style={{
-											fontFamily: "'SF Pro Display', sans-serif",
-											fontSize: 14,
-											color: GRAY_TEXT,
-											lineHeight: 1.6,
-										}}
-									>
-										{step.desc}
-									</span>
-								</div>
-							</motion.div>
-						))}
+									aria-label={`Шаг ${step.num}: ${step.title}`}
+								/>
+							))}
+						</div>
 					</div>
 				</motion.div>
 			</div>
@@ -1326,8 +1333,6 @@ const HomePage: React.FC = () => {
 	const navigate = useNavigate();
 
 	const handleCatalog = () => navigate("/catalog");
-	const handleCategory = (key: string) => navigate(`/catalog?category=${key}`);
-	const handleProduct = (id: string) => navigate(`/product/${id}`);
 
 	return (
 		<div style={{ fontFamily: "'SF Pro Display', sans-serif" }}>
