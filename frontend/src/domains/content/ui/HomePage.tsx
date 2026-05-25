@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button, InputNumber } from 'antd';
 import { PageMeta } from '../../../shared/ui/PageMeta';
@@ -50,120 +50,155 @@ const SUBTLE_BORDER = 'rgba(0,0,0,0.06)';
 const CARD_RADIUS = 20;
 const PILL_RADIUS = 10;
 
-// ─── Hero Section ────────────────────────────────────────────────────────────────
+// Video files pre-uploaded by customer
+const HERO_VIDEOS = [
+  '/herovideo/IMG_6429.MP4',
+  '/herovideo/IMG_6431.MP4',
+];
 
-const HeroSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => (
-  <section
-    style={{
-      minHeight: '100vh',
-      background: '#FFFFFF',
-      display: 'flex',
-      alignItems: 'center',
-      ...SECTION_PADDING,
-      position: 'relative',
-      overflow: 'hidden',
-    }}
-  >
-    <div
+const HeroSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => {
+  // Index set by synchronous script in index.html — before React boots
+  const heroVideoIdx = typeof window !== 'undefined' ? (window as any).__heroIdx ?? 0 : 0;
+
+  return (
+    <section
       style={{
-        ...MAX_WIDTH,
-        width: '100%',
+        minHeight: '100vh',
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
-        textAlign: 'center',
         position: 'relative',
-        zIndex: 1,
-        gap: 32,
+        overflow: 'hidden',
       }}
     >
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28 }}
+      {/* Hero video — muted, looping, fills the section */}
+      <video
+        key={heroVideoIdx}
+        ref={videoRef}
+        src={HERO_VIDEOS[heroVideoIdx]}
+        autoPlay
+        muted
+        loop
+        playsInline
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          zIndex: -1,
+        }}
+      />
+      {/* Dark overlay so white text stays readable */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: 'rgba(29,29,31,0.62)',
+        zIndex: 0,
+      }} />
+      {/* Content layer */}
+      <div
+        style={{
+          ...MAX_WIDTH,
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          textAlign: 'center',
+          position: 'relative',
+          zIndex: 1,
+          gap: 32,
+          padding: '100px 24px',
+        }}
       >
-        <motion.div variants={fadeUpVariants} custom={0}>
-          <span
-            style={{
-              fontFamily: "'SF Pro Display', sans-serif",
-              fontSize: 13,
-              fontWeight: 600,
-              color: GRAY_TEXT,
-              textTransform: 'uppercase',
-              letterSpacing: '3px',
-            }}
-          >
-            Дизайн-платформа для стен
-          </span>
-        </motion.div>
-
-        <motion.h1
-          variants={fadeUpVariants}
-          custom={1}
-          style={{
-            fontFamily: "'SF Pro Display', sans-serif",
-            fontSize: 'clamp(40px, 6vw, 72px)',
-            fontWeight: 700,
-            color: DARK,
-            margin: 0,
-            lineHeight: 1.1,
-            letterSpacing: '-0.03em',
-            maxWidth: 800,
-          }}
-        >
-          Ремонт окончен.{' '}
-          <span style={{ color: ACCENT_DARK }}>
-            Начинается свобода.
-          </span>
-        </motion.h1>
-
-        <motion.p
-          variants={fadeUpVariants}
-          custom={2}
-          style={{
-            fontFamily: "'SF Pro Display', sans-serif",
-            fontSize: 'clamp(17px, 2vw, 20px)',
-            color: GRAY_TEXT,
-            margin: 0,
-            lineHeight: 1.65,
-            maxWidth: 560,
-          }}
-        >
-          Новый интерьер – в один клик.
-          <br />
-          WONDER WOW WALL – первая платформа трансформации пространства.
-        </motion.p>
-
         <motion.div
-          variants={fadeUpVariants}
-          custom={3}
-          style={{ display: 'flex', justifyContent: 'center' }}
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28 }}
         >
-          <Button
-            onClick={onCatalog}
-            size="large"
+          <motion.div variants={fadeUpVariants} custom={0}>
+            <span
+              style={{
+                fontFamily: "'SF Pro Display', sans-serif",
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'rgba(255,255,255,0.75)',
+                textTransform: 'uppercase',
+                letterSpacing: '3px',
+              }}
+            >
+              Дизайн-платформа для стен
+            </span>
+          </motion.div>
+
+          <motion.h1
+            variants={fadeUpVariants}
+            custom={1}
             style={{
-              background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: PILL_RADIUS,
-              height: 56,
-              padding: '0 44px',
               fontFamily: "'SF Pro Display', sans-serif",
-              fontWeight: 600,
-              fontSize: 17,
-              boxShadow: 'none',
-              letterSpacing: '-0.01em',
+              fontSize: 'clamp(40px, 6vw, 72px)',
+              fontWeight: 700,
+              color: '#FFFFFF',
+              margin: 0,
+              lineHeight: 1.1,
+              letterSpacing: '-0.03em',
+              maxWidth: 800,
+              textShadow: '0 2px 12px rgba(0,0,0,0.25)',
             }}
           >
-            выбрать свой WOW!
-          </Button>
+            Ремонт окончен.{' '}
+            <span style={{ color: '#A5D6A7' }}>
+              Начинается свобода.
+            </span>
+          </motion.h1>
+
+          <motion.p
+            variants={fadeUpVariants}
+            custom={2}
+            style={{
+              fontFamily: "'SF Pro Display', sans-serif",
+              fontSize: 'clamp(17px, 2vw, 20px)',
+              color: 'rgba(255,255,255,0.88)',
+              margin: 0,
+              lineHeight: 1.65,
+              maxWidth: 560,
+            }}
+          >
+            Новый интерьер – в один клик.
+            <br />
+            WONDER WOW WALL – первая платформа трансформации пространства.
+          </motion.p>
+
+          <motion.div
+            variants={fadeUpVariants}
+            custom={3}
+            style={{ display: 'flex', justifyContent: 'center' }}
+          >
+            <Button
+              onClick={onCatalog}
+              size="large"
+              style={{
+                background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: PILL_RADIUS,
+                height: 56,
+                padding: '0 44px',
+                fontFamily: "'SF Pro Display', sans-serif",
+                fontWeight: 600,
+                fontSize: 17,
+                boxShadow: 'none',
+                letterSpacing: '-0.01em',
+              }}
+            >
+              выбрать свой WOW!
+            </Button>
+          </motion.div>
         </motion.div>
-      </motion.div>
-    </div>
-  </section>
-);
+      </div>
+    </section>
+  );
+};
 
 // ─── Step Icons (Ant Design) ───────────────────────────────────────────────────
 

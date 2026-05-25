@@ -1,0 +1,18 @@
+{
+  "files": {
+    "src/domains/content/ui/HomePage.tsx": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 1419
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-25T18:15:28.766Z"
+    }
+  },
+  "turnCycles": 0,
+  "maxCycles": 3,
+  "lastUpdated": "2026-05-25T18:15:28.766Z",
+  "sessionId": "lens-mplizp0v-c68a9c21"
+}

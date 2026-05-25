@@ -12,6 +12,17 @@
     <meta property="og:site_name" content="Wonder Wow Wall" />
     <meta property="og:locale" content="ru_RU" />
     <title>Wonder Wow Wall — Стеновые панели</title>
+    <script>
+      // Runs synchronously BEFORE React. Picks video index on each new
+      // browser session and stores in window.__heroIdx.
+      (function () {
+        var KEY = '__hero_idx';
+        var prev = parseInt(sessionStorage.getItem(KEY) || '-1', 10);
+        var next = prev < 0 ? 0 : 1 - prev;
+        sessionStorage.setItem(KEY, String(next));
+        window.__heroIdx = next;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
