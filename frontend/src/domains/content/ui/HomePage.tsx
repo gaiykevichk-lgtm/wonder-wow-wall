@@ -470,7 +470,7 @@ export function HowItWorksSection() {
 						>
 							<video
 								ref={(el) => {
-									console.log('Video', i, '/tpvideo/' + step.video);
+									console.log('Video ref', i, step.video, !!el);
 									videoRefs.current[i] = el;
 								}}
 								src={`/tpvideo/${step.video}`}
@@ -478,6 +478,9 @@ export function HowItWorksSection() {
 								loop
 								playsInline
 								preload="auto"
+								onCanPlay={() => console.log('Video can play:', step.video)}
+								onError={(e) => console.error('Video ERROR:', step.video, e)}
+								onLoadedData={() => console.log('Video loaded:', step.video)}
 								style={{
 									width: "100%",
 									height: "100%",
