@@ -162,6 +162,10 @@ body {
 ::-webkit-scrollbar-thumb { background: #E5E7EB; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #6B7280; }
 
+/* Carousel: hide scrollbar */
+.carousel::-webkit-scrollbar { display: none; }
+.carousel { -ms-overflow-style: none; scrollbar-width: none; }
+
 .ant-card.ant-card-hoverable:hover {
   transform: translateY(-2px) scale(1.01);
   box-shadow: 0 4px 24px rgba(0,0,0,0.06) !important;
