@@ -527,8 +527,6 @@ export function HowItWorksSection() {
 						/>
 					</div>
 				</div>
-				</div>
-			</div>
 		</section>
 	);
 }
