@@ -255,26 +255,40 @@ export function HowItWorksSection() {
 	// Touch/swipe handlers for mobile
 	const touchStartX = useRef(0);
 	const touchStartY = useRef(0);
+	const activeIndexRef = useRef(activeIndex);
+	React.useEffect(() => { activeIndexRef.current = activeIndex; }, [activeIndex]);
+
 	const handleTouchStart = (e: React.TouchEvent) => {
 		touchStartX.current = e.touches[0].clientX;
 		touchStartY.current = e.touches[0].clientY;
 	};
 	const handleTouchEnd = (e: React.TouchEvent) => {
+		e.preventDefault();
 		const deltaX = e.changedTouches[0].clientX - touchStartX.current;
 		const deltaY = e.changedTouches[0].clientY - touchStartY.current;
 		// Only swipe if horizontal movement > vertical
 		if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
-			if (deltaX < 0 && activeIndex < steps.length - 1) {
-				goToSlide(activeIndex + 1);
-			} else if (deltaX > 0 && activeIndex > 0) {
-				goToSlide(activeIndex - 1);
+			const currentIndex = activeIndexRef.current;
+			if (deltaX < 0 && currentIndex < steps.length - 1) {
+				goToSlide(currentIndex + 1);
+			} else if (deltaX > 0 && currentIndex > 0) {
+				goToSlide(currentIndex - 1);
 			}
+		}
+	};
+	const handleTouchMove = (e: React.TouchEvent) => {
+		const deltaX = e.touches[0].clientX - touchStartX.current;
+		const deltaY = e.touches[0].clientY - touchStartY.current;
+		// If mostly horizontal swipe, prevent native scroll
+		if (Math.abs(deltaX) > Math.abs(deltaY)) {
+			e.preventDefault();
 		}
 	};
 
 	const goToSlide = (i: number) => {
 		const el = carouselRef.current;
 		if (!el) return;
+		setActiveIndex(i);
 		el.scrollTo({ left: i * el.offsetWidth, behavior: "smooth" });
 	};
 	return (
@@ -338,8 +352,9 @@ export function HowItWorksSection() {
 			<div
 				ref={carouselRef}
 				className="carousel"
-					onTouchStart={handleTouchStart}
-					onTouchEnd={handleTouchEnd}
+				onTouchStart={handleTouchStart}
+				onTouchEnd={handleTouchEnd}
+				onTouchMove={handleTouchMove}
 				style={{
 					overflowX: "scroll",
 					overflowY: "hidden",
