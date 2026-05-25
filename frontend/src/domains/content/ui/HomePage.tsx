@@ -55,10 +55,10 @@ const HERO_VIDEOS = ["/herovideo/IMG_6429.MP4", "/herovideo/IMG_6431.MP4"];
 
 // 4 step videos (one per card in HowItWorksSection)
 const STEP_VIDEOS: Record<string, string> = {
-	'1': '/tpvideo/Выбираете.MP4',
-	'2': '/tpvideo/Примеряете.MP4',
-	'3': '/tpvideo/Обновляете.MP4',
-	'4': '/tpvideo/Меняете.MOV',
+	"1": "/tpvideo/Выбираете.MP4",
+	"2": "/tpvideo/Примеряете.MP4",
+	"3": "/tpvideo/Обновляете.MP4",
+	"4": "/tpvideo/Меняете.MOV",
 };
 
 const HeroSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => {
@@ -79,7 +79,6 @@ const HeroSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => {
 			{/* Hero video — muted, looping, fills the section */}
 			<video
 				key={heroVideoIdx}
-				ref={videoRef}
 				src={HERO_VIDEOS[heroVideoIdx]}
 				autoPlay
 				muted
@@ -220,11 +219,11 @@ const stepIcons: Record<string, React.ReactNode> = {
 	"4": <SwapOutlined style={{ fontSize: 28 }} />,
 };
 
-const StepIcon: React.FC<{ num: string; hovered?: boolean; stepVideoRef?: React.RefObject<HTMLVideoElement | null> }> = ({
-	num,
-	hovered,
-	stepVideoRef,
-}) => {
+const StepIcon: React.FC<{
+	num: string;
+	hovered?: boolean;
+	stepVideoRef?: React.RefObject<HTMLVideoElement | null>;
+}> = ({ num, hovered, stepVideoRef }) => {
 	return (
 		<div
 			style={{
@@ -408,7 +407,11 @@ const HowItWorksSection: React.FC = () => {
 										transition: "background 0.4s ease",
 									}}
 								>
-									<StepIcon num={step.num} hovered={hoveredStep === step.num} stepVideoRef={stepVideoRefs[i]} />
+									<StepIcon
+										num={step.num}
+										hovered={hoveredStep === step.num}
+										stepVideoRef={stepVideoRefs[i]}
+									/>
 								</div>
 								<div
 									style={{
