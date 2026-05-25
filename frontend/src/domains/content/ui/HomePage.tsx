@@ -256,7 +256,9 @@ export function HowItWorksSection() {
 	const touchStartX = useRef(0);
 	const touchStartY = useRef(0);
 	const activeIndexRef = useRef(activeIndex);
-	React.useEffect(() => { activeIndexRef.current = activeIndex; }, [activeIndex]);
+	React.useEffect(() => {
+		activeIndexRef.current = activeIndex;
+	}, [activeIndex]);
 
 	const handleTouchStart = (e: React.TouchEvent) => {
 		touchStartX.current = e.touches[0].clientX;
@@ -283,6 +285,31 @@ export function HowItWorksSection() {
 		if (Math.abs(deltaX) > Math.abs(deltaY)) {
 			e.preventDefault();
 		}
+	};
+
+	// Desktop mouse drag handlers
+	const isDragging = useRef(false);
+	const dragStartX = useRef(0);
+	const handleMouseDown = (e: React.MouseEvent) => {
+		isDragging.current = true;
+		dragStartX.current = e.clientX;
+		if (carouselRef.current) carouselRef.current.style.cursor = "grabbing";
+	};
+	const handleMouseMove = (e: React.MouseEvent) => {
+		if (!isDragging.current) return;
+		const deltaX = e.clientX - dragStartX.current;
+		if (Math.abs(deltaX) > 50) {
+			if (deltaX < 0 && activeIndexRef.current < steps.length - 1) {
+				goToSlide(activeIndexRef.current + 1);
+			} else if (deltaX > 0 && activeIndexRef.current > 0) {
+				goToSlide(activeIndexRef.current - 1);
+			}
+			isDragging.current = false;
+		}
+	};
+	const handleMouseUp = () => {
+		isDragging.current = false;
+		if (carouselRef.current) carouselRef.current.style.cursor = "grab";
 	};
 
 	const goToSlide = (i: number) => {
@@ -355,6 +382,10 @@ export function HowItWorksSection() {
 				onTouchStart={handleTouchStart}
 				onTouchEnd={handleTouchEnd}
 				onTouchMove={handleTouchMove}
+				onMouseDown={handleMouseDown}
+				onMouseMove={handleMouseMove}
+				onMouseUp={handleMouseUp}
+				onMouseLeave={handleMouseUp}
 				style={{
 					overflowX: "scroll",
 					overflowY: "hidden",
