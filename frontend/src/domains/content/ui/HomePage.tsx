@@ -1,17 +1,17 @@
 import React, { useState, useRef } from "react";
-import { motion } from "framer-motion";
-import { Button, InputNumber } from "antd";
-import { PageMeta } from "../../../shared/ui/PageMeta";
 import {
 	AppstoreOutlined,
 	ThunderboltOutlined,
-	CameraOutlined,
 	SettingOutlined,
 	LockOutlined,
 	DesktopOutlined,
-	WifiOutlined,
+	CameraOutlined,
 	ExperimentOutlined,
+	WifiOutlined,
 } from "@ant-design/icons";
+import { motion } from "framer-motion";
+import { Button, InputNumber } from "antd";
+import { PageMeta } from "../../../shared/ui/PageMeta";
 import { useNavigate } from "react-router-dom";
 import { products } from "../../catalog/model/data";
 
@@ -38,7 +38,7 @@ const containerVariants = {
 const SECTION_PADDING: React.CSSProperties = { padding: "100px 24px" };
 const MAX_WIDTH: React.CSSProperties = { maxWidth: 1200, margin: "0 auto" };
 const ACCENT = "#4CAF50";
-
+const ACCENT_DARK = "#2E7D32";
 const DARK = "#1D1D1F";
 const GRAY_TEXT = "#6E6E73";
 const LIGHT_BG = "#F5F5F7";
@@ -46,54 +46,65 @@ const SUBTLE_BORDER = "rgba(0,0,0,0.06)";
 const CARD_RADIUS = 20;
 const PILL_RADIUS = 10;
 
-// Video files pre-uploaded by customer
-const HERO_VIDEOS = ["/herovideo/IMG_6429.MP4", "/herovideo/IMG_6431.MP4"];
+// ─── Hero Video ─────────────────────────────────────────────────────────────────
+// Videos are served from cloud CDN. The inline script in index.html picks the
+// video index, stores it in window.__heroIdx BEFORE React hydrates, so it is
+// guaranteed to be stable regardless of modules being re-executed.
+const CLOUD_HERO_VIDEOS = [
+	"/herovideo/IMG_6429.MP4",
+	"/herovideo/IMG_6431.MP4",
+];
 
-// 4 step videos (one per card in HowItWorksSection)
-const STEP_VIDEOS: Record<string, string> = {
-	"1": "/tpvideo/Выбираете.MP4",
-	"2": "/tpvideo/Примеряете.MP4",
-	"3": "/tpvideo/Обновляете.MP4",
-	"4": "/tpvideo/Меняете.MOV",
-};
+// Index set by inline script in index.html before React boots.
+declare let window: Window & { __heroIdx?: number };
+
+// ─── Hero Section ────────────────────────────────────────────────────────────────
 
 const HeroSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => {
-	// Index set by synchronous script in index.html — before React boots
-	const heroVideoIdx =
-		typeof window !== "undefined" ? (window as { __heroIdx?: number }).__heroIdx ?? 0 : 0;
-
+	const videoSrc =
+		window.__heroIdx !== undefined
+			? CLOUD_HERO_VIDEOS[window.__heroIdx as number]
+			: CLOUD_HERO_VIDEOS[0];
 	return (
 		<section
 			style={{
 				minHeight: "100vh",
+				background: "#000",
 				display: "flex",
 				alignItems: "center",
+				...SECTION_PADDING,
 				position: "relative",
 				overflow: "hidden",
 			}}
 		>
-			{/* Hero video as background-image */}
-			<div
-				style={{
-					position: "absolute",
-					inset: 0,
-					backgroundImage: `url(${HERO_VIDEOS[heroVideoIdx]})`,
-					backgroundSize: "cover",
-					backgroundPosition: "center",
-					backgroundRepeat: "no-repeat",
-					zIndex: -1,
-				}}
-			/>
-			{/* Dark overlay so white text stays readable */}
-			<div
-				style={{
-					position: "absolute",
-					inset: 0,
-					background: "rgba(29,29,31,0.62)",
-					zIndex: 0,
-				}}
-			/>
-			{/* Content layer */}
+			{videoSrc && (
+				<>
+					<video
+						autoPlay
+						muted
+						loop
+						playsInline
+						style={{
+							position: "absolute",
+							inset: 0,
+							width: "100%",
+							height: "100%",
+							objectFit: "cover",
+							zIndex: 0,
+						}}
+					>
+						<source src={videoSrc} type="video/mp4" />
+					</video>
+					<div
+						style={{
+							position: "absolute",
+							inset: 0,
+							background: "rgba(0,0,0,0.55)",
+							zIndex: 1,
+						}}
+					/>
+				</>
+			)}
 			<div
 				style={{
 					...MAX_WIDTH,
@@ -103,9 +114,8 @@ const HeroSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => {
 					alignItems: "center",
 					textAlign: "center",
 					position: "relative",
-					zIndex: 1,
+					zIndex: 2,
 					gap: 32,
-					padding: "100px 24px",
 				}}
 			>
 				<motion.div
@@ -125,7 +135,7 @@ const HeroSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => {
 								fontFamily: "'SF Pro Display', sans-serif",
 								fontSize: 13,
 								fontWeight: 600,
-								color: "rgba(255,255,255,0.75)",
+								color: "#fff",
 								textTransform: "uppercase",
 								letterSpacing: "3px",
 							}}
@@ -141,16 +151,15 @@ const HeroSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => {
 							fontFamily: "'SF Pro Display', sans-serif",
 							fontSize: "clamp(40px, 6vw, 72px)",
 							fontWeight: 700,
-							color: "#FFFFFF",
+							color: "#fff",
 							margin: 0,
 							lineHeight: 1.1,
 							letterSpacing: "-0.03em",
 							maxWidth: 800,
-							textShadow: "0 2px 12px rgba(0,0,0,0.25)",
 						}}
 					>
 						Ремонт окончен.{" "}
-						<span style={{ color: "#A5D6A7" }}>Начинается свобода.</span>
+						<span style={{ color: ACCENT_DARK }}>Начинается свобода.</span>
 					</motion.h1>
 
 					<motion.p
@@ -159,7 +168,7 @@ const HeroSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => {
 						style={{
 							fontFamily: "'SF Pro Display', sans-serif",
 							fontSize: "clamp(17px, 2vw, 20px)",
-							color: "rgba(255,255,255,0.88)",
+							color: "rgba(255,255,255,0.85)",
 							margin: 0,
 							lineHeight: 1.65,
 							maxWidth: 560,
@@ -201,257 +210,314 @@ const HeroSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => {
 	);
 };
 
-
-// ─── Steps data ───────────────────────────────────────────────────────────────
+// ─── How It Works Section ─────────────────────────────────────────────────────
 
 const steps = [
 	{
 		num: "1",
 		title: "Выбираете",
 		desc: "Найдите текстуру, которая отражает Вас сегодня",
+		video: "Выбираете.MP4",
 	},
 	{
 		num: "2",
 		title: "Примеряете",
 		desc: "Загрузите фото и приложение мгновенно впишет новый интерьер в Ваше пространство",
+		video: "Примеряете.MP4",
 	},
 	{
 		num: "3",
 		title: "Обновляете",
 		desc: "Мы превратили обновление интерьера в вопрос нескольких часов",
+		video: "Обновляете.MP4",
 	},
 	{
 		num: "4",
 		title: "Меняете",
 		desc: "Одна бесплатная замена уже включена в подписку",
+		video: "Меняете.MOV",
 	},
 ];
 
-// ─── How It Works Section — horizontal slider ─────────────────────────────────
-
 const HowItWorksSection: React.FC = () => {
+	const carouselRef = useRef<HTMLDivElement>(null);
+	const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
 	const [activeIndex, setActiveIndex] = useState(0);
-	const sliderRef = useRef<HTMLDivElement>(null);
 
-	const scrollTo = (index: number) => {
-		if (!sliderRef.current) return;
-		const cardWidth = sliderRef.current.offsetWidth;
-		sliderRef.current.scrollTo({ left: index * cardWidth, behavior: "smooth" });
-		setActiveIndex(index);
+	// Intersection Observer — play/pause video based on visibility
+	React.useEffect(() => {
+		const observer = new IntersectionObserver(
+			(entries) => {
+				entries.forEach((entry) => {
+					const vid = entry.target as HTMLVideoElement;
+					if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+						vid.play().catch(() => {});
+					} else {
+						vid.pause();
+					}
+				});
+			},
+			{ threshold: 0.5 },
+		);
+		videoRefs.current.forEach((v) => {
+			if (v) observer.observe(v);
+		});
+		return () => observer.disconnect();
+	}, []);
+
+	// Track active slide index from scroll
+	React.useEffect(() => {
+		const el = carouselRef.current;
+		if (!el) return;
+		const onScroll = () => {
+			const idx = Math.round(el.scrollLeft / el.offsetWidth);
+			setActiveIndex(idx);
+		};
+		el.addEventListener("scroll", onScroll, { passive: true });
+		return () => el.removeEventListener("scroll", onScroll);
+	}, []);
+
+	const goToSlide = (i: number) => {
+		const el = carouselRef.current;
+		if (!el) return;
+		el.scrollTo({ left: i * el.offsetWidth, behavior: "smooth" });
 	};
 
 	return (
-		<section style={{ background: "#fff", ...SECTION_PADDING, overflow: "hidden" }}>
+		<section style={{ background: "#fff", overflow: "hidden" }}>
 			<div style={{ ...MAX_WIDTH }}>
 				<motion.div
 					initial="hidden"
 					whileInView="visible"
 					viewport={{ once: true, amount: 0.2 }}
-					style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 48 }}
+					variants={fadeUpVariants}
+					custom={0}
+					style={{ textAlign: "center", paddingTop: 100 }}
 				>
-					{/* Header */}
-					<motion.div variants={fadeUpVariants} custom={0} style={{ textAlign: "center" }}>
-						<span
-							style={{
-								fontFamily: "'SF Pro Display', sans-serif",
-								fontSize: 12,
-								fontWeight: 600,
-								color: GRAY_TEXT,
-								textTransform: "uppercase",
-								letterSpacing: "3px",
-								display: "block",
-								marginBottom: 12,
-							}}
-						>
-							Платформа трансформации
-						</span>
-						<h2
-							style={{
-								fontFamily: "'SF Pro Display', sans-serif",
-								fontSize: "clamp(32px, 3.5vw, 44px)",
-								fontWeight: 700,
-								color: DARK,
-								margin: 0,
-								letterSpacing: "-0.03em",
-								lineHeight: 1.15,
-							}}
-						>
-							Просто. Быстро. WOW
-						</h2>
-					</motion.div>
+					<span
+						style={{
+							fontFamily: "'SF Pro Display', sans-serif",
+							fontSize: 12,
+							fontWeight: 600,
+							color: GRAY_TEXT,
+							textTransform: "uppercase",
+							letterSpacing: "3px",
+							display: "block",
+							marginBottom: 12,
+						}}
+					>
+						Платформа трансформации
+					</span>
+					<h2
+						style={{
+							fontFamily: "'SF Pro Display', sans-serif",
+							fontSize: "clamp(32px, 3.5vw, 44px)",
+							fontWeight: 700,
+							color: DARK,
+							margin: 0,
+							letterSpacing: "-0.03em",
+							lineHeight: 1.15,
+						}}
+					>
+						Просто. Быстро. WOW
+					</h2>
+				</motion.div>
+			</div>
 
-					{/* Slider */}
-					<div style={{ width: "100%", position: "relative" }}>
-						{/* Scroll snap container */}
+			{/* Hint text */}
+			<div
+				style={{
+					display: 'flex',
+					justifyContent: 'center',
+					padding: '32px 24px 0',
+				}}
+			>
+				<span
+					style={{
+						fontFamily: "'SF Pro Display', sans-serif",
+						fontSize: 13,
+						color: 'rgba(0,0,0,0.35)',
+						letterSpacing: '0.02em',
+					}}
+				>
+					{activeIndex + 1} / {steps.length} — свайпните влево
+				</span>
+			</div>
+
+			{/* ── Swipeable carousel ── */}
+			<div
+				ref={carouselRef}
+				style={{
+					overflowX: 'scroll',
+					overflowY: 'hidden',
+					scrollSnapType: 'x mandatory',
+					scrollBehavior: 'smooth',
+					display: 'flex',
+					width: '100%',
+					cursor: 'grab',
+					userSelect: 'none',
+					/* Hide scrollbar in all browsers */
+					msOverflowStyle: 'none',
+					scrollbarWidth: 'none',
+				}}
+			>
+				{steps.map((step, i) => (
+					<div
+						key={step.num}
+						style={{
+							scrollSnapAlign: 'start',
+							minWidth: '100vw',
+							display: 'flex',
+							alignItems: 'center',
+							padding: 'clamp(32px, 8vw, 80px) clamp(24px, 8vw, 160px)',
+							boxSizing: 'border-box',
+							gap: 'clamp(32px, 6vw, 100px)',
+						}}
+					>
+						{/* Left: text */}
 						<div
-							ref={sliderRef}
-							onScroll={() => {
-								if (!sliderRef.current) return;
-								const idx = Math.round(
-									sliderRef.current.scrollLeft / sliderRef.current.offsetWidth
-								);
-								setActiveIndex(idx);
-							}}
 							style={{
-								display: "flex",
-								overflowX: "auto",
-								scrollSnapType: "x mandatory",
-								scrollBehavior: "smooth",
-								WebkitOverflowScrolling: "touch",
-								gap: 16,
-								padding: "8px 0 16px",
-								margin: "0 -12px",
-								paddingLeft: "calc(50vw - 260px)",
-								paddingRight: "calc(50vw - 260px)",
-								cursor: "grab",
+								flex: '0 0 auto',
+								width: 'clamp(200px, 30vw, 400px)',
+								display: 'flex',
+								flexDirection: 'column',
+								gap: 20,
 							}}
 						>
-							{steps.map((step, i) => (
-								<div
-									key={step.num}
-									onClick={() => scrollTo(i)}
-									style={{
-										flex: "0 0 auto",
-										width: "520px",
-										height: "360px",
-										borderRadius: CARD_RADIUS,
-										overflow: "hidden",
-										position: "relative",
-										scrollSnapAlign: "center",
-										cursor: "pointer",
-										// Video background via background-image
-										backgroundImage: `url(${STEP_VIDEOS[step.num]})`,
-										backgroundSize: "cover",
-										backgroundPosition: "center",
-										backgroundRepeat: "no-repeat",
-										backgroundColor: "#1D1D1F",
-										boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
-										transition: "transform 0.4s cubic-bezier(0.25,0.1,0.25,1)",
-									}}
-								>
-									{/* Dark overlay */}
-									<div
-										style={{
-											position: "absolute",
-											inset: 0,
-											background:
-												"linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.1) 100%)",
-											zIndex: 1,
-										}}
-									/>
-									{/* Content */}
-									<div
-										style={{
-											position: "absolute",
-											inset: 0,
-											display: "flex",
-											flexDirection: "column",
-											justifyContent: "flex-end",
-											padding: "32px",
-											zIndex: 2,
-										}}
-									>
-										{/* Step number badge */}
-										<div
-											style={{
-												display: "inline-flex",
-												alignItems: "center",
-												gap: 8,
-												marginBottom: 16,
-											}}
-										>
-											<div
-												style={{
-													width: 32,
-													height: 32,
-													borderRadius: "50%",
-													background: ACCENT,
-													color: "#fff",
-													display: "flex",
-													alignItems: "center",
-													justifyContent: "center",
-													fontFamily: "'SF Pro Display', sans-serif",
-													fontWeight: 700,
-													fontSize: 14,
-												}}
-											>
-												{step.num}
-											</div>
-											<span
-												style={{
-													fontFamily: "'SF Pro Display', sans-serif",
-													fontSize: 11,
-													fontWeight: 600,
-													color: "rgba(255,255,255,0.6)",
-													textTransform: "uppercase",
-													letterSpacing: "2px",
-												}}
-											>
-												шаг {step.num}
-											</span>
-										</div>
-										<h3
-											style={{
-												fontFamily: "'SF Pro Display', sans-serif",
-												fontSize: 28,
-												fontWeight: 700,
-												color: "#fff",
-												margin: "0 0 10px",
-												letterSpacing: "-0.02em",
-												lineHeight: 1.2,
-											}}
-										>
-											{step.title}
-										</h3>
-										<p
-											style={{
-												fontFamily: "'SF Pro Display', sans-serif",
-												fontSize: 15,
-												color: "rgba(255,255,255,0.8)",
-												margin: 0,
-												lineHeight: 1.6,
-											}}
-										>
-											{step.desc}
-										</p>
-									</div>
-								</div>
-							))}
+							<span
+								style={{
+									fontFamily: "'SF Pro Display', sans-serif",
+								fontSize: 13,
+								fontWeight: 600,
+								color: ACCENT,
+								textTransform: 'uppercase',
+								letterSpacing: '2px',
+							}}
+						>
+								Шаг {step.num}
+							</span>
+							<h3
+								style={{
+									fontFamily: "'SF Pro Display', sans-serif",
+									fontSize: 'clamp(28px, 3.5vw, 42px)',
+									fontWeight: 700,
+									color: DARK,
+									margin: 0,
+									lineHeight: 1.1,
+									letterSpacing: '-0.025em',
+								}}
+							>
+								{step.title}
+							</h3>
+							<p
+								style={{
+									fontFamily: "'SF Pro Display', sans-serif",
+								fontSize: 'clamp(15px, 1.5vw, 17px)',
+									color: GRAY_TEXT,
+								lineHeight: 1.65,
+									margin: 0,
+							}}
+						>
+								{step.desc}
+							</p>
 						</div>
 
-						{/* Navigation dots */}
+						{/* Right: video — 16:9 ratio, fills available height */}
 						<div
 							style={{
-								display: "flex",
-								justifyContent: "center",
-								gap: 10,
-								marginTop: 20,
+								flex: '1 1 auto',
+								maxWidth: 'clamp(260px, 55vw, 900px)',
+								borderRadius: 20,
+								overflow: 'hidden',
+									boxShadow: '0 24px 80px rgba(0,0,0,0.14)',
+								background: LIGHT_BG,
+								aspectRatio: '16 / 9',
 							}}
 						>
-							{steps.map((step, i) => (
-								<button
-									key={step.num}
-									onClick={() => scrollTo(i)}
-									style={{
-										width: activeIndex === i ? 28 : 8,
-										height: 8,
-										borderRadius: 4,
-										border: "none",
-										background: activeIndex === i ? ACCENT : "rgba(0,0,0,0.18)",
-										cursor: "pointer",
-										padding: 0,
-										transition: "all 0.35s cubic-bezier(0.25,0.1,0.25,1)",
-									}}
-									aria-label={`Шаг ${step.num}: ${step.title}`}
-								/>
-							))}
+							<video
+								ref={(el) => {
+									videoRefs.current[i] = el;
+								}}
+								src={`/tpvideo/${step.video}`}
+								muted
+								loop
+								playsInline
+								preload="metadata"
+								style={{
+									width: '100%',
+									height: '100%',
+									objectFit: 'cover',
+									display: 'block',
+								}}
+							/>
 						</div>
 					</div>
-				</motion.div>
+				))}
+			</div>
+
+			{/* ── Dot indicators ── */}
+			<div
+				style={{
+					display: 'flex',
+					flexDirection: 'column',
+					alignItems: 'center',
+					gap: 12,
+					paddingBottom: 80,
+				}}
+			>
+				{/* Progress bar */}
+				<div
+					style={{
+							width: '100%',
+							maxWidth: 1200,
+							margin: '0 auto',
+							padding: '0 24px',
+							boxSizing: 'border-box',
+						}}
+					>
+					<div
+						style={{
+							height: 3,
+							background: 'rgba(0,0,0,0.08)',
+							borderRadius: 2,
+							overflow: 'hidden',
+						}}
+					>
+						<div
+							style={{
+								height: '100%',
+								width: `${((activeIndex + 1) / steps.length) * 100}%`,
+								background: DARK,
+								borderRadius: 2,
+								transition: 'width 0.35s cubic-bezier(0.25, 0.1, 0.25, 1)',
+							}}
+						/>
+					</div>
+				</div>
+
+				{/* Animated dot indicators */}
+				<div style={{ display: 'flex', gap: 10 }}>
+					{steps.map((_, i) => (
+						<button
+							key={i}
+							onClick={() => goToSlide(i)}
+							style={{
+								width: i === activeIndex ? 32 : 8,
+								height: 8,
+								borderRadius: 4,
+								background: i === activeIndex ? DARK : 'rgba(0,0,0,0.18)',
+								border: 'none',
+								cursor: 'pointer',
+								padding: 0,
+								transition: 'all 0.35s cubic-bezier(0.25, 0.1, 0.25, 1)',
+							}}
+							aria-label={`Слайд ${i + 1}`}
+						/>
+					))}
+				</div>
 			</div>
 		</section>
 	);
-};
 
 // ─── Service Banner Section — "Стены как сервис" (Слайд 3) ──────────────────
 
