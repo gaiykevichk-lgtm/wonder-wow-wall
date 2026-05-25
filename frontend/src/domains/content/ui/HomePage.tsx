@@ -256,7 +256,9 @@ export function HowItWorksSection() {
 	const touchStartX = useRef(0);
 	const touchStartY = useRef(0);
 	const activeIndexRef = useRef(activeIndex);
-	React.useEffect(() => { activeIndexRef.current = activeIndex; }, [activeIndex]);
+	React.useEffect(() => {
+		activeIndexRef.current = activeIndex;
+	}, [activeIndex]);
 
 	const handleTouchStart = (e: React.TouchEvent) => {
 		touchStartX.current = e.touches[0].clientX;
@@ -375,13 +377,13 @@ export function HowItWorksSection() {
 			<div
 				ref={carouselRef}
 				className="carousel"
-					onTouchStart={handleTouchStart}
-					onTouchEnd={handleTouchEnd}
-					onTouchMove={handleTouchMove}
-					onMouseDown={handleMouseDown}
-					onMouseMove={handleMouseMove}
-					onMouseUp={handleMouseUp}
-					onMouseLeave={handleMouseUp}
+				onTouchStart={handleTouchStart}
+				onTouchEnd={handleTouchEnd}
+				onTouchMove={handleTouchMove}
+				onMouseDown={handleMouseDown}
+				onMouseMove={handleMouseMove}
+				onMouseUp={handleMouseUp}
+				onMouseLeave={handleMouseUp}
 				style={{
 					overflowX: "scroll",
 					overflowY: "hidden",
@@ -470,11 +472,16 @@ export function HowItWorksSection() {
 								ref={(el) => {
 									videoRefs.current[i] = el;
 								}}
-								src={`/tpvideo/${step.video}`}
+								src={`/tpvideo/${step.video}
 								muted
 								loop
 								playsInline
-								preload="metadata"
+								preload="auto"
+								onError={(e) => {
+									console.warn(`Video error: ${step.video}`, e);
+									// Try MOV if mp4 fails
+									(e.target as HTMLVideoElement).src = `/tpvideo/${step.video}`;
+								}}
 								style={{
 									width: "100%",
 									height: "100%",
