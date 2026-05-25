@@ -1446,7 +1446,7 @@ export function CTABannerSection({ onCatalog }: { onCatalog: () => void }) {
 								lineHeight: 1.6,
 							}}
 						>
-							Присоединяйтесь к новой культуре взаимодействия с пространством
+							Присоединяйтесь к новой культуре<br />взаимодействия с пространством
 						</p>
 						<p
 							style={{
@@ -1458,7 +1458,7 @@ export function CTABannerSection({ onCatalog }: { onCatalog: () => void }) {
 								lineHeight: 1.6,
 							}}
 						>
-							Ремонт перестал быть событием. Вам нужно только выбрать
+							Ремонт перестал быть событием<br />Вам нужно только выбрать
 							настроение.
 						</p>
 					</div>
