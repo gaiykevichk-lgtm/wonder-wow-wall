@@ -76,20 +76,15 @@ const HeroSection: React.FC<{ onCatalog: () => void }> = ({ onCatalog }) => {
 				overflow: "hidden",
 			}}
 		>
-			{/* Hero video — muted, looping, fills the section */}
-			<video
-				key={heroVideoIdx}
-				src={HERO_VIDEOS[heroVideoIdx]}
-				autoPlay
-				muted
-				loop
-				playsInline
+			{/* Hero video as background-image */}
+			<div
 				style={{
 					position: "absolute",
 					inset: 0,
-					width: "100%",
-					height: "100%",
-					objectFit: "cover",
+					backgroundImage: `url(${HERO_VIDEOS[heroVideoIdx]})`,
+					backgroundSize: "cover",
+					backgroundPosition: "center",
+					backgroundRepeat: "no-repeat",
 					zIndex: -1,
 				}}
 			/>
