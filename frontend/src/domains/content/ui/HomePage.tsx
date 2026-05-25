@@ -1,13 +1,8 @@
 import React, { useState, useRef } from "react";
 import {
 	AppstoreOutlined,
-	ThunderboltOutlined,
 	SettingOutlined,
 	LockOutlined,
-	DesktopOutlined,
-	CameraOutlined,
-	ExperimentOutlined,
-	WifiOutlined,
 } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { Button, InputNumber } from "antd";
@@ -228,7 +223,7 @@ export function HowItWorksSection() {
 			(entries) => {
 				entries.forEach((entry) => {
 					const vid = entry.target as HTMLVideoElement;
-					
+
 					if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
 						vid.play().catch(() => {});
 					} else {
@@ -257,7 +252,9 @@ export function HowItWorksSection() {
 	const touchStartX = useRef(0);
 	const touchStartY = useRef(0);
 	const activeIndexRef = useRef(activeIndex);
-	React.useEffect(() => { activeIndexRef.current = activeIndex; }, [activeIndex]);
+	React.useEffect(() => {
+		activeIndexRef.current = activeIndex;
+	}, [activeIndex]);
 
 	const handleTouchStart = (e: React.TouchEvent) => {
 		touchStartX.current = e.touches[0].clientX;
@@ -376,13 +373,13 @@ export function HowItWorksSection() {
 			<div
 				ref={carouselRef}
 				className="carousel"
-					onTouchStart={handleTouchStart}
-					onTouchEnd={handleTouchEnd}
-					onTouchMove={handleTouchMove}
-					onMouseDown={handleMouseDown}
-					onMouseMove={handleMouseMove}
-					onMouseUp={handleMouseUp}
-					onMouseLeave={handleMouseUp}
+				onTouchStart={handleTouchStart}
+				onTouchEnd={handleTouchEnd}
+				onTouchMove={handleTouchMove}
+				onMouseDown={handleMouseDown}
+				onMouseMove={handleMouseMove}
+				onMouseUp={handleMouseUp}
+				onMouseLeave={handleMouseUp}
 				style={{
 					overflowX: "scroll",
 					overflowY: "hidden",
@@ -465,12 +462,11 @@ export function HowItWorksSection() {
 								boxShadow: "0 24px 80px rgba(0,0,0,0.14)",
 								background: LIGHT_BG,
 								aspectRatio: "16 / 9",
-						position: "relative",
+								position: "relative",
 							}}
 						>
 							<video
 								ref={(el) => {
-									
 									videoRefs.current[i] = el;
 								}}
 								src={`/tpvideo/${step.video}`}
@@ -485,7 +481,6 @@ export function HowItWorksSection() {
 									display: "block",
 								}}
 							/>
-							
 						</div>
 					</div>
 				))}
@@ -1017,29 +1012,117 @@ export function PanelGridSection({ onCatalog }: { onCatalog: () => void }) {
 	);
 }
 
+// SVG иконки комнат (стилизованные схемы интерьеров)
+const RoomIcon = ({ type }: { type: string }) => {
+	const colors = { wall: "#E8E4DF", floor: "#B8A89A", accent: "#4CAF50", dark: "#2E7D32", furniture: "#8B7355" };
+	
+	switch(type) {
+		case "living":
+			return (
+				<svg width="100%" height="80" viewBox="0 0 100 80" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+					<rect x="0" y="0" width="100" height="60" fill={colors.wall}/>
+					<rect x="0" y="60" width="100" height="20" fill={colors.floor}/>
+					<rect x="10" y="35" width="35" height="25" rx="2" fill={colors.furniture}/>
+					<rect x="12" y="37" width="15" height="12" rx="1" fill="#fff" opacity="0.3"/>
+					<rect x="55" y="30" width="35" height="30" rx="3" fill={colors.dark}/>
+					<rect x="57" y="32" width="31" height="26" rx="2" fill={colors.accent}/>
+					<circle cx="71" cy="45" r="3" fill="#fff" opacity="0.5"/>
+					<rect x="25" y="48" width="15" height="8" rx="1" fill={colors.dark}/>
+				</svg>
+			);
+		case "bedroom":
+			return (
+				<svg width="100%" height="80" viewBox="0 0 100 80" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+					<rect x="0" y="0" width="100" height="60" fill="#E8D5C4"/>
+					<rect x="0" y="60" width="100" height="20" fill={colors.floor}/>
+					<rect x="15" y="25" width="70" height="35" rx="2" fill="#fff"/>
+					<rect x="17" y="27" width="66" height="25" rx="1" fill={colors.accent} opacity="0.3"/>
+					<rect x="20" y="52" width="30" height="6" rx="1" fill={colors.dark}/>
+					<rect x="55" y="20" width="25" height="30" rx="2" fill={colors.dark} opacity="0.5"/>
+					<rect x="57" y="22" width="21" height="26" rx="1" fill="#fff" opacity="0.2"/>
+				</svg>
+			);
+		case "tv":
+			return (
+				<svg width="100%" height="80" viewBox="0 0 100 80" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+					<rect x="0" y="0" width="100" height="60" fill="#E8E4DF"/>
+					<rect x="0" y="60" width="100" height="20" fill={colors.floor}/>
+					<rect x="20" y="15" width="60" height="35" rx="2" fill={colors.dark}/>
+					<rect x="22" y="17" width="56" height="31" rx="1" fill="#1a1a2e"/>
+					<rect x="40" y="50" width="20" height="10" fill={colors.furniture}/>
+					<rect x="35" y="58" width="30" height="4" rx="1" fill={colors.accent}/>
+				</svg>
+			);
+		case "kids":
+			return (
+				<svg width="100%" height="80" viewBox="0 0 100 80" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+					<rect x="0" y="0" width="100" height="60" fill="#FFE4E1"/>
+					<rect x="0" y="60" width="100" height="20" fill="#DEB887"/>
+					<circle cx="30" cy="40" r="15" fill={colors.accent}/>
+					<circle cx="30" cy="40" r="10" fill="#fff" opacity="0.3"/>
+					<rect x="50" y="25" width="35" height="35" rx="3" fill={colors.dark}/>
+					<rect x="53" y="28" width="29" height="20" rx="1" fill="#fff" opacity="0.2"/>
+					<circle cx="65" cy="35" r="3" fill={colors.accent}/>
+					<rect x="15" y="15" width="10" height="15" rx="2" fill="#FFB6C1"/>
+				</svg>
+			);
+		case "kitchen":
+			return (
+				<svg width="100%" height="80" viewBox="0 0 100 80" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+					<rect x="0" y="0" width="100" height="60" fill="#F5F5DC"/>
+					<rect x="0" y="60" width="100" height="20" fill="#8B4513"/>
+					<rect x="10" y="15" width="80" height="45" rx="2" fill="#fff"/>
+					<rect x="12" y="17" width="76" height="15" rx="1" fill={colors.accent}/>
+					<circle cx="25" cy="24" r="4" fill="#fff" opacity="0.5"/>
+					<circle cx="75" cy="24" r="4" fill="#fff" opacity="0.5"/>
+					<rect x="12" y="35" width="20" height="23" rx="1" fill={colors.accent}/>
+					<rect x="40" y="35" width="20" height="23" rx="1" fill={colors.accent}/>
+					<rect x="68" y="35" width="20" height="23" rx="1" fill={colors.dark}/>
+				</svg>
+			);
+		case "bathroom":
+			return (
+				<svg width="100%" height="80" viewBox="0 0 100 80" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+					<rect x="0" y="0" width="100" height="60" fill="#E6E6FA"/>
+					<rect x="0" y="60" width="100" height="20" fill="#B0C4DE"/>
+					<rect x="15" y="20" width="30" height="40" rx="2" fill="#fff"/>
+					<ellipse cx="30" cy="50" rx="10" ry="8" fill="#87CEEB"/>
+					<rect x="60" y="15" width="25" height="45" rx="2" fill={colors.accent} opacity="0.3"/>
+					<rect x="62" y="17" width="21" height="18" rx="1" fill={colors.accent} opacity="0.5"/>
+					<circle cx="72" cy="26" r="3" fill="#fff"/>
+				</svg>
+			);
+		default:
+			return null;
+	}
+};
+
 const lifeScenarios = [
 	{
-		image: "https://picsum.photos/seed/livingroom/300/200",
+		roomType: "living",
 		label: "Гостиная",
 	},
 	{
-		image: "https://picsum.photos/seed/bedroom/300/200",
+		roomType: "bedroom",
 		label: "Спальня",
 	},
 	{
-		image: "https://picsum.photos/seed/tvroom/300/200",
+		roomType: "tv",
 		label: "Зона ТВ",
 	},
 	{
-		image: "https://picsum.photos/seed/kidsroom/300/200",
+		roomType: "kids",
 		label: "Детская",
 	},
 	{
-		image: "https://picsum.photos/seed/kitchen/300/200",
+		roomType: "kitchen",
 		label: "Кухня",
 	},
+	{
+		roomType: "bathroom",
+		label: "Санузел",
+	},
 ];
-
 
 export function ProjectDetailsSection() {
 	const navigate = useNavigate();
@@ -1309,23 +1392,13 @@ export function ProjectDetailsSection() {
 											background: "#F5F5F5",
 										}}
 									>
-										<img
-											src={s.image}
-											alt={s.label}
-											style={{
-												width: "100%",
-												height: 80,
-												objectFit: "cover",
-												display: "block",
-											}}
-										/>
+										<RoomIcon type={s.roomType} />
 										<span
 											style={{
 												fontFamily: "'SF Pro Display', sans-serif",
 												fontSize: 11,
 												color: DARK,
 												fontWeight: 600,
-												padding: "8px 4px",
 												textAlign: "center",
 											}}
 										>
@@ -1456,7 +1529,9 @@ export function CTABannerSection({ onCatalog }: { onCatalog: () => void }) {
 								lineHeight: 1.6,
 							}}
 						>
-							Присоединяйтесь к новой культуре<br />взаимодействия с пространством
+							Присоединяйтесь к новой культуре
+							<br />
+							взаимодействия с пространством
 						</p>
 						<p
 							style={{
@@ -1468,8 +1543,9 @@ export function CTABannerSection({ onCatalog }: { onCatalog: () => void }) {
 								lineHeight: 1.6,
 							}}
 						>
-							Ремонт перестал быть событием<br />Вам нужно только выбрать
-							настроение.
+							Ремонт перестал быть событием
+							<br />
+							Вам нужно только выбрать настроение.
 						</p>
 					</div>
 					<Button
