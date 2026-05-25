@@ -1,4 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom';
+import type { ReactNode } from 'react';
 import { useAuthStore } from '../../auth/model/authStore';
 
 /**
@@ -12,7 +13,7 @@ import { useAuthStore } from '../../auth/model/authStore';
  * Note: this is UI-layer defense only. The authoritative gate is the backend
  * `get_current_admin_id` dependency on every `/api/admin/*` route.
  */
-export function RequireAdmin({ children }: { children: React.ReactNode }) {
+export function RequireAdmin({ children }: { children: ReactNode }) {
   const isAuth = useAuthStore((s) => s.isAuth);
   const isAdmin = useAuthStore((s) => s.user?.role === 'ADMIN');
   const location = useLocation();

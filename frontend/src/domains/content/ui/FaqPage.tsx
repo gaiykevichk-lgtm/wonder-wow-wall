@@ -1,4 +1,4 @@
-import React from 'react';
+import type { ReactNode, CSSProperties } from 'react';
 import { Collapse, Button } from 'antd';
 import { PageMeta } from '../../../shared/ui/PageMeta';
 import { QuestionCircleOutlined, MailOutlined, PhoneOutlined } from '@ant-design/icons';
@@ -11,7 +11,7 @@ const ACCENT = '#4CAF50';
 const DARK = '#2D2D2D';
 const GRAY_TEXT = '#6B7280';
 const FONT = "'SF Pro Display', sans-serif";
-const MAX_WIDTH: React.CSSProperties = { maxWidth: 1080, margin: '0 auto' };
+const MAX_WIDTH: CSSProperties = { maxWidth: 1080, margin: '0 auto' };
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -40,8 +40,8 @@ const ans = (text: string) => (
 const categories: Array<{
   key: string;
   title: string;
-  icon: React.ReactNode;
-  items: Array<{ key: string; label: string; children: React.ReactNode }>;
+  icon: ReactNode;
+  items: Array<{ key: string; label: string; children: ReactNode }>;
 }> = [
   {
     key: 'order',

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 /**
  * Phase 2 — admin section resolver.
  *
@@ -16,7 +17,7 @@ import {
 } from '../model/useAdminNavigation';
 
 const wrap = (path: string) => ({
-  wrapper: ({ children }: { children: React.ReactNode }) => (
+  wrapper: ({ children }: { children: ReactNode }) => (
     <MemoryRouter initialEntries={[path]}>{children}</MemoryRouter>
   ),
 });

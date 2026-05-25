@@ -1,4 +1,4 @@
-import React from 'react';
+import type { ReactNode, CSSProperties } from 'react';
 import { Button, Tag } from 'antd';
 import { PageMeta } from '../../../shared/ui/PageMeta';
 import { ArrowLeftOutlined, CalendarOutlined, ClockCircleOutlined } from '@ant-design/icons';
@@ -10,14 +10,14 @@ const ACCENT = '#4CAF50';
 const DARK = '#2D2D2D';
 const GRAY_TEXT = '#6B7280';
 const FONT = "'SF Pro Display', sans-serif";
-const MAX_WIDTH: React.CSSProperties = { maxWidth: 720, margin: '0 auto' };
+const MAX_WIDTH: CSSProperties = { maxWidth: 720, margin: '0 auto' };
 
 const formatDate = (dateStr: string) =>
   new Date(dateStr).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 
 const renderContent = (content: string) => {
   const lines = content.split('\n');
-  const elements: React.ReactNode[] = [];
+  const elements: ReactNode[] = [];
   let key = 0;
 
   for (const line of lines) {
