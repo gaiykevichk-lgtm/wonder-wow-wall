@@ -4,7 +4,16 @@ import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react({
+      // Force classic JSX runtime to avoid oxc/rolldown parse edge-cases
+      // with React.FC generic arrow-function component bodies
+      jsxRuntime: 'classic',
+    }),
+  ],
+  // Disable oxc transformer — use esbuild for JSX transpile instead
+  // (oxc parser has a known edge-case with wrapped arrow-return components)
+  oxc: false,
   cacheDir: './node_modules/.vite-cache',
   // opencv.js is shipped as a static asset in `public/opencv.js` and loaded
   // via a `<script>` tag from `opencvLsdAdapter.ts` (not via ESM import).
