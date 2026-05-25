@@ -1019,27 +1019,27 @@ export function PanelGridSection({ onCatalog }: { onCatalog: () => void }) {
 
 const lifeScenarios = [
 	{
-		icon: <DesktopOutlined style={{ fontSize: 28, color: DARK }} />,
+		image: "https://picsum.photos/seed/livingroom/300/200",
 		label: "Гостиная",
 	},
 	{
-		icon: <AppstoreOutlined style={{ fontSize: 28, color: DARK }} />,
+		image: "https://picsum.photos/seed/bedroom/300/200",
 		label: "Спальня",
 	},
 	{
-		icon: <CameraOutlined style={{ fontSize: 28, color: DARK }} />,
+		image: "https://picsum.photos/seed/tvroom/300/200",
 		label: "Зона ТВ",
 	},
 	{
-		icon: <ExperimentOutlined style={{ fontSize: 28, color: DARK }} />,
+		image: "https://picsum.photos/seed/kidsroom/300/200",
 		label: "Детская",
 	},
 	{
-		icon: <ThunderboltOutlined style={{ fontSize: 28, color: DARK }} />,
+		image: "https://picsum.photos/seed/kitchen/300/200",
 		label: "Кухня",
 	},
-	{ icon: <WifiOutlined style={{ fontSize: 28, color: DARK }} />, label: "WC" },
 ];
+
 
 export function ProjectDetailsSection() {
 	const navigate = useNavigate();
