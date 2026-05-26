@@ -592,10 +592,11 @@ export function ServiceBannerSection() {
 							margin: 0,
 							lineHeight: 1.65,
 							maxWidth: 520,
+							whiteSpace: "pre-line",
 						}}
 					>
-						Мы создали будущее, в котором интерьер меняется без традиционного
-						ремонта
+						Мы создали будущее, в котором
+							интерьер меняется без традиционного ремонта
 					</motion.p>
 
 					{/* Apple-style feature cards */}
@@ -641,9 +642,11 @@ export function ServiceBannerSection() {
 									lineHeight: 1.2,
 									marginBottom: 12,
 									letterSpacing: "-0.02em",
+									whiteSpace: "pre-line",
 								}}
 							>
-								Ваш смартфон — Ваш дизайнер
+								Ваш смартфон
+								Ваш дизайнер
 							</div>
 							<div
 								style={{
