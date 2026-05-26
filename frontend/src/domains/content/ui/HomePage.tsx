@@ -1273,27 +1273,27 @@ const RoomIcon = ({ type }: { type: string }) => {
 
 const lifeScenarios = [
 	{
-		roomType: "living",
+		image: "/scenarios/гостинная.jpg",
 		label: "Гостиная",
 	},
 	{
-		roomType: "bedroom",
+		image: "/scenarios/спальня.jpg",
 		label: "Спальня",
 	},
 	{
-		roomType: "tv",
+		image: "/scenarios/зона_тв.jpg",
 		label: "Зона ТВ",
 	},
 	{
-		roomType: "kids",
+		image: "/scenarios/детская.jpg",
 		label: "Детская",
 	},
 	{
-		roomType: "kitchen",
+		image: "/scenarios/кухня.jpg",
 		label: "Кухня",
 	},
 	{
-		roomType: "bathroom",
+		image: "/scenarios/санузел.jpg",
 		label: "Санузел",
 	},
 ];
@@ -1566,7 +1566,16 @@ export function ProjectDetailsSection() {
 											background: "#F5F5F5",
 										}}
 									>
-										<RoomIcon type={s.roomType} />
+										<img
+											src={s.image}
+											alt={s.label}
+											style={{
+												width: "100%",
+												height: 80,
+												objectFit: "cover",
+												display: "block",
+											}}
+										/>
 										<span
 											style={{
 												fontFamily: "'SF Pro Display', sans-serif",
