@@ -756,17 +756,17 @@ const techPoints = [
 	{
 		icon: <SettingOutlined style={{ fontSize: 28, color: DARK }} />,
 		title: "Универсальная платформа монтажа",
-		desc: "Адаптирована для любых поверхностей — бетон, кирпич, дерево, плитка.",
+		desc: "адаптирована для большинства современных поверхностей",
 	},
 	{
 		icon: <LockOutlined style={{ fontSize: 28, color: DARK }} />,
 		title: "Запатентованная система креплений",
-		desc: "Обеспечивает быструю замену без повреждения стены.",
+		desc: "обеспечивает быструю замену панелей",
 	},
 	{
 		icon: <AppstoreOutlined style={{ fontSize: 28, color: DARK }} />,
 		title: "Безграничность фактур",
-		desc: "Формируйте пространство под любой стиль — от минимализма до лофта.",
+		desc: "Дерево. Металл. Текстиль. Кожа. Камень.\nПространство приобретает характер",
 	},
 ];
 
@@ -860,8 +860,10 @@ export function TechSection() {
 									style={{
 										fontFamily: "'SF Pro Display', sans-serif",
 										fontSize: 14,
-										color: GRAY_TEXT,
+										color: point.desc.includes('\n') ? DARK : GRAY_TEXT,
 										lineHeight: 1.6,
+										whiteSpace: point.desc.includes('\n') ? "pre-line" : "normal",
+										fontWeight: point.desc.includes('\n') ? 600 : 400,
 									}}
 								>
 									{point.desc}
