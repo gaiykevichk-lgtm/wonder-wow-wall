@@ -154,7 +154,7 @@ export function HeroSection({ onCatalog }: { onCatalog: () => void }) {
 					>
 						Новый интерьер – в один клик.
 						<br />
-						WONDER WOW WALL – первая платформа трансформации пространства.
+						WONDER WOW WALL – первая платформа<br />трансформации пространства.
 					</motion.p>
 					<motion.div
 						variants={fadeUpVariants}
