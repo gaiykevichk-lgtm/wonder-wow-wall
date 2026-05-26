@@ -212,7 +212,7 @@ const steps = [
 		num: "4",
 		title: "Меняете\nоблик пространства когда годно",
 		desc: "Одна бесплатная замена уже включена в подписку",
-		video: "/videos/Меняете.MP4",
+		video: "Меняете.MP4",
 	},
 ];
 
@@ -472,7 +472,7 @@ export function HowItWorksSection() {
 								ref={(el) => {
 									videoRefs.current[i] = el;
 								}}
-								src={`/tpvideo/${step.video}`}
+								src={`/videos/${step.video}`}
 								muted
 								loop
 								playsInline
