@@ -861,10 +861,9 @@ export function TechSection() {
 									style={{
 										fontFamily: "'SF Pro Display', sans-serif",
 										fontSize: 14,
-										color: point.desc.includes('\n') ? DARK : GRAY_TEXT,
+										color: GRAY_TEXT,
 										lineHeight: 1.6,
 										whiteSpace: point.desc.includes('\n') ? "pre-line" : "normal",
-										fontWeight: point.desc.includes('\n') ? 600 : 400,
 									}}
 								>
 									{point.desc}
