@@ -642,11 +642,10 @@ export function ServiceBannerSection() {
 									lineHeight: 1.2,
 									marginBottom: 12,
 									letterSpacing: "-0.02em",
-									whiteSpace: "pre-line",
 								}}
 							>
-								Ваш смартфон
-								Ваш дизайнер
+								Ваш смартфон<br />
+									Ваш дизайнер
 							</div>
 							<div
 								style={{
