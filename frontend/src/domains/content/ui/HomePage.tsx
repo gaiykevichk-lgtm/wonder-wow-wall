@@ -581,8 +581,9 @@ export function ServiceBannerSection() {
 							whiteSpace: "pre-line",
 						}}
 					>
-						Мы создали будущее, в котором интерьер меняется без традиционного
-						ремонта
+						Мы создали будущее, в котором интерьер{" "}
+						<br />
+						меняется без традиционного ремонта
 					</motion.p>
 
 					{/* Apple-style feature cards */}
