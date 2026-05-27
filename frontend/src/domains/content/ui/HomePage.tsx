@@ -325,20 +325,6 @@ export function HowItWorksSection() {
 					custom={0}
 					style={{ textAlign: "center", paddingTop: 100 }}
 				>
-					<span
-						style={{
-							fontFamily: "'SF Pro Display', sans-serif",
-							fontSize: 12,
-							fontWeight: 600,
-							color: GRAY_TEXT,
-							textTransform: "uppercase",
-							letterSpacing: "3px",
-							display: "block",
-							marginBottom: 12,
-						}}
-					>
-						Платформа трансформации
-					</span>
 					<h2
 						style={{
 							fontFamily: "'SF Pro Display', sans-serif",
@@ -595,8 +581,8 @@ export function ServiceBannerSection() {
 							whiteSpace: "pre-line",
 						}}
 					>
-						Мы создали будущее, в котором
-							интерьер меняется без традиционного ремонта
+						Мы создали будущее, в котором интерьер меняется без традиционного
+						ремонта
 					</motion.p>
 
 					{/* Apple-style feature cards */}
@@ -644,7 +630,8 @@ export function ServiceBannerSection() {
 									letterSpacing: "-0.02em",
 								}}
 							>
-								Ваш смартфон<br />
+								Ваш смартфон
+								<br />
 								Ваш дизайнер
 							</div>
 							<div
@@ -862,7 +849,9 @@ export function TechSection() {
 										fontSize: 14,
 										color: GRAY_TEXT,
 										lineHeight: 1.6,
-										whiteSpace: point.desc.includes('\n') ? "pre-line" : "normal",
+										whiteSpace: point.desc.includes("\n")
+											? "pre-line"
+											: "normal",
 									}}
 								>
 									{point.desc}
