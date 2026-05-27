@@ -98,7 +98,7 @@ export function ShopHeader() {
             }}
           >
             <img
-              src="/logo.png"
+              src="/www_logo.svg"
               alt="Wonder Wow Wall"
               style={{
                 height: 36,
@@ -251,7 +251,7 @@ export function ShopHeader() {
       {/* Mobile Drawer */}
       <Drawer
         title={
-          <img src="/logo.png" alt="Wonder Wow Wall" style={{ height: 44 }} />
+          <img src="/www_logo.svg" alt="Wonder Wow Wall" style={{ height: 44 }} />
         }
         open={mobileOpen}
         onClose={() => setMobileOpen(false)}

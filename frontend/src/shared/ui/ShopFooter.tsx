@@ -17,7 +17,7 @@ export function ShopFooter() {
           {/* Brand */}
           <div>
             <img
-              src="/logo.png"
+              src="/www_logo.svg"
               alt="Wonder Wow Wall"
               style={{ height: 48, marginBottom: 16 }}
             />
