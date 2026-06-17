@@ -13,8 +13,8 @@ const SUPPORTED_FORMATS = new Set([
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
 const MAX_DIMENSION = 2048;
-const MIN_WIDTH = 800;
-const MIN_HEIGHT = 600;
+const MIN_WIDTH = 600;
+const MIN_HEIGHT = 450;
 
 export interface ValidationResult {
   valid: boolean;

@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Typography, message, Spin, Card } from "antd";
+import { Typography, App, Spin, Card } from "antd";
 import { PageMeta } from "../../../shared/ui/PageMeta";
 import { useSubscriptionStore } from "../../subscription/model/subscriptionStore";
 import { useCartStore } from "../../order/model/cartStore";
@@ -19,6 +19,7 @@ export default function SimplePhotoPage() {
 
 	const [photoUrl, setPhotoUrl] = useState<string | null>(null);
 	const [uploading, setUploading] = useState(false);
+	const [uploadError, setUploadError] = useState<string | null>(null);
 	const [selectedDesignId, setSelectedDesignId] = useState<string>("");
 	const [selectedSizeKey, setSelectedSizeKey] = useState<
 		"30x30" | "30x60" | "60x60"
@@ -29,20 +30,27 @@ export default function SimplePhotoPage() {
 	const [aiPreviewUrl, setAiPreviewUrl] = useState<string | null>(null);
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [showAiPreview, setShowAiPreview] = useState(false);
+	const { message } = App.useApp();
 
 	const handleUpload = useCallback(async (file: File) => {
 		setUploading(true);
+		setUploadError(null);
 		try {
 			const result = await processUploadedImage(file);
 			setPhotoUrl(result.dataUrl);
 			setAiPreviewUrl(null);
 			setShowAiPreview(false);
 		} catch (err) {
+			const reason = (err as Error)?.message || String(err) || "Неизвестная ошибка";
 			console.error("Upload failed:", err);
-			message.error("Не удалось загрузить фото");
+			setUploadError(reason);
 		} finally {
 			setUploading(false);
 		}
+	}, []);
+
+	const handleUploadError = useCallback((reason: string) => {
+		setUploadError(reason);
 	}, []);
 
 	const handleDesignSelect = useCallback(async (id: string, name: string) => {
@@ -180,9 +188,30 @@ export default function SimplePhotoPage() {
 					<div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 						{/* Photo Upload or Preview */}
 						<Card title={photoUrl ? "Фото стены" : "Загрузите фото"}>
-							{!photoUrl ? (
-								<PhotoUploader onUpload={handleUpload} loading={uploading} />
-							) : (
+						{!photoUrl ? (
+							<div>
+								<PhotoUploader
+									onUpload={handleUpload}
+									onError={handleUploadError}
+									loading={uploading}
+								/>
+								{uploadError && (
+									<div
+										style={{
+											marginTop: 16,
+											padding: "12px 16px",
+											background: "#fff2f0",
+											border: "1px solid #ffccc7",
+											borderRadius: 8,
+											color: "#cf1322",
+											fontSize: 14,
+										}}
+									>
+										{uploadError}
+									</div>
+								)}
+							</div>
+						) : (
 								<div style={{ position: "relative" }}>
 									<img
 										src={

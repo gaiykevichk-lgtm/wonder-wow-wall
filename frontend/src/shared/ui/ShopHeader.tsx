@@ -268,7 +268,7 @@ export function ShopHeader() {
 				open={mobileOpen}
 				onClose={() => setMobileOpen(false)}
 				placement="right"
-				width={300}
+				styles={{ wrapper: { width: 300 } }}
 				closeIcon={<CloseOutlined />}
 			>
 				<nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>

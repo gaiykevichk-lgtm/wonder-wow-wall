@@ -25,7 +25,7 @@ export default defineConfig({
 	},
 	server: {
 		host: "0.0.0.0",
-		port: 5175,
+		port: 5176,
 		hmr: {
 			host: "5175-16615aee-c402-4f55-94a9-4dff1837aa41.preview.promto.ai",
 			clientPort: 443,
@@ -33,11 +33,11 @@ export default defineConfig({
 		},
 		proxy: {
 			"/api": {
-				target: "http://localhost:8001",
+				target: "http://localhost:8081",
 				changeOrigin: true,
 			},
 			"/uploads": {
-				target: "http://localhost:8001",
+				target: "http://localhost:8081",
 				changeOrigin: true,
 			},
 		},
