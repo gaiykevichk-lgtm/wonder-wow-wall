@@ -58,7 +58,7 @@ async def generate_wall_preview(
             f"Professional interior photography, natural lighting, high quality."
         )
     
-    # Call Promto AI gateway
+    # Call Promto AI gateway with base64 response format
     async with httpx.AsyncClient(timeout=60.0) as client:
         response = await client.post(
             "https://api.promto.ai/v1/images/generations",
@@ -70,6 +70,7 @@ async def generate_wall_preview(
                 "model": "google/gemini-2.5-flash-image",
                 "prompt": prompt,
                 "size": "1024x1024",
+                "response_format": "b64_json",
             },
         )
     
@@ -81,18 +82,18 @@ async def generate_wall_preview(
     
     result = response.json()
     
-    # Extract image from response
+    # Debug: log the response structure
+    print(f"AI API response keys: {result.keys()}")
+    if "data" in result and len(result["data"]) > 0:
+        print(f"First data item keys: {result['data'][0].keys()}")
+    
+    # Extract image from response - prefer b64_json for base64 response
     if "data" in result and len(result["data"]) > 0:
         image_data = result["data"][0]
         if "b64_json" in image_data:
             return f"data:image/png;base64,{image_data['b64_json']}", prompt
-        elif "url" in image_data:
-            # If URL returned, fetch and convert to base64
-            image_response = await client.get(image_data["url"])
-            image_b64 = base64.b64encode(image_response.content).decode()
-            return f"data:image/png;base64,{image_b64}", prompt
     
-    raise HTTPException(status_code=500, detail="No image in AI response")
+    raise HTTPException(status_code=500, detail=f"No image in AI response: {result}")
 
 
 @router.post(
