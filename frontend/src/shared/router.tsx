@@ -19,7 +19,7 @@ const PricingPage = lazy(() => import('../domains/subscription/ui/PricingPage'))
 const ConstructorPage = lazy(() => import('../domains/constructor/ui/ConstructorPage'));
 
 // ─── Domain: Visualizer ─────────────────────────────────────────────────────
-const PhotoEditorPage = lazy(() => import('../domains/visualizer/ui/PhotoEditorPage'));
+const PhotoEditorPage = lazy(() => import('../domains/visualizer/ui/SimplePhotoPage'));
 
 // ─── Domain: Content ────────────────────────────────────────────────────────
 const HomePage = lazy(() => import('../domains/content/ui/HomePage'));
