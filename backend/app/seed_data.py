@@ -27,11 +27,11 @@ _F60S = "/uploads/forms/60x60"
 SEED_DESIGNS = [
     # ── 30×30 см (14 форм) ────────────────────────────────────────────
     Design(
-        id="flat-s-01", name="Плоская", slug="flat-s",
+        id="herringbone-01", name="Ёлочка", slug="herringbone-01",
         category_id="cat-30x30",
-        image=f"{_F30}/flat-s-01-front.png",
-        preview_image=f"{_F30}/flat-s-01-front.png",
-        description="Гладкая плоская панель — чистый холст для любой текстуры. Универсальная база для минималистичных интерьеров.",
+        image=f"{_F30}/herringbone-01-front.png",
+        preview_image=f"{_F30}/herringbone-01-front.png",
+        description="Классическая ёлочка — строгий геометрический узор, который подходит для любого интерьера.",
         price=1200, rating=4.8, reviews_count=64, is_popular=True,
     ),
     Design(
@@ -99,11 +99,11 @@ SEED_DESIGNS = [
         price=1200, rating=4.7, reviews_count=52,
     ),
     Design(
-        id="wav-s-10", name="Волна", slug="wav-s",
+        id="herringbone-frame-01", name="Рамочная", slug="herringbone-frame-01",
         category_id="cat-30x30",
-        image=f"{_F30}/wav-s-10-front.png",
-        preview_image=f"{_F30}/wav-s-10-front.png",
-        description="Классическая волна — мягкие переливы поверхности, которые оживают в лучах бокового света.",
+        image=f"{_F30}/herringbone-frame-01-front.png",
+        preview_image=f"{_F30}/herringbone-frame-01-front.png",
+        description="Рамочная панель — аккуратный геометрический рисунок для стильного интерьера.",
         price=1200, rating=4.9, reviews_count=87, is_popular=True, is_new=True,
     ),
     Design(
