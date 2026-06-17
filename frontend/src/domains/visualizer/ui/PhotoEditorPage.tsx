@@ -81,32 +81,13 @@ export default function PhotoEditorPage() {
 	const [showAiPreview, setShowAiPreview] = useState(false);
 	const canvasContainerRef = useRef<HTMLDivElement>(null);
 
-	// Generate AI preview when design is selected
+	// Handle design selection (stores selection, AI preview is manual via button)
 	const handleDesignSelect = useCallback(
-		async (id: string, name: string, image: string) => {
+		(id: string, name: string, image: string) => {
 			store.setSelectedDesign(id, name, image);
 			const product = products.find((p) => p.id === id);
 			if (product?.colors[0]) {
 				store.setSelectedColor(product.colors[0].hex, product.colors[0].name);
-			}
-
-			// Generate AI preview if we have a photo loaded
-			if (store.scene?.photo.url) {
-				setGeneratingPreview(true);
-				try {
-					const result = await apiGenerateAiPreview({
-						photoUrl: store.scene.photo.url,
-						designName: name,
-						designColor: store.selectedColor,
-					});
-					setAiPreviewUrl(result.previewUrl);
-					message.success("Превью сгенерировано!");
-				} catch (err) {
-					console.error("AI preview generation failed:", err);
-					message.warning("Не удалось сгенерировать превью. Попробуйте позже.");
-				} finally {
-					setGeneratingPreview(false);
-				}
 			}
 		},
 		[store, products],
@@ -1012,10 +993,11 @@ export default function PhotoEditorPage() {
 							/>
 						)}
 
-						{/* Toolbar buttons */}
-						<div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-							{/* AI Preview controls */}
-							{generatingPreview ? (
+					{/* Toolbar buttons */}
+					<div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+						{/* AI Preview button — always visible when design is selected */}
+						{store.selectedDesignId ? (
+							generatingPreview ? (
 								<div
 									style={{
 										display: "flex",
@@ -1029,25 +1011,58 @@ export default function PhotoEditorPage() {
 									}}
 								>
 									<Spin size="small" />
-									Генерация превью...
+									Генерация...
 								</div>
-							) : aiPreviewUrl ? (
+							) : (
 								<button
-									onClick={() => setShowAiPreview(!showAiPreview)}
+									onClick={async () => {
+										// Toggle AI preview if already generated
+										if (aiPreviewUrl) {
+											setShowAiPreview(!showAiPreview);
+											return;
+										}
+										// Need photo to generate
+										if (!store.scene?.photo.url) {
+											message.warning("Сначала загрузите фото стены");
+											return;
+										}
+										setGeneratingPreview(true);
+										try {
+											const result = await apiGenerateAiPreview({
+												photoUrl: store.scene.photo.url,
+												designName: store.selectedDesignName || store.selectedDesignId,
+												designColor: store.selectedColor,
+											});
+											setAiPreviewUrl(result.previewUrl);
+											setShowAiPreview(true);
+											message.success("AI превью готово!");
+										} catch (err) {
+											console.error("AI preview failed:", err);
+											message.error("Не удалось сгенерировать превью. Попробуйте позже.");
+										} finally {
+											setGeneratingPreview(false);
+										}
+									}}
 									style={{
 										padding: "6px 16px",
 										borderRadius: 8,
 										border: `1px solid ${showAiPreview ? "#4CAF50" : "rgba(0,0,0,0.04)"}`,
 										background: showAiPreview ? "rgba(76,175,80,0.08)" : "#FFF",
 										color: showAiPreview ? "#4CAF50" : "#6B7280",
-										cursor: "pointer",
+										cursor: store.scene?.photo.url ? "pointer" : "not-allowed",
 										fontSize: 13,
 										fontWeight: 500,
+										opacity: store.scene?.photo.url ? 1 : 0.5,
 									}}
 								>
-									{showAiPreview ? "Показать оригинал" : "AI Превью"}
+									{aiPreviewUrl
+										? showAiPreview
+											? "Показать оригинал"
+											: "AI Превью"
+										: "✨ AI Превью"}
 								</button>
-							) : null}
+							)
+						) : null}
 							<button
 								data-testid="mask-toolbar-trigger"
 								onClick={() => setEditingMask(!editingMask)}

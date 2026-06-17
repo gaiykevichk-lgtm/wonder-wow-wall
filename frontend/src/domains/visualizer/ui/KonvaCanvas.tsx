@@ -171,9 +171,9 @@ export function KonvaCanvas({
 				setAiPreviewImage(img);
 			}
 		};
-		img.addEventListener('load', handleLoad);
+		img.addEventListener("load", handleLoad);
 		img.src = url;
-		return () => img.removeEventListener('load', handleLoad);
+		return () => img.removeEventListener("load", handleLoad);
 	}, [aiPreviewUrl]);
 
 	// ─── Load design images for panels ──────────────────────────────────
