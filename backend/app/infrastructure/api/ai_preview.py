@@ -1,4 +1,4 @@
-"""AI Preview generation using Nano Banana Flash via OpenRouter-compatible chat/completions API."""
+"""AI Preview generation using Nano Banana Flash via OpenRouter /v1/chat/completions multimodal API."""
 
 import base64
 import io
@@ -32,9 +32,6 @@ class GeneratePreviewResponse(BaseModel):
 
 PROMTO_API_KEY = os.environ.get("PROMTO_API_KEY", "")
 
-IMAGE_API_URL = "https://api.promto.ai/v1/chat/completions"
-IMAGE_MODEL = "google/gemini-2.5-flash-image"
-
 
 def _decode_data_url(data_url: str) -> tuple[str, bytes]:
     """Split a data URL into (mime_type, decoded bytes)."""
@@ -48,11 +45,11 @@ def _decode_data_url(data_url: str) -> tuple[str, bytes]:
 
 def _compress_image_bytes(
     image_bytes: bytes,
-    max_dimension: int = 1024,
-    quality: int = 85,
+    max_dimension: int = 512,
+    quality: int = 80,
     force_rgb: bool = True,
 ) -> bytes:
-    """Resize and re-encode an image to a smaller JPEG for token efficiency."""
+    """Resize and re-encode an image to a smaller JPEG."""
     img = Image.open(io.BytesIO(image_bytes))
     if force_rgb and img.mode in ("RGBA", "P"):
         img = img.convert("RGB")
@@ -73,8 +70,8 @@ def _data_url_from_bytes(image_bytes: bytes, mime: str = "image/jpeg") -> str:
     return f"data:{mime};base64,{b64}"
 
 
-async def image_to_data_url(url: str, max_dimension: int = 512, quality: int = 85) -> str:
-    """Convert an image URL or base64 data URL into a small JPEG data URL."""
+async def image_to_data_url(url: str, max_dimension: int = 512, quality: int = 80) -> str:
+    """Convert an image URL or base64 data URL into a JPEG data URL."""
     raw_bytes: bytes | None = None
 
     if url.startswith("data:image/"):
@@ -110,11 +107,11 @@ async def generate_wall_preview(
     design_image_url: str | None = None,
     custom_prompt: str | None = None,
 ) -> tuple[str, str]:
-    """Generate a wall preview using Nano Banana Flash via OpenRouter chat/completions API.
+    """Generate a wall preview using Nano Banana Flash via /v1/chat/completions.
 
-    Uses the /v1/chat/completions endpoint with multimodal content array,
-    sending both the wall photo and the panel design texture as vision input.
-    Returns (preview_b64_data_url, prompt_used).
+    Uses the multimodal content array: [photo, design_texture, text_prompt].
+    The key is NOT saying "apply/edit to photo" — instead describe the GENERATED scene
+    and use the photo as style reference.
     """
     if not PROMTO_API_KEY:
         raise HTTPException(
@@ -131,37 +128,41 @@ async def generate_wall_preview(
     # Prepare design image if provided
     design_data_url = None
     if design_image_url:
-        design_data_url = await image_to_data_url(design_image_url, max_dimension=384, quality=80)
+        design_data_url = await image_to_data_url(design_image_url, max_dimension=512, quality=85)
 
-    # Build prompt
-    if custom_prompt:
-        prompt_text = custom_prompt
-    else:
-        prompt_text = (
-            f"Render a visualization showing this interior wall decorated with "
-            f"3D {design_name} wall panels matching the texture pattern shown in the second image. "
-            f"The panels should be the color {design_color}. "
-            f"Keep the same room, perspective, lighting and composition. "
-            f"Photorealistic interior design visualization."
-        )
-
-    # Build content array: images first (per OpenRouter recommendation), then text prompt
+    # Build content array: images first, then text
+    # CRITICAL: do NOT say "apply/edit to this photo" — model refuses.
+    # Instead use the photo as style reference and describe the GENERATED scene.
     content: list[dict] = []
     content.append({"type": "image_url", "image_url": {"url": photo_data_url}})
     if design_data_url:
         content.append({"type": "image_url", "image_url": {"url": design_data_url}})
-    content.append({"type": "text", "text": prompt_text})
 
-    # Call OpenRouter-compatible chat/completions endpoint
+    if custom_prompt:
+        content.append({"type": "text", "text": custom_prompt})
+    else:
+        content.append({
+            "type": "text",
+            "text": (
+                f"Generate a photorealistic image of an interior room. "
+                f"Use the room style, perspective and lighting from the first reference image. "
+                f"The room should have one accent wall covered in "
+                f"{design_name} herringbone 3D wall panels. "
+                f"Panel color: {design_color}. "
+                f"Professional interior design visualization, high quality."
+            ),
+        })
+
+    # Use /v1/chat/completions with modalities for image output
     async with httpx.AsyncClient(timeout=120.0) as client:
         response = await client.post(
-            IMAGE_API_URL,
+            "https://api.promto.ai/v1/chat/completions",
             headers={
                 "Authorization": f"Bearer {PROMTO_API_KEY}",
                 "Content-Type": "application/json",
             },
             json={
-                "model": IMAGE_MODEL,
+                "model": "google/gemini-2.5-flash-image",
                 "messages": [{"role": "user", "content": content}],
                 "modalities": ["image", "text"],
             },
@@ -172,41 +173,47 @@ async def generate_wall_preview(
 
     result = response.json()
 
-    # Extract image from the response
-    # OpenRouter returns images in result['choices'][0]['message']['images']
+    # Extract image from chat/completions response
     choices = result.get("choices", [])
     if not choices:
         raise HTTPException(status_code=500, detail=f"No choices in AI response: {result}")
 
     message = choices[0].get("message", {})
-    images = message.get("images", [])
 
+    # Try result['choices'][0]['message']['images'] (OpenRouter format)
+    images = message.get("images", [])
     if images and len(images) > 0:
         img_data = images[0].get("image_url", {})
         url_or_b64 = img_data.get("url", "")
         if url_or_b64.startswith("data:"):
-            return url_or_b64, prompt_text
+            return url_or_b64, content[-1]["text"]
         elif "," in url_or_b64:
-            # base64 without data: prefix
-            return f"data:image/png;base64,{url_or_b64.split(',', 1)[1]}", prompt_text
+            return f"data:image/png;base64,{url_or_b64.split(',', 1)[1]}", content[-1]["text"]
         else:
-            # External URL
-            return url_or_b64, prompt_text
+            return url_or_b64, content[-1]["text"]
 
-    # Fallback: check content array for inline image
-    content_response = message.get("content")
-    if isinstance(content_response, list):
-        for item in content_response:
+    # Try content array with image type
+    content_resp = message.get("content")
+    if isinstance(content_resp, list):
+        for item in content_resp:
             if item.get("type") == "image":
                 img_data = item.get("image", {})
                 b64 = img_data.get("base64", "") if isinstance(img_data, dict) else ""
                 if b64:
-                    return f"data:image/png;base64,{b64}", prompt_text
+                    return f"data:image/png;base64,{b64}", content[-1]["text"]
 
-    # Check refusal
+    # Check for refusal
     refusal = message.get("refusal") or choices[0].get("refusal")
     if refusal:
         raise HTTPException(status_code=400, detail=f"AI refused: {refusal}")
+
+    # Check if model returned text instead of image
+    text_response = message.get("content") or choices[0].get("message", {}).get("content", "")
+    if text_response:
+        raise HTTPException(
+            status_code=400,
+            detail=f"AI returned text instead of image (safety or prompt issue): {str(text_response)[:200]}",
+        )
 
     raise HTTPException(status_code=500, detail=f"No image in AI response: {result}")
 
@@ -219,8 +226,9 @@ async def generate_wall_preview(
 async def generate_preview(body: GeneratePreviewRequest):
     """Generate a realistic preview of a wall with the selected panel design.
 
-    Uses Nano Banana Flash (gemini-2.5-flash-image) via OpenRouter-compatible API
-    with multimodal input: wall photo + panel design texture + text prompt.
+    Uses Nano Banana Flash via /v1/chat/completions with multimodal input
+    (wall photo + panel design texture + text prompt).
+    Both images are used as visual context for generating the result.
     """
     preview_url, prompt = await generate_wall_preview(
         photo_b64=body.photo_url,
