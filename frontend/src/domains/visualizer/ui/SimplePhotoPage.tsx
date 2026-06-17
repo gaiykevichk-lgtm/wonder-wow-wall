@@ -20,7 +20,9 @@ export default function SimplePhotoPage() {
 	const [photoUrl, setPhotoUrl] = useState<string | null>(null);
 	const [uploading, setUploading] = useState(false);
 	const [selectedDesignId, setSelectedDesignId] = useState<string>("");
-	const [selectedSizeKey, setSelectedSizeKey] = useState<"30x30" | "30x60" | "60x60">("30x30");
+	const [selectedSizeKey, setSelectedSizeKey] = useState<
+		"30x30" | "30x60" | "60x60"
+	>("30x30");
 	const [selectedColor, setSelectedColor] = useState<string>("#FFFFFF");
 	const [selectedDesignName, setSelectedDesignName] = useState<string>("");
 	const [selectedDesignImage, setSelectedDesignImage] = useState<string>("");
@@ -76,6 +78,7 @@ export default function SimplePhotoPage() {
 				photoUrl,
 				designName: selectedDesignName || selectedDesignId,
 				designColor: selectedColor,
+				designImageUrl: selectedDesignImage,
 			});
 			setAiPreviewUrl(result.previewUrl);
 			setShowAiPreview(true);
@@ -107,7 +110,15 @@ export default function SimplePhotoPage() {
 		});
 		setCartOpen(true);
 		message.success("Добавлено в корзину!");
-	}, [selectedDesignId, selectedDesignName, selectedDesignImage, selectedColor, selectedSizeKey, addCartItem, setCartOpen]);
+	}, [
+		selectedDesignId,
+		selectedDesignName,
+		selectedDesignImage,
+		selectedColor,
+		selectedSizeKey,
+		addCartItem,
+		setCartOpen,
+	]);
 
 	// Calculate cost
 	const overlayPrice = 1200;
@@ -117,7 +128,9 @@ export default function SimplePhotoPage() {
 		"60x60": 2500,
 	};
 	const basePrice = panelPrices[selectedSizeKey];
-	const totalPrice = hasSubscription() ? overlayPrice : overlayPrice + basePrice;
+	const totalPrice = hasSubscription()
+		? overlayPrice
+		: overlayPrice + basePrice;
 	const discount = hasSubscription() ? basePrice : 0;
 
 	return (
@@ -128,7 +141,10 @@ export default function SimplePhotoPage() {
 				padding: "24px",
 			}}
 		>
-			<PageMeta title="Визуализатор" description="Визуализируйте 3D панели на фото вашей стены" />
+			<PageMeta
+				title="Визуализатор"
+				description="Визуализируйте 3D панели на фото вашей стены"
+			/>
 
 			<div style={{ maxWidth: 1200, margin: "0 auto" }}>
 				<Title level={2} style={{ marginBottom: 24, textAlign: "center" }}>
@@ -151,7 +167,9 @@ export default function SimplePhotoPage() {
 							) : (
 								<div style={{ position: "relative" }}>
 									<img
-										src={showAiPreview && aiPreviewUrl ? aiPreviewUrl : photoUrl}
+										src={
+											showAiPreview && aiPreviewUrl ? aiPreviewUrl : photoUrl
+										}
 										alt={showAiPreview ? "AI Preview" : "Original"}
 										style={{
 											width: "100%",
@@ -226,7 +244,14 @@ export default function SimplePhotoPage() {
 									✨ Сгенерировать AI превью
 								</button>
 								{!isAuth && (
-									<div style={{ marginTop: 8, textAlign: "center", color: "#999", fontSize: 12 }}>
+									<div
+										style={{
+											marginTop: 8,
+											textAlign: "center",
+											color: "#999",
+											fontSize: 12,
+										}}
+									>
 										Войдите, чтобы сохранить проект
 									</div>
 								)}
@@ -250,18 +275,29 @@ export default function SimplePhotoPage() {
 
 						{/* Cost & Add to Cart */}
 						<Card title="Стоимость">
-							<div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-								<div style={{ display: "flex", justifyContent: "space-between" }}>
+							<div
+								style={{ display: "flex", flexDirection: "column", gap: 10 }}
+							>
+								<div
+									style={{ display: "flex", justifyContent: "space-between" }}
+								>
 									<Text>Накладка с дизайном</Text>
 									<Text strong>{overlayPrice} ₽</Text>
 								</div>
-								<div style={{ display: "flex", justifyContent: "space-between" }}>
+								<div
+									style={{ display: "flex", justifyContent: "space-between" }}
+								>
 									<Text>Базовая панель ({selectedSizeKey})</Text>
 									<Text strong>{basePrice} ₽</Text>
 								</div>
 								{hasSubscription() && (
 									<div style={{ color: "#4CAF50" }}>
-										<div style={{ display: "flex", justifyContent: "space-between" }}>
+										<div
+											style={{
+												display: "flex",
+												justifyContent: "space-between",
+											}}
+										>
 											<Text>Скидка по подписке</Text>
 											<Text strong>-{discount} ₽</Text>
 										</div>
@@ -275,7 +311,9 @@ export default function SimplePhotoPage() {
 										justifyContent: "space-between",
 									}}
 								>
-									<Text strong style={{ fontSize: 16 }}>Итого</Text>
+									<Text strong style={{ fontSize: 16 }}>
+										Итого
+									</Text>
 									<Text strong style={{ fontSize: 16, color: "#4CAF50" }}>
 										{totalPrice} ₽
 									</Text>

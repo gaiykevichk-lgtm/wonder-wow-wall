@@ -434,6 +434,7 @@ export interface AiPreviewRequest {
 	photoUrl: string;
 	designName: string;
 	designColor: string;
+	designImageUrl?: string;
 	prompt?: string;
 }
 
