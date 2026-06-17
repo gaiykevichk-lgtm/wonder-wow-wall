@@ -1024,7 +1024,7 @@ export default function AdminTexturesPage() {
             ? 'Новая текстура'
             : 'Редактировать текстуру'
         }
-        width={480}
+        styles={{ wrapper: { width: 480 } }}
         open={textureDrawer}
         onClose={closeTextureDrawer}
         destroyOnHidden
@@ -1167,7 +1167,7 @@ export default function AdminTexturesPage() {
         title={
           editingColorId === null ? 'Новый цвет' : 'Редактировать цвет'
         }
-        width={480}
+        styles={{ wrapper: { width: 480 } }}
         open={colorDrawer}
         onClose={closeColorDrawer}
         destroyOnHidden

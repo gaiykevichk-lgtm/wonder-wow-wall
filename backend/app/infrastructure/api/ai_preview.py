@@ -129,12 +129,19 @@ async def generate_wall_preview(
     design_data_url = None
     if design_image_url:
         design_data_url = await image_to_data_url(design_image_url, max_dimension=256, quality=75)
+        print(f"[DEBUG] Design image URL: {design_image_url}")
+        print(f"[DEBUG] Design data URL length: {len(design_data_url)}")
+    else:
+        print("[DEBUG] No design image URL provided")
 
     # Build content array: photo first (aspect ratio + style reference), design second
     content: list[dict] = []
     content.append({"type": "image_url", "image_url": {"url": photo_data_url}})
     if design_data_url:
         content.append({"type": "image_url", "image_url": {"url": design_data_url}})
+    print(f"[DEBUG] Content items count: {len(content)}")
+    for i, item in enumerate(content):
+        print(f"[DEBUG] Content[{i}]: type={item.get('type')}, url_len={len(item.get('image_url',{}).get('url',''))}")
 
     if custom_prompt:
         content.append({"type": "text", "text": custom_prompt})
@@ -142,10 +149,11 @@ async def generate_wall_preview(
         content.append({
             "type": "text",
             "text": (
-                f"Render an architectural visualization showing this room decorated "
-                f"with 3D {design_name} wall panels matching the texture pattern shown. "
+                f"Look at the second reference image carefully. "
+                f"It shows a white 3D wall panel with a specific relief pattern. "
+                f"Apply EXACTLY this panel design to one wall in the room shown in the first reference image. "
+                f"Match the panel relief structure, depth and color exactly as shown. "
                 f"Keep the same room, perspective, lighting and composition. "
-                f"Panel color: {design_color}. "
                 f"Photorealistic interior design visualization."
             ),
         })

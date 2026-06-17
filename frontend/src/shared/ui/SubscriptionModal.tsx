@@ -447,7 +447,7 @@ export function SubscriptionModal() {
 			title={titles[modalStep] || ""}
 			width={520}
 			centered
-			destroyOnClose
+			destroyOnHidden
 			styles={{ body: { padding: "12px 4px" } }}
 		>
 			<AnimatePresence mode="wait">

@@ -1202,7 +1202,7 @@ export default function PhotoEditorPage() {
 				footer={null}
 				width={900}
 				centered
-				destroyOnClose
+				destroyOnHidden
 				style={{ borderRadius: 16, overflow: "hidden" }}
 				bodyStyle={{ padding: 0, overflow: "hidden" }}
 			>

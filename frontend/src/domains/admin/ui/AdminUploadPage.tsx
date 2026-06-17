@@ -541,7 +541,7 @@ export default function AdminUploadPage() {
 
       <Drawer
         title={editingId === null ? 'Новая панель' : 'Редактировать панель'}
-        width={520}
+        styles={{ wrapper: { width: 520 } }}
         open={drawerOpen}
         onClose={closeDrawer}
         destroyOnHidden

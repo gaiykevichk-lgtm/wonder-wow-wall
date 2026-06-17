@@ -804,7 +804,7 @@ export default function AdminCatalogPage() {
       {/* ─── Category drawer ─────────────────────────────────────── */}
       <Drawer
         title={editingId === null ? 'Новая категория' : 'Редактировать категорию'}
-        width={480}
+        styles={{ wrapper: { width: 480 } }}
         open={drawerKind === 'category'}
         onClose={closeDrawer}
         destroyOnHidden
@@ -884,7 +884,7 @@ export default function AdminCatalogPage() {
       {/* ─── Design drawer ───────────────────────────────────────── */}
       <Drawer
         title={editingId === null ? 'Новый дизайн' : 'Редактировать дизайн'}
-        width={560}
+        styles={{ wrapper: { width: 560 } }}
         open={drawerKind === 'design'}
         onClose={closeDrawer}
         destroyOnHidden

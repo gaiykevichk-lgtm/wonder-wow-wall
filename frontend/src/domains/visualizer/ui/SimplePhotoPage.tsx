@@ -45,14 +45,23 @@ export default function SimplePhotoPage() {
 		}
 	}, []);
 
-	const handleDesignSelect = useCallback(
-		(id: string, name: string, image: string) => {
-			setSelectedDesignId(id);
-			setSelectedDesignName(name);
-			setSelectedDesignImage(image);
-		},
-		[],
-	);
+	const handleDesignSelect = useCallback(async (id: string, name: string) => {
+		setSelectedDesignId(id);
+		setSelectedDesignName(name);
+		// Fetch design from API to get the authoritative image URL from DB
+		try {
+			const res = await fetch(`/api/designs/${id}`);
+			if (res.ok) {
+				const design = await res.json();
+				setSelectedDesignImage(design.image || "");
+				console.log("[DEBUG] Design image from API:", design.image);
+			} else {
+				console.warn("[DEBUG] Failed to fetch design:", res.status);
+			}
+		} catch (e) {
+			console.error("[DEBUG] Design fetch error:", e);
+		}
+	}, []);
 
 	const handleColorSelect = useCallback((color: string) => {
 		setSelectedColor(color);
@@ -74,6 +83,15 @@ export default function SimplePhotoPage() {
 
 		setIsGenerating(true);
 		try {
+			// DEBUG: log what we're sending
+			console.log("[DEBUG] AI preview request:", {
+				photoUrl: photoUrl ? photoUrl.substring(0, 80) + "..." : null,
+				designName: selectedDesignName || selectedDesignId,
+				designColor: selectedColor,
+				designImageUrl: selectedDesignImage
+					? selectedDesignImage.substring(0, 80) + "..."
+					: null,
+			});
 			const result = await apiGenerateAiPreview({
 				photoUrl,
 				designName: selectedDesignName || selectedDesignId,

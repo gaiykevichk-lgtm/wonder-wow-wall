@@ -604,8 +604,8 @@ function RecommendationEditorDrawer({
       }
       open={open}
       onClose={onClose}
-      width={520}
-      destroyOnClose
+      styles={{ wrapper: { width: 520 } }}
+      destroyOnHidden
       extra={
         <Space>
           {isExisting && (

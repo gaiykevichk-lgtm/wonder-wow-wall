@@ -150,7 +150,7 @@ export default function ProfileSection() {
         open={addressModal}
         onCancel={() => setAddressModal(false)}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={addrForm} layout="vertical" onFinish={handleAddAddress}>
           <Form.Item name="label" label="Название" rules={[{ required: true }]} initialValue="Дом">
