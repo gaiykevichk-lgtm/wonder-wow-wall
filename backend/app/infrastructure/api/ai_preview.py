@@ -122,17 +122,15 @@ async def generate_wall_preview(
     if not photo_b64.startswith("data:image/"):
         raise HTTPException(status_code=422, detail="photo_url must be a base64 data URL")
     _, photo_bytes = _decode_data_url(photo_b64)
-    compressed_photo = _compress_image_bytes(photo_bytes, max_dimension=512, quality=80)
+    compressed_photo = _compress_image_bytes(photo_bytes, max_dimension=256, quality=75)
     photo_data_url = _data_url_from_bytes(compressed_photo, "image/jpeg")
 
     # Prepare design image if provided
     design_data_url = None
     if design_image_url:
-        design_data_url = await image_to_data_url(design_image_url, max_dimension=512, quality=85)
+        design_data_url = await image_to_data_url(design_image_url, max_dimension=256, quality=75)
 
-    # Build content array: images first, then text
-    # CRITICAL: do NOT say "apply/edit to this photo" — model refuses.
-    # Instead use the photo as style reference and describe the GENERATED scene.
+    # Build content array: photo first (aspect ratio + style reference), design second
     content: list[dict] = []
     content.append({"type": "image_url", "image_url": {"url": photo_data_url}})
     if design_data_url:
@@ -144,12 +142,11 @@ async def generate_wall_preview(
         content.append({
             "type": "text",
             "text": (
-                f"Generate a photorealistic image of an interior room. "
-                f"Use the room style, perspective and lighting from the first reference image. "
-                f"The room should have one accent wall covered in "
-                f"{design_name} herringbone 3D wall panels. "
+                f"Render an architectural visualization showing this room decorated "
+                f"with 3D {design_name} wall panels matching the texture pattern shown. "
+                f"Keep the same room, perspective, lighting and composition. "
                 f"Panel color: {design_color}. "
-                f"Professional interior design visualization, high quality."
+                f"Photorealistic interior design visualization."
             ),
         })
 
