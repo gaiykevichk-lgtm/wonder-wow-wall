@@ -5,7 +5,7 @@ import { useSubscriptionStore } from "../../subscription/model/subscriptionStore
 import { useCartStore } from "../../order/model/cartStore";
 import { useAuthStore } from "../../auth/model/authStore";
 import { apiGenerateAiPreview } from "../lib/visualizerApi";
-import { processUploadedImage } from "../lib/imageProcessing";
+import { processUploadedImage, urlToDataUrl } from "../lib/imageProcessing";
 import { PanelPicker } from "./PanelPicker";
 import { PhotoUploader } from "./PhotoUploader";
 
@@ -90,7 +90,7 @@ export default function SimplePhotoPage() {
 			return;
 		}
 
-		// Ensure design image URL is loaded before generating
+		// Ensure design image URL is loaded and converted to base64 before generating
 		let designImageUrl = selectedDesignImage;
 		if (!designImageUrl) {
 			console.log("[DEBUG] Design image missing, fetching from API...");
@@ -104,6 +104,17 @@ export default function SimplePhotoPage() {
 				}
 			} catch (e) {
 				console.error("[DEBUG] Failed to fetch design image:", e);
+			}
+		}
+
+		// Convert design image path to base64 data URL (same format as photo)
+		if (designImageUrl && !designImageUrl.startsWith("data:")) {
+			console.log("[DEBUG] Converting design image to base64...");
+			try {
+				designImageUrl = await urlToDataUrl(designImageUrl, 256, 0.75);
+				console.log("[DEBUG] Design image converted to base64, length:", designImageUrl.length);
+			} catch (e) {
+				console.error("[DEBUG] Failed to convert design image to base64:", e);
 			}
 		}
 
@@ -133,7 +144,13 @@ export default function SimplePhotoPage() {
 		} finally {
 			setIsGenerating(false);
 		}
-	}, [photoUrl, selectedDesignId, selectedDesignName, selectedColor, selectedDesignImage]);
+	}, [
+		photoUrl,
+		selectedDesignId,
+		selectedDesignName,
+		selectedColor,
+		selectedDesignImage,
+	]);
 
 	const handleAddToCart = useCallback(() => {
 		if (!selectedDesignId) {

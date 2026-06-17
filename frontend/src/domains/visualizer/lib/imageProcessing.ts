@@ -56,9 +56,55 @@ export function createImageFromFile(file: File): Promise<HTMLImageElement> {
 	});
 }
 
+/**
+ * Fetch an image from a URL, resize it and return as a JPEG data URL.
+ * Useful for converting backend image paths (e.g. /uploads/...) into base64
+ * before sending to an API.
+ */
+export async function urlToDataUrl(
+  url: string,
+  maxDimension: number = 256,
+  quality: number = 0.75,
+): Promise<string> {
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch image: ${res.status}`);
+  }
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error('Failed to load image'));
+      image.src = objectUrl;
+    });
+
+    let { naturalWidth: w, naturalHeight: h } = img;
+    if (Math.max(w, h) > maxDimension) {
+      const ratio = maxDimension / Math.max(w, h);
+      w = Math.round(w * ratio);
+      h = Math.round(h * ratio);
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      throw new Error('Failed to get canvas context');
+    }
+    ctx.drawImage(img, 0, 0, w, h);
+    return canvas.toDataURL('image/jpeg', quality);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 export function validateImageDimensions(
-	width: number,
-	height: number,
+  width: number,
+  height: number,
 ): ValidationResult {
 	if (width < MIN_WIDTH || height < MIN_HEIGHT) {
 		return {
