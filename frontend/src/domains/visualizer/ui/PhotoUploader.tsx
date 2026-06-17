@@ -15,7 +15,11 @@ interface PhotoUploaderProps {
 	loading?: boolean;
 }
 
-export function PhotoUploader({ onUpload, onError, loading }: PhotoUploaderProps) {
+export function PhotoUploader({
+	onUpload,
+	onError,
+	loading,
+}: PhotoUploaderProps) {
 	const [dragActive, setDragActive] = useState(false);
 
 	const handleFile = useCallback(

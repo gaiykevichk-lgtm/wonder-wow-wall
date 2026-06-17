@@ -41,7 +41,8 @@ export default function SimplePhotoPage() {
 			setAiPreviewUrl(null);
 			setShowAiPreview(false);
 		} catch (err) {
-			const reason = (err as Error)?.message || String(err) || "Неизвестная ошибка";
+			const reason =
+				(err as Error)?.message || String(err) || "Неизвестная ошибка";
 			console.error("Upload failed:", err);
 			setUploadError(reason);
 		} finally {
@@ -89,6 +90,23 @@ export default function SimplePhotoPage() {
 			return;
 		}
 
+		// Ensure design image URL is loaded before generating
+		let designImageUrl = selectedDesignImage;
+		if (!designImageUrl) {
+			console.log("[DEBUG] Design image missing, fetching from API...");
+			try {
+				const res = await fetch(`/api/designs/${selectedDesignId}`);
+				if (res.ok) {
+					const design = await res.json();
+					designImageUrl = design.image || "";
+					setSelectedDesignImage(designImageUrl);
+					console.log("[DEBUG] Fetched design image:", designImageUrl);
+				}
+			} catch (e) {
+				console.error("[DEBUG] Failed to fetch design image:", e);
+			}
+		}
+
 		setIsGenerating(true);
 		try {
 			// DEBUG: log what we're sending
@@ -96,15 +114,15 @@ export default function SimplePhotoPage() {
 				photoUrl: photoUrl ? photoUrl.substring(0, 80) + "..." : null,
 				designName: selectedDesignName || selectedDesignId,
 				designColor: selectedColor,
-				designImageUrl: selectedDesignImage
-					? selectedDesignImage.substring(0, 80) + "..."
+				designImageUrl: designImageUrl
+					? designImageUrl.substring(0, 80) + "..."
 					: null,
 			});
 			const result = await apiGenerateAiPreview({
 				photoUrl,
 				designName: selectedDesignName || selectedDesignId,
 				designColor: selectedColor,
-				designImageUrl: selectedDesignImage,
+				designImageUrl,
 			});
 			setAiPreviewUrl(result.previewUrl);
 			setShowAiPreview(true);
@@ -115,7 +133,7 @@ export default function SimplePhotoPage() {
 		} finally {
 			setIsGenerating(false);
 		}
-	}, [photoUrl, selectedDesignId, selectedDesignName, selectedColor]);
+	}, [photoUrl, selectedDesignId, selectedDesignName, selectedColor, selectedDesignImage]);
 
 	const handleAddToCart = useCallback(() => {
 		if (!selectedDesignId) {
@@ -188,30 +206,30 @@ export default function SimplePhotoPage() {
 					<div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 						{/* Photo Upload or Preview */}
 						<Card title={photoUrl ? "Фото стены" : "Загрузите фото"}>
-						{!photoUrl ? (
-							<div>
-								<PhotoUploader
-									onUpload={handleUpload}
-									onError={handleUploadError}
-									loading={uploading}
-								/>
-								{uploadError && (
-									<div
-										style={{
-											marginTop: 16,
-											padding: "12px 16px",
-											background: "#fff2f0",
-											border: "1px solid #ffccc7",
-											borderRadius: 8,
-											color: "#cf1322",
-											fontSize: 14,
-										}}
-									>
-										{uploadError}
-									</div>
-								)}
-							</div>
-						) : (
+							{!photoUrl ? (
+								<div>
+									<PhotoUploader
+										onUpload={handleUpload}
+										onError={handleUploadError}
+										loading={uploading}
+									/>
+									{uploadError && (
+										<div
+											style={{
+												marginTop: 16,
+												padding: "12px 16px",
+												background: "#fff2f0",
+												border: "1px solid #ffccc7",
+												borderRadius: 8,
+												color: "#cf1322",
+												fontSize: 14,
+											}}
+										>
+											{uploadError}
+										</div>
+									)}
+								</div>
+							) : (
 								<div style={{ position: "relative" }}>
 									<img
 										src={
