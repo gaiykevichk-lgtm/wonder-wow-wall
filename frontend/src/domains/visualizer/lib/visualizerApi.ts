@@ -20,65 +20,62 @@
  * and get camelCase responses back.
  */
 
-import { api, ApiError } from '../../../shared/api/client';
-import type {
-  PerspectiveCorners,
-  ScaleCalibration,
-} from '../model/types';
+import { api, ApiError } from "../../../shared/api/client";
+import type { PerspectiveCorners, ScaleCalibration } from "../model/types";
 
 // ─── Wire types (snake_case, matching backend) ────────────────────────
 
 interface WireCalibration {
-  method: 'reference' | 'manual' | 'auto';
-  pixels_per_cm: number;
-  wall_width_cm?: number | null;
-  wall_height_cm?: number | null;
+	method: "reference" | "manual" | "auto";
+	pixels_per_cm: number;
+	wall_width_cm?: number | null;
+	wall_height_cm?: number | null;
 }
 
 interface WirePoint {
-  x: number;
-  y: number;
+	x: number;
+	y: number;
 }
 
 interface WireProjectResponse {
-  id: string;
-  name: string;
-  photo_url: string;
-  photo_width: number;
-  photo_height: number;
-  wall_mask_base64: string;
-  calibration_pixels_per_cm: number;
-  panels: unknown[];
-  perspective_corners: WirePoint[] | null;
-  placement_mode: string;
-  created_at: string;
-  updated_at: string;
-  calibration: WireCalibration | null;
-  perspective_auto_detected: boolean;
-  calibration_auto_detected: boolean;
-  version: number;
+	id: string;
+	name: string;
+	photo_url: string;
+	photo_width: number;
+	photo_height: number;
+	wall_mask_base64: string;
+	calibration_pixels_per_cm: number;
+	panels: unknown[];
+	perspective_corners: WirePoint[] | null;
+	placement_mode: string;
+	created_at: string;
+	updated_at: string;
+	calibration: WireCalibration | null;
+	perspective_auto_detected: boolean;
+	calibration_auto_detected: boolean;
+	version: number;
 }
 
 // ─── Camel-case façade returned to callers ────────────────────────────
 
 export interface VisualizationProjectDTO {
-  id: string;
-  name: string;
-  photoUrl: string;
-  photoWidth: number;
-  photoHeight: number;
-  wallMaskBase64: string;
-  calibrationPixelsPerCm: number;
-  perspectiveCorners: PerspectiveCorners | null;
-  placementMode: string;
-  createdAt: string;
-  updatedAt: string;
-  calibration: ScaleCalibration | null;
-  perspectiveAutoDetected: boolean;
-  calibrationAutoDetected: boolean;
-  version: number;
-  /** Panel payload — opaque on this seam; the store re-hydrates it. */
-  panels: unknown[];
+	id: string;
+	name: string;
+	photoUrl: string;
+	photoWidth: number;
+	photoHeight: number;
+	wallMaskBase64: string;
+	calibrationPixelsPerCm: number;
+	perspectiveCorners: PerspectiveCorners | null;
+	placementMode: string;
+	createdAt: string;
+	updatedAt: string;
+	calibration: ScaleCalibration | null;
+	perspectiveAutoDetected: boolean;
+	calibrationAutoDetected: boolean;
+	version: number;
+	/** Panel payload — opaque on this seam; the store re-hydrates it. */
+	panels: unknown[];
 }
 
 // ─── Discriminated error variants ─────────────────────────────────────
@@ -89,19 +86,19 @@ export interface VisualizationProjectDTO {
  * fidelity.
  */
 export class StaleVersionError extends Error {
-  readonly serverVersion: number | undefined;
-  constructor(detail: string, serverVersion?: number) {
-    super(detail);
-    this.name = 'StaleVersionError';
-    this.serverVersion = serverVersion;
-  }
+	readonly serverVersion: number | undefined;
+	constructor(detail: string, serverVersion?: number) {
+		super(detail);
+		this.name = "StaleVersionError";
+		this.serverVersion = serverVersion;
+	}
 }
 
 export class DegenerateCornersError extends Error {
-  constructor(detail: string) {
-    super(detail);
-    this.name = 'DegenerateCornersError';
-  }
+	constructor(detail: string) {
+		super(detail);
+		this.name = "DegenerateCornersError";
+	}
 }
 
 /**
@@ -116,69 +113,72 @@ export class DegenerateCornersError extends Error {
  * thrown-value identity for non-ApiError cases.
  */
 function mapVisualizerError(err: unknown): unknown {
-  if (err instanceof ApiError) {
-    const code = err.body?.code as string | undefined;
-    if (err.status === 409 && code === 'stale_version') {
-      const serverVersion = (err.body?.server_version as number | undefined) ?? undefined;
-      return new StaleVersionError(err.detail, serverVersion);
-    }
-    if (err.status === 422 && code === 'degenerate_corners') {
-      return new DegenerateCornersError(err.detail);
-    }
-  }
-  return err;
+	if (err instanceof ApiError) {
+		const code = err.body?.code as string | undefined;
+		if (err.status === 409 && code === "stale_version") {
+			const serverVersion =
+				(err.body?.server_version as number | undefined) ?? undefined;
+			return new StaleVersionError(err.detail, serverVersion);
+		}
+		if (err.status === 422 && code === "degenerate_corners") {
+			return new DegenerateCornersError(err.detail);
+		}
+	}
+	return err;
 }
 
 // ─── Wire ↔ DTO mappers ───────────────────────────────────────────────
 
-function calibrationFromWire(w: WireCalibration | null): ScaleCalibration | null {
-  if (!w) return null;
-  return {
-    method: w.method,
-    pixelsPerCm: w.pixels_per_cm,
-    wallWidthCm: w.wall_width_cm ?? undefined,
-    wallHeightCm: w.wall_height_cm ?? undefined,
-  };
+function calibrationFromWire(
+	w: WireCalibration | null,
+): ScaleCalibration | null {
+	if (!w) return null;
+	return {
+		method: w.method,
+		pixelsPerCm: w.pixels_per_cm,
+		wallWidthCm: w.wall_width_cm ?? undefined,
+		wallHeightCm: w.wall_height_cm ?? undefined,
+	};
 }
 
 function calibrationToWire(c: ScaleCalibration): WireCalibration {
-  return {
-    method: c.method,
-    pixels_per_cm: c.pixelsPerCm,
-    wall_width_cm: c.wallWidthCm ?? null,
-    wall_height_cm: c.wallHeightCm ?? null,
-  };
+	return {
+		method: c.method,
+		pixels_per_cm: c.pixelsPerCm,
+		wall_width_cm: c.wallWidthCm ?? null,
+		wall_height_cm: c.wallHeightCm ?? null,
+	};
 }
 
 function cornersFromWire(w: WirePoint[] | null): PerspectiveCorners | null {
-  if (!w || w.length !== 4) return null;
-  return [
-    { x: w[0]!.x, y: w[0]!.y },
-    { x: w[1]!.x, y: w[1]!.y },
-    { x: w[2]!.x, y: w[2]!.y },
-    { x: w[3]!.x, y: w[3]!.y },
-  ];
+	if (!w || w.length !== 4) return null;
+	return [
+		{ x: w[0]!.x, y: w[0]!.y },
+		{ x: w[1]!.x, y: w[1]!.y },
+		{ x: w[2]!.x, y: w[2]!.y },
+		{ x: w[3]!.x, y: w[3]!.y },
+	];
 }
 
 function projectFromWire(w: WireProjectResponse): VisualizationProjectDTO {
-  return {
-    id: w.id,
-    name: w.name,
-    photoUrl: w.photo_url,
-    photoWidth: w.photo_width,
-    photoHeight: w.photo_height,
-    wallMaskBase64: w.wall_mask_base64,
-    calibrationPixelsPerCm: w.calibration_pixels_per_cm,
-    perspectiveCorners: cornersFromWire(w.perspective_corners),
-    placementMode: w.placement_mode,
-    createdAt: w.created_at,
-    updatedAt: w.updated_at,
-    calibration: calibrationFromWire(w.calibration),
-    perspectiveAutoDetected: w.perspective_auto_detected,
-    calibrationAutoDetected: w.calibration_auto_detected,
-    version: w.version,
-    panels: w.panels,
-  };
+	return {
+		id: w.id,
+		name: w.name,
+		photoUrl: w.photo_url,
+		photoWidth: w.photo_width,
+		photoHeight: w.photo_height,
+		wallMaskBase64: w.wall_mask_base64,
+		calibrationPixelsPerCm: w.calibration_pixels_per_cm,
+		perspectiveCorners: cornersFromWire(w.perspective_corners),
+		placementMode: w.placement_mode,
+		createdAt: w.created_at,
+		updatedAt: w.updated_at,
+		calibration: calibrationFromWire(w.calibration),
+		perspectiveAutoDetected: w.perspective_auto_detected,
+		calibrationAutoDetected: w.calibration_auto_detected,
+		version: w.version,
+		panels: w.panels,
+	};
 }
 
 // ─── Save / Load (full-scene) ────────────────────────────────────────
@@ -190,20 +190,29 @@ function projectFromWire(w: WireProjectResponse): VisualizationProjectDTO {
  */
 export type SaveProjectBody = Record<string, unknown>;
 
-export async function saveProject(body: SaveProjectBody): Promise<VisualizationProjectDTO> {
-  const wire = await api.post<WireProjectResponse>('/visualizer/projects', body);
-  return projectFromWire(wire);
+export async function saveProject(
+	body: SaveProjectBody,
+): Promise<VisualizationProjectDTO> {
+	const wire = await api.post<WireProjectResponse>(
+		"/visualizer/projects",
+		body,
+	);
+	return projectFromWire(wire);
 }
 
-export async function loadProject(projectId: string): Promise<VisualizationProjectDTO> {
-  const wire = await api.get<WireProjectResponse>(`/visualizer/projects/${projectId}`);
-  return projectFromWire(wire);
+export async function loadProject(
+	projectId: string,
+): Promise<VisualizationProjectDTO> {
+	const wire = await api.get<WireProjectResponse>(
+		`/visualizer/projects/${projectId}`,
+	);
+	return projectFromWire(wire);
 }
 
 // ─── Partial PATCH endpoints ─────────────────────────────────────────
 
 export interface UpdatePerspectiveOptions {
-  signal?: AbortSignal;
+	signal?: AbortSignal;
 }
 
 /**
@@ -217,53 +226,51 @@ export interface UpdatePerspectiveOptions {
  *  - `ApiError` (or rejection) on transport errors / 4xx/5xx without a code.
  */
 export async function updatePerspective(
-  projectId: string,
-  corners: PerspectiveCorners | null,
-  version: number,
-  options: UpdatePerspectiveOptions = {},
+	projectId: string,
+	corners: PerspectiveCorners | null,
+	version: number,
+	options: UpdatePerspectiveOptions = {},
 ): Promise<VisualizationProjectDTO> {
-  const body = {
-    corners: corners
-      ? corners.map((c) => ({ x: c.x, y: c.y }))
-      : null,
-    version,
-  };
-  try {
-    const wire = await api.patch<WireProjectResponse>(
-      `/visualizer/projects/${projectId}/perspective`,
-      body,
-      { signal: options.signal },
-    );
-    return projectFromWire(wire);
-  } catch (err) {
-    throw mapVisualizerError(err);
-  }
+	const body = {
+		corners: corners ? corners.map((c) => ({ x: c.x, y: c.y })) : null,
+		version,
+	};
+	try {
+		const wire = await api.patch<WireProjectResponse>(
+			`/visualizer/projects/${projectId}/perspective`,
+			body,
+			{ signal: options.signal },
+		);
+		return projectFromWire(wire);
+	} catch (err) {
+		throw mapVisualizerError(err);
+	}
 }
 
 export interface UpdateCalibrationOptions {
-  signal?: AbortSignal;
+	signal?: AbortSignal;
 }
 
 export async function updateCalibration(
-  projectId: string,
-  calibration: ScaleCalibration,
-  version: number,
-  options: UpdateCalibrationOptions = {},
+	projectId: string,
+	calibration: ScaleCalibration,
+	version: number,
+	options: UpdateCalibrationOptions = {},
 ): Promise<VisualizationProjectDTO> {
-  const body = {
-    calibration: calibrationToWire(calibration),
-    version,
-  };
-  try {
-    const wire = await api.patch<WireProjectResponse>(
-      `/visualizer/projects/${projectId}/calibration`,
-      body,
-      { signal: options.signal },
-    );
-    return projectFromWire(wire);
-  } catch (err) {
-    throw mapVisualizerError(err);
-  }
+	const body = {
+		calibration: calibrationToWire(calibration),
+		version,
+	};
+	try {
+		const wire = await api.patch<WireProjectResponse>(
+			`/visualizer/projects/${projectId}/calibration`,
+			body,
+			{ signal: options.signal },
+		);
+		return projectFromWire(wire);
+	} catch (err) {
+		throw mapVisualizerError(err);
+	}
 }
 
 // ─── Phase 6 — depth-based auto-perspective fallback ────────────────
@@ -275,18 +282,18 @@ export async function updateCalibration(
  * with no further transformation.
  */
 export interface AutoPerspectiveResult {
-  corners: PerspectiveCorners;
-  confidence: number;
-  /**
-   * Detected wall bounding-box width/height in *photo pixels*. The store uses
-   * this to seed `ScaleCalibration.pixelsPerCm` when the user hasn't
-   * calibrated yet, so auto-fill panels land at a plausible scale instead of
-   * at whatever default `pixels_per_cm` the empty project was created with.
-   *
-   * Defaults to `{ width: 0, height: 0 }` so the optional shape can be safely
-   * consumed without a null-check — callers ignore a zero dimension.
-   */
-  bboxPixels: { width: number; height: number };
+	corners: PerspectiveCorners;
+	confidence: number;
+	/**
+	 * Detected wall bounding-box width/height in *photo pixels*. The store uses
+	 * this to seed `ScaleCalibration.pixelsPerCm` when the user hasn't
+	 * calibrated yet, so auto-fill panels land at a plausible scale instead of
+	 * at whatever default `pixels_per_cm` the empty project was created with.
+	 *
+	 * Defaults to `{ width: 0, height: 0 }` so the optional shape can be safely
+	 * consumed without a null-check — callers ignore a zero dimension.
+	 */
+	bboxPixels: { width: number; height: number };
 }
 
 /**
@@ -300,16 +307,16 @@ export interface AutoPerspectiveResult {
  * four points form a flat quadrilateral."
  */
 export class AutoPerspectiveFailedError extends Error {
-  readonly kind: 'plane_fit_failed' | 'depth_unavailable' | 'unknown';
-  constructor(detail: string, kind: AutoPerspectiveFailedError['kind']) {
-    super(detail);
-    this.name = 'AutoPerspectiveFailedError';
-    this.kind = kind;
-  }
+	readonly kind: "plane_fit_failed" | "depth_unavailable" | "unknown";
+	constructor(detail: string, kind: AutoPerspectiveFailedError["kind"]) {
+		super(detail);
+		this.name = "AutoPerspectiveFailedError";
+		this.kind = kind;
+	}
 }
 
 export interface AutoDetectPerspectiveOptions {
-  signal?: AbortSignal;
+	signal?: AbortSignal;
 }
 
 /**
@@ -328,58 +335,58 @@ export interface AutoDetectPerspectiveOptions {
  *     code can retry transport errors independently.
  */
 interface WireAutoPerspectiveResponse {
-  corners: WirePoint[];
-  confidence: number;
-  bbox_pixels?: { width: number; height: number };
+	corners: WirePoint[];
+	confidence: number;
+	bbox_pixels?: { width: number; height: number };
 }
 
 function autoPerspectiveFromWire(
-  wire: WireAutoPerspectiveResponse,
+	wire: WireAutoPerspectiveResponse,
 ): AutoPerspectiveResult {
-  const corners = cornersFromWire(wire.corners);
-  if (!corners) {
-    throw new AutoPerspectiveFailedError(
-      'Server returned non-4 corner set',
-      'unknown',
-    );
-  }
-  return {
-    corners,
-    confidence: wire.confidence,
-    bboxPixels: {
-      width: wire.bbox_pixels?.width ?? 0,
-      height: wire.bbox_pixels?.height ?? 0,
-    },
-  };
+	const corners = cornersFromWire(wire.corners);
+	if (!corners) {
+		throw new AutoPerspectiveFailedError(
+			"Server returned non-4 corner set",
+			"unknown",
+		);
+	}
+	return {
+		corners,
+		confidence: wire.confidence,
+		bboxPixels: {
+			width: wire.bbox_pixels?.width ?? 0,
+			height: wire.bbox_pixels?.height ?? 0,
+		},
+	};
 }
 
 function mapAutoPerspectiveError(err: unknown): unknown {
-  if (err instanceof ApiError) {
-    const code = err.body?.code as string | undefined;
-    if (err.status === 422 && code === 'plane_fit_failed') {
-      return new AutoPerspectiveFailedError(err.detail, 'plane_fit_failed');
-    }
-    if (err.status === 503 && code === 'depth_unavailable') {
-      return new AutoPerspectiveFailedError(err.detail, 'depth_unavailable');
-    }
-  }
-  return err;
+	if (err instanceof ApiError) {
+		const code = err.body?.code as string | undefined;
+		if (err.status === 422 && code === "plane_fit_failed") {
+			return new AutoPerspectiveFailedError(err.detail, "plane_fit_failed");
+		}
+		if (err.status === 503 && code === "depth_unavailable") {
+			return new AutoPerspectiveFailedError(err.detail, "depth_unavailable");
+		}
+	}
+	return err;
 }
 
 export async function apiAutoDetectPerspective(
-  projectId: string,
-  options: AutoDetectPerspectiveOptions = {},
+	projectId: string,
+	options: AutoDetectPerspectiveOptions = {},
 ): Promise<AutoPerspectiveResult> {
-  try {
-    const wire = await api.post<WireAutoPerspectiveResponse>(
-      `/visualizer/projects/${projectId}/auto-perspective`,
-      {},
-      { signal: options.signal },
-    );
-    return autoPerspectiveFromWire(wire);
-  } catch (err) {
-    throw mapAutoPerspectiveError(err);
-  }
+	try {
+		const wire = await api.post<WireAutoPerspectiveResponse>(
+			`/visualizer/projects/${projectId}/auto-perspective`,
+			{},
+			{ signal: options.signal },
+		);
+		return autoPerspectiveFromWire(wire);
+	} catch (err) {
+		throw mapAutoPerspectiveError(err);
+	}
 }
 
 /**
@@ -394,29 +401,65 @@ export async function apiAutoDetectPerspective(
  * is the default fast path; project-bound is retained for scripts/debug.
  */
 export interface InlineAutoPerspectiveInput {
-  photoUrl: string;
-  photoWidth: number;
-  photoHeight: number;
-  wallMaskBase64: string;
+	photoUrl: string;
+	photoWidth: number;
+	photoHeight: number;
+	wallMaskBase64: string;
 }
 
 export async function apiAutoDetectPerspectiveInline(
-  input: InlineAutoPerspectiveInput,
-  options: AutoDetectPerspectiveOptions = {},
+	input: InlineAutoPerspectiveInput,
+	options: AutoDetectPerspectiveOptions = {},
 ): Promise<AutoPerspectiveResult> {
-  try {
-    const wire = await api.post<WireAutoPerspectiveResponse>(
-      '/visualizer/projects/auto-perspective',
-      {
-        photo_url: input.photoUrl,
-        photo_width: input.photoWidth,
-        photo_height: input.photoHeight,
-        wall_mask_base64: input.wallMaskBase64,
-      },
-      { signal: options.signal },
-    );
-    return autoPerspectiveFromWire(wire);
-  } catch (err) {
-    throw mapAutoPerspectiveError(err);
-  }
+	try {
+		const wire = await api.post<WireAutoPerspectiveResponse>(
+			"/visualizer/projects/auto-perspective",
+			{
+				photo_url: input.photoUrl,
+				photo_width: input.photoWidth,
+				photo_height: input.photoHeight,
+				wall_mask_base64: input.wallMaskBase64,
+			},
+			{ signal: options.signal },
+		);
+		return autoPerspectiveFromWire(wire);
+	} catch (err) {
+		throw mapAutoPerspectiveError(err);
+	}
+}
+
+// ─── AI Preview Generation ───────────────────────────────────────────
+
+export interface AiPreviewRequest {
+	photoUrl: string;
+	designName: string;
+	designColor: string;
+	prompt?: string;
+}
+
+export interface AiPreviewResponse {
+	previewUrl: string;
+	revisedPrompt: string | null;
+}
+
+/**
+ * Generate AI-powered preview of wall with selected panel design.
+ * Uses Nano Banana Flash via backend proxy.
+ */
+export async function apiGenerateAiPreview(
+	request: AiPreviewRequest,
+): Promise<AiPreviewResponse> {
+	const wire = await api.post<{
+		preview_url: string;
+		revised_prompt: string | null;
+	}>("/visualizer/ai-preview", {
+		photo_url: request.photoUrl,
+		design_name: request.designName,
+		design_color: request.designColor,
+		prompt: request.prompt,
+	});
+	return {
+		previewUrl: wire.preview_url,
+		revisedPrompt: wire.revised_prompt,
+	};
 }

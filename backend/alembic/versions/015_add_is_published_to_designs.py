@@ -47,7 +47,7 @@ def upgrade() -> None:
             # between Postgres (`TRUE`) and SQLite (`1`); same trick as
             # `panels.is_active` (migration 011) and `users.is_blocked`
             # (migration 009).
-            server_default=sa.text("1"),
+            server_default=sa.text("true"),
         ),
     )
     op.create_index(

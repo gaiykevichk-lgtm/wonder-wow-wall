@@ -1,5 +1,4 @@
-project_dir: /home/user/wonder-wow-wall
-
+project_dir: wonder-wow-wall
 services:
   db:
     friendly_name: "База данных PostgreSQL"
@@ -7,10 +6,13 @@ services:
     purpose: "Хранение данных о панелях, заказах, пользователях и подписках"
     order: 1
     type: database
-    framework: postgresql
-    preset_id: 357
+    framework: postgres
+    preset_id: 1139
+    availability_zone: ru-3
     env_vars:
       - DATABASE_URL
+    deploy_id: "4176047"
+    deploy_url: "postgresql://gen_user:n%40!fOXG%7CP*lQ9@195.133.73.104:5432/default_db"
 
   redis:
     friendly_name: "Redis кеш"
@@ -19,38 +21,27 @@ services:
     order: 2
     type: database
     framework: redis
-    preset_id: 3683
+    preset_id: 3687
+    availability_zone: ru-3
     env_vars:
       - REDIS_URL
+    deploy_id: "4176051"
+    deploy_url: "redis://:n%40!fOXG%7CP*lQ9@186.246.13.9:6379/0"
 
-  api:
-    friendly_name: "API сервер"
-    description: "FastAPI backend for Wonder Wow Wall"
-    purpose: "REST API для каталога, заказов, авторизации и подписок"
+  server:
+    friendly_name: "Wonder Wow Wall (единый сервер)"
+    description: "API + Frontend на одной VM с nginx"
+    purpose: "FastAPI бэкенд + React SPA через nginx reverse proxy"
     order: 3
-    type: backend
+    type: vm
     framework: docker
-    preset_id: 1003
-    build_command: "docker build -t app ."
-    start_command: "uvicorn app.main:app --host 0.0.0.0 --port 8080"
-    root_dir: "backend"
-    env_file: ".env"
+    preset_id: 4801
+    availability_zone: ru-3
+    root_dir: "."
     env_vars:
       - DATABASE_URL
       - REDIS_URL
       - JWT_SECRET
       - CORS_ORIGINS
-
-  web:
-    friendly_name: "Веб-сайт Wonder Wow Wall"
-    description: "React SPA frontend"
-    purpose: "Интерфейс для каталога панелей, конструктора, фото-редактора и оформления заказов"
-    order: 4
-    type: frontend
-    framework: react
-    preset_id: 2785
-    build_command: "npm install && npm run build"
-    publish_dir: dist
-    root_dir: "frontend"
-    env_file: ".env"
-    env_vars: []
+    deploy_id: "8315827"
+    deploy_url: "ssh://root@72.56.37.191"

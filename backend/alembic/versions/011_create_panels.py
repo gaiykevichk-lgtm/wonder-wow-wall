@@ -66,10 +66,7 @@ def upgrade() -> None:
         sa.Column("base_price", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("description", sa.Text(), nullable=False, server_default=""),
         sa.Column("photo_path", sa.String(500), nullable=False, server_default=""),
-        # SQLite stores booleans as 0/1; Postgres asyncpg accepts the same
-        # string thanks to SQLAlchemy's bind-param coercion. `true()`
-        # would emit dialect-specific SQL; the literal '1' is portable.
-        sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("1")),
+        sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.UniqueConstraint("slug", name="uq_panels_slug"),
     )

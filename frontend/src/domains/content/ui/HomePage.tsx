@@ -146,6 +146,7 @@ export function HeroSection({ onCatalog }: { onCatalog: () => void }) {
 						style={{
 							fontFamily: "'SF Pro Display', sans-serif",
 							fontSize: "clamp(17px, 2vw, 20px)",
+							fontWeight: 600,
 							color: "rgba(255,255,255,0.85)",
 							margin: 0,
 							lineHeight: 1.65,
@@ -156,7 +157,7 @@ export function HeroSection({ onCatalog }: { onCatalog: () => void }) {
 						<br />
 						WONDER WOW WALL – первая платформа
 						<br />
-						трансформации пространства.
+						трансформации стен.
 					</motion.p>
 					<motion.div
 						variants={fadeUpVariants}
@@ -192,26 +193,26 @@ export function HeroSection({ onCatalog }: { onCatalog: () => void }) {
 const steps = [
 	{
 		num: "1",
-		title: "Выбираете\nновый стиль пространства",
-		desc: "Найдите текстуру, которая отражает Вас сегодня",
+		title: "Выбираете\nновый стиль стен.",
+		desc: "Найдите текстуру, которая отражает Вас сегодня.",
 		video: "Выбираете.MP4",
 	},
 	{
 		num: "2",
-		title: "Примеряете\nбудущее на экране смартфона",
-		desc: "Загрузите фото и приложение мгновенно впишет новый интерьер в Ваше пространство",
+		title: "Примеряете\nбудущее на экране смартфона.",
+		desc: "Загрузите фото и приложение мгновенно впишет новый интерьер в Ваше пространство.",
 		video: "Примеряете.MP4",
 	},
 	{
 		num: "3",
-		title: "Обновляете\nбез пыли и ремонтного хаоса",
-		desc: "Мы превратили обновление интерьера в вопрос нескольких часов",
+		title: "Обновляете\nстены без пыли\nи ремонтного хаоса.",
+		desc: "Мы превратили обновление интерьера в вопрос нескольких часов.",
 		video: "Обновляете.MP4",
 	},
 	{
 		num: "4",
-		title: "Меняете\nоблик пространства когда годно",
-		desc: "Одна бесплатная замена уже включена в подписку",
+		title: "Меняете\nоблик пространства когда годно.",
+		desc: "Одна бесплатная замена в год уже включена в подписку.",
 		video: "Меняете.MP4",
 	},
 ];
@@ -314,6 +315,16 @@ export function HowItWorksSection() {
 		setActiveIndex(i);
 		el.scrollTo({ left: i * el.offsetWidth, behavior: "smooth" });
 	};
+
+	// Arrow styles
+	const arrowStyle: React.CSSProperties = {
+		fontSize: 28,
+		color: "rgba(0,0,0,0.25)",
+		cursor: "pointer",
+		userSelect: "none",
+		transition: "color 0.2s ease",
+	};
+
 	return (
 		<section style={{ background: "#fff", overflow: "hidden" }}>
 			<div style={{ ...MAX_WIDTH }}>
@@ -336,7 +347,7 @@ export function HowItWorksSection() {
 							lineHeight: 1.15,
 						}}
 					>
-						Просто. Быстро. WOW
+						Просто. Быстро. WOW.
 					</h2>
 				</motion.div>
 			</div>
@@ -345,18 +356,41 @@ export function HowItWorksSection() {
 					display: "flex",
 					justifyContent: "center",
 					padding: "32px 24px 0",
+					alignItems: "center",
+					gap: 16,
 				}}
 			>
+				{activeIndex > 0 && (
+					<span
+						style={arrowStyle}
+						onClick={() => goToSlide(activeIndex - 1)}
+						role="button"
+						aria-label="Предыдущий слайд"
+					>
+						←
+					</span>
+				)}
 				<span
 					style={{
 						fontFamily: "'SF Pro Display', sans-serif",
 						fontSize: 13,
 						color: "rgba(0,0,0,0.35)",
 						letterSpacing: "0.02em",
+						fontWeight: 600,
 					}}
 				>
-					{activeIndex + 1} / {steps.length} — свайпните влево
+					{activeIndex + 1} / {steps.length} — свайпните вбок
 				</span>
+				{activeIndex < steps.length - 1 && (
+					<span
+						style={arrowStyle}
+						onClick={() => goToSlide(activeIndex + 1)}
+						role="button"
+						aria-label="Следующий слайд"
+					>
+						→
+					</span>
+				)}
 			</div>
 			<div
 				ref={carouselRef}
@@ -434,6 +468,7 @@ export function HowItWorksSection() {
 								style={{
 									fontFamily: "'SF Pro Display', sans-serif",
 									fontSize: "clamp(15px, 1.5vw, 17px)",
+									fontWeight: 600,
 									color: GRAY_TEXT,
 									lineHeight: 1.65,
 									margin: 0,
@@ -574,6 +609,7 @@ export function ServiceBannerSection() {
 						style={{
 							fontFamily: "'SF Pro Display', sans-serif",
 							fontSize: 18,
+							fontWeight: 600,
 							color: GRAY_TEXT,
 							margin: 0,
 							lineHeight: 1.65,
@@ -581,9 +617,8 @@ export function ServiceBannerSection() {
 							whiteSpace: "pre-line",
 						}}
 					>
-						Мы создали будущее, в котором интерьер{" "}
-						<br />
-						меняется без традиционного ремонта
+						Мы создали будущее, в котором интерьер <br />
+						меняется без традиционного ремонта.
 					</motion.p>
 
 					{/* Apple-style feature cards */}
@@ -611,7 +646,7 @@ export function ServiceBannerSection() {
 								style={{
 									fontFamily: "'SF Pro Display', sans-serif",
 									fontSize: 15,
-									fontWeight: 500,
+									fontWeight: 700,
 									color: ACCENT,
 									textTransform: "uppercase",
 									letterSpacing: "3px",
@@ -639,6 +674,7 @@ export function ServiceBannerSection() {
 								style={{
 									fontFamily: "'SF Pro Display', sans-serif",
 									fontSize: 19,
+									fontWeight: 600,
 									color: GRAY_TEXT,
 									lineHeight: 1.5,
 								}}
@@ -658,7 +694,7 @@ export function ServiceBannerSection() {
 								style={{
 									fontFamily: "'SF Pro Display', sans-serif",
 									fontSize: 15,
-									fontWeight: 500,
+									fontWeight: 700,
 									color: ACCENT,
 									textTransform: "uppercase",
 									letterSpacing: "3px",
@@ -684,6 +720,7 @@ export function ServiceBannerSection() {
 								style={{
 									fontFamily: "'SF Pro Display', sans-serif",
 									fontSize: 19,
+									fontWeight: 600,
 									color: GRAY_TEXT,
 									lineHeight: 1.5,
 								}}
@@ -728,6 +765,7 @@ export function ServiceBannerSection() {
 							style={{
 								fontFamily: "'SF Pro Display', sans-serif",
 								fontSize: 13,
+								fontWeight: 600,
 								color: GRAY_TEXT,
 							}}
 						>
@@ -743,18 +781,18 @@ export function ServiceBannerSection() {
 const techPoints = [
 	{
 		icon: <SettingOutlined style={{ fontSize: 28, color: DARK }} />,
-		title: "Универсальная платформа монтажа",
-		desc: "адаптирована для большинства современных поверхностей",
+		title: "Универсальная платформа монтажа.",
+		desc: "Адаптирована для большинства современных поверхностей.",
 	},
 	{
 		icon: <LockOutlined style={{ fontSize: 28, color: DARK }} />,
-		title: "Запатентованная система креплений",
-		desc: "обеспечивает быструю замену панелей",
+		title: "Запатентованная система креплений.",
+		desc: "Обеспечивает быструю замену панелей.",
 	},
 	{
 		icon: <AppstoreOutlined style={{ fontSize: 28, color: DARK }} />,
-		title: "Безграничность фактур",
-		desc: "Дерево. Металл. Текстиль. Кожа. Камень.\nПространство приобретает характер",
+		title: "Безграничность фактур.",
+		desc: "Дерево. Металл. Текстиль. Кожа. Камень.\nПространство приобретает характер.",
 	},
 ];
 
@@ -790,7 +828,7 @@ export function TechSection() {
 								lineHeight: 1.15,
 							}}
 						>
-							Технологии вашей свободы
+							Технологии вашей свободы.
 						</h2>
 					</motion.div>
 					<div
@@ -848,6 +886,7 @@ export function TechSection() {
 									style={{
 										fontFamily: "'SF Pro Display', sans-serif",
 										fontSize: 14,
+										fontWeight: 600,
 										color: GRAY_TEXT,
 										lineHeight: 1.6,
 										whiteSpace: point.desc.includes("\n")
@@ -865,9 +904,25 @@ export function TechSection() {
 						custom={4}
 						style={{
 							fontFamily: "'SF Pro Display', sans-serif",
-							fontSize: 16,
-							color: GRAY_TEXT,
+							fontSize: 18,
+							fontWeight: 600,
+							color: DARK,
 							margin: 0,
+							textAlign: "center",
+							maxWidth: 480,
+						}}
+					>
+						Пространство приобретает характер.
+					</motion.p>
+					<motion.p
+						variants={fadeUpVariants}
+						custom={5}
+						style={{
+							fontFamily: "'SF Pro Display', sans-serif",
+							fontSize: 16,
+							fontWeight: 600,
+							color: GRAY_TEXT,
+							margin: "16px 0 0",
 							textAlign: "center",
 							maxWidth: 480,
 						}}
@@ -913,7 +968,7 @@ export function PanelGridSection({ onCatalog }: { onCatalog: () => void }) {
 								lineHeight: 1.15,
 							}}
 						>
-							Время выбирать
+							Время выбирать.
 						</h2>
 					</motion.div>
 					<div
@@ -1090,7 +1145,7 @@ export function ProjectDetailsSection() {
 							textAlign: "center",
 						}}
 					>
-						Ваш проект. В деталях
+						Ваш проект. В деталях.
 					</h2>
 					<div
 						style={{
@@ -1129,6 +1184,7 @@ export function ProjectDetailsSection() {
 								style={{
 									fontFamily: "'SF Pro Display', sans-serif",
 									fontSize: 13,
+									fontWeight: 600,
 									color: GRAY_TEXT,
 									lineHeight: 1.6,
 								}}
@@ -1144,6 +1200,7 @@ export function ProjectDetailsSection() {
 										style={{
 											fontFamily: "'SF Pro Display'",
 											fontSize: 12,
+											fontWeight: 600,
 											color: GRAY_TEXT,
 											display: "block",
 											marginBottom: 4,
@@ -1166,6 +1223,7 @@ export function ProjectDetailsSection() {
 										style={{
 											fontFamily: "'SF Pro Display'",
 											fontSize: 12,
+											fontWeight: 600,
 											color: GRAY_TEXT,
 											display: "block",
 											marginBottom: 4,
@@ -1215,6 +1273,7 @@ export function ProjectDetailsSection() {
 										style={{
 											fontFamily: "'SF Pro Display'",
 											fontSize: 13,
+											fontWeight: 600,
 											color: GRAY_TEXT,
 										}}
 									>
@@ -1227,6 +1286,7 @@ export function ProjectDetailsSection() {
 										style={{
 											fontFamily: "'SF Pro Display'",
 											fontSize: 13,
+											fontWeight: 600,
 											color: GRAY_TEXT,
 										}}
 									>
@@ -1239,6 +1299,7 @@ export function ProjectDetailsSection() {
 										style={{
 											fontFamily: "'SF Pro Display'",
 											fontSize: 13,
+											fontWeight: 600,
 											color: GRAY_TEXT,
 										}}
 									>
@@ -1278,6 +1339,7 @@ export function ProjectDetailsSection() {
 								style={{
 									fontFamily: "'SF Pro Display', sans-serif",
 									fontSize: 13,
+									fontWeight: 600,
 									color: GRAY_TEXT,
 									lineHeight: 1.6,
 								}}
@@ -1317,8 +1379,8 @@ export function ProjectDetailsSection() {
 											style={{
 												fontFamily: "'SF Pro Display', sans-serif",
 												fontSize: 11,
+												fontWeight: 700,
 												color: DARK,
-												fontWeight: 600,
 												textAlign: "center",
 											}}
 										>
@@ -1356,6 +1418,7 @@ export function ProjectDetailsSection() {
 								style={{
 									fontFamily: "'SF Pro Display', sans-serif",
 									fontSize: 13,
+									fontWeight: 600,
 									color: GRAY_TEXT,
 									lineHeight: 1.6,
 								}}
@@ -1438,12 +1501,13 @@ export function CTABannerSection({ onCatalog }: { onCatalog: () => void }) {
 								whiteSpace: "nowrap",
 							}}
 						>
-							Начните обновление
+							Начните обновление.
 						</h2>
 						<p
 							style={{
 								fontFamily: "'SF Pro Display', sans-serif",
 								fontSize: 18,
+								fontWeight: 600,
 								color: GRAY_TEXT,
 								margin: "12px auto 0",
 								textAlign: "center",
@@ -1458,6 +1522,7 @@ export function CTABannerSection({ onCatalog }: { onCatalog: () => void }) {
 							style={{
 								fontFamily: "'SF Pro Display', sans-serif",
 								fontSize: 16,
+								fontWeight: 600,
 								color: GRAY_TEXT,
 								margin: "8px auto 0",
 								textAlign: "center",

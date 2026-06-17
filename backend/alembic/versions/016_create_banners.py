@@ -56,7 +56,7 @@ def upgrade() -> None:
         # `"1"` (not `sa.true()`) keeps the literal portable across
         # SQLite/Postgres — same trick as `panels.is_active`.
         sa.Column(
-            "is_active", sa.Boolean(), nullable=False, server_default=sa.text("1"),
+            "is_active", sa.Boolean(), nullable=False, server_default=sa.text("true"),
         ),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=False),

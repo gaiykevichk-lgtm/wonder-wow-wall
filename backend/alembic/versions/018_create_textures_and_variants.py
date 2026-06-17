@@ -33,7 +33,7 @@ def upgrade() -> None:
         sa.Column("slug", sa.String(120), nullable=False),
         sa.Column("swatch_image", sa.String(500), nullable=False, server_default=""),
         sa.Column("sort_order", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("1")),
+        sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.UniqueConstraint("slug", name="uq_textures_slug"),
     )
@@ -53,7 +53,7 @@ def upgrade() -> None:
         sa.Column("hex", sa.String(7), nullable=False, server_default=""),
         sa.Column("swatch_image", sa.String(500), nullable=False, server_default=""),
         sa.Column("sort_order", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("1")),
+        sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
         sa.Column("created_at", sa.DateTime(), nullable=False),
     )
     op.create_index("idx_texture_colors_texture_id", "texture_colors", ["texture_id"])

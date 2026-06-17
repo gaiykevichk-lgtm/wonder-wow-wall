@@ -116,10 +116,10 @@ def upgrade() -> None:
             "area_limit_m2", sa.Float(), nullable=False, server_default="0",
         ),
         sa.Column(
-            "popular", sa.Boolean(), nullable=False, server_default=sa.text("0"),
+            "popular", sa.Boolean(), nullable=False, server_default=sa.text("false"),
         ),
         sa.Column(
-            "is_active", sa.Boolean(), nullable=False, server_default=sa.text("1"),
+            "is_active", sa.Boolean(), nullable=False, server_default=sa.text("true"),
         ),
         sa.Column(
             "sort_order", sa.Integer(), nullable=False, server_default="0",
