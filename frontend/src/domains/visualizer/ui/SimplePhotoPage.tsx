@@ -112,7 +112,10 @@ export default function SimplePhotoPage() {
 			console.log("[DEBUG] Converting design image to base64...");
 			try {
 				designImageUrl = await urlToDataUrl(designImageUrl, 256, 0.75);
-				console.log("[DEBUG] Design image converted to base64, length:", designImageUrl.length);
+				console.log(
+					"[DEBUG] Design image converted to base64, length:",
+					designImageUrl.length,
+				);
 			} catch (e) {
 				console.error("[DEBUG] Failed to convert design image to base64:", e);
 			}
@@ -123,7 +126,6 @@ export default function SimplePhotoPage() {
 			// DEBUG: log what we're sending
 			console.log("[DEBUG] AI preview request:", {
 				photoUrl: photoUrl ? photoUrl.substring(0, 80) + "..." : null,
-				designName: selectedDesignName || selectedDesignId,
 				designColor: selectedColor,
 				designImageUrl: designImageUrl
 					? designImageUrl.substring(0, 80) + "..."
@@ -131,7 +133,6 @@ export default function SimplePhotoPage() {
 			});
 			const result = await apiGenerateAiPreview({
 				photoUrl,
-				designName: selectedDesignName || selectedDesignId,
 				designColor: selectedColor,
 				designImageUrl,
 			});

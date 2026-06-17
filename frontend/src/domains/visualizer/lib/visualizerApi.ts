@@ -432,7 +432,7 @@ export async function apiAutoDetectPerspectiveInline(
 
 export interface AiPreviewRequest {
 	photoUrl: string;
-	designName: string;
+	designName?: string;
 	designColor: string;
 	designImageUrl?: string;
 	prompt?: string;

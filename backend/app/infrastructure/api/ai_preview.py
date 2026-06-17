@@ -15,7 +15,7 @@ class GeneratePreviewRequest(BaseModel):
     """Request body for AI preview generation."""
 
     photo_url: str = Field(..., description="Base64 data URL of the wall photo")
-    design_name: str = Field(..., description="Selected design name")
+    design_name: str | None = Field(None, description="Selected design name (optional)")
     design_color: str = Field("#FFFFFF", description="Selected color hex")
     design_image_url: str | None = Field(
         None, description="URL or base64 data URL of the selected panel design texture"
@@ -102,7 +102,7 @@ async def image_to_data_url(url: str, max_dimension: int = 512, quality: int = 8
 
 async def generate_wall_preview(
     photo_b64: str,
-    design_name: str,
+    design_name: str | None,
     design_color: str,
     design_image_url: str | None = None,
     custom_prompt: str | None = None,
