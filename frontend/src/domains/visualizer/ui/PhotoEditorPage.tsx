@@ -993,26 +993,7 @@ export default function PhotoEditorPage() {
 							/>
 						)}
 
-						{/* Toolbar buttons */}
-						<div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-							{/* AI Preview button — always visible when design is selected */}
-							{store.selectedDesignId ? (
-								generatingPreview ? (
-									<div
-										style={{
-											display: "flex",
-											alignItems: "center",
-											gap: 8,
-											padding: "6px 16px",
-											borderRadius: 8,
-											background: "#E3F2FD",
-											color: "#1976D2",
-											fontSize: 13,
-										}}
-									>
-										<Spin size="small" />
-										Генерация...
-									</div>
+	
 								) : (
 									<button
 										onClick={async () => {
