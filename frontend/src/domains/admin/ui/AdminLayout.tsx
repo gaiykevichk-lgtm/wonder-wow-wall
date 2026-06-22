@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Layout, Menu, Button, Drawer, Avatar, Typography } from "antd";
 import {
 	DashboardOutlined,
@@ -13,6 +13,7 @@ import {
 	LogoutOutlined,
 	MenuOutlined,
 	UserOutlined,
+	BlockOutlined,
 } from "@ant-design/icons";
 import { Outlet, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../auth/model/authStore";
@@ -37,6 +38,7 @@ const ICONS: Record<AdminSectionKey, ReactNode> = {
 	users: <TeamOutlined />,
 	catalog: <AppstoreOutlined />,
 	textures: <BgColorsOutlined />,
+	'panel-creator': <BlockOutlined />,
 	shop: <ShopOutlined />,
 	upload: <UploadOutlined />,
 	recommendations: <BulbOutlined />,

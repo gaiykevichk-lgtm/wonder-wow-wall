@@ -1,7 +1,19 @@
 """Combined seed + server script for development with in-memory repos."""
 
 import asyncio
+import os
 import sys
+
+# Load .env file for development
+from pathlib import Path
+try:
+    from dotenv import load_dotenv
+    env_path = Path(__file__).parent / ".env"
+    if env_path.exists():
+        load_dotenv(dotenv_path=env_path)
+        print(f"[INFO] Loaded .env from {env_path}", file=sys.stderr)
+except ImportError:
+    pass  # python-dotenv not installed
 
 
 async def seed_everything():
@@ -468,7 +480,8 @@ def run():
     # Seed everything first
     asyncio.run(seed_everything())
     # Then run server
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8001, reload=False)
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=False)
 
 
 if __name__ == "__main__":

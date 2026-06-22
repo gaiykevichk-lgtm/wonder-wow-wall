@@ -532,13 +532,18 @@ class InMemoryVariantImageRepository(VariantImageRepository):
         self._variants: list[VariantImage] = variants or []
 
     async def get_by_combination(
-        self, design_id: str, texture_id: str, color_id: str,
+        self,
+        design_id: str,
+        texture_id: str,
+        color_id: str,
+        size_key: str | None = None,
     ) -> VariantImage | None:
         return next(
             (v for v in self._variants
              if v.design_id == design_id
              and v.texture_id == texture_id
-             and v.color_id == color_id),
+             and v.color_id == color_id
+             and v.size_key == size_key),
             None,
         )
 
@@ -550,13 +555,33 @@ class InMemoryVariantImageRepository(VariantImageRepository):
 
     async def create(self, variant: VariantImage) -> VariantImage:
         existing = await self.get_by_combination(
-            variant.design_id, variant.texture_id, variant.color_id,
+            variant.design_id,
+            variant.texture_id,
+            variant.color_id,
+            variant.size_key,
         )
         if existing:
             raise ValueError(
                 f"VariantImage combination collision: "
-                f"({variant.design_id}, {variant.texture_id}, {variant.color_id})"
+                f"({variant.design_id}, {variant.texture_id}, {variant.color_id}, "
+                f"{variant.size_key})"
             )
+        self._variants.append(variant)
+        return variant
+
+    async def upsert(self, variant: VariantImage) -> VariantImage:
+        """Insert or update a variant by (design_id, texture_id, color_id, size_key)."""
+        existing = await self.get_by_combination(
+            variant.design_id,
+            variant.texture_id,
+            variant.color_id,
+            variant.size_key,
+        )
+        if existing:
+            # Update in place — preserve original id and created_at
+            existing.image_path = variant.image_path
+            existing.hex = variant.hex
+            return existing
         self._variants.append(variant)
         return variant
 

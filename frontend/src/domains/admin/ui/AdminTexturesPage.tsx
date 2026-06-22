@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
 	Alert,
 	Button,
@@ -153,7 +153,10 @@ export default function AdminTexturesPage() {
 
 	function setTab(next: TexturesTab): void {
 		const params = new URLSearchParams();
-		if (next !== "textures") params.set("tab", next);
+		params.set("tab", next);
+		// Preserve selected design when switching tabs
+		const designId = searchParams.get("designId");
+		if (designId) params.set("designId", designId);
 		setSearchParams(params, { replace: false });
 	}
 
@@ -392,7 +395,7 @@ export default function AdminTexturesPage() {
 	// ─── Colors data ────────────────────────────────────────────────────
 	const [selectedTextureId, setSelectedTextureId] = useState<
 		string | undefined
-	>(undefined);
+	>(searchParams.get("textureId") ?? undefined);
 	const colorsQuery = useAdminTextureColors(selectedTextureId);
 	const colors = colorsQuery.data ?? [];
 
@@ -640,8 +643,20 @@ export default function AdminTexturesPage() {
 	const isColorSubmitting = createColor.isPending || updateColor.isPending;
 
 	// ─── Variant Images data ────────────────────────────────────────────
-	const [viDesignId, setViDesignId] = useState<string | undefined>(undefined);
+	// Initialize from URL param (when navigating from Catalog → Фото button)
+	const [viDesignId, setViDesignIdState] = useState<string | undefined>(
+		searchParams.get("designId") ?? undefined,
+	);
 	const [viTextureId, setViTextureId] = useState<string | undefined>(undefined);
+
+	// Keep URL in sync when design changes (for shareable links)
+	function setViDesignId(id: string | undefined): void {
+		setViDesignIdState(id);
+		const params = new URLSearchParams(searchParams);
+		if (id) params.set("designId", id);
+		else params.delete("designId");
+		setSearchParams(params, { replace: true });
+	}
 
 	const designsQuery = useAdminDesigns(ALL_DESIGNS_QUERY);
 	const designs: ApiAdminDesign[] = designsQuery.data?.items ?? [];
@@ -712,13 +727,6 @@ export default function AdminTexturesPage() {
 				),
 		});
 	}
-
-	// Auto-select first texture when switching to colors tab
-	useEffect(() => {
-		if (tab === "colors" && !selectedTextureId && textures.length > 0) {
-			setSelectedTextureId(textures[0].id);
-		}
-	}, [tab, selectedTextureId, textures]);
 
 	// ─── Render ─────────────────────────────────────────────────────────
 	return (

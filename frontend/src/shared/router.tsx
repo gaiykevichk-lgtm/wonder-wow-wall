@@ -74,6 +74,9 @@ const AdminUploadPage = lazy(
 const AdminTexturesPage = lazy(
 	() => import("../domains/admin/ui/AdminTexturesPage"),
 );
+const AdminPanelCreatorPage = lazy(
+	() => import("../domains/admin/ui/AdminPanelCreatorPage"),
+);
 const AdminRecommendationsPage = lazy(
 	() => import("../domains/admin/ui/AdminRecommendationsPage"),
 );
@@ -180,6 +183,7 @@ export function AppRouter() {
 					<Route path="users/:id" element={<AdminUserDetailPage />} />
 					<Route path="catalog" element={<AdminCatalogPage />} />
 					<Route path="textures" element={<AdminTexturesPage />} />
+					<Route path="panel-creator" element={<AdminPanelCreatorPage />} />
 					<Route path="shop" element={<AdminShopPage />} />
 					<Route path="upload" element={<AdminUploadPage />} />
 					<Route

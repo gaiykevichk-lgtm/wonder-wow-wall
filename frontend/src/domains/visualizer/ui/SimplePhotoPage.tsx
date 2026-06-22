@@ -111,7 +111,7 @@ export default function SimplePhotoPage() {
 		if (designImageUrl && !designImageUrl.startsWith("data:")) {
 			console.log("[DEBUG] Converting design image to base64...");
 			try {
-				designImageUrl = await urlToDataUrl(designImageUrl, 256, 0.75);
+				designImageUrl = await urlToDataUrl(designImageUrl, 512, 0.85);
 				console.log(
 					"[DEBUG] Design image converted to base64, length:",
 					designImageUrl.length,
@@ -135,13 +135,30 @@ export default function SimplePhotoPage() {
 				photoUrl,
 				designColor: selectedColor,
 				designImageUrl,
+				panelSize: selectedSizeKey,
 			});
 			setAiPreviewUrl(result.previewUrl);
 			setShowAiPreview(true);
 			message.success("AI превью готово!");
-		} catch (err) {
+		} catch (err: unknown) {
 			console.error("AI preview failed:", err);
-			message.error("Не удалось сгенерировать превью. Попробуйте позже.");
+			// Check for no_balance error (status 503)
+			const apiError = err as {
+				status?: number;
+				detail?: string | { error?: string; message?: string };
+			};
+			if (
+				apiError.status === 503 ||
+				(typeof apiError.detail === "string" &&
+					apiError.detail.includes("no_balance"))
+			) {
+				message.warning(
+					"⚠️ Закончились кредиты AI-провайдера. Генерация превью временно недоступна. Пополните баланс.",
+					5, // longer duration
+				);
+			} else {
+				message.error("Не удалось сгенерировать превью. Попробуйте позже.");
+			}
 		} finally {
 			setIsGenerating(false);
 		}

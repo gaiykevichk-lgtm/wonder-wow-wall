@@ -21,6 +21,7 @@ class GeneratePreviewRequest(BaseModel):
         None, description="URL or base64 data URL of the selected panel design texture"
     )
     prompt: str | None = Field(None, description="Custom prompt override")
+    panel_size: str | None = Field(None, description="Panel size (e.g., '30x30', '30x60', '60x60')")
 
 
 class GeneratePreviewResponse(BaseModel):
@@ -106,6 +107,7 @@ async def generate_wall_preview(
     design_color: str,
     design_image_url: str | None = None,
     custom_prompt: str | None = None,
+    panel_size: str | None = None,
 ) -> tuple[str, str]:
     """Generate a wall preview using Nano Banana Flash via /v1/chat/completions.
 
@@ -128,7 +130,7 @@ async def generate_wall_preview(
     # Prepare design image if provided
     design_data_url = None
     if design_image_url:
-        design_data_url = await image_to_data_url(design_image_url, max_dimension=256, quality=75)
+        design_data_url = await image_to_data_url(design_image_url, max_dimension=512, quality=85)
         print(f"[DEBUG] Design image URL: {design_image_url}")
         print(f"[DEBUG] Design data URL length: {len(design_data_url)}")
     else:
@@ -143,18 +145,26 @@ async def generate_wall_preview(
     for i, item in enumerate(content):
         print(f"[DEBUG] Content[{i}]: type={item.get('type')}, url_len={len(item.get('image_url',{}).get('url',''))}")
 
+    # Build panel size description for prompt
+    panel_size_text = "30×30 centimeters"  # default
+    if panel_size:
+        panel_size_text = panel_size.replace("x", "×") + " centimeters"
+    
     if custom_prompt:
         content.append({"type": "text", "text": custom_prompt})
     else:
         content.append({
             "type": "text",
             "text": (
-                f"Look at the second reference image carefully. "
-                f"It shows a white 3D wall panel with a specific relief pattern. "
-                f"Apply EXACTLY this panel design to one wall in the room shown in the first reference image. "
-                f"Match the panel relief structure, depth and color exactly as shown. "
-                f"Keep the same room, perspective, lighting and composition. "
-                f"Photorealistic interior design visualization."
+                f"I am giving you two images.\n"
+                f"Image 1: A room.\n"
+                f"Image 2: A CLOSE-UP PHOTOGRAPH of a 3D wall panel texture (size: {panel_size_text}).\n\n"
+                f"Your task: Install the EXACT 3D wall panels from Image 2 onto ALL VISIBLE WALLS in the room (Image 1).\n"
+                f"The panels have REAL 3D DEPTH and relief effect - show visible gaps and shadows between panels.\n"
+                f"Panel size is {panel_size_text} each - use this to determine how panels are arranged.\n"
+                f"Copy the texture PRECISELY as shown - do not generate a similar pattern, COPY this specific texture.\n"
+                f"Match the perspective and lighting of Image 1.\n"
+                f"Photorealistic result showing complete 3D wall panel installation on ALL walls."
             ),
         })
 
@@ -174,7 +184,18 @@ async def generate_wall_preview(
         )
 
     if response.status_code != 200:
-        raise HTTPException(status_code=502, detail=f"AI gateway error: {response.text}")
+        # Check for no_balance error
+        error_text = response.text
+        if "no_balance" in error_text:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error": "no_balance",
+                    "message": "Закончились кредиты AI-провайдера. Пополните баланс.",
+                    "balance_credits": 126,  # Will be parsed from response
+                }
+            )
+        raise HTTPException(status_code=502, detail=f"AI gateway error: {error_text}")
 
     result = response.json()
 
@@ -241,6 +262,7 @@ async def generate_preview(body: GeneratePreviewRequest):
         design_color=body.design_color,
         design_image_url=body.design_image_url,
         custom_prompt=body.prompt,
+        panel_size=body.panel_size,
     )
 
     return GeneratePreviewResponse(

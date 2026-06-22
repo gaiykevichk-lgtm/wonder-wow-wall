@@ -27,7 +27,8 @@
  * (`{ kind, id }`) so we don't accidentally cross-fire mutations.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
 	Alert,
 	Button,
@@ -202,6 +203,7 @@ export default function AdminCatalogPage() {
 	const updateDesign = useUpdateDesign();
 	const deleteDesign = useDeleteDesign();
 	const toggleVisibility = useToggleDesignVisibility();
+	const navigate = useNavigate();
 
 	// ── Tab state ─────────────────────────────────────────────────────
 	// Switching to «categories» strips designs-only params (`page`,
@@ -222,10 +224,9 @@ export default function AdminCatalogPage() {
 	}
 
 	// ── Designs filter state ──────────────────────────────────────────
-	const [searchDraft, setSearchDraft] = useState(query.search ?? "");
-	useEffect(() => {
-		setSearchDraft(query.search ?? "");
-	}, [query.search]);
+	const [searchDraft, setSearchDraft] = useState(
+		searchParams.get("search") ?? "",
+	);
 
 	function updateUrl(next: DesignsAdminQuery): void {
 		setSearchParams(searchParamsFromQuery(next, tab), { replace: false });
@@ -644,6 +645,22 @@ export default function AdminCatalogPage() {
 			render: formatDate,
 		},
 		{
+			title: "Фото",
+			key: "images",
+			width: 80,
+			render: (_v, row) => (
+				<Button
+					type="text"
+					title="Загрузить фото комбинаций"
+					onClick={() =>
+						navigate(`/admin/textures?tab=images&designId=${row.id}`)
+					}
+				>
+					📷
+				</Button>
+			),
+		},
+		{
 			title: "",
 			key: "actions",
 			width: 110,
@@ -978,7 +995,9 @@ export default function AdminCatalogPage() {
 							step={100}
 							style={{ width: "100%" }}
 							formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, " ")}
-							parser={(v) => Number((v ?? "").replace(/\s/g, "")) || 0}
+							parser={(v) =>
+								Number((v ?? "").replace(/\s/g, "")) as 0 | 1000000
+							}
 						/>
 					</Form.Item>
 

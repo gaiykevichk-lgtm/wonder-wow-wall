@@ -436,6 +436,7 @@ export interface AiPreviewRequest {
 	designColor: string;
 	designImageUrl?: string;
 	prompt?: string;
+	panelSize?: string;
 }
 
 export interface AiPreviewResponse {
@@ -457,7 +458,9 @@ export async function apiGenerateAiPreview(
 		photo_url: request.photoUrl,
 		design_name: request.designName,
 		design_color: request.designColor,
+		design_image_url: request.designImageUrl,
 		prompt: request.prompt,
+		panel_size: request.panelSize,
 	});
 	return {
 		previewUrl: wire.preview_url,

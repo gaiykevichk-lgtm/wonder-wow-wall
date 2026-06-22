@@ -92,6 +92,10 @@ export interface ApiVariantImage {
   texture_id: string;
   color_id: string;
   image_path: string;
+  // ── Panel Creator Wizard additions ────────────────────────────────
+  size_key: string | null;
+  hex: string | null;
+  // ─────────────────────────────────────────────────────────────────
   created_at: string;
 }
 
@@ -100,6 +104,30 @@ export interface VariantImageCreatePayload {
   texture_id: string;
   color_id: string;
   image_path: string;
+  size_key?: string | null;
+  hex?: string | null;
+}
+
+// ── Panel Creator Wizard batch types ──────────────────────────────────────
+
+export interface VariantImageBatchItemPayload {
+  texture_id: string;
+  color_id: string;
+  image_path: string;
+  size_key?: string | null;
+  hex?: string | null;
+}
+
+export interface VariantImageBatchPayload {
+  design_id: string;
+  variants: VariantImageBatchItemPayload[];
+}
+
+export interface VariantImageBatchResponse {
+  created: ApiVariantImage[];
+  updated: ApiVariantImage[];
+  errors: Array<{ index: number; errors: Record<string, string> }>;
+  total_processed: number;
 }
 
 // ─── Query keys ─────────────────────────────────────────────────────────
@@ -265,6 +293,19 @@ export function useDeleteVariantImage() {
   return useMutation({
     mutationFn: (variantId: string) =>
       api.delete<void>(`/admin/variant-images/${variantId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: texturesAdminKeys.variantsAll });
+    },
+  });
+}
+
+// ─── Panel Creator Wizard batch hooks ──────────────────────────────────────
+
+export function useCreateVariantImageBatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: VariantImageBatchPayload) =>
+      api.post<VariantImageBatchResponse>('/admin/variant-images/batch', body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: texturesAdminKeys.variantsAll });
     },

@@ -993,8 +993,6 @@ export default function PhotoEditorPage() {
 							/>
 						)}
 
-	
-								) : (
 									<button
 										onClick={async () => {
 											// Toggle AI preview if already generated
@@ -1049,9 +1047,7 @@ export default function PhotoEditorPage() {
 												: "AI Превью"
 											: "✨ AI Превью"}
 									</button>
-								)
-							) : null}
-							<button
+								<button
 								data-testid="mask-toolbar-trigger"
 								onClick={() => setEditingMask(!editingMask)}
 								style={{

@@ -13,8 +13,10 @@ from app.application.catalog.texture_use_cases import (
 )
 from app.application.catalog.variant_image_use_cases import (
     CreateVariantImageAdmin,
+    CreateVariantImageBatchAdmin,
     DeleteVariantImageAdmin,
     ListVariantImagesAdmin,
+    VariantImageBatchItem,
 )
 from app.container import (
     get_design_repo,
@@ -89,6 +91,10 @@ class VariantImageResponse(BaseModel):
     texture_id: str
     color_id: str
     image_path: str
+    # ── Panel Creator Wizard additions ──────────────────────────────
+    size_key: str | None = None
+    hex: str | None = None
+    # ─────────────────────────────────────────────────────────────────
     created_at: str
 
 
@@ -97,6 +103,32 @@ class VariantImageCreate(BaseModel):
     texture_id: str = Field(min_length=1, max_length=36)
     color_id: str = Field(min_length=1, max_length=36)
     image_path: str = Field(min_length=1, max_length=500)
+
+
+# ─── Panel Creator Wizard batch schemas ────────────────────────────────────
+
+
+class VariantImageBatchItemSchema(BaseModel):
+    """Single item in a batch create request."""
+    texture_id: str = Field(min_length=1, max_length=36)
+    color_id: str = Field(min_length=1, max_length=36)
+    image_path: str = Field(min_length=1, max_length=500)
+    size_key: str | None = Field(default=None, max_length=20)
+    hex: str | None = Field(default=None, max_length=7)
+
+
+class VariantImageBatchCreate(BaseModel):
+    """Batch create (upsert) variant images for a single design."""
+    design_id: str = Field(min_length=1, max_length=36)
+    variants: list[VariantImageBatchItemSchema] = Field(min_length=1)
+
+
+class VariantImageBatchResponse(BaseModel):
+    """Response for batch create operation."""
+    created: list[VariantImageResponse]
+    updated: list[VariantImageResponse]
+    errors: list[dict]
+    total_processed: int
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────
@@ -127,15 +159,17 @@ def _color_to_response(c) -> dict:
     }
 
 
-def _variant_to_response(v) -> dict:
-    return {
-        "id": v.id,
-        "design_id": v.design_id,
-        "texture_id": v.texture_id,
-        "color_id": v.color_id,
-        "image_path": v.image_path,
-        "created_at": v.created_at.isoformat(),
-    }
+def _variant_to_response(v) -> VariantImageResponse:
+    return VariantImageResponse(
+        id=v.id,
+        design_id=v.design_id,
+        texture_id=v.texture_id,
+        color_id=v.color_id,
+        image_path=v.image_path,
+        size_key=v.size_key,
+        hex=v.hex,
+        created_at=v.created_at.isoformat(),
+    )
 
 
 # ─── Texture CRUD ───────────────────────────────────────────────────
@@ -314,3 +348,49 @@ async def delete_variant_image_admin(
 ):
     await DeleteVariantImageAdmin(variant_repo).execute(variant_id)
     return Response(status_code=204)
+
+
+# ─── Panel Creator Wizard — Batch Create ────────────────────────────
+
+
+@router.post(
+    "/variant-images/batch",
+    response_model=VariantImageBatchResponse,
+    status_code=201,
+)
+async def create_variant_images_batch(
+    body: VariantImageBatchCreate,
+    _admin_id: str = Depends(get_current_admin_id),
+    variant_repo=Depends(get_variant_image_repo),
+    design_repo=Depends(get_design_repo),
+    texture_repo=Depends(get_texture_repo),
+    color_repo=Depends(get_texture_color_repo),
+):
+    """Batch-create (upsert) variant images for a single design.
+
+    Validates all items first; persists only valid ones.
+    Uses upsert semantics: if a variant exists for the combination
+    (design_id, texture_id, color_id, size_key), updates it;
+    otherwise creates a new entry.
+    """
+    use_case = CreateVariantImageBatchAdmin(
+        variant_repo, design_repo, texture_repo, color_repo,
+    )
+    items = [
+        VariantImageBatchItem(
+            texture_id=i.texture_id,
+            color_id=i.color_id,
+            image_path=i.image_path,
+            size_key=i.size_key,
+            hex_color=i.hex,
+        )
+        for i in body.variants
+    ]
+    result = await use_case.execute(design_id=body.design_id, items=items)
+
+    return VariantImageBatchResponse(
+        created=[_variant_to_response(v) for v in result.created],
+        updated=[_variant_to_response(v) for v in result.updated],
+        errors=result.errors,
+        total_processed=result.total_processed,
+    )

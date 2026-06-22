@@ -197,8 +197,18 @@ class TextureColorRepository(ABC):
 class VariantImageRepository(ABC):
     @abstractmethod
     async def get_by_combination(
-        self, design_id: str, texture_id: str, color_id: str,
+        self,
+        design_id: str,
+        texture_id: str,
+        color_id: str,
+        size_key: str | None = None,
     ) -> VariantImage | None:
+        """Look up a variant by its full combination key.
+
+        `size_key=None` matches legacy entries (created before Panel Creator
+        Wizard) which have no size_key set. When `size_key` is provided,
+        matches only entries with that exact size_key.
+        """
         ...
 
     @abstractmethod
@@ -211,6 +221,16 @@ class VariantImageRepository(ABC):
 
     @abstractmethod
     async def create(self, variant: VariantImage) -> VariantImage:
+        ...
+
+    @abstractmethod
+    async def upsert(self, variant: VariantImage) -> VariantImage:
+        """Insert or update a variant by (design_id, texture_id, color_id, size_key).
+
+        Used by the Panel Creator Wizard batch endpoint: if a variant already
+        exists for the given combination, update its image_path and hex;
+        otherwise insert a new row.
+        """
         ...
 
     @abstractmethod
