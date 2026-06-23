@@ -38,7 +38,7 @@ const ICONS: Record<AdminSectionKey, ReactNode> = {
 	users: <TeamOutlined />,
 	catalog: <AppstoreOutlined />,
 	textures: <BgColorsOutlined />,
-	'panel-creator': <BlockOutlined />,
+	"panel-creator": <BlockOutlined />,
 	shop: <ShopOutlined />,
 	upload: <UploadOutlined />,
 	recommendations: <BulbOutlined />,
