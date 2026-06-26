@@ -4,7 +4,7 @@
 
 import React from "react";
 import { Button, Checkbox, Typography } from "antd";
-import { SelectAllOutlined } from "@ant-design/icons";
+import { CheckSquareOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { imageSrc } from "../../../../shared/lib/imageSrc";
 import type { ApiTexture } from "../../api/texturesAdminApi";
@@ -83,7 +83,11 @@ export function StepTextures({
 				>
 					Выбрать все ({selectedIds.size} из {textures.length})
 				</Checkbox>
-				<Button size="small" onClick={onSelectAll} icon={<SelectAllOutlined />}>
+				<Button
+					size="small"
+					onClick={onSelectAll}
+					icon={<CheckSquareOutlined />}
+				>
 					Все
 				</Button>
 				<Button size="small" onClick={onDeselectAll} danger>

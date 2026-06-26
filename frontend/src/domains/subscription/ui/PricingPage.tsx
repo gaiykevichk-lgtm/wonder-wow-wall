@@ -20,7 +20,7 @@ const fadeUp = {
   hidden: { opacity: 0, y: 28 },
   visible: (i: number = 0) => ({
     opacity: 1, y: 0,
-    transition: { duration: 0.48, ease: [0.25, 0.1, 0.25, 1.0], delay: i * 0.1 },
+    transition: { duration: 0.48, ease: 'easeOut' as const, delay: i * 0.1 },
   }),
 };
 
@@ -158,10 +158,11 @@ const PricingPage: React.FC = () => {
         <div style={{ ...MAX_WIDTH, textAlign: 'center' }}>
           <motion.div variants={stagger} initial="hidden" animate="visible" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
             <motion.span variants={fadeUp} custom={0} style={{ fontSize: 12, fontWeight: 600, color: GRAY_TEXT, textTransform: 'uppercase', letterSpacing: '2px' }}>
-              Прозрачное ценообразование
+  							Свобода обновления. Стены как сервис.
             </motion.span>
             <motion.h1 variants={fadeUp} custom={1} style={{ fontSize: 'clamp(36px, 4vw, 52px)', fontWeight: 600, color: DARK, margin: 0, lineHeight: 1.15 }}>
-              Панели + Накладки
+								Мы не продаём панели.
+								Мы предоставляем доступ к интерьеру, который может меняться вместе с Вами.
             </motion.h1>
             <motion.p variants={fadeUp} custom={2} style={{ fontSize: 17, color: GRAY_TEXT, margin: 0, maxWidth: 560, lineHeight: 1.65 }}>
               Базовая панель крепится на стену. Сверху — магнитная накладка с любым дизайном.

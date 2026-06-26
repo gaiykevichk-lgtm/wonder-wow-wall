@@ -16,7 +16,7 @@ const fadeUp = {
   visible: (i: number = 0) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.8, ease: [0.25, 0.1, 0.25, 1.0], delay: i * 0.08 },
+    transition: { duration: 0.8, ease: 'easeOut' as const, delay: i * 0.08 },
   }),
 };
 
@@ -260,7 +260,7 @@ const PortfolioPage: React.FC = () => {
                 letterSpacing: '2px',
               }}
             >
-              Наши работы
+    						Время наполнять.
             </motion.span>
             <motion.h1
               variants={fadeUp}
@@ -275,7 +275,7 @@ const PortfolioPage: React.FC = () => {
                 letterSpacing: '-0.03em',
               }}
             >
-              Портфолио проектов
+              Пространства
             </motion.h1>
             <motion.p
               variants={fadeUp}
@@ -289,8 +289,8 @@ const PortfolioPage: React.FC = () => {
                 lineHeight: 1.65,
               }}
             >
-              Реализованные проекты в квартирах, офисах и ресторанах — вдохновитесь
-              для вашего интерьера.
+              Мы создали коллекцию интерьеров для дома, бизнеса и общественных пространств.
+              Меняйте фактуры, комбинируйте решения и находите свой WOW!
             </motion.p>
           </motion.div>
         </div>

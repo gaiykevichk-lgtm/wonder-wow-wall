@@ -17,12 +17,18 @@ import { useAccountStore } from "../../domains/account/model/accountStore";
 
 const NAV_ITEMS = [
 	{ path: "/catalog", label: "Каталог" },
-	{ path: "/constructor", label: "Конструктор" },
-	{ path: "/visualizer", label: "Фото-редактор" },
-	{ path: "/how-it-works", label: "Как это работает" },
+	{ path: "/spaces", label: "Пространства" },
+	{ path: "/constructor", label: "Конфигуратор" },
+	{ path: "/subscription", label: "Подписка" },
+	{ path: "/simple", label: "Просто" },
+	{ path: "/professionals", label: "Профессионалам" },
+];
+
+const MOBILE_NAV_ITEMS = [
+	{ path: "/showrooms", label: "Шоу-румы" },
 	{ path: "/portfolio", label: "Портфолио" },
-	{ path: "/blog", label: "Блог" },
 	{ path: "/about", label: "О нас" },
+	{ path: "/blog", label: "Блог" },
 	{ path: "/contacts", label: "Контакты" },
 ];
 
@@ -273,6 +279,28 @@ export function ShopHeader() {
 			>
 				<nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>
 					{NAV_ITEMS.map((item) => (
+						<Link
+							key={item.path}
+							to={item.path}
+							onClick={() => setMobileOpen(false)}
+							style={{
+								textDecoration: "none",
+								fontSize: 16,
+								fontWeight: location.pathname === item.path ? 600 : 400,
+								color: location.pathname === item.path ? "#4CAF50" : "#2D2D2D",
+								padding: "12px 16px",
+								borderRadius: 8,
+								background:
+									location.pathname === item.path
+										? "rgba(76,175,80,0.08)"
+										: "transparent",
+							}}
+						>
+							{item.label}
+						</Link>
+					))}
+					<div style={{ height: 1, background: "rgba(0,0,0,0.06)", margin: "8px 0" }} />
+					{MOBILE_NAV_ITEMS.map((item) => (
 						<Link
 							key={item.path}
 							to={item.path}

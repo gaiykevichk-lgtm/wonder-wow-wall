@@ -213,7 +213,7 @@ const steps = [
 		num: "4",
 		title: "Меняете\nоблик пространства когда годно.",
 		desc: "Одна бесплатная замена в год уже включена в подписку.",
-		video: "Меняете.MP4",
+		video: "Меняете.mp4",
 	},
 ];
 
@@ -347,7 +347,10 @@ export function HowItWorksSection() {
 							lineHeight: 1.15,
 						}}
 					>
-						Просто. Быстро. WOW.
+						Вопрос или
+						вопрос?
+						Что Вас
+						волнует?
 					</h2>
 				</motion.div>
 			</div>
@@ -585,7 +588,7 @@ export function ServiceBannerSection() {
 								marginBottom: 12,
 							}}
 						>
-							Впервые в индустрии
+							Почему WONDER
 						</span>
 					</motion.div>
 					<motion.h2
@@ -601,7 +604,9 @@ export function ServiceBannerSection() {
 							letterSpacing: "-0.03em",
 						}}
 					>
-						Стены как сервис.
+						Встанет ровно.
+						И не важно, из чего
+						сделана ваша стена.
 					</motion.h2>
 					<motion.p
 						variants={fadeUpVariants}
@@ -617,8 +622,8 @@ export function ServiceBannerSection() {
 							whiteSpace: "pre-line",
 						}}
 					>
-						Мы создали будущее, в котором интерьер <br />
-						меняется без традиционного ремонта.
+								«Меняется быстрее,
+									чем настроение»
 					</motion.p>
 
 					{/* Apple-style feature cards */}
@@ -642,45 +647,48 @@ export function ServiceBannerSection() {
 								textAlign: "center",
 							}}
 						>
-							<div
-								style={{
-									fontFamily: "'SF Pro Display', sans-serif",
-									fontSize: 15,
-									fontWeight: 700,
-									color: ACCENT,
-									textTransform: "uppercase",
-									letterSpacing: "3px",
-									marginBottom: 24,
-								}}
-							>
-								Цифровой интеллект
-							</div>
-							<div
-								style={{
-									fontFamily: "'SF Pro Display', sans-serif",
-									fontSize: 32,
-									fontWeight: 700,
-									color: DARK,
-									lineHeight: 1.2,
-									marginBottom: 12,
-									letterSpacing: "-0.02em",
-								}}
-							>
-								Ваш смартфон
-								<br />
-								Ваш дизайнер
-							</div>
-							<div
-								style={{
-									fontFamily: "'SF Pro Display', sans-serif",
-									fontSize: 19,
-									fontWeight: 600,
-									color: GRAY_TEXT,
-									lineHeight: 1.5,
-								}}
-							>
-								мгновенная визуализация решений
-							</div>
+												<div
+																				style={{
+																					fontFamily: "'SF Pro Display', sans-serif",
+																					fontSize: 15,
+																					fontWeight: 700,
+																					color: ACCENT,
+																					textTransform: "uppercase",
+																						letterSpacing: "3px",
+																					marginBottom: 24,
+																				}}
+																			>
+																				Сценарии
+																			</div>
+																			<div
+																				style={{
+																							fontFamily: "'SF Pro Display', sans-serif",
+																								fontSize: 32,
+																									fontWeight: 700,
+																									color: DARK,
+																									lineHeight: 1.2,
+																								marginBottom: 12,
+																							letterSpacing: "-0.02em",
+																						}}
+																			>
+																				Сотни визуализации —
+																					<br />
+																					меняете фактуру,
+																						<br />
+																					изменяете восприятие
+																				</div>
+																			<div
+																				style={{
+																							fontFamily: "'SF Pro Display', sans-serif",
+																								fontSize: 19,
+																									fontWeight: 600,
+																									color: GRAY_TEXT,
+																									lineHeight: 1.5,
+																							}}
+																				>
+																				Каждая зона —
+																						отдельный свайп
+																				</div>
 						</div>
 						<div
 							style={{
@@ -701,7 +709,7 @@ export function ServiceBannerSection() {
 									marginBottom: 24,
 								}}
 							>
-								Экосистема полного цикла
+											«Самая модная стена — Ваша»
 							</div>
 							<div
 								style={{
@@ -714,7 +722,8 @@ export function ServiceBannerSection() {
 									letterSpacing: "-0.02em",
 								}}
 							>
-								Единый механизм трансформации
+											Новый стандарт
+												трансформации пространства
 							</div>
 							<div
 								style={{
@@ -725,7 +734,8 @@ export function ServiceBannerSection() {
 									lineHeight: 1.5,
 								}}
 							>
-								безупречная реализация обновлений
+												Каждая зона —
+														отдельный свайп
 							</div>
 						</div>
 					</motion.div>
@@ -936,7 +946,12 @@ export function TechSection() {
 }
 
 export function PanelGridSection({ onCatalog }: { onCatalog: () => void }) {
-	const first4 = products.slice(0, 4);
+	const navigate = useNavigate();
+	const first8 = products.slice(0, 8);
+
+	const handlePanelClick = (productId: string) => {
+		navigate(`/product/${productId}`);
+	};
 	return (
 		<section style={{ background: "#fff", ...SECTION_PADDING }}>
 			<div style={{ ...MAX_WIDTH }}>
@@ -974,24 +989,28 @@ export function PanelGridSection({ onCatalog }: { onCatalog: () => void }) {
 					<div
 						style={{
 							display: "grid",
-							gridTemplateColumns: `repeat(${Math.min(first4.length, 4)}, minmax(200px, 280px))`,
+							gridTemplateColumns: `repeat(${Math.min(first8.length, 4)}, minmax(180px, 260px))`,
 							gap: 20,
 							width: "100%",
 							justifyContent: "center",
 						}}
 						className="panel-grid"
 					>
-						{first4.map((product, i) => (
+						{first8.map((product, i) => (
 							<motion.div
 								key={product.id}
 								variants={fadeUpVariants}
 								custom={i + 1}
+								onClick={() => handlePanelClick(product.id)}
+								whileHover={{ scale: 1.03, transition: { duration: 0.3 } }}
+								whileTap={{ scale: 0.98 }}
 								style={{
+									cursor: "pointer",
 									borderRadius: CARD_RADIUS,
 									overflow: "hidden",
 									aspectRatio: "3 / 4",
 									position: "relative",
-									boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
+									boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
 								}}
 							>
 								<img
@@ -1501,7 +1520,7 @@ export function CTABannerSection({ onCatalog }: { onCatalog: () => void }) {
 								whiteSpace: "nowrap",
 							}}
 						>
-							Начните обновление.
+							Ремонт перестал быть событием.
 						</h2>
 						<p
 							style={{
@@ -1514,24 +1533,11 @@ export function CTABannerSection({ onCatalog }: { onCatalog: () => void }) {
 								lineHeight: 1.6,
 							}}
 						>
-							Присоединяйтесь к новой культуре
-							<br />
-							взаимодействия с пространством
-						</p>
-						<p
-							style={{
-								fontFamily: "'SF Pro Display', sans-serif",
-								fontSize: 16,
-								fontWeight: 600,
-								color: GRAY_TEXT,
-								margin: "8px auto 0",
-								textAlign: "center",
-								lineHeight: 1.6,
-							}}
-						>
-							Ремонт перестал быть событием
-							<br />
-							Вам нужно только выбрать настроение.
+															Вам нужно только выбрать настроение.
+																<br />
+															Присоединяйтесь к новой культуре
+																<br />
+															взаимодействия с пространством.
 						</p>
 					</div>
 					<Button
