@@ -5,6 +5,7 @@
  */
 
 import React, { useEffect, useMemo, useCallback } from "react";
+import { useQueries } from "@tanstack/react-query";
 import { Button, message, Modal } from "antd";
 import { SaveOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
@@ -12,11 +13,11 @@ import { useNavigate } from "react-router-dom";
 import { useAdminDesigns, useAdminCategories } from "../api/catalogAdminApi";
 import {
 	useAdminTextures,
-	useAdminTextureColors,
 	useCreateVariantImageBatch,
 	type ApiTextureColor,
 } from "../api/texturesAdminApi";
 import { ApiError } from "../../../shared/api";
+import { api } from "../../../shared/api";
 
 import { usePanelCreatorStore } from "../model/panelCreatorStore";
 import {
@@ -82,21 +83,31 @@ export default function AdminPanelCreatorPage() {
 	const texturesQuery = useAdminTextures();
 	const textures = texturesQuery.data ?? [];
 
-	// Fetch colors for each selected texture (simplified: first texture only)
-	// TODO: Fetch colors for all selected textures in parallel
-	const firstTextureId =
-		selectedTextureIds.size > 0 ? [...selectedTextureIds][0] : undefined;
-	const textureColorQueries = useAdminTextureColors(firstTextureId);
+	// Fetch colors for every selected texture in parallel
+	const selectedTextureIdsArray = useMemo(
+		() => [...selectedTextureIds],
+		[selectedTextureIds],
+	);
+	const textureColorResults = useQueries({
+		queries: selectedTextureIdsArray.map((textureId) => ({
+			queryKey: ["admin", "textureColors", textureId],
+			queryFn: () => api.get<ApiTextureColor[]>(`/admin/textures/${textureId}/colors`),
+			staleTime: 30_000,
+			retry: false,
+		})),
+	});
 
 	// Build a map of textureId -> colors for all selected textures
 	const textureColorsMap = useMemo(() => {
 		const map = new Map<string, ApiTextureColor[]>();
-		// For simplicity, we fetch colors for the first texture only
-		if (firstTextureId && textureColorQueries.data) {
-			map.set(firstTextureId, textureColorQueries.data);
-		}
+		selectedTextureIdsArray.forEach((textureId, index) => {
+			const data = textureColorResults[index]?.data;
+			if (data) {
+				map.set(textureId, data);
+			}
+		});
 		return map;
-	}, [firstTextureId, textureColorQueries.data]);
+	}, [selectedTextureIdsArray, textureColorResults]);
 
 	const textureNamesMap = useMemo(() => {
 		const map = new Map<string, string>();
@@ -111,12 +122,18 @@ export default function AdminPanelCreatorPage() {
 
 	const buildIfNeeded = useCallback(() => {
 		if (currentStep === 4 && lastBuiltStepRef.current !== 4) {
-			buildVariants(textureColorsMap, textureNamesMap);
-			lastBuiltStepRef.current = 4;
+			// Wait until all color queries are loaded
+			const allLoaded = selectedTextureIdsArray.every((id) =>
+				textureColorsMap.has(id),
+			);
+			if (allLoaded) {
+				buildVariants(textureColorsMap, textureNamesMap);
+				lastBuiltStepRef.current = 4;
+			}
 		} else if (currentStep !== 4) {
 			lastBuiltStepRef.current = currentStep;
 		}
-	}, [currentStep, textureColorsMap, textureNamesMap, buildVariants]);
+	}, [currentStep, textureColorsMap, textureNamesMap, buildVariants, selectedTextureIdsArray]);
 
 	useEffect(() => {
 		buildIfNeeded();
