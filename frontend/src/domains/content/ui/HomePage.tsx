@@ -205,15 +205,15 @@ const steps = [
 	},
 	{
 		num: "3",
-		title: "Обновляете\nстены без пыли\nи ремонтного хаоса.",
-		desc: "Мы превратили обновление интерьера в вопрос нескольких часов.",
-		video: "Обновляете.MP4",
-	},
-	{
-		num: "4",
 		title: "Меняете\nоблик пространства когда годно.",
 		desc: "Одна бесплатная замена в год уже включена в подписку.",
 		video: "Меняете.mp4",
+	},
+	{
+		num: "4",
+		title: "Обновляете\nстены без пыли\nи ремонтного хаоса.",
+		desc: "Мы превратили обновление интерьера в вопрос нескольких часов.",
+		video: "Обновляете.MP4",
 	},
 ];
 
@@ -347,10 +347,7 @@ export function HowItWorksSection() {
 							lineHeight: 1.15,
 						}}
 					>
-						Вопрос или
-						вопрос?
-						Что Вас
-						волнует?
+						Вопрос или вопрос? Что Вас волнует?
 					</h2>
 				</motion.div>
 			</div>
@@ -604,9 +601,7 @@ export function ServiceBannerSection() {
 							letterSpacing: "-0.03em",
 						}}
 					>
-						Встанет ровно.
-						И не важно, из чего
-						сделана ваша стена.
+						Встанет ровно. И не важно, из чего сделана ваша стена.
 					</motion.h2>
 					<motion.p
 						variants={fadeUpVariants}
@@ -622,8 +617,7 @@ export function ServiceBannerSection() {
 							whiteSpace: "pre-line",
 						}}
 					>
-								«Меняется быстрее,
-									чем настроение»
+						«Меняется быстрее, чем настроение»
 					</motion.p>
 
 					{/* Apple-style feature cards */}
@@ -647,48 +641,47 @@ export function ServiceBannerSection() {
 								textAlign: "center",
 							}}
 						>
-												<div
-																				style={{
-																					fontFamily: "'SF Pro Display', sans-serif",
-																					fontSize: 15,
-																					fontWeight: 700,
-																					color: ACCENT,
-																					textTransform: "uppercase",
-																						letterSpacing: "3px",
-																					marginBottom: 24,
-																				}}
-																			>
-																				Сценарии
-																			</div>
-																			<div
-																				style={{
-																							fontFamily: "'SF Pro Display', sans-serif",
-																								fontSize: 32,
-																									fontWeight: 700,
-																									color: DARK,
-																									lineHeight: 1.2,
-																								marginBottom: 12,
-																							letterSpacing: "-0.02em",
-																						}}
-																			>
-																				Сотни визуализации —
-																					<br />
-																					меняете фактуру,
-																						<br />
-																					изменяете восприятие
-																				</div>
-																			<div
-																				style={{
-																							fontFamily: "'SF Pro Display', sans-serif",
-																								fontSize: 19,
-																									fontWeight: 600,
-																									color: GRAY_TEXT,
-																									lineHeight: 1.5,
-																							}}
-																				>
-																				Каждая зона —
-																						отдельный свайп
-																				</div>
+							<div
+								style={{
+									fontFamily: "'SF Pro Display', sans-serif",
+									fontSize: 15,
+									fontWeight: 700,
+									color: ACCENT,
+									textTransform: "uppercase",
+									letterSpacing: "3px",
+									marginBottom: 24,
+								}}
+							>
+								Сценарии
+							</div>
+							<div
+								style={{
+									fontFamily: "'SF Pro Display', sans-serif",
+									fontSize: 32,
+									fontWeight: 700,
+									color: DARK,
+									lineHeight: 1.2,
+									marginBottom: 12,
+									letterSpacing: "-0.02em",
+								}}
+							>
+								Сотни визуализации —
+								<br />
+								меняете фактуру,
+								<br />
+								изменяете восприятие
+							</div>
+							<div
+								style={{
+									fontFamily: "'SF Pro Display', sans-serif",
+									fontSize: 19,
+									fontWeight: 600,
+									color: GRAY_TEXT,
+									lineHeight: 1.5,
+								}}
+							>
+								Каждая зона — отдельный свайп
+							</div>
 						</div>
 						<div
 							style={{
@@ -709,7 +702,7 @@ export function ServiceBannerSection() {
 									marginBottom: 24,
 								}}
 							>
-											«Самая модная стена — Ваша»
+								«Самая модная стена — Ваша»
 							</div>
 							<div
 								style={{
@@ -722,8 +715,7 @@ export function ServiceBannerSection() {
 									letterSpacing: "-0.02em",
 								}}
 							>
-											Новый стандарт
-												трансформации пространства
+								Новый стандарт трансформации пространства
 							</div>
 							<div
 								style={{
@@ -734,8 +726,7 @@ export function ServiceBannerSection() {
 									lineHeight: 1.5,
 								}}
 							>
-												Каждая зона —
-														отдельный свайп
+								Каждая зона — отдельный свайп
 							</div>
 						</div>
 					</motion.div>
@@ -1533,11 +1524,11 @@ export function CTABannerSection({ onCatalog }: { onCatalog: () => void }) {
 								lineHeight: 1.6,
 							}}
 						>
-															Вам нужно только выбрать настроение.
-																<br />
-															Присоединяйтесь к новой культуре
-																<br />
-															взаимодействия с пространством.
+							Вам нужно только выбрать настроение.
+							<br />
+							Присоединяйтесь к новой культуре
+							<br />
+							взаимодействия с пространством.
 						</p>
 					</div>
 					<Button
