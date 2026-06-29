@@ -660,11 +660,15 @@ class VariantImageModel(Base):
     texture_id: Mapped[str] = mapped_column(ForeignKey("textures.id", ondelete="RESTRICT"), nullable=False)
     color_id: Mapped[str] = mapped_column(ForeignKey("texture_colors.id", ondelete="RESTRICT"), nullable=False)
     image_path: Mapped[str] = mapped_column(String(500), nullable=False)
+    # ── Panel Creator Wizard additions ──────────────────────────────
+    size_key: Mapped[str] = mapped_column(String(10), nullable=True, default=None)
+    hex: Mapped[str] = mapped_column(String(7), nullable=True, default=None)
+    # ─────────────────────────────────────────────────────────────────
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     __table_args__ = (
         UniqueConstraint(
-            "design_id", "texture_id", "color_id",
+            "design_id", "texture_id", "color_id", "size_key",
             name="uq_variant_images_combination",
         ),
     )

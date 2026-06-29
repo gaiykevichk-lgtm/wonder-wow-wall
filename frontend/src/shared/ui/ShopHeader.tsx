@@ -299,7 +299,13 @@ export function ShopHeader() {
 							{item.label}
 						</Link>
 					))}
-					<div style={{ height: 1, background: "rgba(0,0,0,0.06)", margin: "8px 0" }} />
+					<div
+						style={{
+							height: 1,
+							background: "rgba(0,0,0,0.06)",
+							margin: "8px 0",
+						}}
+					/>
 					{MOBILE_NAV_ITEMS.map((item) => (
 						<Link
 							key={item.path}

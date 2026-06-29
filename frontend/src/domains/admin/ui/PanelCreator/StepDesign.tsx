@@ -231,47 +231,44 @@ export function StepDesign({
 										? "0 4px 12px rgba(24, 144, 255, 0.2)"
 										: "0 2px 8px rgba(0,0,0,0.08)",
 								}}
-											>
-											<div style={{ position: "relative" }}>
-												<img
-													src={imageSrc(design.image)}
-													alt={design.name}
-													style={{
-														width: "100%",
-														height: 160,
-														objectFit: "cover",
-														background: "#f5f5f5",
-													}}
-													onError={(e) => {
-														(e.target as HTMLImageElement).src =
-															'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="160" fill="%23f0f0f0"%3E%3Crect width="200" height="160"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%23999"%3ENo image%3C/text%3E%3C/svg%3E';
-													}}
-												/>
-												<UploadButton
-												design={design}
-												onUpdated={onSelect}
-												/>
-												{isSelected && (
-												<div
-													style={{
-														position: "absolute",
-														top: 8,
-														right: 48,
-														width: 24,
-														height: 24,
-														borderRadius: "50%",
-														background: "#1890ff",
-														color: "#fff",
-															display: "flex",
-															alignItems: "center",
-															justifyContent: "center",
-															fontSize: 14,
-															fontWeight: "bold",
-													}}
-													>
-													✓
-												</div>
-											)}
+							>
+								<div style={{ position: "relative" }}>
+									<img
+										src={imageSrc(design.image)}
+										alt={design.name}
+										style={{
+											width: "100%",
+											height: 160,
+											objectFit: "cover",
+											background: "#f5f5f5",
+										}}
+										onError={(e) => {
+											(e.target as HTMLImageElement).src =
+												'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="160" fill="%23f0f0f0"%3E%3Crect width="200" height="160"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%23999"%3ENo image%3C/text%3E%3C/svg%3E';
+										}}
+									/>
+									<UploadButton design={design} onUpdated={onSelect} />
+									{isSelected && (
+										<div
+											style={{
+												position: "absolute",
+												top: 8,
+												right: 48,
+												width: 24,
+												height: 24,
+												borderRadius: "50%",
+												background: "#1890ff",
+												color: "#fff",
+												display: "flex",
+												alignItems: "center",
+												justifyContent: "center",
+												fontSize: 14,
+												fontWeight: "bold",
+											}}
+										>
+											✓
+										</div>
+									)}
 								</div>
 								<div style={{ padding: "12px 12px 16px" }}>
 									<div style={{ fontWeight: 500, marginBottom: 4 }}>

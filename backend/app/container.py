@@ -167,6 +167,9 @@ def _get_sql_repo_classes() -> dict:
             SqlSubscriptionPlanRepository,
             SqlAuditEntryRepository,
             SqlRecommendationRepository,
+            SqlTextureRepository,
+            SqlTextureColorRepository,
+            SqlVariantImageRepository,
         )
         from app.infrastructure.persistence.repositories.project_repo import SqlProjectRepository
         from app.infrastructure.persistence.repositories.visualization_repo import SqlVisualizationProjectRepository
@@ -188,6 +191,9 @@ def _get_sql_repo_classes() -> dict:
             "subscription_plan": SqlSubscriptionPlanRepository,
             "audit": SqlAuditEntryRepository,
             "recommendation": SqlRecommendationRepository,
+            "texture": SqlTextureRepository,
+            "texture_color": SqlTextureColorRepository,
+            "variant_image": SqlVariantImageRepository,
         }
     return _sql_repo_classes
 

@@ -67,6 +67,9 @@ from app.infrastructure.persistence.models import (
     AuditEntryModel,
     RecommendationModel,
     RecommendationTargetModel,
+    TextureModel,
+    TextureColorModel,
+    VariantImageModel,
 )
 
 
@@ -1443,6 +1446,243 @@ class SqlBannerRepository(BannerRepository):
 
     async def delete(self, banner_id: str) -> bool:
         row = await self._session.get(BannerModel, banner_id)
+        if row is None:
+            return False
+        await self._session.delete(row)
+        await self._session.flush()
+        return True
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Phase 12 — Textures (Panel Creator Wizard)
+# ═══════════════════════════════════════════════════════════════════════
+
+from app.domain.catalog.texture import Texture
+from app.domain.catalog.texture_color import TextureColor
+from app.domain.catalog.variant_image import VariantImage
+from app.domain.catalog.repositories import (
+    TextureRepository,
+    TextureColorRepository,
+    VariantImageRepository,
+)
+
+
+def _texture_to_domain(m: TextureModel) -> Texture:
+    return Texture(
+        id=m.id, name=m.name, slug=m.slug, swatch_image=m.swatch_image or "",
+        sort_order=m.sort_order, is_active=m.is_active, created_at=m.created_at,
+    )
+
+
+def _texture_color_to_domain(m: TextureColorModel) -> TextureColor:
+    return TextureColor(
+        id=m.id, texture_id=m.texture_id, name=m.name,
+        hex=m.hex or "", swatch_image=m.swatch_image or "",
+        sort_order=m.sort_order, is_active=m.is_active, created_at=m.created_at,
+    )
+
+
+def _variant_image_to_domain(m: VariantImageModel) -> VariantImage:
+    return VariantImage(
+        id=m.id, design_id=m.design_id, texture_id=m.texture_id,
+        color_id=m.color_id, image_path=m.image_path,
+        size_key=m.size_key, hex=m.hex,
+        created_at=m.created_at,
+    )
+
+
+class SqlTextureRepository(TextureRepository):
+    """SQLAlchemy mirror of `InMemoryTextureRepository`."""
+
+    def __init__(self, session: AsyncSession):
+        self._session = session
+
+    async def get_by_id(self, texture_id: str) -> Texture | None:
+        row = await self._session.get(TextureModel, texture_id)
+        return _texture_to_domain(row) if row else None
+
+    async def get_by_slug(self, slug: str) -> Texture | None:
+        query = select(TextureModel).where(TextureModel.slug == slug)
+        row = (await self._session.execute(query)).scalar_one_or_none()
+        return _texture_to_domain(row) if row else None
+
+    async def list_all(self, *, include_inactive: bool = False) -> list[Texture]:
+        query = select(TextureModel)
+        if not include_inactive:
+            query = query.where(TextureModel.is_active.is_(True))
+        query = query.order_by(asc(TextureModel.sort_order))
+        rows = (await self._session.execute(query)).scalars().all()
+        return [_texture_to_domain(r) for r in rows]
+
+    async def create(self, texture: Texture) -> Texture:
+        model = TextureModel(
+            id=texture.id, name=texture.name, slug=texture.slug,
+            swatch_image=texture.swatch_image, sort_order=texture.sort_order,
+            is_active=texture.is_active, created_at=texture.created_at,
+        )
+        self._session.add(model)
+        await self._session.flush()
+        return texture
+
+    async def update(self, texture: Texture) -> Texture:
+        row = await self._session.get(TextureModel, texture.id)
+        if row is None:
+            raise LookupError(f"Texture {texture.id} not found")
+        row.name = texture.name
+        row.slug = texture.slug
+        row.swatch_image = texture.swatch_image
+        row.sort_order = texture.sort_order
+        row.is_active = texture.is_active
+        await self._session.flush()
+        return texture
+
+    async def delete(self, texture_id: str) -> bool:
+        row = await self._session.get(TextureModel, texture_id)
+        if row is None:
+            return False
+        await self._session.delete(row)
+        await self._session.flush()
+        return True
+
+
+class SqlTextureColorRepository(TextureColorRepository):
+    """SQLAlchemy mirror of `InMemoryTextureColorRepository`."""
+
+    def __init__(self, session: AsyncSession):
+        self._session = session
+
+    async def get_by_id(self, color_id: str) -> TextureColor | None:
+        row = await self._session.get(TextureColorModel, color_id)
+        return _texture_color_to_domain(row) if row else None
+
+    async def list_by_texture(
+        self, texture_id: str, *, include_inactive: bool = False,
+    ) -> list[TextureColor]:
+        query = select(TextureColorModel).where(TextureColorModel.texture_id == texture_id)
+        if not include_inactive:
+            query = query.where(TextureColorModel.is_active.is_(True))
+        query = query.order_by(asc(TextureColorModel.sort_order))
+        rows = (await self._session.execute(query)).scalars().all()
+        return [_texture_color_to_domain(r) for r in rows]
+
+    async def create(self, color: TextureColor) -> TextureColor:
+        model = TextureColorModel(
+            id=color.id, texture_id=color.texture_id, name=color.name,
+            hex=color.hex, swatch_image=color.swatch_image,
+            sort_order=color.sort_order, is_active=color.is_active,
+            created_at=color.created_at,
+        )
+        self._session.add(model)
+        await self._session.flush()
+        return color
+
+    async def update(self, color: TextureColor) -> TextureColor:
+        row = await self._session.get(TextureColorModel, color.id)
+        if row is None:
+            raise LookupError(f"TextureColor {color.id} not found")
+        row.name = color.name
+        row.hex = color.hex
+        row.swatch_image = color.swatch_image
+        row.sort_order = color.sort_order
+        row.is_active = color.is_active
+        await self._session.flush()
+        return color
+
+    async def delete(self, color_id: str) -> bool:
+        row = await self._session.get(TextureColorModel, color_id)
+        if row is None:
+            return False
+        await self._session.delete(row)
+        await self._session.flush()
+        return True
+
+
+class SqlVariantImageRepository(VariantImageRepository):
+    """SQLAlchemy mirror of `InMemoryVariantImageRepository`."""
+
+    def __init__(self, session: AsyncSession):
+        self._session = session
+
+    async def get_by_combination(
+        self,
+        design_id: str,
+        texture_id: str,
+        color_id: str,
+        size_key: str | None = None,
+    ) -> VariantImage | None:
+        query = select(VariantImageModel).where(
+            VariantImageModel.design_id == design_id,
+            VariantImageModel.texture_id == texture_id,
+            VariantImageModel.color_id == color_id,
+            VariantImageModel.size_key == size_key,
+        )
+        row = (await self._session.execute(query)).scalar_one_or_none()
+        return _variant_image_to_domain(row) if row else None
+
+    async def list_by_design(self, design_id: str) -> list[VariantImage]:
+        query = select(VariantImageModel).where(
+            VariantImageModel.design_id == design_id
+        )
+        rows = (await self._session.execute(query)).scalars().all()
+        return [_variant_image_to_domain(r) for r in rows]
+
+    async def list_by_texture(self, texture_id: str) -> list[VariantImage]:
+        query = select(VariantImageModel).where(
+            VariantImageModel.texture_id == texture_id
+        )
+        rows = (await self._session.execute(query)).scalars().all()
+        return [_variant_image_to_domain(r) for r in rows]
+
+    async def list_all(self) -> list[VariantImage]:
+        query = select(VariantImageModel)
+        rows = (await self._session.execute(query)).scalars().all()
+        return [_variant_image_to_domain(r) for r in rows]
+
+    async def create(self, variant: VariantImage) -> VariantImage:
+        model = VariantImageModel(
+            id=variant.id, design_id=variant.design_id,
+            texture_id=variant.texture_id, color_id=variant.color_id,
+            image_path=variant.image_path,
+            size_key=variant.size_key, hex=variant.hex,
+            created_at=variant.created_at,
+        )
+        self._session.add(model)
+        await self._session.flush()
+        return variant
+
+    async def upsert(self, variant: VariantImage) -> VariantImage:
+        """Insert or update a variant by (design_id, texture_id, color_id, size_key)."""
+        existing = await self.get_by_combination(
+            variant.design_id, variant.texture_id, variant.color_id, variant.size_key,
+        )
+        if existing:
+            # Update existing
+            row = await self._session.get(VariantImageModel, existing.id)
+            if row:
+                row.image_path = variant.image_path
+                row.hex = variant.hex
+                await self._session.flush()
+                return _variant_image_to_domain(row)
+        # Create new
+        return await self.create(variant)
+
+    async def delete(self, variant_id: str) -> bool:
+        row = await self._session.get(VariantImageModel, variant_id)
+        if row is None:
+            return False
+        await self._session.delete(row)
+        await self._session.flush()
+        return True
+
+    async def delete_by_combination(
+        self, design_id: str, texture_id: str, color_id: str,
+    ) -> bool:
+        query = select(VariantImageModel).where(
+            VariantImageModel.design_id == design_id,
+            VariantImageModel.texture_id == texture_id,
+            VariantImageModel.color_id == color_id,
+        )
+        row = (await self._session.execute(query)).scalar_one_or_none()
         if row is None:
             return False
         await self._session.delete(row)

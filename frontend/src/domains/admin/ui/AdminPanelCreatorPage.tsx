@@ -91,7 +91,8 @@ export default function AdminPanelCreatorPage() {
 	const textureColorResults = useQueries({
 		queries: selectedTextureIdsArray.map((textureId) => ({
 			queryKey: ["admin", "textureColors", textureId],
-			queryFn: () => api.get<ApiTextureColor[]>(`/admin/textures/${textureId}/colors`),
+			queryFn: () =>
+				api.get<ApiTextureColor[]>(`/admin/textures/${textureId}/colors`),
 			staleTime: 30_000,
 			retry: false,
 		})),
@@ -133,7 +134,13 @@ export default function AdminPanelCreatorPage() {
 		} else if (currentStep !== 4) {
 			lastBuiltStepRef.current = currentStep;
 		}
-	}, [currentStep, textureColorsMap, textureNamesMap, buildVariants, selectedTextureIdsArray]);
+	}, [
+		currentStep,
+		textureColorsMap,
+		textureNamesMap,
+		buildVariants,
+		selectedTextureIdsArray,
+	]);
 
 	useEffect(() => {
 		buildIfNeeded();
