@@ -30,6 +30,9 @@ aiosqlite==0.20.0
 # Redis (optional, for caching)
 redis==6.2.0
 
+# S3 storage (Phase 6+ — private bucket for media uploads).
+boto3==1.37.0
+
 # Image validation (Phase 6 admin uploads). Pillow re-decodes the file to
 # verify it's a real image and to read pixel dimensions — see
 # `app/application/media/use_cases.py`. 10.x is the current stable line

@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     DEPTH_INPUT_SIZE: int = 256
 
     # ─── Phase 6 (admin panel) — media file storage ──────────────────
+    # Storage backend selection:
+    #   USE_S3=false (default)  → LocalFileStorage via MEDIA_STORAGE_ROOT.
+    #   USE_S3=true             → S3FileStorage via the S3_* settings below.
+    USE_S3: bool = False
+    # Local backend (used when USE_S3=false):
     # `MEDIA_STORAGE_ROOT` is the absolute filesystem directory the
     # `LocalFileStorage` adapter writes into. nginx mounts the same
     # directory (see `docker-compose.yml:backend.volumes`) and serves it
@@ -30,6 +35,14 @@ class Settings(BaseSettings):
     # the nginx `location` alias. Kept configurable for environments
     # that mount uploads under a CDN subdomain.
     MEDIA_URL_PREFIX: str = "/uploads"
+    # S3 backend (used when USE_S3=true):
+    S3_BUCKET: str = ""
+    S3_ENDPOINT: str = ""
+    S3_ACCESS_KEY: str = ""
+    S3_SECRET_KEY: str = ""
+    S3_REGION: str = "ru-1"
+    # Lifetime of signed read URLs in seconds (24 h default).
+    S3_SIGNED_URL_TTL: int = 86_400
 
     # Derived
     @property

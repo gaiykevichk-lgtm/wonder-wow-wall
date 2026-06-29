@@ -410,14 +410,13 @@ def get_file_storage():
     """Return the process-wide `FileStorage` instance.
 
     Singleton because:
-      * `LocalFileStorage` holds no per-request state (the root path is
-        fixed at boot).
+      * Both `LocalFileStorage` and `S3FileStorage` hold no per-request state.
       * Tests can monkeypatch this function via FastAPI's
         `app.dependency_overrides[get_file_storage] = ...` to swap in a
         tempdir-backed adapter without touching the production singleton.
 
     Same lazy-init + double-checked-lock pattern as `get_depth_estimator`
-    above — keeps boot fast and avoids importing `LocalFileStorage` if
+    above — keeps boot fast and avoids importing storage adapters if
     no admin endpoint is ever hit (tests for unrelated areas).
     """
     global _file_storage
@@ -426,11 +425,23 @@ def get_file_storage():
     with _file_storage_lock:
         if _file_storage is not None:
             return _file_storage
-        from app.infrastructure.storage.local import LocalFileStorage
-        _file_storage = LocalFileStorage(
-            root=settings.MEDIA_STORAGE_ROOT,
-            url_prefix=settings.MEDIA_URL_PREFIX,
-        )
+        if settings.USE_S3:
+            from app.infrastructure.storage.s3 import S3FileStorage
+            _file_storage = S3FileStorage(
+                bucket_name=settings.S3_BUCKET,
+                endpoint_url=settings.S3_ENDPOINT,
+                access_key=settings.S3_ACCESS_KEY,
+                secret_key=settings.S3_SECRET_KEY,
+                url_prefix=settings.MEDIA_URL_PREFIX,
+                signed_url_expire_seconds=settings.S3_SIGNED_URL_TTL,
+                region_name=settings.S3_REGION,
+            )
+        else:
+            from app.infrastructure.storage.local import LocalFileStorage
+            _file_storage = LocalFileStorage(
+                root=settings.MEDIA_STORAGE_ROOT,
+                url_prefix=settings.MEDIA_URL_PREFIX,
+            )
     return _file_storage
 
 
