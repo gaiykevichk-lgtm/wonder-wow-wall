@@ -113,16 +113,21 @@ class S3FileStorage(FileStorage):
             pass
 
     def url_for(self, path: str) -> str:
-        """Generate a signed (or plain) URL for `path`.
+        """Generate a signed URL for `path`.
 
-        Signed URLs are the safe default for private buckets. Set
-        `use_signed_urls=False` on the instance if the bucket is
-        intentionally public.
+        Normalises the path first:
+          * Strips a leading `/uploads/` (legacy local-storage prefix)
+            so that both `uploads/forms/30x30/f.png` and
+            `forms/30x30/f.png` resolve to the same S3 key.
+          * Replaces OS separators with `/` for cross-platform safety.
+
+        Signed URLs are the safe default — the bucket is private by design.
+        `generate_presigned_url` is synchronous; cheap enough to call inline.
         """
-        normalised = path.replace(os.sep, "/")
-        # Always sign — the bucket is private by design.
-        # `generate_presigned_url` is synchronous; cheap enough to call
-        # inline (no thread needed).
+        normalised = path.replace(os.sep, "/").lstrip("/")
+        # Strip legacy local-storage prefix so /uploads/forms/... → forms/...
+        if normalised.startswith("uploads/"):
+            normalised = normalised[len("uploads/"):]
         signed = self._client.generate_presigned_url(
             "get_object",
             Params={"Bucket": self._bucket, "Key": normalised},

@@ -26,7 +26,9 @@ from app.container import (
     get_texture_repo,
     get_texture_color_repo,
     get_variant_image_repo,
+    get_file_storage,
 )
+from app.domain.media.services import FileStorage
 from app.domain.catalog.recommendation import (
     DEFAULT_RECOMMENDATIONS_LIMIT,
     RecommendationSourceType,
@@ -204,10 +206,13 @@ async def _compute_default_colors_batch(
     return result
 
 
-def _serialize_design(d, default_colors: list[dict] | None = None) -> dict:
+def _serialize_design(d, default_colors: list[dict] | None = None, storage: FileStorage | None = None) -> dict:
+    def _url(path: str) -> str:
+        return storage.url_for(path) if (storage and path) else path
     return {
         "id": d.id, "name": d.name, "slug": d.slug, "category_id": d.category_id,
-        "style": d.style, "image": d.image, "preview_image": d.preview_image,
+        "style": d.style, "image": d.image,
+        "preview_image": _url(d.preview_image),
         "description": d.description,
         "price": d.price, "colors": [{"hex": c.hex, "name": c.name} for c in d.colors],
         "default_colors": default_colors or [],
@@ -233,6 +238,7 @@ async def list_designs(
     texture_repo=Depends(get_texture_repo),
     color_repo=Depends(get_texture_color_repo),
     variant_repo=Depends(get_variant_image_repo),
+    storage: FileStorage = Depends(get_file_storage),
 ):
     uc = ListDesigns(design_repo)
     designs, total = await uc.execute(
@@ -243,7 +249,7 @@ async def list_designs(
         [d.id for d in designs], texture_repo, color_repo, variant_repo,
     )
     return {
-        "items": [_serialize_design(d, dc_map.get(d.id)) for d in designs],
+        "items": [_serialize_design(d, dc_map.get(d.id), storage) for d in designs],
         "total": total,
     }
 
@@ -256,6 +262,7 @@ async def get_design(
     texture_repo=Depends(get_texture_repo),
     color_repo=Depends(get_texture_color_repo),
     variant_repo=Depends(get_variant_image_repo),
+    storage: FileStorage = Depends(get_file_storage),
 ):
     uc = GetDesignDetails(design_repo)
     d = await uc.execute(design_id)
@@ -264,7 +271,7 @@ async def get_design(
     dc_map = await _compute_default_colors_batch(
         [d.id], texture_repo, color_repo, variant_repo,
     )
-    return _serialize_design(d, dc_map.get(d.id))
+    return _serialize_design(d, dc_map.get(d.id), storage)
 
 
 @router.get("/categories", response_model=list[CategorySchema])
@@ -306,6 +313,7 @@ async def list_panels_public(
     offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     panel_repo=Depends(get_panel_repo),
+    storage: FileStorage = Depends(get_file_storage),
 ):
     """Public catalog — active panels only.
 
@@ -327,7 +335,7 @@ async def list_panels_public(
                 "size_label": p.size.label,
                 "base_price": p.base_price,
                 "description": p.description,
-                "photo_path": p.photo_path,
+                "photo_path": storage.url_for(p.photo_path) if p.photo_path else "",
                 "is_active": p.is_active,
             }
             for p in items
@@ -423,6 +431,7 @@ async def list_textures_public(
     request: Request,
     texture_repo=Depends(get_texture_repo),
     color_repo=Depends(get_texture_color_repo),
+    storage: FileStorage = Depends(get_file_storage),
 ):
     textures = await ListTexturesPublic(texture_repo).execute()
     result = []
@@ -432,9 +441,10 @@ async def list_textures_public(
             "id": t.id,
             "name": t.name,
             "slug": t.slug,
-            "swatch_image": t.swatch_image,
+            "swatch_image": storage.url_for(t.swatch_image) if t.swatch_image else "",
             "colors": [
-                {"id": c.id, "name": c.name, "hex": c.hex, "swatch_image": c.swatch_image}
+                {"id": c.id, "name": c.name, "hex": c.hex,
+                 "swatch_image": storage.url_for(c.swatch_image) if c.swatch_image else ""}
                 for c in colors
             ],
         })
@@ -446,10 +456,12 @@ async def list_texture_colors_public(
     request: Request,
     texture_id: str,
     color_repo=Depends(get_texture_color_repo),
+    storage: FileStorage = Depends(get_file_storage),
 ):
     colors = await ListTextureColorsPublic(color_repo).execute(texture_id)
     return [
-        {"id": c.id, "name": c.name, "hex": c.hex, "swatch_image": c.swatch_image}
+        {"id": c.id, "name": c.name, "hex": c.hex,
+         "swatch_image": storage.url_for(c.swatch_image) if c.swatch_image else ""}
         for c in colors
     ]
 
@@ -462,6 +474,7 @@ async def list_design_textures(
     texture_repo=Depends(get_texture_repo),
     color_repo=Depends(get_texture_color_repo),
     variant_repo=Depends(get_variant_image_repo),
+    storage: FileStorage = Depends(get_file_storage),
 ):
     design = await design_repo.get_by_id(design_id)
     if not design or not design.is_published:
@@ -480,9 +493,10 @@ async def list_design_textures(
             "id": t.id,
             "name": t.name,
             "slug": t.slug,
-            "swatch_image": t.swatch_image,
+            "swatch_image": storage.url_for(t.swatch_image) if t.swatch_image else "",
             "colors": [
-                {"id": c.id, "name": c.name, "hex": c.hex, "swatch_image": c.swatch_image}
+                {"id": c.id, "name": c.name, "hex": c.hex,
+                 "swatch_image": storage.url_for(c.swatch_image) if c.swatch_image else ""}
                 for c in colors
             ],
         })
@@ -497,6 +511,7 @@ async def get_variant_image(
     color_id: str = Query(...),
     design_repo=Depends(get_design_repo),
     variant_repo=Depends(get_variant_image_repo),
+    storage: FileStorage = Depends(get_file_storage),
 ):
     design = await design_repo.get_by_id(design_id)
     if not design or not design.is_published:
@@ -504,7 +519,7 @@ async def get_variant_image(
     vi = await GetVariantImage(variant_repo).execute(design_id, texture_id, color_id)
     if vi is None:
         raise HTTPException(status_code=404, detail="Variant image not found")
-    return {"image_path": vi.image_path}
+    return {"image_path": storage.url_for(vi.image_path) if vi.image_path else ""}
 
 
 @router.get("/designs/{design_id}/full-config", response_model=FullConfigResponse)
@@ -515,6 +530,7 @@ async def get_full_config(
     texture_repo=Depends(get_texture_repo),
     color_repo=Depends(get_texture_color_repo),
     variant_repo=Depends(get_variant_image_repo),
+    storage: FileStorage = Depends(get_file_storage),
 ):
     design = await design_repo.get_by_id(design_id)
     if not design or not design.is_published:
@@ -529,13 +545,15 @@ async def get_full_config(
         colors = await ListTextureColorsPublic(color_repo).execute(t.id)
         if not colors:
             continue
+        swatch = storage.url_for(t.swatch_image) if t.swatch_image else ""
         textures_out.append({
             "id": t.id,
             "name": t.name,
             "slug": t.slug,
-            "swatch_image": t.swatch_image,
+            "swatch_image": swatch,
             "colors": [
-                {"id": c.id, "name": c.name, "hex": c.hex, "swatch_image": c.swatch_image}
+                {"id": c.id, "name": c.name, "hex": c.hex,
+                 "swatch_image": storage.url_for(c.swatch_image) if c.swatch_image else ""}
                 for c in colors
             ],
         })
@@ -544,7 +562,7 @@ async def get_full_config(
             "design_id": v.design_id,
             "texture_id": v.texture_id,
             "color_id": v.color_id,
-            "image_path": v.image_path,
+            "image_path": storage.url_for(v.image_path) if v.image_path else "",
         }
         for v in all_variants
     ]
@@ -552,7 +570,7 @@ async def get_full_config(
         "id": design.id,
         "name": design.name,
         "slug": design.slug,
-        "preview_image": design.preview_image,
+        "preview_image": storage.url_for(design.preview_image) if design.preview_image else "",
         "description": design.description,
         "price": design.price,
         "textures": textures_out,

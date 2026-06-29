@@ -6,3 +6,6 @@ frontend/.vite-cache/
 
 # Large binaries
 frontend/public/opencv.js
+
+# pi-lens cache
+.pi-lens/
