@@ -8,6 +8,10 @@ class OrderStatus(str, Enum):
     IN_PROGRESS = "in_progress"
     DELIVERED = "delivered"
     INSTALLED = "installed"
+    # Phase 4B — terminal "unhappy" states. Both require a reason persisted
+    # on the Order (`cancel_reason`). Mutually exclusive with INSTALLED.
+    CANCELLED = "cancelled"
+    REFUNDED = "refunded"
 
     @property
     def label_ru(self) -> str:
@@ -17,6 +21,8 @@ class OrderStatus(str, Enum):
             "in_progress": "В работе",
             "delivered": "Доставлен",
             "installed": "Установлен",
+            "cancelled": "Отменён",
+            "refunded": "Возврат",
         }[self.value]
 
 

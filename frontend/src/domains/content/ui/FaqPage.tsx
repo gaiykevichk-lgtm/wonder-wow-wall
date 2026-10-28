@@ -1,16 +1,17 @@
-import React from 'react';
+import type { ReactNode, CSSProperties } from 'react';
 import { Collapse, Button } from 'antd';
+import { PageMeta } from '../../../shared/ui/PageMeta';
 import { QuestionCircleOutlined, MailOutlined, PhoneOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
-const BLUE = '#0071e3';
-const DARK = '#1d1d1f';
-const GRAY_TEXT = '#86868b';
-const FONT = 'Inter, sans-serif';
-const MAX_WIDTH: React.CSSProperties = { maxWidth: 1080, margin: '0 auto' };
+const ACCENT = '#4CAF50';
+const DARK = '#2D2D2D';
+const GRAY_TEXT = '#6B7280';
+const FONT = "'SF Pro Display', sans-serif";
+const MAX_WIDTH: CSSProperties = { maxWidth: 1080, margin: '0 auto' };
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -39,8 +40,8 @@ const ans = (text: string) => (
 const categories: Array<{
   key: string;
   title: string;
-  icon: React.ReactNode;
-  items: Array<{ key: string; label: string; children: React.ReactNode }>;
+  icon: ReactNode;
+  items: Array<{ key: string; label: string; children: ReactNode }>;
 }> = [
   {
     key: 'order',
@@ -214,8 +215,9 @@ const FaqPage: React.FC = () => {
 
   return (
     <div style={{ fontFamily: FONT, paddingTop: 72 }}>
+      <PageMeta title="FAQ" description="Ответы на часто задаваемые вопросы о Wonder Wow Wall." />
       {/* Hero */}
-      <section style={{ background: '#F5F5F7', padding: '120px 24px' }}>
+      <section style={{ background: '#F5F5F5', padding: '120px 24px' }}>
         <div style={{ ...MAX_WIDTH, textAlign: 'center' }}>
           <motion.div
             variants={stagger}
@@ -296,7 +298,7 @@ const FaqPage: React.FC = () => {
                       width: 36,
                       height: 36,
                       borderRadius: 8,
-                      background: '#F5F5F7',
+                      background: '#F5F5F5',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -323,7 +325,7 @@ const FaqPage: React.FC = () => {
                 <Collapse
                   items={cat.items}
                   style={{
-                    borderRadius: 20,
+                    borderRadius: 16,
                     border: '1px solid rgba(0,0,0,0.04)',
                     background: '#fff',
                     fontFamily: FONT,
@@ -337,7 +339,7 @@ const FaqPage: React.FC = () => {
       </section>
 
       {/* Contact CTA */}
-      <section style={{ background: '#F5F5F7', padding: '0 24px 88px' }}>
+      <section style={{ background: '#F5F5F5', padding: '0 24px 88px' }}>
         <div style={{ ...MAX_WIDTH }}>
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -346,7 +348,7 @@ const FaqPage: React.FC = () => {
             transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1.0] }}
             style={{
               background: DARK,
-              borderRadius: 20,
+              borderRadius: 16,
               padding: '56px 64px',
               display: 'flex',
               flexDirection: 'column',
@@ -385,10 +387,10 @@ const FaqPage: React.FC = () => {
                 size="large"
                 icon={<PhoneOutlined />}
                 style={{
-                  background: BLUE,
+                  background: ACCENT,
                   color: '#fff',
                   border: 'none',
-                  borderRadius: 980,
+                  borderRadius: 8,
                   height: 52,
                   padding: '0 28px',
                   fontFamily: FONT,
@@ -409,7 +411,7 @@ const FaqPage: React.FC = () => {
                   background: 'transparent',
                   color: '#fff',
                   border: '1px solid rgba(255,255,255,0.35)',
-                  borderRadius: 980,
+                  borderRadius: 8,
                   height: 52,
                   padding: '0 28px',
                   fontFamily: FONT,

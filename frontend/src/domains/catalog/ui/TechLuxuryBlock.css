@@ -1,0 +1,16 @@
+.tech-luxury-block{max-width:1256px;margin:72px auto 0;padding:48px 24px;background:#f5f5f7;border-radius:0;color:#1d1d1f}
+.tech-luxury-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:48px;margin-bottom:48px}
+.tech-luxury-heading h2{margin:0;font-size:clamp(32px,4vw,56px);line-height:1.08;font-weight:700;letter-spacing:-.035em}
+.tech-luxury-heading>p{max-width:420px;margin:0;font-size:16px;line-height:1.5;color:#6e6e73}
+.tech-luxury-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;align-items:start}
+.tech-luxury-card{background:#fff;border-radius:30px;overflow:hidden}
+.tech-luxury-trigger{position:relative;display:block;width:100%;min-height:330px;padding:40px 30px 78px;background:transparent;border:0;text-align:left;cursor:pointer;font-family:inherit;color:inherit}
+.tech-luxury-icon{display:block;width:46px;height:46px;margin-bottom:28px;color:var(--tech-accent)}
+.tech-luxury-trigger h3{margin:0 0 12px;font-size:clamp(24px,2.2vw,32px);font-weight:650;line-height:1.12;letter-spacing:-.025em;color:var(--tech-accent)}
+.tech-luxury-trigger p{margin:0;font-size:19px;font-weight:600;line-height:1.4;letter-spacing:-.015em}
+.tech-luxury-toggle{position:absolute;right:24px;bottom:24px;display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;background:#1d1d1f;color:white;font-size:32px;font-weight:400;line-height:1}
+.tech-luxury-trigger:focus-visible{outline:3px solid #2e7d32;outline-offset:-5px;border-radius:30px}
+.tech-luxury-details{padding:0 30px 36px;color:#6e6e73;font-size:16px;line-height:1.6;animation:tech-reveal .2s ease-out}
+@keyframes tech-reveal{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:760px){.tech-luxury-heading{display:block;margin-bottom:28px}.tech-luxury-heading>p{margin-top:20px}.tech-luxury-grid{grid-template-columns:1fr;gap:16px}.tech-luxury-trigger{min-height:290px}.tech-luxury-block{padding:32px 16px}}
+@media(prefers-reduced-motion:reduce){.tech-luxury-details{animation:none}}

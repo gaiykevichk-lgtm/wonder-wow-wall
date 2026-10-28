@@ -2,6 +2,12 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Order, SavedProject, SavedProjectPanel } from './types';
 
+interface NotificationPrefs {
+  emailOrders: boolean;
+  emailSubscription: boolean;
+  emailPromo: boolean;
+}
+
 interface AccountState {
   // Orders (mock)
   orders: Order[];
@@ -16,6 +22,10 @@ interface AccountState {
   favoriteIds: string[];
   toggleFavorite: (productId: string) => void;
   isFavorite: (productId: string) => boolean;
+
+  // Notification preferences
+  notifications: NotificationPrefs;
+  updateNotifications: (prefs: Partial<NotificationPrefs>) => void;
 }
 
 let projectCounter = 0;
@@ -53,6 +63,7 @@ export const useAccountStore = create<AccountState>()(
       orders: MOCK_ORDERS,
       projects: [],
       favoriteIds: [],
+      notifications: { emailOrders: true, emailSubscription: true, emailPromo: false },
 
       saveProject: (project) => {
         const id = `proj-${++projectCounter}-${Date.now()}`;
@@ -91,6 +102,10 @@ export const useAccountStore = create<AccountState>()(
       },
 
       isFavorite: (productId) => get().favoriteIds.includes(productId),
+
+      updateNotifications: (prefs) => {
+        set((s) => ({ notifications: { ...s.notifications, ...prefs } }));
+      },
     }),
     { name: 'wow-wall-account' }
   )

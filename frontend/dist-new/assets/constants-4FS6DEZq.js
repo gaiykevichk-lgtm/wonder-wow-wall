@@ -1,0 +1,1 @@
+var e=[{width:300,height:300,label:`30×30 см`,labelShort:`30×30`},{width:300,height:600,label:`30×60 см`,labelShort:`30×60`},{width:600,height:600,label:`60×60 см`,labelShort:`60×60`}],t={"300x300":890,"300x600":1490,"600x600":2490},n=1200;export{n,e as r,t};

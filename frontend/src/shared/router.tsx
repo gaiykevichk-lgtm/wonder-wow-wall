@@ -1,96 +1,214 @@
-import { Routes, Route } from 'react-router-dom';
-import { Suspense, lazy } from 'react';
-import { Spin } from 'antd';
-import { ShopLayout } from './ui/ShopLayout';
-import { RequireAuth } from '../domains/auth/ui/RequireAuth';
+import { Routes, Route, Navigate } from "react-router-dom";
+import { Suspense, lazy } from "react";
+import { Spin } from "antd";
+import { ShopLayout } from "./ui/ShopLayout";
+import { RequireAuth } from "../domains/auth/ui/RequireAuth";
+import { RequireAdmin } from "../domains/admin/ui/RequireAdmin";
 
 // ─── Domain: Catalog ────────────────────────────────────────────────────────
-const CatalogPage = lazy(() => import('../domains/catalog/ui/CatalogPage'));
-const ProductPage = lazy(() => import('../domains/catalog/ui/ProductPage'));
+const CatalogPage = lazy(() => import("../domains/catalog/ui/CatalogPage"));
+const CatalogPanelPage = lazy(
+	() => import("../domains/catalog/ui/CatalogPanelPage"),
+);
+const ProductPage = lazy(() => import("../domains/catalog/ui/ProductPage"));
 
 // ─── Domain: Order ──────────────────────────────────────────────────────────
-const CheckoutPage = lazy(() => import('../domains/order/ui/CheckoutPage'));
+const CheckoutPage = lazy(() => import("../domains/order/ui/CheckoutPage"));
 
 // ─── Domain: Subscription ───────────────────────────────────────────────────
-const PricingPage = lazy(() => import('../domains/subscription/ui/PricingPage'));
+const PricingPage = lazy(
+	() => import("../domains/subscription/ui/PricingPage"),
+);
 
 // ─── Domain: Constructor ────────────────────────────────────────────────────
-const ConstructorPage = lazy(() => import('../domains/constructor/ui/ConstructorPage'));
+const ConstructorPage = lazy(
+	() => import("../domains/constructor/ui/ConstructorPage"),
+);
+const AdminConfiguratorPage = lazy(() => import("../domains/admin/ui/AdminConfiguratorPage"));
+const ConfiguratorAiPage = lazy(
+	() => import("../domains/constructor/ui/ConfiguratorAiPage"),
+);
 
 // ─── Domain: Visualizer ─────────────────────────────────────────────────────
-const PhotoEditorPage = lazy(() => import('../domains/visualizer/ui/PhotoEditorPage'));
+const PhotoEditorPage = lazy(
+	() => import("../domains/visualizer/ui/SimplePhotoPage"),
+);
 
 // ─── Domain: Content ────────────────────────────────────────────────────────
-const HomePage = lazy(() => import('../domains/content/ui/HomePage'));
-const AboutPage = lazy(() => import('../domains/content/ui/AboutPage'));
-const ContactsPage = lazy(() => import('../domains/content/ui/ContactsPage'));
-const HowItWorksPage = lazy(() => import('../domains/content/ui/HowItWorksPage'));
-const PortfolioPage = lazy(() => import('../domains/content/ui/PortfolioPage'));
-const FaqPage = lazy(() => import('../domains/content/ui/FaqPage'));
+const HomePage = lazy(() => import("../domains/content/ui/HomePage"));
+const AboutPage = lazy(() => import("../domains/content/ui/AboutPage"));
+const ContactsPage = lazy(() => import("../domains/content/ui/ContactsPage"));
+const HowItWorksPage = lazy(
+	() => import("../domains/content/ui/HowItWorksPage"),
+);
+const PortfolioPage = lazy(() => import("../domains/content/ui/PortfolioPage"));
+const FaqPage = lazy(() => import("../domains/content/ui/FaqPage"));
+const BlogPage = lazy(() => import("../domains/content/ui/BlogPage"));
+const BlogPostPage = lazy(() => import("../domains/content/ui/BlogPostPage"));
+const PrivacyPolicyPage = lazy(
+	() => import("../domains/content/ui/PrivacyPolicyPage"),
+);
+const SimplePage = lazy(() => import("../domains/content/ui/SimplePage"));
+const ProfessionalsPage = lazy(
+	() => import("../domains/content/ui/ProfessionalsPage"),
+);
+const SpacesPage = lazy(() => import("../domains/content/ui/SpacesPage"));
 
 // ─── Domain: Auth ───────────────────────────────────────────────────────────
-const LoginPage = lazy(() => import('../domains/auth/ui/LoginPage'));
-const RegisterPage = lazy(() => import('../domains/auth/ui/RegisterPage'));
-const ForgotPasswordPage = lazy(() => import('../domains/auth/ui/ForgotPasswordPage'));
+const LoginPage = lazy(() => import("../domains/auth/ui/LoginPage"));
+const RegisterPage = lazy(() => import("../domains/auth/ui/RegisterPage"));
+const ForgotPasswordPage = lazy(
+	() => import("../domains/auth/ui/ForgotPasswordPage"),
+);
+
+// ─── Domain: Admin (Phase 2 layout + section placeholders) ─────────────────
+const AdminLayout = lazy(() => import("../domains/admin/ui/AdminLayout"));
+const AdminDashboardPage = lazy(
+	() => import("../domains/admin/ui/AdminDashboardPage"),
+);
+const AdminOrdersPage = lazy(
+	() => import("../domains/admin/ui/AdminOrdersPage"),
+);
+const AdminOrderDetailPage = lazy(
+	() => import("../domains/admin/ui/AdminOrderDetailPage"),
+);
+const AdminUsersPage = lazy(() => import("../domains/admin/ui/AdminUsersPage"));
+const AdminUserDetailPage = lazy(
+	() => import("../domains/admin/ui/AdminUserDetailPage"),
+);
+const AdminShopPage = lazy(() => import("../domains/admin/ui/AdminShopPage"));
+const AdminCatalogPage = lazy(
+	() => import("../domains/admin/ui/AdminCatalogPage"),
+);
+const AdminAuditPage = lazy(() => import("../domains/admin/ui/AdminAuditPage"));
 
 // ─── Domain: Account ────────────────────────────────────────────────────────
-const AccountLayout = lazy(() => import('../domains/account/ui/AccountLayout'));
-const ProfileSection = lazy(() => import('../domains/account/ui/ProfileSection'));
-const OrdersSection = lazy(() => import('../domains/account/ui/OrdersSection'));
-const ProjectsSection = lazy(() => import('../domains/account/ui/ProjectsSection'));
-const FavoritesSection = lazy(() => import('../domains/account/ui/FavoritesSection'));
-const AccountSubscriptionSection = lazy(() => import('../domains/account/ui/AccountSubscriptionSection'));
-const AccountConstructorSection = lazy(() => import('../domains/account/ui/AccountConstructorSection'));
+const AccountLayout = lazy(() => import("../domains/account/ui/AccountLayout"));
+const ProfileSection = lazy(
+	() => import("../domains/account/ui/ProfileSection"),
+);
+const OrdersSection = lazy(() => import("../domains/account/ui/OrdersSection"));
+const ProjectsSection = lazy(
+	() => import("../domains/account/ui/ProjectsSection"),
+);
+const FavoritesSection = lazy(
+	() => import("../domains/account/ui/FavoritesSection"),
+);
+const AccountSubscriptionSection = lazy(
+	() => import("../domains/account/ui/AccountSubscriptionSection"),
+);
+const NotificationsSection = lazy(
+	() => import("../domains/account/ui/NotificationsSection"),
+);
 
 const Loading = () => (
-  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-    <Spin size="large" />
-  </div>
+	<div
+		style={{
+			display: "flex",
+			justifyContent: "center",
+			alignItems: "center",
+			height: "100vh",
+		}}
+	>
+		<Spin size="large" />
+	</div>
 );
 
 export function AppRouter() {
-  return (
-    <Suspense fallback={<Loading />}>
-      <Routes>
-        <Route element={<ShopLayout />}>
-          {/* Public routes */}
-          <Route path="/" element={<HomePage />} />
-          <Route path="/catalog" element={<CatalogPage />} />
-          <Route path="/product/:id" element={<ProductPage />} />
-          <Route path="/constructor" element={<ConstructorPage />} />
-          <Route path="/visualizer" element={<PhotoEditorPage />} />
-          <Route path="/checkout" element={<CheckoutPage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/contacts" element={<ContactsPage />} />
-          <Route path="/how-it-works" element={<HowItWorksPage />} />
-          <Route path="/portfolio" element={<PortfolioPage />} />
-          <Route path="/pricing" element={<PricingPage />} />
-          <Route path="/faq" element={<FaqPage />} />
+	return (
+		<Suspense fallback={<Loading />}>
+			<Routes>
+				<Route element={<ShopLayout />}>
+					{/* Public routes */}
+					<Route path="/" element={<HomePage />} />
+					<Route path="/catalog/:panelId" element={<CatalogPanelPage />} />
+					<Route path="/catalog" element={<CatalogPage />} />
+					<Route path="/product/:id" element={<ProductPage />} />
+					<Route path="/spaces" element={<SpacesPage />} />
+					<Route path="/configurator" element={<ConfiguratorAiPage />} />
+					<Route path="/constructor" element={<ConstructorPage />} />
+					<Route path="/visualizer" element={<PhotoEditorPage />} />
+					<Route path="/checkout" element={<CheckoutPage />} />
+					<Route path="/about" element={<AboutPage />} />
+					<Route path="/contacts" element={<ContactsPage />} />
+					<Route path="/how-it-works" element={<HowItWorksPage />} />
+					<Route path="/portfolio" element={<PortfolioPage />} />
+					<Route path="/pricing" element={<PricingPage />} />
+					<Route path="/simple" element={<SimplePage />} />
+					<Route path="/professionals" element={<ProfessionalsPage />} />
+					<Route path="/faq" element={<FaqPage />} />
+					<Route path="/blog" element={<BlogPage />} />
+					<Route path="/blog/:slug" element={<BlogPostPage />} />
+					<Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
 
-          {/* Auth routes */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+					{/* Auth routes */}
+					<Route path="/login" element={<LoginPage />} />
+					<Route path="/register" element={<RegisterPage />} />
+					<Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-          {/* Protected: Account */}
-          <Route
-            path="/account"
-            element={
-              <RequireAuth>
-                <AccountLayout />
-              </RequireAuth>
-            }
-          >
-            <Route index element={<ProfileSection />} />
-            <Route path="orders" element={<OrdersSection />} />
-            <Route path="projects" element={<ProjectsSection />} />
-            <Route path="constructor" element={<AccountConstructorSection />} />
-            <Route path="favorites" element={<FavoritesSection />} />
-            <Route path="subscription" element={<AccountSubscriptionSection />} />
-          </Route>
-        </Route>
-        <Route path="*" element={<HomePage />} />
-      </Routes>
-    </Suspense>
-  );
+					{/* Protected: Account */}
+					<Route
+						path="/account"
+						element={
+							<RequireAuth>
+								<AccountLayout />
+							</RequireAuth>
+						}
+					>
+						<Route index element={<ProfileSection />} />
+						<Route path="orders" element={<OrdersSection />} />
+						<Route path="projects" element={<ProjectsSection />} />
+						<Route path="constructor" element={<Navigate to="/configurator" replace />} />
+						<Route path="favorites" element={<FavoritesSection />} />
+						<Route path="notifications" element={<NotificationsSection />} />
+						<Route
+							path="subscription"
+							element={<AccountSubscriptionSection />}
+						/>
+					</Route>
+				</Route>
+
+				{/* Admin — own layout (not inside <ShopLayout>). `<RequireAdmin>`
+            wraps the layout; nested routes render inside <Outlet>. */}
+				<Route
+					path="/admin"
+					element={
+						<RequireAdmin>
+							<AdminLayout />
+						</RequireAdmin>
+					}
+				>
+					<Route index element={<AdminDashboardPage />} />
+					<Route path="orders" element={<AdminOrdersPage />} />
+					<Route path="orders/:id" element={<AdminOrderDetailPage />} />
+					<Route path="users" element={<AdminUsersPage />} />
+					<Route path="users/:id" element={<AdminUserDetailPage />} />
+					<Route path="catalog" element={<AdminCatalogPage />} />
+					<Route
+						path="panels"
+						element={<Navigate to="/admin/catalog?tab=panels" replace />}
+					/>
+					<Route
+						path="upload"
+						element={<Navigate to="/admin/catalog?tab=forms" replace />}
+					/>
+					<Route
+						path="textures"
+						element={<Navigate to="/admin/catalog?tab=textures" replace />}
+					/>
+					<Route
+						path="recommendations"
+						element={
+							<Navigate to="/admin/catalog?tab=recommendations" replace />
+						}
+					/>
+					<Route path="shop" element={<AdminShopPage />} />
+					<Route path="configurator" element={<AdminConfiguratorPage />} />
+					<Route path="audit" element={<AdminAuditPage />} />
+				</Route>
+
+				<Route path="*" element={<HomePage />} />
+			</Routes>
+		</Suspense>
+	);
 }

@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
 import { Button, Card, Select, Tag, message, Tooltip, Radio, Segmented } from 'antd';
+import { PageMeta } from '../../../shared/ui/PageMeta';
 import {
   ShoppingCartOutlined,
   UndoOutlined,
@@ -11,12 +12,19 @@ import {
   DragOutlined,
   InfoCircleOutlined,
   CrownOutlined,
+  CameraOutlined,
 } from '@ant-design/icons';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { products } from '../../catalog/model/data';
-import { PANEL_SIZES, BASE_PANEL_PRICES, DESIGN_OVERLAY_PRICE } from '../../../shared/config/constants';
+import { useDesigns, useFullConfig } from '../../catalog/api/catalogApi';
+import { apiDesignToProduct } from '../../catalog/api/adapters';
+import TextureSelector from '../../catalog/ui/TextureSelector';
+import ColorSelector from '../../catalog/ui/ColorSelector';
+import { useShopSettings } from '../../../shared/api/shopApi';
 import { useSubscriptionStore } from '../../subscription/model/subscriptionStore';
 import { useCartStore } from '../../order/model/cartStore';
+import { useEffectivePanelPrices } from '../model/useEffectivePanelPrices';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -52,15 +60,15 @@ const CELL_SIZE_MM = 300; // 30 cm grid cell
 const CELL_PX = 60; // pixels per cell on screen
 const GAP_PX = 2;
 
-const BLUE = '#0071e3';
-const DARK = '#1d1d1f';
-const GRAY = '#86868b';
-const LIGHT_BG = '#F5F5F7';
+const ACCENT = '#4CAF50';
+const DARK = '#2D2D2D';
+const GRAY = '#6B7280';
+const LIGHT_BG = '#F5F5F5';
 
 const EASE_APPLE: [number, number, number, number] = [0.25, 0.1, 0.25, 1.0];
 
 const WALL_COLORS = [
-  { label: 'Белая', value: '#F5F5F7' },
+  { label: 'Белая', value: '#F5F5F5' },
   { label: 'Светло-серая', value: '#E8E8E8' },
   { label: 'Бежевая', value: '#F5E6D3' },
   { label: 'Тёмная', value: '#2C2C2C' },
@@ -73,7 +81,7 @@ const SIZE_OPTIONS: { key: PanelSizeKey; label: string; wCells: number; hCells: 
   { key: '60x60', label: '60×60 см', wCells: 2, hCells: 2, widthMm: 600, heightMm: 600 },
 ];
 
-const FONT = 'Inter, sans-serif';
+const FONT = "'SF Pro Display', sans-serif";
 
 // ─── Interior Presets ────────────────────────────────────────────────────────
 
@@ -89,9 +97,16 @@ const INTERIOR_PRESETS: InteriorPreset[] = products.flatMap((product) =>
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function getPanelPrice(sizeKey: string): number {
+// Phase 7B/8D — accepts BOTH the live panel-price map (API-fed,
+// constants fallback) AND the live overlay price (Phase 8D — read
+// from `useShopSettings`). Top-level helper, no hooks inside.
+function getPanelPrice(
+  sizeKey: string,
+  prices: Record<string, number>,
+  overlayPrice: number,
+): number {
   const baseKey = sizeKey === '30x30' ? '300x300' : sizeKey === '30x60' ? '300x600' : '600x600';
-  return (BASE_PANEL_PRICES[baseKey] || 0) + DESIGN_OVERLAY_PRICE;
+  return (prices[baseKey] || 0) + overlayPrice;
 }
 
 function cellsOverlap(
@@ -119,9 +134,15 @@ export default function ConstructorPage() {
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
 
   // Panel selection
-  const [selectedDesignId, setSelectedDesignId] = useState(products[0].id);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialDesignId = searchParams.get('designId') || products[0].id;
+  const [selectedDesignId, setSelectedDesignId] = useState(
+    products.some((p) => p.id === initialDesignId) ? initialDesignId : products[0].id
+  );
   const [selectedSizeKey, setSelectedSizeKey] = useState<PanelSizeKey>('30x30');
-  const [selectedColorIdx, setSelectedColorIdx] = useState(0);
+  const [selectedTextureId, setSelectedTextureId] = useState('');
+  const [selectedColorId, setSelectedColorId] = useState('');
 
   // Placed panels
   const [placedPanels, setPlacedPanels] = useState<PlacedPanel[]>([]);
@@ -129,14 +150,56 @@ export default function ConstructorPage() {
   const [hoveredCell, setHoveredCell] = useState<{ col: number; row: number } | null>(null);
 
   const wallRef = useRef<HTMLDivElement>(null);
+  const interiorRef = useRef<HTMLDivElement>(null);
+  const wasDraggingRef = useRef(false);
   const presetScrollRef = useRef<HTMLDivElement>(null);
+
+  // Grid offset within interior photo (draggable positioning)
+  const [gridOffset, setGridOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const gridDragRef = useRef<{ active: boolean; startX: number; startY: number; origX: number; origY: number }>({
+    active: false, startX: 0, startY: 0, origX: 0, origY: 0,
+  });
   const { addItem } = useCartStore();
   const hasSub = useSubscriptionStore((s) => s.hasSubscription);
   const activePlan = useSubscriptionStore((s) => s.getActivePlan);
   const openSubModal = useSubscriptionStore((s) => s.openModal);
+  // Phase 7B — live panel prices from /api/panels (constants fallback if
+  // the request hasn't resolved or returns nothing). Drives every
+  // cost-summary computation below.
+  const { prices: panelPrices } = useEffectivePanelPrices();
+  // Phase 8D — live overlay price from `/api/shop/settings` (5-min
+  // cache, fallback to legacy `DESIGN_OVERLAY_PRICE` constant when
+  // offline). Threaded through the cost calc + display below.
+  const { designOverlayPrice } = useShopSettings();
 
-  const selectedDesign = products.find((p) => p.id === selectedDesignId) || products[0];
-  const selectedColor = selectedDesign.colors[selectedColorIdx] || selectedDesign.colors[0];
+  // All designs from API (fallback to static products while loading)
+  const { data: designsData } = useDesigns({ limit: 200 });
+  const allDesigns = useMemo(() => {
+    if (designsData?.items?.length) return designsData.items.map(apiDesignToProduct);
+    return products;
+  }, [designsData]);
+  const selectedDesign = allDesigns.find((p) => p.id === selectedDesignId) || allDesigns[0];
+
+  // Full config: textures + colors + variant images
+  const { data: fullConfig } = useFullConfig(selectedDesign.id);
+  const textures = fullConfig?.textures ?? [];
+  const activeTexture = textures.find((t) => t.id === selectedTextureId) || textures[0];
+  const activeColors = activeTexture?.colors ?? [];
+  const selectedColor = activeColors.find((c) => c.id === selectedColorId) || activeColors[0] || { id: '', hex: '#CCCCCC', name: 'Загрузка…', swatchImage: '' };
+
+  // Auto-select first texture/color when config loads or design changes
+  const prevDesignRef = useRef(selectedDesign.id);
+  if (fullConfig && textures.length > 0) {
+    if (prevDesignRef.current !== selectedDesign.id || !textures.find((t) => t.id === selectedTextureId)) {
+      if (selectedTextureId !== textures[0].id) setSelectedTextureId(textures[0].id);
+      if (textures[0].colors.length > 0 && selectedColorId !== textures[0].colors[0].id) setSelectedColorId(textures[0].colors[0].id);
+      prevDesignRef.current = selectedDesign.id;
+    }
+    if (activeTexture && !activeTexture.colors.find((c) => c.id === selectedColorId) && activeTexture.colors.length > 0) {
+      if (selectedColorId !== activeTexture.colors[0].id) setSelectedColorId(activeTexture.colors[0].id);
+    }
+  }
+
   const selectedSize = SIZE_OPTIONS.find((s) => s.key === selectedSizeKey)!;
   const selectedPreset = selectedPresetId ? INTERIOR_PRESETS.find((p) => p.id === selectedPresetId) || null : null;
 
@@ -158,8 +221,8 @@ export default function ConstructorPage() {
 
     for (const p of placedPanels) {
       const baseKey = p.sizeMm === '30×30 см' ? '300x300' : p.sizeMm === '30×60 см' ? '300x600' : '600x600';
-      totalBase += BASE_PANEL_PRICES[baseKey] || 0;
-      totalOverlay += isSubscriber ? 0 : DESIGN_OVERLAY_PRICE;
+      totalBase += panelPrices[baseKey] || 0;
+      totalOverlay += isSubscriber ? 0 : designOverlayPrice;
     }
 
     const totalArea = placedPanels.reduce((sum, p) => {
@@ -171,7 +234,7 @@ export default function ConstructorPage() {
     const wallArea = (wallWidthMm * wallHeightMm) / 1_000_000;
 
     return { panelCount, totalBase, totalOverlay, total: totalBase + totalOverlay, totalArea, wallArea };
-  }, [placedPanels, wallWidthMm, wallHeightMm, isSubscriber]);
+  }, [placedPanels, wallWidthMm, wallHeightMm, isSubscriber, panelPrices]);
 
   // ─── Grid occupancy ────────────────────────────────────────────────────────
 
@@ -191,6 +254,7 @@ export default function ConstructorPage() {
 
   const handleSelectPreset = useCallback((presetId: string | null) => {
     setSelectedPresetId(presetId);
+    setGridOffset({ x: 0, y: 0 });
     if (presetId) {
       setWallMode('interior');
     } else {
@@ -327,7 +391,7 @@ export default function ConstructorPage() {
 
     groups.forEach(({ panel, count }) => {
       const sizeKey = panel.sizeMm === '30×30 см' ? '300x300' : panel.sizeMm === '30×60 см' ? '300x600' : '600x600';
-      const unitPrice = (BASE_PANEL_PRICES[sizeKey] || 0) + DESIGN_OVERLAY_PRICE;
+      const unitPrice = (panelPrices[sizeKey] || 0) + designOverlayPrice;
       const w = panel.widthCells * CELL_SIZE_MM;
       const h = panel.heightCells * CELL_SIZE_MM;
       const areaPerPanel = (w * h) / 1_000_000;
@@ -346,7 +410,7 @@ export default function ConstructorPage() {
     });
 
     message.success('Проект добавлен в корзину');
-  }, [placedPanels, addItem]);
+  }, [placedPanels, addItem, panelPrices]);
 
   // ─── Drag & drop ───────────────────────────────────────────────────────────
 
@@ -354,6 +418,7 @@ export default function ConstructorPage() {
     e.preventDefault();
     e.stopPropagation();
     setDraggedId(id);
+    wasDraggingRef.current = false;
   }, []);
 
   const getCellFromEvent = useCallback(
@@ -376,6 +441,7 @@ export default function ConstructorPage() {
       setHoveredCell(cell);
 
       if (!draggedId || !cell) return;
+      wasDraggingRef.current = true;
       const panel = placedPanels.find((p) => p.id === draggedId);
       if (!panel) return;
 
@@ -389,17 +455,52 @@ export default function ConstructorPage() {
   );
 
   const handleWallMouseUp = useCallback(() => {
+    if (draggedId) wasDraggingRef.current = true;
     setDraggedId(null);
-  }, []);
+  }, [draggedId]);
 
   const handleWallClick = useCallback(
     (e: React.MouseEvent) => {
       if (draggedId) return;
+      if (wasDraggingRef.current) { wasDraggingRef.current = false; return; }
       const cell = getCellFromEvent(e);
       if (cell) handleClickCell(cell.col, cell.row);
     },
     [draggedId, getCellFromEvent, handleClickCell]
   );
+
+  // ─── Grid dragging (interior mode) ────────────────────────────────────────
+
+  const handleGridPointerDown = useCallback((e: React.PointerEvent) => {
+    if (!isInteriorMode) return;
+    // Only start grid drag on empty cells (not on placed panels or delete buttons)
+    const el = e.target as HTMLElement;
+    if (el.closest('.placed-panel') || el.closest('.panel-delete-btn')) return;
+    if (draggedId) return;
+    e.preventDefault();
+    wallRef.current?.setPointerCapture(e.pointerId);
+    gridDragRef.current = {
+      active: true,
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: gridOffset.x,
+      origY: gridOffset.y,
+    };
+  }, [isInteriorMode, gridOffset, draggedId]);
+
+  const handleGridPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!gridDragRef.current.active) return;
+    const dx = e.clientX - gridDragRef.current.startX;
+    const dy = e.clientY - gridDragRef.current.startY;
+    if (!wasDraggingRef.current && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
+      wasDraggingRef.current = true;
+    }
+    setGridOffset({ x: gridDragRef.current.origX + dx, y: gridDragRef.current.origY + dy });
+  }, []);
+
+  const handleGridPointerUp = useCallback(() => {
+    gridDragRef.current.active = false;
+  }, []);
 
   // ─── Preview ghost ─────────────────────────────────────────────────────────
 
@@ -415,16 +516,17 @@ export default function ConstructorPage() {
   // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ paddingTop: 72, background: LIGHT_BG, minHeight: '100vh', fontFamily: FONT }}>
+    <div style={{ paddingTop: 72, background: LIGHT_BG, minHeight: '100vh', fontFamily: FONT, overflowX: 'hidden' }}>
+      <PageMeta title="Конструктор" />
       {/* Page Header */}
-      <div style={{ background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.04)', padding: '28px 24px' }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-          <h1 style={{ fontSize: 28, fontWeight: 600, color: DARK, margin: '0 0 6px', letterSpacing: '-0.02em' }}>
+      <div style={{ background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.04)', padding: '20px 12px' }}>
+        <div style={{ maxWidth: 1400, margin: '0 auto', boxSizing: 'border-box' }}>
+          <h1 className="page-header-title" style={{ fontSize: 28, fontWeight: 600, color: DARK, margin: '0 0 6px', letterSpacing: '-0.02em' }}>
             Конструктор стен
           </h1>
-          <p style={{ color: GRAY, margin: 0, fontSize: 15, lineHeight: 1.5 }}>
+          <p className="page-header-desc" style={{ color: GRAY, margin: 0, fontSize: 15, lineHeight: 1.5 }}>
             Разместите панели на виртуальной стене. Кликайте на ячейки или используйте кнопку «Добавить».
-            Все дизайны накладок — {DESIGN_OVERLAY_PRICE.toLocaleString('ru-RU')} ₽/шт.
+            Все дизайны накладок — {designOverlayPrice.toLocaleString('ru-RU')} ₽/шт.
           </p>
         </div>
       </div>
@@ -437,9 +539,9 @@ export default function ConstructorPage() {
           padding: '20px 0 20px',
         }}
       >
-        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 12px' }}>
+          <div className="preset-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <span style={{ fontWeight: 600, fontSize: 15, color: DARK }}>Пресеты интерьеров</span>
               <span style={{ fontSize: 12, color: GRAY }}>
                 Выберите комнату для реалистичного превью
@@ -453,7 +555,7 @@ export default function ConstructorPage() {
                 { label: 'Интерьер', value: 'interior' },
               ]}
               style={{
-                borderRadius: 980,
+                borderRadius: 8,
                 padding: 2,
                 background: 'rgba(0,0,0,0.04)',
               }}
@@ -483,8 +585,8 @@ export default function ConstructorPage() {
                 width: 160,
                 height: 100,
                 borderRadius: 16,
-                background: 'linear-gradient(135deg, #F5F5F7 0%, #E8E8E8 100%)',
-                border: wallMode === 'grid' ? `2px solid ${BLUE}` : '2px solid rgba(0,0,0,0.06)',
+                background: 'linear-gradient(135deg, #F5F5F5 0%, #E8E8E8 100%)',
+                border: wallMode === 'grid' ? `2px solid ${ACCENT}` : '2px solid rgba(0,0,0,0.06)',
                 cursor: 'pointer',
                 display: 'flex',
                 flexDirection: 'column',
@@ -496,8 +598,8 @@ export default function ConstructorPage() {
                 transform: wallMode === 'grid' ? 'scale(1.02)' : 'scale(1)',
               }}
             >
-              <AppstoreOutlined style={{ fontSize: 22, color: wallMode === 'grid' ? BLUE : GRAY }} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: wallMode === 'grid' ? BLUE : DARK }}>
+              <AppstoreOutlined style={{ fontSize: 22, color: wallMode === 'grid' ? ACCENT : GRAY }} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: wallMode === 'grid' ? ACCENT : DARK }}>
                 Без фона
               </span>
             </motion.div>
@@ -521,10 +623,10 @@ export default function ConstructorPage() {
                     position: 'relative',
                     cursor: 'pointer',
                     flexShrink: 0,
-                    border: isSelected ? `2px solid ${BLUE}` : '2px solid rgba(0,0,0,0.06)',
+                    border: isSelected ? `2px solid ${ACCENT}` : '2px solid rgba(0,0,0,0.06)',
                     transform: isSelected ? 'scale(1.02)' : 'scale(1)',
                     transition: 'border-color 0.3s cubic-bezier(0.25, 0.1, 0.25, 1), transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1)',
-                    boxShadow: isSelected ? `0 0 0 1px ${BLUE}, 0 4px 16px rgba(0,113,227,0.15)` : '0 2px 8px rgba(0,0,0,0.06)',
+                    boxShadow: isSelected ? `0 0 0 1px ${ACCENT}, 0 4px 16px rgba(0,113,227,0.15)` : '0 2px 8px rgba(0,0,0,0.06)',
                   }}
                 >
                   <img
@@ -581,15 +683,16 @@ export default function ConstructorPage() {
           padding: '20px 24px',
           maxWidth: 1400,
           margin: '0 auto',
+          boxSizing: 'border-box',
         }}
         className="constructor-layout"
       >
         {/* ─── LEFT SIDEBAR ─────────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
           {/* Wall settings */}
           <Card
             style={{
-              borderRadius: 20,
+              borderRadius: 16,
               border: '1px solid rgba(0,0,0,0.04)',
               backdropFilter: 'blur(20px)',
               background: 'rgba(255,255,255,0.85)',
@@ -601,12 +704,12 @@ export default function ConstructorPage() {
               Параметры стены
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 10, marginBottom: 14 }}>
               <div>
                 <div style={{ fontSize: 12, color: GRAY, marginBottom: 4 }}>Ширина (ячейки × 30см)</div>
                 <Select
                   value={wallCols}
-                  onChange={(v) => { setWallCols(v); setPlacedPanels([]); }}
+                  onChange={(v) => { setWallCols(v); setPlacedPanels([]); setGridOffset({ x: 0, y: 0 }); }}
                   style={{ width: '100%' }}
                   options={[
                     { value: 6, label: '1.8 м (6)' },
@@ -622,7 +725,7 @@ export default function ConstructorPage() {
                 <div style={{ fontSize: 12, color: GRAY, marginBottom: 4 }}>Высота (ячейки × 30см)</div>
                 <Select
                   value={wallRows}
-                  onChange={(v) => { setWallRows(v); setPlacedPanels([]); }}
+                  onChange={(v) => { setWallRows(v); setPlacedPanels([]); setGridOffset({ x: 0, y: 0 }); }}
                   style={{ width: '100%' }}
                   options={[
                     { value: 5, label: '1.5 м (5)' },
@@ -692,7 +795,7 @@ export default function ConstructorPage() {
                       border: `1px solid rgba(0,113,227,0.1)`,
                     }}
                   >
-                    <div style={{ fontWeight: 600, marginBottom: 2, color: BLUE }}>
+                    <div style={{ fontWeight: 600, marginBottom: 2, color: ACCENT }}>
                       {selectedPreset.room} — {selectedPreset.productName}
                     </div>
                     <div style={{ color: GRAY }}>{selectedPreset.caption}</div>
@@ -705,7 +808,7 @@ export default function ConstructorPage() {
           {/* Design selection */}
           <Card
             style={{
-              borderRadius: 20,
+              borderRadius: 16,
               border: '1px solid rgba(0,0,0,0.04)',
               backdropFilter: 'blur(20px)',
               background: 'rgba(255,255,255,0.85)',
@@ -714,14 +817,16 @@ export default function ConstructorPage() {
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, fontWeight: 600, fontSize: 14, color: DARK }}>
               <AppstoreOutlined style={{ color: GRAY }} />
-              Дизайн накладки
+              Форма
             </div>
 
             <Select
               style={{ width: '100%', marginBottom: 12 }}
               value={selectedDesignId}
-              onChange={(v) => { setSelectedDesignId(v); setSelectedColorIdx(0); }}
-              options={products.map((p) => ({
+              onChange={(v) => { setSelectedDesignId(v); setSelectedTextureId(''); setSelectedColorId(''); }}
+              showSearch
+              filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+              options={allDesigns.map((p) => ({
                 value: p.id,
                 label: p.name,
               }))}
@@ -733,6 +838,17 @@ export default function ConstructorPage() {
                 src={selectedDesign.image}
                 alt={selectedDesign.name}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+              {/* Color tint preview */}
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: selectedColor.hex,
+                  opacity: 0.55,
+                  pointerEvents: 'none',
+                  mixBlendMode: 'color',
+                }}
               />
               <div
                 style={{
@@ -748,36 +864,31 @@ export default function ConstructorPage() {
                   fontWeight: 600,
                 }}
               >
-                Накладка: {DESIGN_OVERLAY_PRICE.toLocaleString('ru-RU')} ₽
+                Накладка: {designOverlayPrice.toLocaleString('ru-RU')} ₽
               </div>
             </div>
 
+            {/* Texture */}
+            {textures.length > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <TextureSelector
+                  textures={textures}
+                  activeId={activeTexture?.id ?? ''}
+                  onChange={(id) => { setSelectedTextureId(id); setSelectedColorId(''); }}
+                />
+              </div>
+            )}
+
             {/* Color */}
-            <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 12, color: GRAY, marginBottom: 4 }}>
-                Оттенок: {selectedColor.name}
+            {activeColors.length > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <ColorSelector
+                  colors={activeColors}
+                  activeId={selectedColor.id ?? ''}
+                  onChange={setSelectedColorId}
+                />
               </div>
-              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                {selectedDesign.colors.map((c, idx) => (
-                  <Tooltip title={c.name} key={c.hex + idx}>
-                    <div
-                      onClick={() => setSelectedColorIdx(idx)}
-                      style={{
-                        width: 26,
-                        height: 26,
-                        borderRadius: '50%',
-                        background: c.hex,
-                        border: selectedColorIdx === idx ? `2px solid ${DARK}` : '1px solid #D1D5DB',
-                        cursor: 'pointer',
-                        boxSizing: 'border-box',
-                        transition: 'border-color 0.2s, transform 0.2s',
-                        transform: selectedColorIdx === idx ? 'scale(1.15)' : 'scale(1)',
-                      }}
-                    />
-                  </Tooltip>
-                ))}
-              </div>
-            </div>
+            )}
 
             {/* Size */}
             <div style={{ marginBottom: 12 }}>
@@ -789,6 +900,8 @@ export default function ConstructorPage() {
                 buttonStyle="solid"
                 size="small"
                 options={SIZE_OPTIONS.map((s) => ({ label: s.label, value: s.key }))}
+                style={{ display: 'flex', width: '100%' }}
+                className="size-switcher"
               />
             </div>
 
@@ -804,30 +917,30 @@ export default function ConstructorPage() {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', color: GRAY, marginBottom: 3 }}>
                 <span>Панель ({selectedSize.label}):</span>
-                <span>{BASE_PANEL_PRICES[`${selectedSize.widthMm}x${selectedSize.heightMm}`]?.toLocaleString('ru-RU')} ₽</span>
+                <span>{panelPrices[`${selectedSize.widthMm}x${selectedSize.heightMm}`]?.toLocaleString('ru-RU')} ₽</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', color: GRAY, marginBottom: 3 }}>
                 <span>Накладка (дизайн):</span>
-                <span>{DESIGN_OVERLAY_PRICE.toLocaleString('ru-RU')} ₽</span>
+                <span>{designOverlayPrice.toLocaleString('ru-RU')} ₽</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, color: DARK, borderTop: '1px solid rgba(0,0,0,0.04)', paddingTop: 4, marginTop: 2 }}>
                 <span>Итого за 1 шт:</span>
-                <span>{getPanelPrice(selectedSizeKey).toLocaleString('ru-RU')} ₽</span>
+                <span>{getPanelPrice(selectedSizeKey, panelPrices, designOverlayPrice).toLocaleString('ru-RU')} ₽</span>
               </div>
             </div>
 
             {/* Action buttons */}
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div className="constructor-action-btns" style={{ display: 'flex', gap: 8 }}>
               <Button
                 icon={<PlusOutlined />}
                 onClick={handleAddToWall}
                 style={{
                   flex: 1,
-                  background: BLUE,
+                  background: ACCENT,
                   color: '#fff',
                   border: 'none',
                   height: 38,
-                  borderRadius: 980,
+                  borderRadius: 8,
                   fontWeight: 600,
                   fontSize: 13,
                 }}
@@ -840,7 +953,7 @@ export default function ConstructorPage() {
                   onClick={handleFillWall}
                   style={{
                     height: 38,
-                    borderRadius: 980,
+                    borderRadius: 8,
                     border: '1px solid #D1D5DB',
                     fontWeight: 500,
                     fontSize: 13,
@@ -849,140 +962,35 @@ export default function ConstructorPage() {
                   Заполнить
                 </Button>
               </Tooltip>
+              <Tooltip title="Очистить все панели">
+                <Button
+                  icon={<UndoOutlined />}
+                  onClick={handleClear}
+                  style={{
+                    height: 38,
+                    borderRadius: 8,
+                    border: '1px solid #D1D5DB',
+                    color: GRAY,
+                  }}
+                />
+              </Tooltip>
             </div>
           </Card>
 
-          {/* Cost summary */}
-          <Card
-            style={{
-              borderRadius: 20,
-              border: '1px solid rgba(0,0,0,0.04)',
-              backdropFilter: 'blur(20px)',
-              background: 'rgba(255,255,255,0.85)',
-            }}
-            styles={{ body: { padding: 18 } }}
-          >
-            <div style={{ fontWeight: 600, fontSize: 14, color: DARK, marginBottom: 12 }}>
-              Расчёт стоимости
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                <span style={{ color: GRAY }}>Панелей:</span>
-                <span style={{ fontWeight: 500, color: DARK }}>{costs.panelCount} шт</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                <span style={{ color: GRAY }}>Покрытие:</span>
-                <span style={{ fontWeight: 500, color: DARK }}>{costs.totalArea.toFixed(2)} м²</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                <span style={{ color: GRAY }}>Площадь стены:</span>
-                <span style={{ fontWeight: 500, color: DARK }}>{costs.wallArea.toFixed(2)} м²</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: GRAY }}>
-                <span>├ Базовые панели:</span>
-                <span>{costs.totalBase.toLocaleString('ru-RU')} ₽</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: isSubscriber ? BLUE : GRAY }}>
-                <span>└ Накладки (дизайн):</span>
-                <span>{isSubscriber ? '0 ₽ (подписка)' : `${costs.totalOverlay.toLocaleString('ru-RU')} ₽`}</span>
-              </div>
-            </div>
-
-            <div
-              style={{
-                background: DARK,
-                borderRadius: 12,
-                padding: '14px 16px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: 12,
-              }}
-            >
-              <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>Итого:</span>
-              <span style={{ fontSize: 22, fontWeight: 600, color: '#fff', letterSpacing: '-0.01em' }}>
-                {costs.total.toLocaleString('ru-RU')} ₽
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Button
-                icon={<ShoppingCartOutlined />}
-                onClick={handleAddToCart}
-                style={{
-                  flex: 1,
-                  background: BLUE,
-                  color: '#fff',
-                  border: 'none',
-                  height: 38,
-                  borderRadius: 980,
-                  fontWeight: 600,
-                }}
-              >
-                В корзину
-              </Button>
-              <Button
-                icon={<UndoOutlined />}
-                onClick={handleClear}
-                style={{ height: 38, borderRadius: 980, border: '1px solid #D1D5DB', color: GRAY }}
-              >
-                Очистить
-              </Button>
-            </div>
-          </Card>
-
-          {/* Subscription banner or info */}
-          {isSubscriber ? (
-            <div
-              style={{
-                padding: '12px 14px',
-                background: LIGHT_BG,
-                borderRadius: 12,
-                fontSize: 12,
-                color: '#2E7D32',
-                lineHeight: 1.6,
-                border: '1px solid #C8E6C9',
-              }}
-            >
-              <CrownOutlined style={{ marginRight: 6, fontSize: 14 }} />
-              <strong>Подписка «{activePlan()?.name}»</strong> — накладки включены в план! Вы платите только за базовые панели.
-              {activePlan()?.overlaysPerMonth ? ` Осталось ${activePlan()!.overlaysPerMonth} накладок в этом месяце.` : ' Безлимитные накладки.'}
-            </div>
-          ) : (
-            <div
-              onClick={() => openSubModal()}
-              style={{
-                padding: '12px 14px',
-                background: '#FFF8E1',
-                borderRadius: 12,
-                fontSize: 12,
-                color: '#F57F17',
-                lineHeight: 1.6,
-                cursor: 'pointer',
-                border: '1px solid #FFE082',
-                transition: 'background 0.2s',
-              }}
-            >
-              <InfoCircleOutlined style={{ marginRight: 6 }} />
-              <strong>Оформите подписку</strong> — и накладки будут бесплатны! Планы от {(4900).toLocaleString('ru-RU')} ₽/мес.
-              <span style={{ textDecoration: 'underline', marginLeft: 4 }}>Подробнее</span>
-            </div>
-          )}
         </div>
 
         {/* ─── RIGHT - Wall Canvas ──────────────────────────────────────────── */}
-        <div>
+        <div style={{ minWidth: 0 }}>
           <Card
             style={{
-              borderRadius: 20,
+              borderRadius: 16,
               border: '1px solid rgba(0,0,0,0.04)',
               backdropFilter: 'blur(20px)',
               background: 'rgba(255,255,255,0.85)',
             }}
             styles={{ body: { padding: 18 } }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+            <div className="wall-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
               <div>
                 <span style={{ fontWeight: 600, fontSize: 14, color: DARK }}>Визуализация стены</span>
                 <span style={{ fontSize: 12, color: GRAY, marginLeft: 10 }}>
@@ -993,7 +1001,7 @@ export default function ConstructorPage() {
                 {isInteriorMode && (
                   <Tag
                     color="blue"
-                    style={{ margin: 0, borderRadius: 980, fontSize: 11, fontWeight: 500 }}
+                    style={{ margin: 0, borderRadius: 8, fontSize: 11, fontWeight: 500 }}
                   >
                     Интерьер: {selectedPreset?.room}
                   </Tag>
@@ -1005,33 +1013,48 @@ export default function ConstructorPage() {
             </div>
 
             <div style={{ overflowX: 'auto', overflowY: 'auto', paddingBottom: 4 }}>
-              <div
-                ref={wallRef}
-                onMouseMove={handleWallMouseMove}
-                onMouseUp={handleWallMouseUp}
-                onMouseLeave={() => { setDraggedId(null); setHoveredCell(null); }}
-                onClick={handleWallClick}
-                style={{
-                  position: 'relative',
-                  width: wallWidthPx,
-                  height: wallHeightPx,
-                  background: isInteriorMode && selectedPreset
-                    ? `url(${selectedPreset.image})`
-                    : wallColor,
-                  backgroundSize: isInteriorMode ? 'cover' : undefined,
-                  backgroundPosition: isInteriorMode ? 'center' : undefined,
-                  borderRadius: 10,
-                  boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
-                  cursor: draggedId ? 'grabbing' : 'pointer',
-                  userSelect: 'none',
-                  display: 'grid',
-                  gridTemplateColumns: `repeat(${wallCols}, ${CELL_PX}px)`,
-                  gridTemplateRows: `repeat(${wallRows}, ${CELL_PX}px)`,
-                  gap: `${GAP_PX}px`,
-                  padding: `${GAP_PX}px`,
-                  overflow: 'hidden',
-                }}
-              >
+              {/* Wall: interior mode — photo background independent of grid size */}
+              {isInteriorMode && selectedPreset ? (
+                <div
+                  ref={interiorRef}
+                  style={{
+                    position: 'relative',
+                    width: '100%',
+                    aspectRatio: '16 / 9',
+                    background: `url(${selectedPreset.image})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    borderRadius: 10,
+                    boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.05)', pointerEvents: 'none' }} />
+                  <div
+                    ref={wallRef}
+                    onPointerDown={handleGridPointerDown}
+                    onPointerMove={handleGridPointerMove}
+                    onPointerUp={handleGridPointerUp}
+                    onMouseMove={handleWallMouseMove}
+                    onMouseUp={handleWallMouseUp}
+                    onMouseLeave={() => { setDraggedId(null); setHoveredCell(null); }}
+                    onClick={handleWallClick}
+                    style={{
+                      position: 'absolute',
+                      left: `calc(50% - ${wallWidthPx / 2}px + ${gridOffset.x}px)`,
+                      top: `calc(50% - ${wallHeightPx / 2}px + ${gridOffset.y}px)`,
+                      width: wallWidthPx,
+                      height: wallHeightPx,
+                      cursor: draggedId ? 'grabbing' : 'grab',
+                      userSelect: 'none',
+                      touchAction: 'none',
+                      display: 'grid',
+                      gridTemplateColumns: `repeat(${wallCols}, ${CELL_PX}px)`,
+                      gridTemplateRows: `repeat(${wallRows}, ${CELL_PX}px)`,
+                      gap: `${GAP_PX}px`,
+                      padding: `${GAP_PX}px`,
+                    }}
+                  >
                 {/* Grid cells */}
                 {Array.from({ length: wallRows * wallCols }).map((_, idx) => {
                   const col = idx % wallCols;
@@ -1075,7 +1098,7 @@ export default function ConstructorPage() {
                       backgroundPosition: 'center',
                       opacity: 0.4,
                       borderRadius: 4,
-                      border: `2px dashed ${BLUE}`,
+                      border: `2px dashed ${ACCENT}`,
                       pointerEvents: 'none',
                       zIndex: 5,
                     }}
@@ -1086,6 +1109,7 @@ export default function ConstructorPage() {
                 {placedPanels.map((panel) => (
                   <div
                     key={panel.id}
+                    className="placed-panel"
                     onMouseDown={(e) => handlePanelMouseDown(e, panel.id)}
                     style={{
                       position: 'absolute',
@@ -1114,7 +1138,8 @@ export default function ConstructorPage() {
                         position: 'absolute',
                         inset: 0,
                         background: panel.color,
-                        opacity: isInteriorMode ? 0.15 : 0.2,
+                        opacity: 0.55,
+                        mixBlendMode: 'color',
                         borderRadius: 3,
                         pointerEvents: 'none',
                       }}
@@ -1150,8 +1175,9 @@ export default function ConstructorPage() {
                         {panel.sizeMm}
                       </div>
                     )}
-                    {/* Delete button */}
+                    {/* Delete button — visible on hover via CSS class */}
                     <button
+                      className="panel-delete-btn"
                       onMouseDown={(e) => e.stopPropagation()}
                       onClick={(e) => { e.stopPropagation(); handleDeletePanel(panel.id); }}
                       style={{
@@ -1172,11 +1198,7 @@ export default function ConstructorPage() {
                         lineHeight: 1,
                         padding: 0,
                         zIndex: 30,
-                        opacity: 0.7,
-                        transition: 'opacity 0.15s',
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-                      onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.7')}
                     >
                       ×
                     </button>
@@ -1205,21 +1227,214 @@ export default function ConstructorPage() {
                     }}
                   >
                     <AppstoreOutlined style={{ fontSize: 32 }} />
-                    Кликните на ячейку или нажмите «Добавить»
+                    Кликните на ячейку для размещения
+                    <span style={{ fontSize: 12, opacity: 0.7 }}>Зажмите сетку и перетаскивайте для позиционирования</span>
                   </div>
                 )}
               </div>
+                </div>
+              ) : (
+                <div
+                  ref={wallRef}
+                  onMouseMove={handleWallMouseMove}
+                  onMouseUp={handleWallMouseUp}
+                  onMouseLeave={() => { setDraggedId(null); setHoveredCell(null); }}
+                  onClick={handleWallClick}
+                  style={{
+                    position: 'relative',
+                    width: wallWidthPx,
+                    height: wallHeightPx,
+                    background: wallColor,
+                    borderRadius: 10,
+                    boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+                    cursor: draggedId ? 'grabbing' : 'pointer',
+                    userSelect: 'none',
+                    display: 'grid',
+                    gridTemplateColumns: `repeat(${wallCols}, ${CELL_PX}px)`,
+                    gridTemplateRows: `repeat(${wallRows}, ${CELL_PX}px)`,
+                    gap: `${GAP_PX}px`,
+                    padding: `${GAP_PX}px`,
+                    overflow: 'hidden',
+                  }}
+                >
+                {/* Grid cells (grid mode) */}
+                {Array.from({ length: wallRows * wallCols }).map((_, idx) => {
+                  const col = idx % wallCols;
+                  const row = Math.floor(idx / wallCols);
+                  const isOccupied = placedPanels.some((p) =>
+                    col >= p.col && col < p.col + p.widthCells &&
+                    row >= p.row && row < p.row + p.heightCells
+                  );
+                  const gridCellBg = isOccupied ? 'transparent' : (wallColor === '#2C2C2C' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)');
+                  return (
+                    <div
+                      key={`cell-${col}-${row}`}
+                      style={{
+                        width: CELL_PX,
+                        height: CELL_PX,
+                        background: gridCellBg,
+                        borderRadius: 2,
+                        pointerEvents: 'none',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  );
+                })}
+                {ghostVisible && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: GAP_PX + ghostVisible.col * (CELL_PX + GAP_PX),
+                      top: GAP_PX + ghostVisible.row * (CELL_PX + GAP_PX),
+                      width: ghostVisible.wCells * CELL_PX + (ghostVisible.wCells - 1) * GAP_PX,
+                      height: ghostVisible.hCells * CELL_PX + (ghostVisible.hCells - 1) * GAP_PX,
+                      background: `url(${selectedDesign.image})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      opacity: 0.4,
+                      borderRadius: 4,
+                      border: `2px dashed ${ACCENT}`,
+                      pointerEvents: 'none',
+                      zIndex: 5,
+                    }}
+                  />
+                )}
+                {placedPanels.map((panel) => (
+                  <div
+                    key={panel.id}
+                    className="placed-panel"
+                    onMouseDown={(e) => handlePanelMouseDown(e, panel.id)}
+                    style={{
+                      position: 'absolute',
+                      left: GAP_PX + panel.col * (CELL_PX + GAP_PX),
+                      top: GAP_PX + panel.row * (CELL_PX + GAP_PX),
+                      width: panel.widthCells * CELL_PX + (panel.widthCells - 1) * GAP_PX,
+                      height: panel.heightCells * CELL_PX + (panel.heightCells - 1) * GAP_PX,
+                      backgroundImage: `url(${panel.designImage})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      borderRadius: 3,
+                      cursor: draggedId === panel.id ? 'grabbing' : 'grab',
+                      boxShadow: draggedId === panel.id
+                        ? '0 8px 24px rgba(0,0,0,0.30)'
+                        : '0 1px 4px rgba(0,0,0,0.10)',
+                      zIndex: draggedId === panel.id ? 20 : 10,
+                      transition: draggedId === panel.id ? 'none' : 'box-shadow 0.15s',
+                      overflow: 'visible',
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        background: panel.color,
+                        opacity: 0.55,
+                        mixBlendMode: 'color',
+                        borderRadius: 3,
+                        pointerEvents: 'none',
+                      }}
+                    />
+                    {panel.widthCells >= 2 && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: 3,
+                          left: 4,
+                          fontSize: 9,
+                          color: '#fff',
+                          background: 'rgba(0,0,0,0.5)',
+                          backdropFilter: 'blur(4px)',
+                          borderRadius: 3,
+                          padding: '1px 4px',
+                          pointerEvents: 'none',
+                        }}
+                      >
+                        {panel.sizeMm}
+                      </div>
+                    )}
+                    <button
+                      className="panel-delete-btn"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => { e.stopPropagation(); handleDeletePanel(panel.id); }}
+                      style={{
+                        position: 'absolute',
+                        top: -6,
+                        right: -6,
+                        width: 16,
+                        height: 16,
+                        borderRadius: '50%',
+                        background: 'rgba(220,38,38,0.85)',
+                        color: '#fff',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: 10,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        lineHeight: 1,
+                        padding: 0,
+                        zIndex: 30,
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                {placedPanels.length === 0 && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: wallColor === '#2C2C2C'
+                        ? 'rgba(255,255,255,0.25)'
+                        : 'rgba(0,0,0,0.15)',
+                      fontSize: 14,
+                      pointerEvents: 'none',
+                      gap: 8,
+                    }}
+                  >
+                    <AppstoreOutlined style={{ fontSize: 32 }} />
+                    Кликните на ячейку или нажмите «Добавить»
+                  </div>
+                )}
+                </div>
+              )}
             </div>
 
             {/* Panel legend below wall */}
-            {placedPanels.length > 0 && (
-              <div style={{ marginTop: 14 }}>
-                <div style={{ fontSize: 12, color: GRAY, marginBottom: 6 }}>
-                  Размещённые панели ({costs.panelCount} шт)
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  <AnimatePresence>
-                    {(() => {
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 12, color: GRAY, marginBottom: 6 }}>
+                Размещённые панели ({costs.panelCount} шт)
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                <AnimatePresence mode="wait">
+                  {placedPanels.length === 0 ? (
+                    <motion.div
+                      key="__empty__"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      <Tag
+                        style={{
+                          borderRadius: 8,
+                          padding: '4px 10px',
+                          fontSize: 12,
+                          border: '1px dashed rgba(0,0,0,0.12)',
+                          background: 'transparent',
+                          color: GRAY,
+                        }}
+                      >
+                        Добавьте панель
+                      </Tag>
+                    </motion.div>
+                  ) : (
+                    (() => {
                       const groups = new Map<string, { name: string; size: string; color: string; colorName: string; count: number; image: string }>();
                       for (const p of placedPanels) {
                         const key = `${p.designId}__${p.sizeMm}__${p.color}`;
@@ -1262,19 +1477,320 @@ export default function ConstructorPage() {
                           </Tag>
                         </motion.div>
                       ));
-                    })()}
-                  </AnimatePresence>
+                    })()
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+
+            {/* ─── Cost summary (compact horizontal layout) ──────────────── */}
+            <div
+              style={{
+                marginTop: 16,
+                borderTop: '1px solid rgba(0,0,0,0.06)',
+                paddingTop: 16,
+                display: 'grid',
+                gridTemplateColumns: '1fr auto',
+                gap: 16,
+                alignItems: 'start',
+              }}
+              className="cost-summary-grid"
+            >
+              {/* Left: stats grid */}
+              <div
+                className="cost-stats-grid"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, auto)',
+                  columnGap: 32,
+                  rowGap: 4,
+                  fontSize: 13,
+                  justifyContent: 'start',
+                }}
+              >
+                <span style={{ color: GRAY }}>Панелей: <strong style={{ color: DARK }}>{costs.panelCount} шт</strong></span>
+                <span style={{ color: GRAY }}>Покрытие: <strong style={{ color: DARK }}>{costs.totalArea.toFixed(2)} м²</strong></span>
+                <span style={{ color: GRAY }}>Стена: <strong style={{ color: DARK }}>{costs.wallArea.toFixed(2)} м²</strong></span>
+                <span style={{ fontSize: 12, color: GRAY }}>Базовые: {costs.totalBase.toLocaleString('ru-RU')} ₽</span>
+                <span style={{ fontSize: 12, color: isSubscriber ? ACCENT : GRAY }}>
+                  Накладки: {isSubscriber ? '0 ₽ (подписка)' : `${costs.totalOverlay.toLocaleString('ru-RU')} ₽`}
+                </span>
+                {isSubscriber ? (
+                  <span style={{ fontSize: 12, color: ACCENT, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <CrownOutlined style={{ fontSize: 12 }} />
+                    Включены в подписку
+                  </span>
+                ) : <span />}
+              </div>
+
+              {/* Right: total + cart */}
+              <div className="cost-actions" style={{ display: 'flex', alignItems: 'stretch', gap: 10, flexShrink: 0 }}>
+                <div
+                  style={{
+                    background: DARK,
+                    borderRadius: 12,
+                    padding: '10px 18px',
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    gap: 8,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>Итого</span>
+                  <span style={{ fontSize: 20, fontWeight: 600, color: '#fff', letterSpacing: '-0.01em' }}>
+                    {costs.total.toLocaleString('ru-RU')} ₽
+                  </span>
+                </div>
+                <div
+                  onClick={handleAddToCart}
+                  style={{
+                    background: ACCENT,
+                    color: '#fff',
+                    borderRadius: 12,
+                    fontWeight: 600,
+                    fontSize: 14,
+                    padding: '14px 20px',
+                    minHeight: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'opacity 0.15s',
+                    boxSizing: 'border-box',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+                >
+                  <ShoppingCartOutlined />
+                  В корзину
+                </div>
+                <div
+                  onClick={() => navigate(`/visualizer?designId=${selectedDesignId}`)}
+                  style={{
+                    border: '1px solid rgba(0,0,0,0.08)',
+                    borderRadius: 12,
+                    fontWeight: 500,
+                    fontSize: 13,
+                    padding: '10px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    cursor: 'pointer',
+                    color: '#6B7280',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.15s',
+                    boxSizing: 'border-box',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#2D2D2D'; e.currentTarget.style.color = '#2D2D2D'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.08)'; e.currentTarget.style.color = '#6B7280'; }}
+                >
+                  <CameraOutlined />
+                  Примерить на фото
                 </div>
               </div>
-            )}
+            </div>
           </Card>
         </div>
       </div>
+
+      {/* ─── Full-width subscription banner ────────────────────────────── */}
+      {!isSubscriber && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2, ease: EASE_APPLE }}
+          onClick={() => openSubModal()}
+          style={{
+            marginTop: 20,
+            borderRadius: 16,
+            padding: '24px 32px',
+            maxWidth: 1352,
+            marginInline: 'auto',
+            boxSizing: 'border-box',
+            background: 'linear-gradient(135deg, #1B5E20 0%, #2E7D32 40%, #43A047 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 20,
+            cursor: 'pointer',
+            position: 'relative',
+            overflow: 'hidden',
+            flexWrap: 'wrap',
+          }}
+          className="sub-banner"
+        >
+          {/* Decorative circles */}
+          <div style={{ position: 'absolute', top: -30, right: -30, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
+          <div style={{ position: 'absolute', bottom: -20, left: '40%', width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, position: 'relative', zIndex: 1 }}>
+            <div className="sub-banner-icon" style={{
+              width: 48,
+              height: 48,
+              borderRadius: 14,
+              background: 'rgba(255,255,255,0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              <CrownOutlined style={{ fontSize: 24, color: '#FFD54F' }} />
+            </div>
+            <div>
+              <div className="sub-banner-text-title" style={{ color: '#fff', fontWeight: 700, fontSize: 16, marginBottom: 2 }}>
+                Оформите подписку — накладки бесплатно!
+              </div>
+              <div className="sub-banner-text-desc" style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, lineHeight: 1.4 }}>
+                Платите только за базовые панели. Планы от <strong style={{ color: '#FFD54F' }}>{(7000).toLocaleString('ru-RU')} ₽/мес</strong> · экономия до 60% на каждом заказе
+              </div>
+            </div>
+          </div>
+
+          <Button
+            size="large"
+            style={{
+              background: '#fff',
+              color: '#1B5E20',
+              border: 'none',
+              borderRadius: 12,
+              fontWeight: 700,
+              fontSize: 14,
+              height: 44,
+              paddingInline: 28,
+              position: 'relative',
+              zIndex: 1,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              flexShrink: 0,
+            }}
+          >
+            Подробнее о подписке
+          </Button>
+        </motion.div>
+      )}
+
+      {isSubscriber && (
+        <div
+          className="sub-banner"
+          style={{
+            marginTop: 20,
+            borderRadius: 16,
+            padding: '16px 28px',
+            maxWidth: 1352,
+            marginInline: 'auto',
+            boxSizing: 'border-box',
+            background: 'linear-gradient(135deg, #E8F5E9, #C8E6C9)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            border: '1px solid #A5D6A7',
+          }}
+        >
+          <CrownOutlined style={{ fontSize: 20, color: '#2E7D32' }} />
+          <div>
+            <span style={{ fontWeight: 600, fontSize: 14, color: '#1B5E20' }}>
+              Подписка «{activePlan()?.name}»
+            </span>
+            <span style={{ fontSize: 13, color: '#2E7D32', marginLeft: 8 }}>
+              — накладки включены в план. Вы платите только за базовые панели.
+              {activePlan()?.areaLimitM2 ? ` Лимит: ${activePlan()!.areaLimitM2} м²/мес.` : ' Безлимитная площадь.'}
+            </span>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @media (max-width: 900px) {
           .constructor-layout {
             grid-template-columns: 1fr !important;
+            padding: 12px !important;
+            gap: 14px !important;
+          }
+          /* All cards must not overflow */
+          .constructor-layout .ant-card {
+            max-width: 100% !important;
+            overflow: hidden !important;
+          }
+          .constructor-layout .ant-card-body {
+            padding: 14px !important;
+            max-width: 100% !important;
+            overflow: hidden !important;
+            box-sizing: border-box !important;
+          }
+        }
+        @media (max-width: 768px) {
+          .cost-summary-grid {
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+          }
+          .cost-stats-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            column-gap: 12px !important;
+          }
+          .cost-actions {
+            width: 100% !important;
+          }
+          .cost-actions > * {
+            flex: 1 !important;
+            min-width: 0 !important;
+          }
+          .sub-banner {
+            padding: 16px !important;
+            margin-left: 12px !important;
+            margin-right: 12px !important;
+            max-width: calc(100% - 24px) !important;
+            box-sizing: border-box !important;
+            border-radius: 12px !important;
+          }
+          .sub-banner-text-title { font-size: 14px !important; }
+          .sub-banner-text-desc { font-size: 12px !important; }
+          .sub-banner-icon { width: 40px !important; height: 40px !important; }
+          .preset-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 8px !important;
+          }
+          .wall-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+          }
+          .page-header-title { font-size: 22px !important; }
+          .page-header-desc { font-size: 13px !important; }
+          /* Action buttons: wrap if needed */
+          .constructor-action-btns {
+            flex-wrap: wrap !important;
+          }
+          /* Size switcher overflow fix */
+          .size-switcher {
+            overflow: hidden !important;
+          }
+          .size-switcher .ant-radio-button-wrapper {
+            padding: 0 8px !important;
+            font-size: 12px !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .cost-stats-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .cost-actions {
+            flex-direction: column !important;
+          }
+          .cost-actions > * {
+            justify-content: center !important;
+          }
+          .sub-banner {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+          }
+          .constructor-action-btns {
+            gap: 6px !important;
+          }
+          .constructor-action-btns .ant-btn {
+            font-size: 12px !important;
+            padding: 0 10px !important;
           }
         }
       `}</style>

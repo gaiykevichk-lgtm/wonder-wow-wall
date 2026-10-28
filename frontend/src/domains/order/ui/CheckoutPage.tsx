@@ -1,5 +1,7 @@
+import { imageSrc } from "../../../shared/lib/imageSrc";
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { PageMeta } from '../../../shared/ui/PageMeta';
 import {
   Button,
   Card,
@@ -8,6 +10,9 @@ import {
   Radio,
   Steps,
   message,
+  DatePicker,
+  TimePicker,
+  Checkbox,
 } from 'antd';
 import {
   UserOutlined,
@@ -15,16 +20,23 @@ import {
   CreditCardOutlined,
   CheckCircleOutlined,
   ShoppingCartOutlined,
+  CalendarOutlined,
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
+import dayjs from 'dayjs';
+import type { Dayjs } from 'dayjs';
+import type { ApiOrder } from '../../../shared/api/types';
 import { useCartStore } from '../model/cartStore';
+import { useCreateOrder } from '../api/orderApi';
+import { useAuthStore } from '../../auth/model/authStore';
+import { BrandedFrame } from '../../../shared/ui/BrandedFrame';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
-const BLUE = '#0071e3';
-const DARK = '#1d1d1f';
-const GRAY_TEXT = '#86868b';
-const FONT = 'Inter, sans-serif';
+const ACCENT = '#4CAF50';
+const DARK = '#2D2D2D';
+const GRAY_TEXT = '#6B7280';
+const FONT = "'SF Pro Display', sans-serif";
 
 const MAX_WIDTH: React.CSSProperties = { maxWidth: 1080, margin: '0 auto' };
 
@@ -33,7 +45,7 @@ const fadeUp = {
   visible: (i: number = 0) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.8, ease: [0.25, 0.1, 0.25, 1.0], delay: i * 0.08 },
+    transition: { duration: 0.8, ease: 'easeOut' as const, delay: i * 0.08 },
   }),
 };
 
@@ -57,10 +69,200 @@ const CheckoutPage: React.FC = () => {
   const [form] = Form.useForm();
   const [delivery, setDelivery] = useState<string>('courier');
   const [payment, setPayment] = useState<string>('card');
+  // Phase 12 — post-submit "certificate" success state lives on the same
+  // page (no new route) so wizard → success is animated locally and the
+  // user keeps the order recap they just confirmed.
+  const [submittedOrder, setSubmittedOrder] = useState<{
+    number: string;
+    total: number;
+    items: typeof items;
+  } | null>(null);
+  const createOrder = useCreateOrder();
+  const isAuth = useAuthStore((s) => s.isAuth);
 
   const subtotal = total();
   const deliveryCost = subtotal >= 50000 ? 0 : 2500;
   const grandTotal = subtotal + deliveryCost;
+
+  // ── Success state (post-submit) ──────────────────────────────────────────────
+  if (submittedOrder) {
+    return (
+      <div
+        style={{
+          paddingTop: 72,
+          minHeight: '100vh',
+          background: '#F5F5F5',
+          padding: '72px 24px 80px',
+        }}
+      >
+        <PageMeta title="Заказ оформлен" />
+        <div style={{ ...MAX_WIDTH, maxWidth: 760 }}>
+          <BrandedFrame
+            variant="full"
+            animate
+            padding="56px 56px 88px"
+            logoHeight={56}
+          >
+            <div style={{ textAlign: 'center' }}>
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                style={{
+                  width: 72,
+                  height: 72,
+                  borderRadius: '50%',
+                  background: ACCENT,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 24px',
+                }}
+              >
+                <CheckCircleOutlined style={{ fontSize: 38, color: '#fff' }} />
+              </motion.div>
+              <h1
+                style={{
+                  fontFamily: FONT,
+                  fontSize: 32,
+                  fontWeight: 700,
+                  color: DARK,
+                  margin: '0 0 8px',
+                  letterSpacing: -0.4,
+                }}
+              >
+                Спасибо за заказ!
+              </h1>
+              <p
+                style={{
+                  fontFamily: FONT,
+                  fontSize: 15,
+                  color: GRAY_TEXT,
+                  margin: '0 0 32px',
+                  lineHeight: 1.6,
+                }}
+              >
+                Мы свяжемся с вами в ближайшее время для подтверждения
+                деталей доставки и&nbsp;монтажа.
+              </p>
+
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'baseline',
+                  gap: 32,
+                  padding: '20px 32px',
+                  background: '#FAFAFA',
+                  borderRadius: 12,
+                  marginBottom: 28,
+                }}
+              >
+                <div style={{ textAlign: 'left' }}>
+                  <div
+                    style={{
+                      fontFamily: FONT,
+                      fontSize: 12,
+                      color: GRAY_TEXT,
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.6,
+                    }}
+                  >
+                    Номер заказа
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: FONT,
+                      fontSize: 22,
+                      fontWeight: 700,
+                      color: DARK,
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {submittedOrder.number}
+                  </div>
+                </div>
+                <div
+                  style={{
+                    width: 1,
+                    alignSelf: 'stretch',
+                    background: 'rgba(0,0,0,0.08)',
+                  }}
+                />
+                <div style={{ textAlign: 'left' }}>
+                  <div
+                    style={{
+                      fontFamily: FONT,
+                      fontSize: 12,
+                      color: GRAY_TEXT,
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.6,
+                    }}
+                  >
+                    Сумма
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: FONT,
+                      fontSize: 22,
+                      fontWeight: 700,
+                      color: DARK,
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {submittedOrder.total.toLocaleString('ru-RU')} ₽
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 12,
+                  justifyContent: 'center',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <Link to="/account/orders">
+                  <Button
+                    size="large"
+                    style={{
+                      background: DARK,
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 8,
+                      height: 48,
+                      padding: '0 28px',
+                      fontFamily: FONT,
+                      fontWeight: 600,
+                    }}
+                  >
+                    Мои заказы
+                  </Button>
+                </Link>
+                <Link to="/catalog">
+                  <Button
+                    size="large"
+                    style={{
+                      background: '#fff',
+                      color: DARK,
+                      border: '1px solid rgba(0,0,0,0.12)',
+                      borderRadius: 8,
+                      height: 48,
+                      padding: '0 28px',
+                      fontFamily: FONT,
+                      fontWeight: 600,
+                    }}
+                  >
+                    Продолжить покупки
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </BrandedFrame>
+        </div>
+      </div>
+    );
+  }
 
   // ── Empty state ──────────────────────────────────────────────────────────────
   if (items.length === 0) {
@@ -110,7 +312,7 @@ const CheckoutPage: React.FC = () => {
               background: DARK,
               color: '#fff',
               border: 'none',
-              borderRadius: 980,
+              borderRadius: 8,
               height: 52,
               padding: '0 32px',
               fontFamily: FONT,
@@ -145,9 +347,55 @@ const CheckoutPage: React.FC = () => {
   const handleSubmit = async () => {
     try {
       await form.validateFields();
-      message.success('Заказ успешно оформлен! Мы свяжемся с вами в ближайшее время.');
-      clearCart();
-      navigate('/');
+      // Phase 12 — switch to success state in-place. The cart is cleared
+      // AFTER capturing the items snapshot so the success view can still
+      // recap the order. Real backend integration will replace the
+      // synthetic order number with the server's response.
+      if (!isAuth) {
+        message.error('Войдите, чтобы оформить заказ');
+        navigate('/login');
+        return;
+      }
+      const addressRaw = (form.getFieldValue('address') || '').trim();
+      const addressParts = addressRaw.split(',').map((part: string) => part.trim()).filter(Boolean);
+      if (delivery !== 'pickup' && addressParts.length < 3) {
+        message.error('Укажите адрес: город, улица, дом');
+        return;
+      }
+      const payload = {
+        items: items.map((item) => ({
+          design_id: item.productId,
+          design_name: item.name,
+          design_image: item.image,
+          size_key: item.sizeKey,
+          color: '',
+          colorName: item.colorName,
+          quantity: item.quantity,
+          unit_price: item.price,
+          texture_id: item.textureId,
+          texture_name: item.textureName,
+          variant_id: item.variantId || '',
+          execution_name: item.executionName || item.colorName || '',
+        })),
+        address: {
+          city: addressParts[0] || '',
+          street: addressParts[1] || '',
+          building: addressParts[2] || '',
+          apartment: addressParts[3] || '',
+          postal_code: '',
+        },
+        installation_date: null,
+      };
+      try {
+        const order: ApiOrder = await createOrder.mutateAsync(payload);
+        const captured = items;
+        setSubmittedOrder({ number: order.number, total: grandTotal, items: captured });
+        clearCart();
+        message.success(`Заказ ${order.number} оформлен`);
+      } catch (err) {
+        // keep cart intact so user can retry; validation errors still hit the outer catch
+        message.error(err instanceof Error ? err.message : 'Не удалось оформить заказ. Попробуйте ещё раз.');
+      }
     } catch {
       // validation error — antd shows inline
     }
@@ -155,8 +403,8 @@ const CheckoutPage: React.FC = () => {
 
   const handleNext = async () => {
     const fieldsToValidate: string[][] = [
-      ['firstName', 'lastName', 'phone', 'email'],
-      ['address'],
+      ['firstName', 'lastName', 'phone', 'email', 'privacyConsent'],
+      delivery !== 'pickup' ? ['address', 'installationDate', 'installationTime'] : ['installationDate', 'installationTime'],
       [],
     ];
     try {
@@ -178,7 +426,7 @@ const CheckoutPage: React.FC = () => {
 
   const StepContacts = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '0 16px' }}>
         <Form.Item
           name="firstName"
           label={label('Имя')}
@@ -213,6 +461,25 @@ const CheckoutPage: React.FC = () => {
         ]}
       >
         <Input style={inputStyle} placeholder="ivan@example.com" />
+      </Form.Item>
+      <Form.Item
+        name="privacyConsent"
+        valuePropName="checked"
+        rules={[
+          {
+            validator: (_, value) =>
+              value ? Promise.resolve() : Promise.reject(new Error('Необходимо дать согласие')),
+          },
+        ]}
+      >
+        <Checkbox>
+          <span style={{ fontFamily: FONT, fontSize: 13, color: GRAY_TEXT }}>
+            Я даю согласие на{' '}
+            <Link to="/privacy-policy" target="_blank" style={{ color: ACCENT }}>
+              обработку персональных данных
+            </Link>
+          </span>
+        </Checkbox>
       </Form.Item>
     </div>
   );
@@ -267,6 +534,51 @@ const CheckoutPage: React.FC = () => {
           placeholder="Дополнительная информация для курьера или мастера..."
         />
       </Form.Item>
+      <div style={{ marginTop: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <CalendarOutlined style={{ color: ACCENT, fontSize: 16 }} />
+          <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 600, color: DARK }}>
+            Дата и время монтажа
+          </span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16 }}>
+          <Form.Item
+            name="installationDate"
+            label={label('Дата')}
+            rules={[{ required: true, message: 'Выберите дату монтажа' }]}
+          >
+            <DatePicker
+              format="DD.MM.YYYY"
+              placeholder="Выберите дату"
+              disabledDate={(current: Dayjs) => current && current.isBefore(dayjs().endOf('day'))}
+              style={{ ...inputStyle, width: '100%' }}
+            />
+          </Form.Item>
+          <Form.Item
+            name="installationTime"
+            label={label('Время')}
+            rules={[{ required: true, message: 'Выберите время' }]}
+          >
+            <TimePicker
+              format="HH:mm"
+              minuteStep={30}
+              placeholder="Выберите время"
+              disabledHours={() => {
+                const hours = [];
+                for (let i = 0; i < 9; i++) hours.push(i);
+                for (let i = 21; i < 24; i++) hours.push(i);
+                return hours;
+              }}
+              disabledMinutes={(hour: number) => (hour === 20 ? [30] : [])}
+              hideDisabledOptions
+              style={{ ...inputStyle, width: '100%' }}
+            />
+          </Form.Item>
+        </div>
+        <p style={{ fontFamily: FONT, fontSize: 12, color: GRAY_TEXT, margin: '-8px 0 0' }}>
+          Доступное время: с 9:00 до 20:00, только будущие даты
+        </p>
+      </div>
     </div>
   );
 
@@ -279,6 +591,7 @@ const CheckoutPage: React.FC = () => {
       >
         {[
           { value: 'card', label: 'Банковская карта', desc: 'Visa, Mastercard, МИР' },
+          { value: 'sbp', label: 'СБП', desc: 'Система Быстрых Платежей' },
           { value: 'installment', label: 'Рассрочка', desc: 'На 12 месяцев без переплат' },
           { value: 'cash', label: 'Наличные', desc: 'При получении или самовывозе' },
         ].map((opt) => (
@@ -309,7 +622,8 @@ const CheckoutPage: React.FC = () => {
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <div style={{ paddingTop: 72, minHeight: '100vh', background: '#F5F5F7', padding: '72px 24px 80px' }}>
+    <div style={{ paddingTop: 72, minHeight: '100vh', background: '#F5F5F5', padding: '72px 24px 80px' }}>
+      <PageMeta title="Оформление заказа" />
       <div style={{ ...MAX_WIDTH }}>
         {/* Page title */}
         <motion.h1
@@ -361,7 +675,7 @@ const CheckoutPage: React.FC = () => {
           >
             <Card
               style={{
-                borderRadius: 20,
+                borderRadius: 16,
                 border: '1px solid rgba(0,0,0,0.04)',
                 boxShadow: 'none',
               }}
@@ -396,7 +710,7 @@ const CheckoutPage: React.FC = () => {
                       background: '#fff',
                       color: DARK,
                       border: '1px solid rgba(0,0,0,0.04)',
-                      borderRadius: 980,
+                      borderRadius: 8,
                       height: 48,
                       padding: '0 24px',
                       fontFamily: FONT,
@@ -413,7 +727,7 @@ const CheckoutPage: React.FC = () => {
                     background: DARK,
                     color: '#fff',
                     border: 'none',
-                    borderRadius: 980,
+                    borderRadius: 8,
                     height: 48,
                     padding: '0 32px',
                     fontFamily: FONT,
@@ -437,7 +751,7 @@ const CheckoutPage: React.FC = () => {
           >
             <Card
               style={{
-                borderRadius: 20,
+                borderRadius: 16,
                 border: '1px solid rgba(0,0,0,0.04)',
                 boxShadow: 'none',
               }}
@@ -471,7 +785,7 @@ const CheckoutPage: React.FC = () => {
                     >
                       {item.image ? (
                         <img
-                          src={item.image}
+                          src={imageSrc(item.image)}
                           alt={item.name}
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />
@@ -493,6 +807,11 @@ const CheckoutPage: React.FC = () => {
                       >
                         {item.name}
                       </div>
+                      {(item.textureName || item.colorName || item.size) && (
+                        <div style={{ fontFamily: FONT, fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>
+                          {[item.textureName, item.colorName, item.size].filter(Boolean).join(' · ')}
+                        </div>
+                      )}
                       <div style={{ fontFamily: FONT, fontSize: 12, color: GRAY_TEXT, marginTop: 2 }}>
                         {item.quantity} × {item.price.toLocaleString('ru-RU')} ₽
                       </div>
@@ -523,7 +842,7 @@ const CheckoutPage: React.FC = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
                   <span style={{ fontFamily: FONT, fontSize: 14, color: GRAY_TEXT }}>Доставка</span>
                   {deliveryCost === 0 ? (
-                    <span style={{ fontFamily: FONT, fontSize: 14, color: BLUE, fontWeight: 600 }}>
+                    <span style={{ fontFamily: FONT, fontSize: 14, color: ACCENT, fontWeight: 600 }}>
                       Бесплатно
                     </span>
                   ) : (
@@ -558,7 +877,7 @@ const CheckoutPage: React.FC = () => {
               <div
                 style={{
                   marginTop: 20,
-                  background: '#F5F5F7',
+                  background: '#F5F5F5',
                   borderRadius: 10,
                   padding: '14px 16px',
                   display: 'flex',
@@ -572,7 +891,7 @@ const CheckoutPage: React.FC = () => {
                   'Профессиональный монтаж',
                 ].map((text) => (
                   <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <CheckCircleOutlined style={{ color: BLUE, fontSize: 14 }} />
+                    <CheckCircleOutlined style={{ color: ACCENT, fontSize: 14 }} />
                     <span style={{ fontFamily: FONT, fontSize: 13, color: DARK }}>{text}</span>
                   </div>
                 ))}

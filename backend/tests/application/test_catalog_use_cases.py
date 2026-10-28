@@ -10,12 +10,12 @@ from app.infrastructure.persistence.repositories.memory import (
 @pytest.fixture
 def designs():
     return [
-        Design(id="d1", name="Alpha", slug="alpha", category_id="c1", price=1200,
-               colors=[Color("#000", "Black")], rating=4.5, reviews_count=10),
-        Design(id="d2", name="Beta", slug="beta", category_id="c2", price=1200,
-               colors=[Color("#fff", "White")], rating=4.0, reviews_count=5),
-        Design(id="d3", name="Gamma", slug="gamma", category_id="c1", price=1200,
-               colors=[], rating=4.8, reviews_count=20),
+        Design(id="d1", name="Alpha", slug="alpha", category_id="c1", style="Nature", price=1200,
+               colors=[Color("#000", "Black")], rating=4.5, reviews_count=10, is_new=True),
+        Design(id="d2", name="Beta", slug="beta", category_id="c2", style="Abstract", price=1200,
+               colors=[Color("#fff", "White")], rating=4.0, reviews_count=5, is_new=False),
+        Design(id="d3", name="Gamma", slug="gamma", category_id="c1", style="Nature", price=1200,
+               colors=[], rating=4.8, reviews_count=20, is_new=False),
     ]
 
 
@@ -70,6 +70,51 @@ class TestListDesigns:
         designs, total = await uc.execute(offset=0, limit=2)
         assert len(designs) == 2
         assert total == 3
+
+    @pytest.mark.asyncio
+    async def test_filter_by_color(self, design_repo):
+        uc = ListDesigns(design_repo)
+        designs, total = await uc.execute(color="Black")
+        assert total == 1
+        assert designs[0].id == "d1"
+
+    @pytest.mark.asyncio
+    async def test_filter_by_color_case_insensitive(self, design_repo):
+        uc = ListDesigns(design_repo)
+        designs, total = await uc.execute(color="black")
+        assert total == 1
+
+    @pytest.mark.asyncio
+    async def test_filter_by_style(self, design_repo):
+        uc = ListDesigns(design_repo)
+        designs, total = await uc.execute(style="Nature")
+        assert total == 2
+
+    @pytest.mark.asyncio
+    async def test_filter_by_style_case_insensitive(self, design_repo):
+        uc = ListDesigns(design_repo)
+        designs, total = await uc.execute(style="nature")
+        assert total == 2
+
+    @pytest.mark.asyncio
+    async def test_filter_by_is_new(self, design_repo):
+        uc = ListDesigns(design_repo)
+        designs, total = await uc.execute(is_new=True)
+        assert total == 1
+        assert designs[0].id == "d1"
+
+    @pytest.mark.asyncio
+    async def test_filter_by_is_new_false(self, design_repo):
+        uc = ListDesigns(design_repo)
+        designs, total = await uc.execute(is_new=False)
+        assert total == 2
+
+    @pytest.mark.asyncio
+    async def test_combined_filters(self, design_repo):
+        uc = ListDesigns(design_repo)
+        designs, total = await uc.execute(category_id="c1", style="Nature", is_new=True)
+        assert total == 1
+        assert designs[0].id == "d1"
 
 
 class TestGetDesignDetails:

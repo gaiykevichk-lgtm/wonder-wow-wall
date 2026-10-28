@@ -1,13 +1,19 @@
-import { Navigate, useLocation } from 'react-router-dom';
-import { useAuthStore } from '../model/authStore';
+import type { ReactNode } from "react";
+import { Navigate, useLocation } from "react-router-dom";
+import { useAuthStore } from "../model/authStore";
 
-export function RequireAuth({ children }: { children: React.ReactNode }) {
-  const isAuth = useAuthStore((s) => s.isAuth);
-  const location = useLocation();
+export function RequireAuth({ children }: { children: ReactNode }) {
+	const isAuth = useAuthStore((s) => s.isAuth);
+	const location = useLocation();
 
-  if (!isAuth) {
-    return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname)}`} replace />;
-  }
+	if (!isAuth) {
+		return (
+			<Navigate
+				to={`/login?redirect=${encodeURIComponent(location.pathname)}`}
+				replace
+			/>
+		);
+	}
 
-  return <>{children}</>;
+	return <>{children}</>;
 }

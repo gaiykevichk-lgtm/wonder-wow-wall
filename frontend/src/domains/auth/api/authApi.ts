@@ -56,3 +56,17 @@ export function useUpdateProfileMutation() {
     },
   });
 }
+
+export function useForgotPasswordMutation() {
+  return useMutation({
+    mutationFn: (body: { email: string }) =>
+      api.post<{ status: string }>('/auth/forgot-password', body),
+  });
+}
+
+export function useResetPasswordMutation() {
+  return useMutation({
+    mutationFn: (body: { email: string; token: string; new_password: string }) =>
+      api.post<{ status: string }>('/auth/reset-password', body),
+  });
+}

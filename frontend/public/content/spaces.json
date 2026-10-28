@@ -1,0 +1,737 @@
+[
+  {
+    "id": "home-living-tv-1",
+    "title": "Современная гостиная с акцентной ТВ-зоной",
+    "category": "home",
+    "categoryLabel": "Для дома",
+    "roomType": "living",
+    "roomTypeLabel": "Гостиная",
+    "zone": "tv_zone",
+    "zoneLabel": "Зона ТВ",
+    "style": "modern",
+    "styleLabel": "Современный",
+    "texture": "wood",
+    "textureLabel": "Дерево",
+    "image": "/scenarios/зона_тв.jpg",
+    "description": "Теплая фактура дуба в комбинации с мягкой фоновой подсветкой визуально углубляет ТВ-зону и делает пространство уютным.",
+    "mode": "combined",
+    "areaM2": 8.4,
+    "panelSize": "600x600",
+    "defaultPanelName": "ДЕМО 2",
+    "defaultPanelSlug": "faa8c134-4bbd-46a8-9bf7-e3254a83e3ea",
+    "relatedPanels": [
+      {
+        "slug": "faa8c134-4bbd-46a8-9bf7-e3254a83e3ea",
+        "name": "ДЕМО 2"
+      },
+      {
+        "slug": "bbe26910-6690-4f72-8878-3a8d02b6bb88",
+        "name": "ДЕМО 1"
+      },
+      {
+        "slug": "b808bbcc-3633-47c7-9ecb-90c8310d69cb",
+        "name": "ДЕМО 3"
+      }
+    ],
+    "textures": [
+      {
+        "id": "wood-1",
+        "name": "Дуб натуральный",
+        "family": "wood",
+        "image": "/scenarios/зона_тв.jpg",
+        "colorHex": "#b58d63"
+      },
+      {
+        "id": "stone-1",
+        "name": "Серый сланец",
+        "family": "stone",
+        "image": "/scenarios/зона_тв.jpg",
+        "colorHex": "#71717a"
+      },
+      {
+        "id": "leather-1",
+        "name": "Кожа тауп",
+        "family": "leather",
+        "image": "/scenarios/зона_тв.jpg",
+        "colorHex": "#9a8c7e"
+      }
+    ]
+  },
+  {
+    "id": "home-living-sofa-1",
+    "title": "Лаунж-пространство с мягкой фактурной стеной",
+    "category": "home",
+    "categoryLabel": "Для дома",
+    "roomType": "living",
+    "roomTypeLabel": "Гостиная",
+    "zone": "sofa_zone",
+    "zoneLabel": "Зона дивана",
+    "style": "minimal",
+    "styleLabel": "Минимализм",
+    "texture": "stone",
+    "textureLabel": "Природный камень",
+    "image": "/scenarios/гостинная.jpg",
+    "description": "Крупноформатные панели под шлифованный известняк формируют спокойный архитектурный фон за мягкой группой.",
+    "mode": "mono",
+    "areaM2": 10.2,
+    "panelSize": "600x600",
+    "defaultPanelName": "ДЕМО 3",
+    "defaultPanelSlug": "b808bbcc-3633-47c7-9ecb-90c8310d69cb",
+    "relatedPanels": [
+      {
+        "slug": "b808bbcc-3633-47c7-9ecb-90c8310d69cb",
+        "name": "ДЕМО 3"
+      },
+      {
+        "slug": "6fc0f845-90c0-41e0-a681-5bf321938dc1",
+        "name": "ДЕМО 5"
+      },
+      {
+        "slug": "bbe26910-6690-4f72-8878-3a8d02b6bb88",
+        "name": "ДЕМО 1"
+      }
+    ],
+    "textures": [
+      {
+        "id": "stone-travertin",
+        "name": "Травертин бежевый",
+        "family": "stone",
+        "image": "/scenarios/гостинная.jpg",
+        "colorHex": "#d6cfc7"
+      },
+      {
+        "id": "textile-linen",
+        "name": "Текстиль серый лен",
+        "family": "textile",
+        "image": "/scenarios/гостинная.jpg",
+        "colorHex": "#a1a1aa"
+      },
+      {
+        "id": "wood-walnut",
+        "name": "Орех американский",
+        "family": "wood",
+        "image": "/scenarios/гостинная.jpg",
+        "colorHex": "#6c4d34"
+      }
+    ]
+  },
+  {
+    "id": "home-bedroom-headboard-1",
+    "title": "Спальня с акцентным изголовьем во всю стену",
+    "category": "home",
+    "categoryLabel": "Для дома",
+    "roomType": "bedroom",
+    "roomTypeLabel": "Спальня",
+    "zone": "headboard_zone",
+    "zoneLabel": "Зона изголовья",
+    "style": "neoclassic",
+    "styleLabel": "Неоклассика",
+    "texture": "leather",
+    "textureLabel": "Кожа",
+    "image": "/scenarios/спальня.jpg",
+    "description": "Фактурные панели с мягкой геометрией заменяют традиционное изголовье и обеспечивают акустический комфорт.",
+    "mode": "combined",
+    "areaM2": 7.5,
+    "panelSize": "300x600",
+    "defaultPanelName": "ДЕМО 1",
+    "defaultPanelSlug": "bbe26910-6690-4f72-8878-3a8d02b6bb88",
+    "relatedPanels": [
+      {
+        "slug": "bbe26910-6690-4f72-8878-3a8d02b6bb88",
+        "name": "ДЕМО 1"
+      },
+      {
+        "slug": "db15e4ef-cc10-43ef-87d4-b2fdc60c77b3",
+        "name": "ДЕМО 4"
+      },
+      {
+        "slug": "6fc0f845-90c0-41e0-a681-5bf321938dc1",
+        "name": "ДЕМО 5"
+      }
+    ],
+    "textures": [
+      {
+        "id": "leather-cream",
+        "name": "Кожа крем",
+        "family": "leather",
+        "image": "/scenarios/спальня.jpg",
+        "colorHex": "#f4ede4"
+      },
+      {
+        "id": "textile-velvet",
+        "name": "Текстиль мокко",
+        "family": "textile",
+        "image": "/scenarios/спальня.jpg",
+        "colorHex": "#786558"
+      },
+      {
+        "id": "wood-ash",
+        "name": "Беленый ясень",
+        "family": "wood",
+        "image": "/scenarios/спальня.jpg",
+        "colorHex": "#cfc7bc"
+      }
+    ]
+  },
+  {
+    "id": "home-kitchen-dining-1",
+    "title": "Обеденная зона в скандинавском стиле",
+    "category": "home",
+    "categoryLabel": "Для дома",
+    "roomType": "kitchen",
+    "roomTypeLabel": "Кухня",
+    "zone": "dining_zone",
+    "zoneLabel": "Обеденная зона",
+    "style": "scandi",
+    "styleLabel": "Сканди",
+    "texture": "wood",
+    "textureLabel": "Дерево",
+    "image": "/scenarios/кухня.jpg",
+    "description": "Вертикальный модульный ритм визуально поднимает потолки и зонирует столовую группу.",
+    "mode": "mono",
+    "areaM2": 6.8,
+    "panelSize": "600x600",
+    "defaultPanelName": "ДЕМО 5",
+    "defaultPanelSlug": "6fc0f845-90c0-41e0-a681-5bf321938dc1",
+    "relatedPanels": [
+      {
+        "slug": "6fc0f845-90c0-41e0-a681-5bf321938dc1",
+        "name": "ДЕМО 5"
+      },
+      {
+        "slug": "faa8c134-4bbd-46a8-9bf7-e3254a83e3ea",
+        "name": "ДЕМО 2"
+      },
+      {
+        "slug": "db15e4ef-cc10-43ef-87d4-b2fdc60c77b3",
+        "name": "ДЕМО 4"
+      }
+    ],
+    "textures": [
+      {
+        "id": "wood-birch",
+        "name": "Береза светлая",
+        "family": "wood",
+        "image": "/scenarios/кухня.jpg",
+        "colorHex": "#ebd7be"
+      },
+      {
+        "id": "stone-concrete",
+        "name": "Микроцемент",
+        "family": "stone",
+        "image": "/scenarios/кухня.jpg",
+        "colorHex": "#a8a8aa"
+      }
+    ]
+  },
+  {
+    "id": "home-wc-vanity-1",
+    "title": "Санузел с акцентной стеной у раковины",
+    "category": "home",
+    "categoryLabel": "Для дома",
+    "roomType": "wc",
+    "roomTypeLabel": "WC",
+    "zone": "vanity_zone",
+    "zoneLabel": "Зона раковины",
+    "style": "minimal",
+    "styleLabel": "Минимализм",
+    "texture": "stone",
+    "textureLabel": "Природный камень",
+    "image": "/scenarios/санузел.jpg",
+    "description": "Влагостойкие модульные панели с микроцементной фактурой создают ощущение премиального минимализма в ванной.",
+    "mode": "mono",
+    "areaM2": 3.2,
+    "panelSize": "300x600",
+    "defaultPanelName": "ДЕМО 4",
+    "defaultPanelSlug": "db15e4ef-cc10-43ef-87d4-b2fdc60c77b3",
+    "relatedPanels": [
+      {
+        "slug": "db15e4ef-cc10-43ef-87d4-b2fdc60c77b3",
+        "name": "ДЕМО 4"
+      },
+      {
+        "slug": "72a618b5-bc2d-4d66-affa-862808bfa8c7",
+        "name": "ДЕМО 6"
+      },
+      {
+        "slug": "6fc0f845-90c0-41e0-a681-5bf321938dc1",
+        "name": "ДЕМО 5"
+      }
+    ],
+    "textures": [
+      {
+        "id": "stone-microcement",
+        "name": "Микроцемент белый",
+        "family": "stone",
+        "image": "/scenarios/санузел.jpg",
+        "colorHex": "#e8e6e1"
+      },
+      {
+        "id": "wood-teak",
+        "name": "Тик",
+        "family": "wood",
+        "image": "/scenarios/санузел.jpg",
+        "colorHex": "#8a6d4a"
+      }
+    ]
+  },
+  {
+    "id": "biz-office-1",
+    "title": "Переговорная и представительская зона офиса",
+    "category": "business",
+    "categoryLabel": "Для бизнеса",
+    "roomType": "office",
+    "roomTypeLabel": "Офис",
+    "zone": "all_walls",
+    "zoneLabel": "Все стены",
+    "style": "modern",
+    "styleLabel": "Современный",
+    "texture": "metal",
+    "textureLabel": "Металл",
+    "image": "/interiors/office-conference.jpg",
+    "description": "Шлифованный темный металл и архитектурный бетон создают статусную атмосферу делового пространства.",
+    "mode": "combined",
+    "areaM2": 24.0,
+    "panelSize": "600x600",
+    "defaultPanelName": "ДЕМО 4",
+    "defaultPanelSlug": "db15e4ef-cc10-43ef-87d4-b2fdc60c77b3",
+    "relatedPanels": [
+      {
+        "slug": "db15e4ef-cc10-43ef-87d4-b2fdc60c77b3",
+        "name": "ДЕМО 4"
+      },
+      {
+        "slug": "72a618b5-bc2d-4d66-affa-862808bfa8c7",
+        "name": "ДЕМО 6"
+      },
+      {
+        "slug": "faa8c134-4bbd-46a8-9bf7-e3254a83e3ea",
+        "name": "ДЕМО 2"
+      }
+    ],
+    "textures": [
+      {
+        "id": "metal-titan",
+        "name": "Титан сатин",
+        "family": "metal",
+        "image": "/interiors/office-conference.jpg",
+        "colorHex": "#52525b"
+      },
+      {
+        "id": "wood-ebony",
+        "name": "Черный эбен",
+        "family": "wood",
+        "image": "/interiors/office-conference.jpg",
+        "colorHex": "#27272a"
+      }
+    ]
+  },
+  {
+    "id": "biz-hotel-1",
+    "title": "Лобби бутик-отеля с акцентными панелями",
+    "category": "business",
+    "categoryLabel": "Для бизнеса",
+    "roomType": "hotel",
+    "roomTypeLabel": "Отель",
+    "zone": "all_walls",
+    "zoneLabel": "Все стены",
+    "style": "neoclassic",
+    "styleLabel": "Неоклассика",
+    "texture": "stone",
+    "textureLabel": "Природный камень",
+    "image": "/interiors/hotel-lobby.jpg",
+    "description": "Крупная сетка панелей со скрытыми швами подчеркивает масштаб входной группы и износостойка к потоку гостей.",
+    "mode": "combined",
+    "areaM2": 32.5,
+    "panelSize": "600x600",
+    "defaultPanelName": "ДЕМО 6",
+    "defaultPanelSlug": "72a618b5-bc2d-4d66-affa-862808bfa8c7",
+    "relatedPanels": [
+      {
+        "slug": "72a618b5-bc2d-4d66-affa-862808bfa8c7",
+        "name": "ДЕМО 6"
+      },
+      {
+        "slug": "bbe26910-6690-4f72-8878-3a8d02b6bb88",
+        "name": "ДЕМО 1"
+      },
+      {
+        "slug": "b808bbcc-3633-47c7-9ecb-90c8310d69cb",
+        "name": "ДЕМО 3"
+      }
+    ],
+    "textures": [
+      {
+        "id": "stone-onyx",
+        "name": "Мрамор оникс",
+        "family": "stone",
+        "image": "/interiors/hotel-lobby.jpg",
+        "colorHex": "#d1c4b2"
+      },
+      {
+        "id": "metal-brass",
+        "name": "Латунь патина",
+        "family": "metal",
+        "image": "/interiors/hotel-lobby.jpg",
+        "colorHex": "#c59f60"
+      }
+    ]
+  },
+  {
+    "id": "biz-cafe-1",
+    "title": "Уютный зал кофейни с теплой отделкой",
+    "category": "business",
+    "categoryLabel": "Для бизнеса",
+    "roomType": "cafe",
+    "roomTypeLabel": "Кофейня",
+    "zone": "all_walls",
+    "zoneLabel": "Все стены",
+    "style": "loft",
+    "styleLabel": "Лофт",
+    "texture": "wood",
+    "textureLabel": "Дерево",
+    "image": "/interiors/restaurant-cafe.jpg",
+    "description": "Комбинация фактур термодревесины и графитовых элементов создает камерную атмосферу для гостей.",
+    "mode": "mono",
+    "areaM2": 18.4,
+    "panelSize": "600x600",
+    "defaultPanelName": "ДЕМО 2",
+    "defaultPanelSlug": "faa8c134-4bbd-46a8-9bf7-e3254a83e3ea",
+    "relatedPanels": [
+      {
+        "slug": "faa8c134-4bbd-46a8-9bf7-e3254a83e3ea",
+        "name": "ДЕМО 2"
+      },
+      {
+        "slug": "6fc0f845-90c0-41e0-a681-5bf321938dc1",
+        "name": "ДЕМО 5"
+      },
+      {
+        "slug": "db15e4ef-cc10-43ef-87d4-b2fdc60c77b3",
+        "name": "ДЕМО 4"
+      }
+    ],
+    "textures": [
+      {
+        "id": "wood-smoked",
+        "name": "Копченый дуб",
+        "family": "wood",
+        "image": "/interiors/restaurant-cafe.jpg",
+        "colorHex": "#453229"
+      },
+      {
+        "id": "stone-basalt",
+        "name": "Базальт антрацит",
+        "family": "stone",
+        "image": "/interiors/restaurant-cafe.jpg",
+        "colorHex": "#3f3f46"
+      }
+    ]
+  },
+  {
+    "id": "biz-retail-1",
+    "title": "Бутик в торговом центре с фактурными стенами",
+    "category": "business",
+    "categoryLabel": "Для бизнеса",
+    "roomType": "retail",
+    "roomTypeLabel": "Ритейл",
+    "zone": "all_walls",
+    "zoneLabel": "Все стены",
+    "style": "modern",
+    "styleLabel": "Современный",
+    "texture": "textile",
+    "textureLabel": "Текстиль",
+    "image": "/interiors/retail-boutique.jpg",
+    "description": "Акустические текстильные панели задают уютную атмосферу в примерочных и зонах отдыха покупателей.",
+    "mode": "mono",
+    "areaM2": 15.6,
+    "panelSize": "600x600",
+    "defaultPanelName": "ДЕМО 3",
+    "defaultPanelSlug": "b808bbcc-3633-47c7-9ecb-90c8310d69cb",
+    "relatedPanels": [
+      {
+        "slug": "b808bbcc-3633-47c7-9ecb-90c8310d69cb",
+        "name": "ДЕМО 3"
+      },
+      {
+        "slug": "6fc0f845-90c0-41e0-a681-5bf321938dc1",
+        "name": "ДЕМО 5"
+      },
+      {
+        "slug": "72a618b5-bc2d-4d66-affa-862808bfa8c7",
+        "name": "ДЕМО 6"
+      }
+    ],
+    "textures": [
+      {
+        "id": "textile-camel",
+        "name": "Текстиль camel",
+        "family": "textile",
+        "image": "/interiors/retail-boutique.jpg",
+        "colorHex": "#b89f7e"
+      },
+      {
+        "id": "wood-natural",
+        "name": "Дуб светлый",
+        "family": "wood",
+        "image": "/interiors/retail-boutique.jpg",
+        "colorHex": "#c9b390"
+      }
+    ]
+  },
+  {
+    "id": "social-school-1",
+    "title": "Рекреация и холл образовательного центра",
+    "category": "social",
+    "categoryLabel": "Социальные объекты",
+    "roomType": "school",
+    "roomTypeLabel": "Школы",
+    "zone": "all_walls",
+    "zoneLabel": "Все стены",
+    "style": "modern",
+    "styleLabel": "Современный",
+    "texture": "wood",
+    "textureLabel": "Дерево",
+    "image": "/interiors/school-common.jpg",
+    "description": "Экологичные негорючие модульные панели выдерживают ежедневную нагрузку и легко заменяются без ремонта всей стены.",
+    "mode": "mono",
+    "areaM2": 28.0,
+    "panelSize": "600x600",
+    "defaultPanelName": "ДЕМО 1",
+    "defaultPanelSlug": "bbe26910-6690-4f72-8878-3a8d02b6bb88",
+    "relatedPanels": [
+      {
+        "slug": "bbe26910-6690-4f72-8878-3a8d02b6bb88",
+        "name": "ДЕМО 1"
+      },
+      {
+        "slug": "6fc0f845-90c0-41e0-a681-5bf321938dc1",
+        "name": "ДЕМО 5"
+      },
+      {
+        "slug": "db15e4ef-cc10-43ef-87d4-b2fdc60c77b3",
+        "name": "ДЕМО 4"
+      }
+    ],
+    "textures": [
+      {
+        "id": "wood-natural",
+        "name": "Ясень светлый",
+        "family": "wood",
+        "image": "/interiors/school-common.jpg",
+        "colorHex": "#e2d5c3"
+      },
+      {
+        "id": "textile-soft",
+        "name": "Акустический войлок",
+        "family": "textile",
+        "image": "/interiors/school-common.jpg",
+        "colorHex": "#71717a"
+      }
+    ]
+  },
+  {
+    "id": "social-kindergarten-1",
+    "title": "Игровая комната и холл детского сада",
+    "category": "social",
+    "categoryLabel": "Социальные объекты",
+    "roomType": "kindergarten",
+    "roomTypeLabel": "Детские сады",
+    "zone": "all_walls",
+    "zoneLabel": "Все стены",
+    "style": "scandi",
+    "styleLabel": "Сканди",
+    "texture": "textile",
+    "textureLabel": "Текстиль",
+    "image": "/interiors/kindergarten-play.jpg",
+    "description": "Мягкие текстильные панели безопасны для детей, улучшают акустику и легко очищаются.",
+    "mode": "combined",
+    "areaM2": 21.5,
+    "panelSize": "300x600",
+    "defaultPanelName": "ДЕМО 5",
+    "defaultPanelSlug": "6fc0f845-90c0-41e0-a681-5bf321938dc1",
+    "relatedPanels": [
+      {
+        "slug": "6fc0f845-90c0-41e0-a681-5bf321938dc1",
+        "name": "ДЕМО 5"
+      },
+      {
+        "slug": "bbe26910-6690-4f72-8878-3a8d02b6bb88",
+        "name": "ДЕМО 1"
+      },
+      {
+        "slug": "b808bbcc-3633-47c7-9ecb-90c8310d69cb",
+        "name": "ДЕМО 3"
+      }
+    ],
+    "textures": [
+      {
+        "id": "textile-pastel",
+        "name": "Текстиль пастель",
+        "family": "textile",
+        "image": "/interiors/kindergarten-play.jpg",
+        "colorHex": "#f0d9c4"
+      },
+      {
+        "id": "wood-birch",
+        "name": "Береза",
+        "family": "wood",
+        "image": "/interiors/kindergarten-play.jpg",
+        "colorHex": "#ebd7be"
+      }
+    ]
+  },
+  {
+    "id": "social-hospital-1",
+    "title": "Холл и зона ожидания клиники",
+    "category": "social",
+    "categoryLabel": "Социальные объекты",
+    "roomType": "hospital",
+    "roomTypeLabel": "Больницы и поликлиники",
+    "zone": "all_walls",
+    "zoneLabel": "Все стены",
+    "style": "minimal",
+    "styleLabel": "Минимализм",
+    "texture": "stone",
+    "textureLabel": "Природный камень",
+    "image": "/interiors/hospital-reception.jpg",
+    "description": "Антибактериальные панели с каменной фактурой соответствуют медицинским стандартам и легко дезинфицируются.",
+    "mode": "mono",
+    "areaM2": 26.4,
+    "panelSize": "600x600",
+    "defaultPanelName": "ДЕМО 4",
+    "defaultPanelSlug": "db15e4ef-cc10-43ef-87d4-b2fdc60c77b3",
+    "relatedPanels": [
+      {
+        "slug": "db15e4ef-cc10-43ef-87d4-b2fdc60c77b3",
+        "name": "ДЕМО 4"
+      },
+      {
+        "slug": "bbe26910-6690-4f72-8878-3a8d02b6bb88",
+        "name": "ДЕМО 1"
+      },
+      {
+        "slug": "72a618b5-bc2d-4d66-affa-862808bfa8c7",
+        "name": "ДЕМО 6"
+      }
+    ],
+    "textures": [
+      {
+        "id": "stone-medical",
+        "name": "Медицинский камень",
+        "family": "stone",
+        "image": "/interiors/hospital-reception.jpg",
+        "colorHex": "#e3e0db"
+      },
+      {
+        "id": "wood-light",
+        "name": "Светлое дерево",
+        "family": "wood",
+        "image": "/interiors/hospital-reception.jpg",
+        "colorHex": "#e2d5c3"
+      }
+    ]
+  },
+  {
+    "id": "social-mfc-1",
+    "title": "Зона приёма граждан и приёмные МФЦ",
+    "category": "social",
+    "categoryLabel": "Социальные объекты",
+    "roomType": "mfc",
+    "roomTypeLabel": "Муниципальные организации (МФЦ)",
+    "zone": "all_walls",
+    "zoneLabel": "Все стены",
+    "style": "modern",
+    "styleLabel": "Современный",
+    "texture": "wood",
+    "textureLabel": "Дерево",
+    "image": "/interiors/municipal-office.jpg",
+    "description": "Износостойкие панели с древесной фактурой подходят для интенсивного потока посетителей.",
+    "mode": "mono",
+    "areaM2": 30.2,
+    "panelSize": "600x600",
+    "defaultPanelName": "ДЕМО 6",
+    "defaultPanelSlug": "72a618b5-bc2d-4d66-affa-862808bfa8c7",
+    "relatedPanels": [
+      {
+        "slug": "72a618b5-bc2d-4d66-affa-862808bfa8c7",
+        "name": "ДЕМО 6"
+      },
+      {
+        "slug": "faa8c134-4bbd-46a8-9bf7-e3254a83e3ea",
+        "name": "ДЕМО 2"
+      },
+      {
+        "slug": "db15e4ef-cc10-43ef-87d4-b2fdc60c77b3",
+        "name": "ДЕМО 4"
+      }
+    ],
+    "textures": [
+      {
+        "id": "wood-classic",
+        "name": "Классический дуб",
+        "family": "wood",
+        "image": "/interiors/municipal-office.jpg",
+        "colorHex": "#a0825d"
+      },
+      {
+        "id": "textile-grey",
+        "name": "Текстиль серый",
+        "family": "textile",
+        "image": "/interiors/municipal-office.jpg",
+        "colorHex": "#71717a"
+      }
+    ]
+  },
+  {
+    "id": "social-transport-1",
+    "title": "Зал ожидания и терминал современного вокзала",
+    "category": "social",
+    "categoryLabel": "Социальные объекты",
+    "roomType": "transport",
+    "roomTypeLabel": "Транспортные объекты",
+    "zone": "all_walls",
+    "zoneLabel": "Все стены",
+    "style": "modern",
+    "styleLabel": "Современный",
+    "texture": "metal",
+    "textureLabel": "Металл",
+    "image": "/interiors/airport-terminal.jpg",
+    "description": "Вандалостойкие металлизированные панели с магнитным креплением обеспечивают легкий доступ к скрытым коммуникациям.",
+    "mode": "combined",
+    "areaM2": 45.0,
+    "panelSize": "600x600",
+    "defaultPanelName": "ДЕМО 6",
+    "defaultPanelSlug": "72a618b5-bc2d-4d66-affa-862808bfa8c7",
+    "relatedPanels": [
+      {
+        "slug": "72a618b5-bc2d-4d66-affa-862808bfa8c7",
+        "name": "ДЕМО 6"
+      },
+      {
+        "slug": "db15e4ef-cc10-43ef-87d4-b2fdc60c77b3",
+        "name": "ДЕМО 4"
+      },
+      {
+        "slug": "faa8c134-4bbd-46a8-9bf7-e3254a83e3ea",
+        "name": "ДЕМО 2"
+      }
+    ],
+    "textures": [
+      {
+        "id": "metal-alu",
+        "name": "Анодированный алюминий",
+        "family": "metal",
+        "image": "/interiors/airport-terminal.jpg",
+        "colorHex": "#a1a1aa"
+      },
+      {
+        "id": "stone-granite",
+        "name": "Гранит полированный",
+        "family": "stone",
+        "image": "/interiors/airport-terminal.jpg",
+        "colorHex": "#52525b"
+      }
+    ]
+  }
+]

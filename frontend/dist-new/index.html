@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/logo.png" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta
+      name="description"
+      content="Wonder Wow Wall — инновационный сервис отделки стен модульными пластинами. 100 000+ вариантов дизайна."
+    />
+    <meta name="theme-color" content="#4CAF50" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="preload"
+      as="image"
+      href="/herovideo/hero-poster.jpg"
+      fetchpriority="high"
+    />
+    <link
+      rel="preload"
+      as="video"
+      href="/herovideo/hero1-720.mp4"
+      type="video/mp4"
+      fetchpriority="high"
+    />
+    <link
+      rel="preload"
+      as="video"
+      href="/herovideo/hero2-720.mp4"
+      type="video/mp4"
+      fetchpriority="high"
+    />
+    <link
+      rel="preload"
+      as="video"
+      href="/herovideo/IMG_6429.MP4"
+      type="video/mp4"
+      fetchpriority="low"
+    />
+    <link
+      rel="preload"
+      as="video"
+      href="/herovideo/IMG_6431.MP4"
+      type="video/mp4"
+      fetchpriority="low"
+    />
+    <meta property="og:site_name" content="Wonder Wow Wall" />
+    <meta property="og:locale" content="ru_RU" />
+    <title>Wonder Wow Wall — Стеновые панели</title>
+    <script>
+      // Runs synchronously BEFORE React. Picks video index on each new
+      // browser session and stores in window.__heroIdx.
+      (function () {
+        var KEY = "__hero_idx";
+        var next = 0;
+        try {
+          var prev = parseInt(sessionStorage.getItem(KEY) || "-1", 10);
+          next = prev < 0 ? 0 : 1 - prev;
+          sessionStorage.setItem(KEY, String(next));
+        } catch (_) {
+          // Preview/sandboxed iframes may deny Web Storage. React must still mount.
+        }
+        window.__heroIdx = next;
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-BAFgffEP.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/jsx-runtime-2UHhqg_S.js">
+    <link rel="modulepreload" crossorigin href="/assets/useCSSVarCls-ChURP71V.js">
+    <link rel="modulepreload" crossorigin href="/assets/motion-DOKcMxCB.js">
+    <link rel="modulepreload" crossorigin href="/assets/middleware-Bo4L3uDU.js">
+    <link rel="modulepreload" crossorigin href="/assets/constants-4FS6DEZq.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-DEFbAY-P.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

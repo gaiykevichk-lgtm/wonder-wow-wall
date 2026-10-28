@@ -1,0 +1,4 @@
+# Меню Ещё
+Проверено: маршрут /showrooms и страница отсутствуют, catch-all рендерит HomePage. Пункт Шоу-румы временно неактивен (скоро); в mobile переход предотвращён. Старый пункт Фото-редактор заменён на Конфигуратор /configurator в desktop; mobile использует уже имеющийся основной пункт без дубликата. Ещё заменено с Link /showrooms на button с aria-expanded и переключением dropdown.
+ShopHeaderMore тест прошёл, build прошёл. Production entry сохранён и точечно обновлён: index-menu-20261005.js; importmap сохраняет соответствие старого entry новому для импортов чанков. Бэкап index.before-menu-20261005.html. HTTP entry 200, node --check успешен.
+Проверка UI production не завершена: личный браузер возвращает сетевую страницу Chrome, серверный screenshot захватывает loader; локальный Preview тоже loader. Не считать пользовательский сценарий на проде проверенным.

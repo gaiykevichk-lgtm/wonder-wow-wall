@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { Tag } from 'antd';
+import { PageMeta } from '../../../shared/ui/PageMeta';
 import { motion } from 'framer-motion';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
-const BLUE = '#0071e3';
-const DARK = '#1d1d1f';
-const GRAY_TEXT = '#86868b';
-const FONT = 'Inter, sans-serif';
+const ACCENT = '#4CAF50';
+const DARK = '#2D2D2D';
+const GRAY_TEXT = '#6B7280';
+const FONT = "'SF Pro Display', sans-serif";
 const MAX_WIDTH: React.CSSProperties = { maxWidth: 1080, margin: '0 auto' };
 
 const fadeUp = {
@@ -33,6 +34,44 @@ const filters = [
   { key: 'restaurant', label: 'Рестораны' },
 ];
 
+// ─── SVG Icons (flat style) ──────────────────────────────────────────────────
+
+const ApartmentIcon = ({ color = '#4CAF50', size = 80 }: { color?: string; size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="25" width="60" height="45" rx="4" fill={color} fillOpacity="0.15" stroke={color} strokeWidth="2.5"/>
+    <rect x="18" y="35" width="12" height="12" rx="2" fill={color}/>
+    <rect x="34" y="35" width="12" height="12" rx="2" fill={color}/>
+    <rect x="50" y="35" width="12" height="12" rx="2" fill={color}/>
+    <rect x="18" y="52" width="12" height="12" rx="2" fill={color} fillOpacity="0.5"/>
+    <rect x="34" y="52" width="12" height="12" rx="2" fill={color} fillOpacity="0.5"/>
+    <rect x="50" y="52" width="12" height="12" rx="2" fill={color}/>
+    <path d="M40 10 L60 25 L20 25 Z" fill={color} fillOpacity="0.3" stroke={color} strokeWidth="2" strokeLinejoin="round"/>
+  </svg>
+);
+
+const OfficeIcon = ({ color = '#4CAF50', size = 80 }: { color?: string; size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="8" y="18" width="64" height="52" rx="4" fill={color} fillOpacity="0.15" stroke={color} strokeWidth="2.5"/>
+    <rect x="16" y="26" width="20" height="14" rx="2" fill={color}/>
+    <rect x="44" y="26" width="20" height="14" rx="2" fill={color}/>
+    <rect x="16" y="46" width="48" height="18" rx="2" fill={color} fillOpacity="0.4"/>
+    <rect x="30" y="50" width="20" height="10" rx="1" fill={color}/>
+    <circle cx="60" cy="24" r="4" fill={color}/>
+  </svg>
+);
+
+const RestaurantIcon = ({ color = '#4CAF50', size = 80 }: { color?: string; size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="40" cy="60" rx="30" ry="8" fill={color} fillOpacity="0.15"/>
+    <path d="M20 30 Q20 18 40 18 Q60 18 60 30" stroke={color} strokeWidth="2.5" fill={color} fillOpacity="0.15"/>
+    <rect x="18" y="30" width="44" height="25" rx="4" fill={color} fillOpacity="0.15" stroke={color} strokeWidth="2.5"/>
+    <rect x="28" y="38" width="10" height="14" rx="2" fill={color}/>
+    <rect x="42" y="38" width="10" height="14" rx="2" fill={color}/>
+    <path d="M32 18 Q36 12 40 18 Q44 12 48 18" stroke={color} strokeWidth="2" fill="none"/>
+    <rect x="36" y="10" width="8" height="8" rx="1" fill={color}/>
+  </svg>
+);
+
 // ─── Projects data ────────────────────────────────────────────────────────────
 
 const projects = [
@@ -42,7 +81,7 @@ const projects = [
     typeLabel: 'Квартира',
     title: 'Скандинавская гостиная',
     desc: 'Деревянные панели светлого ясеня создают уютную атмосферу скандинавского стиля. Площадь: 34 м².',
-    image: 'https://images.unsplash.com/photo-1723810779771-f5895e975ba1?w=600&h=500&fit=crop',
+    icon: 'apartment',
   },
   {
     id: '2',
@@ -50,7 +89,7 @@ const projects = [
     typeLabel: 'Офис',
     title: 'Переговорная комната',
     desc: 'Строгие геометрические панели в тёмных тонах подчёркивают деловой стиль переговорной зоны.',
-    image: 'https://images.unsplash.com/photo-1755096731687-d0b6efac246d?w=600&h=500&fit=crop',
+    icon: 'office',
   },
   {
     id: '3',
@@ -58,7 +97,7 @@ const projects = [
     typeLabel: 'Ресторан',
     title: 'Акцентная стена бара',
     desc: '3D-панели в форме волны с подсветкой создают атмосферное пространство для гостей заведения.',
-    image: 'https://images.unsplash.com/photo-1521607630287-ee2e81ad3ced?w=600&h=500&fit=crop',
+    icon: 'restaurant',
   },
   {
     id: '4',
@@ -66,7 +105,7 @@ const projects = [
     typeLabel: 'Квартира',
     title: 'Спальня в стиле лофт',
     desc: 'Бетонные панели с фактурой грубого камня органично вписались в интерьер городского лофта.',
-    image: 'https://images.unsplash.com/photo-1555794812-7f4102b3773b?w=600&h=500&fit=crop',
+    icon: 'apartment',
   },
   {
     id: '5',
@@ -74,7 +113,7 @@ const projects = [
     typeLabel: 'Офис',
     title: 'Рецепция IT-компании',
     desc: 'Белые 3D-панели с фирменным логотипом создают современный и профессиональный образ компании.',
-    image: 'https://images.unsplash.com/photo-1584530313715-bfe628686135?w=600&h=500&fit=crop',
+    icon: 'office',
   },
   {
     id: '6',
@@ -82,9 +121,24 @@ const projects = [
     typeLabel: 'Ресторан',
     title: 'Японский ресторан',
     desc: 'Деревянные рейки в японском стиле создают медитативную атмосферу и зонируют пространство.',
-    image: 'https://images.unsplash.com/photo-1722109997425-40f920848aed?w=600&h=500&fit=crop',
+    icon: 'restaurant',
   },
 ];
+
+// ─── Icon renderer ────────────────────────────────────────────────────────────
+
+const IconRenderer: React.FC<{ icon: string; color?: string }> = ({ icon, color = '#4CAF50' }) => {
+  switch (icon) {
+    case 'apartment':
+      return <ApartmentIcon color={color} />;
+    case 'office':
+      return <OfficeIcon color={color} />;
+    case 'restaurant':
+      return <RestaurantIcon color={color} />;
+    default:
+      return <ApartmentIcon color={color} />;
+  }
+};
 
 // ─── ProjectCard ──────────────────────────────────────────────────────────────
 
@@ -99,7 +153,7 @@ const ProjectCard: React.FC<{ project: typeof projects[0]; index: number }> = ({
       onHoverStart={() => setHovered(true)}
       onHoverEnd={() => setHovered(false)}
       style={{
-        borderRadius: 20,
+        borderRadius: 16,
         overflow: 'hidden',
         border: '1px solid rgba(0,0,0,0.04)',
         background: '#fff',
@@ -108,45 +162,35 @@ const ProjectCard: React.FC<{ project: typeof projects[0]; index: number }> = ({
         transition: 'box-shadow 0.3s ease',
       }}
     >
-      {/* Image */}
-      <div style={{ position: 'relative', height: 240, overflow: 'hidden' }}>
-        <img
-          src={project.image}
-          alt={project.title}
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            display: 'block',
-            transform: hovered ? 'scale(1.04)' : 'scale(1)',
-            transition: 'transform 0.4s ease',
-          }}
-        />
-        {/* Overlay */}
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: hovered
-              ? 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.2) 60%, transparent 100%)'
-              : 'linear-gradient(to top, rgba(0,0,0,0.45) 0%, transparent 60%)',
-            transition: 'background 0.3s ease',
-          }}
-        />
-        {/* Type tag */}
+      {/* Icon area */}
+      <div
+        style={{
+          position: 'relative',
+          height: 240,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: hovered
+            ? `linear-gradient(135deg, ${ACCENT}08 0%, ${ACCENT}15 100%)`
+            : 'linear-gradient(135deg, #f8f9fa 0%, #f0f1f2 100%)',
+          transition: 'background 0.4s ease',
+        }}
+      >
+        <IconRenderer icon={project.icon} color={hovered ? ACCENT : GRAY_TEXT} />
         <Tag
           style={{
             position: 'absolute',
             top: 14,
             left: 14,
-            background: BLUE,
+            background: ACCENT,
             color: '#fff',
             border: 'none',
-            borderRadius: 20,
+            borderRadius: 16,
             fontFamily: FONT,
             fontWeight: 600,
             fontSize: 12,
             padding: '3px 12px',
+            zIndex: 5,
           }}
         >
           {project.typeLabel}
@@ -194,8 +238,9 @@ const PortfolioPage: React.FC = () => {
 
   return (
     <div style={{ fontFamily: FONT, paddingTop: 72 }}>
+      <PageMeta title="Портфолио" description="Примеры реализованных проектов Wonder Wow Wall." />
       {/* Hero */}
-      <section style={{ background: '#F5F5F7', padding: '120px 24px' }}>
+      <section style={{ background: '#F5F5F5', padding: '120px 24px' }}>
         <div style={{ ...MAX_WIDTH, textAlign: 'center' }}>
           <motion.div
             variants={stagger}
@@ -266,10 +311,10 @@ const PortfolioPage: React.FC = () => {
                 key={f.key}
                 onClick={() => setActiveFilter(f.key)}
                 style={{
-                  background: activeFilter === f.key ? DARK : '#F5F5F7',
+                  background: activeFilter === f.key ? DARK : '#F5F5F5',
                   color: activeFilter === f.key ? '#fff' : DARK,
                   border: 'none',
-                  borderRadius: 980,
+                  borderRadius: 8,
                   padding: '8px 22px',
                   fontFamily: FONT,
                   fontWeight: 600,

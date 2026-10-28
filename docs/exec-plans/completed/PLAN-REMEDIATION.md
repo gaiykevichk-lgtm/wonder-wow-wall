@@ -1,0 +1,535 @@
+# Plan: Доработки по результатам аудита (07.04.2026)
+
+> Пошаговый план устранения пробелов, выявленных при аудите REQUIREMENTS.md.
+> Источник: [`docs/REQUIREMENTS_audit_07_04.md`](../../REQUIREMENTS_audit_07_04.md)
+> Принцип: критические бизнес-проблемы → функциональные пробелы → UX → технический долг
+
+---
+
+## Фаза 1: Подключение PostgreSQL и миграции
+
+> **Приоритет: КРИТИЧЕСКИЙ** — без БД данные теряются при рестарте, все остальные фазы зависят от персистентности.
+
+### 1.1 Backend — Alembic-миграции
+- [x] Настроить `alembic/env.py` для async engine (`sqlalchemy.ext.asyncio`)
+- [x] Написать ручную миграцию `001_initial_schema.py` (9 таблиц, FK constraints, ON DELETE CASCADE)
+- [x] Проверить соответствие миграции и `models.py` — все таблицы/колонки/типы совпадают
+- [ ] Применить: `alembic upgrade head` → убедиться что все 9 таблиц созданы (требует Docker/PostgreSQL)
+
+### 1.2 Backend — SQL-репозитории
+- [x] `sql.py` — 6 SQL-репозиториев + `project_repo.py` (SqlProjectRepository):
+  - [x] `SqlDesignRepository` (list_designs с фильтрацией/сортировкой/пагинацией, get_by_id, get_by_slug, update)
+  - [x] `SqlCategoryRepository` (list_all, get_by_id)
+  - [x] `SqlReviewRepository` (list_by_design с пагинацией, add)
+  - [x] `SqlOrderRepository` (create, get_by_id, list_by_user, update)
+  - [x] `SqlSubscriptionRepository` (get_active_by_user, create, update)
+  - [x] `SqlUserRepository` (create, get_by_id, get_by_email, update)
+- [x] Каждый репозиторий наследует ABC из `domain/{context}/repositories.py`
+- [x] Все операции через `async with session` (SQLAlchemy async)
+
+### 1.3 Backend — Переключение на SQL
+- [x] Обновить `container.py` — FastAPI `Depends(get_db_session)` с кешированием per-request (единая сессия на запрос)
+- [x] Создать seed-скрипт: `scripts/seed_db.py` (12 дизайнов, 6 категорий)
+- [x] Добавить `Depends()` в роутеры (все 6 роутеров переведены)
+- [x] Сохранить in-memory режим как fallback для тестов (`USE_MEMORY_REPOS=true`)
+
+### 1.5 Code review и исправления (07.04.2026)
+- [x] **CRITICAL FIX**: Единая сессия per-request — заменены вложенные async-генераторы на `Depends(get_db_session)` с кешированием FastAPI
+- [x] **CRITICAL FIX**: `DesignRepository.update()` — добавлен в ABC, InMemory и SQL реализации; `AddReview` use case теперь персистит rating+reviews_count
+- [x] **CRITICAL FIX**: Убрано дублирование `reviews_count++` из `SqlReviewRepository.add()` — теперь управляется только через use case + design_repo.update()
+- [x] **FIX**: `design_reviews.user_id` FK теперь с `ON DELETE CASCADE`
+- [x] **FIX**: `seed_db.py` — `async_sessionmaker` вместо legacy `sessionmaker`
+- [x] **FIX**: `generate_order_number()` — заменён `COUNT(*)+1` на PostgreSQL SEQUENCE `order_number_seq` (race-condition safe)
+- [x] **FIX**: Адрес заказа хранится как JSON вместо pipe-delimited text (безопасный парсинг)
+- [x] **FIX**: Seed-данные вынесены в `app/seed_data.py` — единый источник для container.py и seed_db.py
+- [x] **FIX**: Добавлен `conftest.py` с `USE_MEMORY_REPOS=true` — тесты не зависят от `.env`
+- [ ] **TODO**: Интеграционные тесты для SQL-репозиториев (требует PostgreSQL)
+
+### 1.4 Проверка
+- [ ] `docker compose up -d` → backend + PostgreSQL + Redis стартуют без ошибок (требует Docker)
+- [ ] `alembic upgrade head` отрабатывает (требует PostgreSQL)
+- [x] Все 108 бэкенд-тестов проходят (97 исходных + 11 новых фильтровых, `USE_MEMORY_REPOS=true`)
+- [ ] Ручная проверка: регистрация → логин → создание заказа → рестарт → данные на месте (требует Docker)
+- [ ] Фронтенд: каталог, авторизация, заказы работают через API без регрессий
+
+---
+
+## Фаза 2: Отзывы на странице товара + недостающие фильтры каталога
+
+> **Приоритет: ВЫСОКИЙ** — бэкенд-эндпоинты уже готовы, фронт не подключён. Фильтры — требование ТЗ.
+
+### 2.1 Frontend — Отзывы на ProductPage
+- [x] Хуки `useDesignReviews(designId)` и `useAddReview(designId)` уже существовали в `catalogApi.ts`
+- [x] Добавить секцию «Отзывы» на ProductPage:
+  - Список отзывов (аватар-иконка, имя, рейтинг звёзды, текст, дата)
+  - Пагинация (limit=5, «Показать ещё»)
+  - Форма «Оставить отзыв» (rating: Rate, text: TextArea) — только для авторизованных
+  - Если не авторизован: «Войдите, чтобы оставить отзыв» → кнопка /auth
+- [x] Адаптер `apiReviewToReview()` подключён из `catalog/api/adapters.ts`
+
+### 2.2 Frontend — Фильтры каталога
+- [x] Добавить фильтр **«Цвет»** в CatalogPage:
+  - Select с цветными кружками из палитры всех дизайнов (уникальные цвета)
+  - Фильтрация: показать дизайны, содержащие выбранный цвет в `colors[]`
+- [x] Добавить фильтр **«Стиль»** в CatalogPage:
+  - Select: динамически извлекаемые стили из данных
+  - Фильтрация по полю `style`
+- [x] Добавить фильтр **«Новинки»** — кнопка-toggle «Новинки» (badge === 'Новинка')
+- [x] Фильтры совместимы с серверной фильтрацией (`useDesigns` передаёт `color`, `style`, `is_new`)
+
+### 2.3 Backend — Поддержка фильтров
+- [x] Расширить `GET /api/designs` query-параметрами: `color`, `style`, `is_new`
+- [x] Обновить `ListDesigns` use case и `DesignRepository.list_designs()` для новых фильтров
+- [x] Добавить тесты на новые фильтры (11 тестов: 7 unit + 4 API)
+
+### 2.4 Проверка
+- [x] Фильтры работают в комбинации: категория + цвет + стиль + is_new + поиск (тест `test_combined_filters`)
+- [x] Отзывы: создание, отображение, пагинация — UI готов, подключён к API
+- [x] Неавторизованный пользователь видит отзывы, но не может писать (auth guard)
+- [x] Все 108 бэкенд-тестов проходят
+
+### 2.5 Тех.долг (выявлен code review) — ИСПРАВЛЕНО
+- [x] Исправить русскую плюрализацию «отзывов» в ProductPage (21→"отзыв", 24→"отзыва")
+- [x] Добавить `Field(ge=1, le=5)` к `AddReviewRequest.rating` и `Field(min_length=1, max_length=500)` к `text`
+- [x] Экранировать LIKE-спецсимволы (`%`, `_`) в SQL color-фильтре через `escape='\\'`
+- [x] Добавить `products` в зависимости `filtered` useMemo в CatalogPage
+
+---
+
+## Фаза 3: Согласование дизайна с ТЗ
+
+> **Приоритет: ВЫСОКИЙ** — визуальное расхождение с утверждённым брендбуком.
+
+### 3.1 Frontend — Цветовая палитра — ВЫПОЛНЕНО
+- [x] Обновить `shared/theme.ts`:
+  - Акцентный цвет: `#0071e3` → `#4CAF50` (56 вхождений в 26 файлах)
+  - Вторичный фон: `#FBFBFD` → `#FAFAFA`, `#F5F5F7` → `#F5F5F5`
+  - Текст основной: `#1d1d1f` → `#2D2D2D` (29 файлов)
+  - Текст вторичный: `#86868b` → `#6B7280` (28 файлов)
+  - Border: `#d2d2d7` → `#E5E7EB`
+  - CTA кнопки: `colorPrimary: '#2D2D2D'` (тёмный фон, белый текст)
+  - Link/Accent: `#4CAF50` (зелёный)
+- [x] CostSummary: бейдж подписки → `#4CAF50`
+- [x] Дизайн-система уже соответствует `DESIGN-SYSTEM.md`
+
+### 3.2 Frontend — border-radius — ВЫПОЛНЕНО
+- [x] Кнопки: `980px` → `8px` (88 вхождений в 18 файлах + theme.ts)
+- [x] Карточки: `12-16px` (по ТЗ, `Card.borderRadiusLG: 16`)
+- [x] Инпуты: `8px` (theme.ts `Input.borderRadius: 8`)
+- [x] Select: `8px` (theme.ts `Select.borderRadius: 8`)
+- [x] Tags/badges: `6px` (theme.ts `Tag.borderRadiusSM: 6`)
+
+### 3.3 Проверка — ВЫПОЛНЕНО
+- [x] TypeScript компиляция: 0 ошибок
+- [x] Frontend тесты: 182/182 pass
+- [x] Backend тесты: 108/108 pass
+- [x] Зелёный акцент `#4CAF50`: ссылки, бейджи, статусы, активные элементы
+- [x] CTA кнопки: `#2D2D2D` через `colorPrimary` в theme
+- [x] Dev server работает (port 5173)
+
+### 3.4 Тех.долг (выявлен code review)
+- [x] Переименовать `const BLUE = '#4CAF50'` → `const ACCENT = '#4CAF50'` (17 файлов) ✅
+- [x] Заменить `borderRadius: 20` → `borderRadius: 16` на карточках/контейнерах (64 вхождения, 27 файлов) ✅
+
+---
+
+## Фаза 4: Checkout и заказы — недостающие функции
+
+> **Приоритет: СРЕДНИЙ** — критичные для бизнес-процесса покупки.
+
+### 4.1 Frontend — Выбор даты/времени монтажа
+- [x] Добавить `DatePicker` + `TimePicker` (Ant Design) на шаг доставки в CheckoutPage
+- [x] Ограничения: только будущие даты, рабочие часы (9:00–20:00), шаг 30 мин
+- [x] Валидация: дата и время обязательны, включены в fieldsToValidate шага 2
+
+### 4.2 Frontend — Оплата через СБП
+- [x] Добавить опцию «СБП» в список способов оплаты (Radio.Group)
+- [x] Описание: «Система Быстрых Платежей», между картой и рассрочкой
+
+### 4.3 Frontend — Кнопка «Примерить на фото» и «Примерить в конструкторе»
+- [x] ProductPage: кнопка «Примерить в конструкторе» → `/constructor?designId={id}`
+- [x] ProductPage: кнопка «Примерить на фото» → `/visualizer?designId={id}`
+- [x] CatalogPage: кнопка (иконка камеры) на карточке товара → `/visualizer?designId={id}`
+- [x] ConstructorPage: принимает `?designId` из URL, предвыбирает дизайн (с валидацией)
+- [x] PhotoEditorPage: принимает `?designId` из URL, предвыбирает дизайн (с валидацией)
+
+### 4.4 Backend — Дата монтажа в заказе
+- [x] Поле `installation_date: datetime | None` в `Order` entity и `OrderModel`
+- [x] `CreateOrderRequest` DTO обновлён
+- [x] Alembic-миграция `002_add_installation_date.py`
+- [x] Тесты: 6 новых (2 domain, 2 use case, 2 API) — 114 passed
+
+### 4.5 Проверка
+- [x] TypeScript: 0 ошибок
+- [x] Backend тесты: 114/114 pass
+- [x] 4 способа оплаты: карта, СБП, рассрочка, наличные
+
+### 4.6 Тех.долг (выявлен code review)
+- [x] CheckoutPage.tsx — `disabledMinutes` для часа 20 (запрещён 20:30) ✅
+- [x] ProductPage.tsx — hover-цвет `#0077ED` → `#3d8b40` (2 места) ✅
+- [x] Backend orders.py — `field_validator` для `installation_date` (будущая дата + рабочие часы 9:00-20:00) + 2 теста ✅
+
+---
+
+## Фаза 5: Личный кабинет и авторизация — пробелы
+
+> **Приоритет: СРЕДНИЙ** — улучшение UX авторизованных пользователей.
+
+### 5.1 Frontend — Header: поиск и избранное
+- [x] Добавить иконку поиска (SearchOutlined) в ShopHeader → по клику разворачивает Input
+- [x] Поиск в хедере → навигация на `/catalog?search={query}`
+- [x] Добавить иконку избранного (HeartOutlined) в ShopHeader с badge (количество)
+- [x] Клик → `/account/favorites` (если авторизован) или `/login?redirect=/account/favorites`
+
+### 5.2 Frontend — Забытый пароль
+- [x] ForgotPasswordPage: подключить к бэкенду (когда эндпоинт будет готов)
+
+### 5.3 Backend — Забытый пароль
+- [x] `POST /api/auth/forgot-password` — принимает email, генерирует reset token (6 цифр), хранит в Redis (TTL 15 мин)
+- [x] `POST /api/auth/reset-password` — принимает email + token + new_password
+- [x] ⚠️ Реальная отправка email — placeholder (лог в консоль), готовность к SMTP-интеграции
+
+### 5.4 Frontend — Соцсети (placeholder)
+- [x] LoginPage и RegisterPage: добавить неактивные кнопки «Войти через Google» и «Войти через VK»
+- [x] Стиль: серые, disabled, tooltip «Скоро»
+
+### 5.5 Frontend — Уведомления (настройки)
+- [x] Добавить раздел «Уведомления» в AccountLayout (между Избранное и Подписка)
+- [x] NotificationsSection: toggle-переключатели (email о заказах, email о подписке, промо-рассылка)
+- [x] Persist в localStorage через accountStore (бэкенд — в следующих итерациях)
+
+### 5.6 Frontend — Повтор заказа
+- [x] OrdersSection: кнопка «Повторить заказ» в каждом заказе
+- [x] Логика: скопировать items → cartStore.addItem() для каждого → открыть CartDrawer
+
+### 5.7 Проверка
+- [x] Поиск из хедера работает на всех страницах
+- [x] Избранное доступно из хедера с badge
+- [x] Восстановление пароля: email → код → новый пароль (E2E через API)
+- [x] Кнопки соцсетей отображаются, при клике — «Скоро»
+- [x] Повтор заказа добавляет товары в корзину
+- [x] Настройки уведомлений сохраняются в localStorage
+
+---
+
+## Фаза 6: Контентные страницы — пробелы
+
+> **Приоритет: СРЕДНИЙ** — контент-страницы неполные по ТЗ.
+
+### 6.1 Frontend — Главная страница
+- [x] Добавить блок **«Преимущества»** (между «Как это работает» и «Популярные»):
+  - 6 карточек: «100 000+ вариантов», «Монтаж за 2 часа», «Без шума и пыли», «Гибкая подписка», «Гарантия 5 лет», «Доставка по РФ»
+- [x] Добавить **промо-баннер** (между секциями): gradient CTA «Скидка 15% на первый заказ»
+
+### 6.2 Frontend — Контакты: карта
+- [x] Добавить Yandex Maps iframe в ContactsPage (координаты офиса, marker)
+- [x] Fallback: статичное изображение с адресом если iframe не загрузился
+
+### 6.3 Frontend — Портфолио: до/после
+- [x] Создать `shared/ui/ImageBeforeAfter.tsx` — image-based before/after slider (pointer events)
+- [x] Добавить before/after пары к 3 из 6 проектов в PortfolioPage
+- [x] ProjectCard: автоматически показывает slider при наличии `beforeImage`
+
+### 6.4 Frontend — Как это работает: видео
+- [x] Добавить секцию с YouTube iframe (после 4 шагов, перед гарантиями)
+- [x] Aspect ratio 16:9, lazy loading, fullscreen support
+
+### 6.5 Frontend — Блог (минимальная версия)
+- [x] Создать `content/ui/BlogPage.tsx` — список из 5 статей с карточками
+- [x] Создать `content/ui/BlogPostPage.tsx` — страница статьи с markdown-like рендером
+- [x] Маршруты: `/blog`, `/blog/:slug` (lazy-loading)
+- [x] 5 моковых статей: тренды, кейс, 2 совета, детская
+- [x] Добавить «Блог» в ShopHeader nav + ShopFooter
+
+### 6.6 Проверка
+- [x] TypeScript 0 errors
+- [x] Backend 120 tests pass
+- [x] Все новые маршруты с lazy-loading
+
+---
+
+## Фаза 7: Фото-редактор — быстрые доработки (без бэкенда)
+
+> **Приоритет: СРЕДНИЙ** — улучшение UX визуализатора без внешних зависимостей.
+> Зависимости: Фаза 4.3 (кнопки «Примерить на фото»)
+
+### 7.1 Frontend — UI удаления панели
+- [x] WallCanvas: по клику на размещённую панель — показать кнопку удаления (крестик)
+- [x] Вызывать `removePanel(panelId)` из visualizerStore
+
+### 7.2 Frontend — Hover-эффект
+- [x] WallCanvas: подсветка ячейки при наведении в ручном режиме (полупрозрачный прямоугольник)
+
+### 7.3 Frontend — Сохранение проекта в localStorage
+- [x] Добавить Zustand persist в visualizerStore (ключ: `wow-wall-visualizer`)
+- [x] Persist: scene (без imageData — только URL/blob ref), layout, selections
+- [x] Кнопка «Сохранить» → message.success()
+
+### 7.4 Frontend — Экспорт изображения
+- [x] Кнопка «Скачать» (DownloadOutlined) → canvas.toBlob('image/jpeg', 0.92) → download
+- [x] Имя файла: `wow-wall-visualizer-{timestamp}.jpg`
+
+### 7.5 Frontend — Акцентная зона (UI)
+- [x] Режим «Зона» в PlacementControls: при активации рисование прямоугольника на Canvas
+- [x] mousedown → mousemove → mouseup = AccentZone { x, y, width, height }
+- [x] Передать зону в autoFillWall() (уже поддерживает accentZone)
+
+### 7.6 Проверка
+- [x] Клик на панель → удаление работает
+- [x] Hover подсвечивает ячейку при наведении
+- [x] Сохранение: перезагрузка → проект восстанавливается
+- [x] Скачивание: JPEG-файл сохраняется
+- [x] Акцентная зона: рисование + авторазмещение в зоне
+- [x] Все 90 тестов визуализатора проходят
+
+---
+
+## Фаза 8: 152-ФЗ и юридическое соответствие
+
+> **Приоритет: СРЕДНИЙ** — юридическое требование для работы с персональными данными.
+
+### 8.1 Frontend — Согласие на обработку ПД
+- [x] Checkbox «Согласен с политикой обработки персональных данных» на:
+  - RegisterPage
+  - CheckoutPage (шаг контактов)
+  - ContactsPage (форма обратной связи)
+  - SubscriptionModal (шаг формы)
+- [x] Ссылка на `/privacy-policy`
+
+### 8.2 Frontend — Страница политики конфиденциальности
+- [x] `content/ui/PrivacyPolicyPage.tsx` — текст политики (шаблон 152-ФЗ)
+- [x] Маршрут `/privacy-policy`
+- [x] Ссылка в футере
+
+### 8.3 Проверка
+- [x] Без checkbox формы не отправляются (валидация)
+- [x] Страница политики доступна и содержит все обязательные разделы
+- [x] Ссылки работают из всех форм
+
+---
+
+## Фаза 9: Безопасность бэкенда
+
+> **Приоритет: СРЕДНИЙ** — необходимо перед выходом в продакшн.
+> Зависимости: Фаза 1 (PostgreSQL), Фаза 5.3 (forgot-password/Redis)
+
+### 9.1 Backend — CSRF-защита
+- [x] Для SPA с JWT: CORS настроен strict (конкретный origin, не `*`)
+- [x] `allow_methods` и `allow_headers` — явные списки вместо `["*"]`
+- [x] Обновить `config.py`: `CORS_ORIGINS` — конкретный origin фронтенда
+- ~~CSRF-middleware~~ — не нужен для SPA с JWT Bearer token (не cookies)
+
+### 9.2 Backend — Rate limiting
+- [x] Добавить зависимость `slowapi==0.1.9` в requirements.txt
+- [x] Настроить лимиты:
+  - `POST /auth/login` — 5 req/min (защита от brute-force)
+  - `POST /auth/register` — 3 req/min
+  - `POST /auth/forgot-password` — 3 req/min
+  - `POST /auth/reset-password` — 5 req/min
+  - `POST /contacts` — 5 req/min
+  - Глобальный `default_limits=["60/minute"]` (⚠️ применяется только к эндпоинтам с `request: Request`)
+- [ ] Хранение состояния в Redis (уже в docker-compose) — TODO для production
+
+### 9.3 Backend — Hardening
+- [x] JWT_SECRET guard: `RuntimeError` при `ENV=production` + дефолтный секрет
+- [x] `ENV` setting в config (development/production)
+- [x] CORS: `allow_methods` и `allow_headers` — конкретные списки
+- [x] Security headers middleware: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy, Permissions-Policy
+
+### 9.4 Проверка
+- [x] Brute-force логина: после 5 попыток → 429 Too Many Requests (тест)
+- [x] CORS: запрос с чужого origin → отклонён (тест)
+- [x] Security headers присутствуют в response (тест)
+- [x] Все существующие тесты проходят: 130 backend, 183 frontend
+
+### 9.5 Тех.долг (выявлен code review)
+- [x] `config.py:1` — удалить неиспользуемый `import os`
+- [x] `middleware.py:1` — исправить docstring (убрать "rate limiting")
+- [x] Глобальный rate limit 60/min — добавлен `request: Request` во все эндпоинты
+
+### 9.6 Тех.долг (выявлен повторной проверкой 07.04.2026) — ИСПРАВЛЕНО
+- [x] `test_security.py` — добавлен тест rate limit для `/reset-password` (5/min)
+- [x] `test_security.py` — добавлен тест JWT guard для production mode (`ENV=production` + дефолтный секрет → RuntimeError)
+
+---
+
+## Фаза 10: Инфраструктура и деплой
+
+> **Приоритет: НИЗКИЙ (для MVP)** — необходимо для продакшна, но не блокирует разработку.
+> Зависимости: Фаза 1 (PostgreSQL), Фаза 9 (безопасность)
+
+### 10.1 Frontend — Dockerfile
+- [x] `frontend/Dockerfile`: multi-stage build (Node 20 → build → Nginx 1.27 alpine → serve dist/)
+- [x] `frontend/nginx.conf`: SPA fallback (try_files), gzip, cache headers для статики
+- [x] `frontend/.dockerignore`
+
+### 10.2 Docker Compose — полный стек
+- [x] 5 сервисов: nginx (reverse proxy), frontend, backend, db, redis
+- [x] Nginx reverse proxy: `/ → frontend`, `/api → backend:8080`
+- [ ] SSL termination: Certbot / Cloudflare — TODO для production
+
+### 10.3 CI/CD
+- [x] `.github/workflows/ci.yml`:
+  - Frontend: `npm ci → lint → tsc --noEmit → vitest run → build`
+  - Backend: `pip install → pytest`
+  - Docker build
+- [x] `.github/workflows/deploy.yml` — manual trigger placeholder (staging/production)
+
+### 10.4 SEO и мета-теги
+- [x] `react-helmet-async` + `HelmetProvider` в корне приложения
+- [x] `PageMeta` компонент: title, description, og:title, og:description, og:image, twitter cards
+- [x] Добавлен на 17 страниц с уникальными title/description
+- [x] Open Graph: og:site_name, og:locale в index.html
+- [x] Favicon + apple-touch-icon из `/logo.png`, theme-color `#4CAF50`
+
+### 10.5 Проверка
+- [ ] `docker compose up` → все 5 сервисов стартуют (требует Docker)
+- [ ] Доступ через Nginx: `http://host/` → SPA, `/api/health` → backend (требует Docker)
+- [ ] CI pipeline: green на clean branch (требует GitHub)
+- [x] TypeScript 0 errors, 183 frontend + 130 backend тестов pass
+
+### 10.6 Тех.долг (выявлен code review)
+- [x] `frontend/nginx.conf` — security headers дублированы в каждом location блоке с `add_header`
+- [x] `backend/` — добавлен `.dockerignore`
+
+### 10.7 Тех.долг (выявлен повторной проверкой 07.04.2026) — ИСПРАВЛЕНО
+- [x] `docker-compose.yml:29` — `CORS_ORIGINS` параметризован через `${CORS_ORIGINS:-http://localhost}`
+- [x] `PageMeta.tsx` — добавлен `<meta name="twitter:image" content={img} />`
+
+---
+
+## Фаза 11: Мобильная адаптация
+
+> **Приоритет: НИЗКИЙ** — улучшение опыта на мобильных устройствах.
+> Зависимости: Фаза 3 (дизайн), Фаза 7 (визуализатор)
+
+### 11.1 Frontend — Адаптивные breakpoints
+- [x] CSS media queries: 1024px (tablet), 768px (mobile), 480px (small phone)
+- [x] `useIsMobile` hook для JS-level breakpoint detection
+- [x] HomePage: hero, секции — уже используют `clamp()` для размеров
+- [x] CatalogPage: фильтры → вертикальная укладка, grid `auto-fill minmax(280px)`
+- [x] ProductPage: grid → single column на мобиле
+- [x] ConstructorPage: grid → single column при ≤900px (уже было)
+- [x] CheckoutPage: grid → single column на мобиле
+- [x] AccountLayout: sidebar → horizontal scrollable tab bar + скрытие аватара
+
+### 11.2 Frontend — Визуализатор: touch
+- [x] Pinch-to-zoom на WallCanvas (two-finger gesture)
+- [x] Touch-события для маски (кисть/ластик): single-finger painting
+- [x] Single-finger pan, two-finger pan during pinch
+- [x] `touch-action: none` на canvas
+- [x] Responsive: 3-column grid → single column при ≤768px
+
+### 11.3 Frontend — Общий чат-placeholder
+- [x] SupportFab: Floating Action Button (green, bottom-right) на всех страницах
+- [x] По клику → Drawer «Поддержка» с контактами
+- [x] Ссылки: email (mailto:), телефон (tel:), Telegram (внешняя ссылка)
+- [x] Рабочие часы: Пн-Пт 9:00–20:00 МСК
+
+### 11.4 Проверка
+- [ ] Chrome DevTools → эмуляция iPhone SE, iPad (требует браузер)
+- [ ] Все страницы корректно отображаются без горизонтальной прокрутки (визуальная проверка)
+- [x] TypeScript 0 errors, 183 frontend + 130 backend тестов pass
+
+### 11.5 Тех.долг (выявлен code review + повторная проверка 07.04.2026)
+- [x] `SupportFab.tsx` — добавлен `aria-label="Открыть поддержку"`
+- [x] `PhotoEditorPage.tsx` — удалён хрупкий inline `<style>` с `[style*="..."]`, правило перенесено в `index.css` через `.visualizer-layout`
+- [x] `WallCanvas.tsx` — `touchDist` вынесен на уровень модуля
+
+---
+
+## Фаза 12: Подписочная модель — миграция на площадь ✅
+
+> **Решение:** Вариант A — привести к ТЗ (лимит по площади м²/мес).
+> Выполнено: 07.04.2026
+
+### 12.1 Backend — доменная модель
+- [x] `entities.py` — `SubscriptionPlan.area_limit_m2: float` вместо `overlays_per_month: int`
+- [x] `Subscription` — методы `use_area(m2) → bool`, `remaining_area_m2` property
+- [x] Тарифы по ТЗ: Стартовый 15 м² / 7 000 ₽, Популярный 30 м² / 12 000 ₽, Бизнес ∞ / 18 000 ₽
+
+### 12.2 Backend — persistence
+- [x] `models.py` — колонка `area_used_this_month_m2: Float` (была `overlays_used_this_month: int`)
+- [x] `sql.py` — обновлены `_subscription_to_domain`, `create`, `update`
+- [x] Alembic миграция `003_subscription_area_model.py` — drop old column + add new
+
+### 12.3 Backend — API
+- [x] `subscriptions.py` — схемы: `area_limit_m2`, `area_used_this_month_m2`, `remaining_area_m2`
+
+### 12.4 Backend — тесты
+- [x] `test_subscription.py` — 17 тестов: планы, цены, лимиты, use_area, remaining, cancel
+
+### 12.5 Frontend — store и типы
+- [x] `types.ts` — `areaLimitM2` вместо `overlaysPerMonth`
+- [x] `subscriptionStore.ts` — `useArea(m2)`, `getRemainingAreaM2()`, persist migration
+- [x] `subscriptionStore.test.ts` — 18 тестов: планы, цены, лимиты, area usage, modal
+
+### 12.6 Frontend — UI компоненты
+- [x] `PricingPage.tsx` — описание подписки и шаги «как это работает» обновлены на м²
+- [x] `SubscriptionModal.tsx` — success message показывает лимит в м²
+- [x] `AccountSubscriptionSection.tsx` — использование и остаток в м²
+- [x] `ConstructorPage.tsx` — лимит подписки в м²
+
+### 12.7 Frontend — API типы
+- [x] `types.ts` — `ApiPlan.area_limit_m2`, `ApiSubscription.area_used_this_month_m2`
+- [x] `types.test.ts` — обновлены тестовые данные
+
+### 12.8 Проверка
+- [x] Backend: 133 теста pass (python3 -m pytest)
+- [x] Frontend: 184 теста pass (vitest run)
+- [x] TypeScript: 0 ошибок (tsc --noEmit)
+
+### 12.9 Code review (07.04.2026)
+- [x] ~~`subscriptionStore.ts:150-154` — `getOverlayDiscount()` мёртвый код~~ → удалён вместе с тестами
+- [x] ~~`subscriptionStore.ts:156` — Zustand persist без `version`/`migrate`~~ → добавлены `version: 2` + `migrate()` для очистки старых полей
+- [x] ~~`backend/README.md:227-228` — устаревшие поля и цены~~ → обновлено на `area_used_this_month_m2` и цены 7 000 / 12 000 / 18 000 ₽
+
+---
+
+## Сводная таблица
+
+| Фаза | Описание | Задач | Backend | Frontend | Зависит от | Приоритет |
+|:----:|---------|:-----:|:-------:|:--------:|:----------:|:---------:|
+| 1 | PostgreSQL и миграции | 14 | 14 | 0 | — | Критический |
+| 2 | Отзывы + фильтры каталога | 12 | 3 | 9 | Фаза 1 (для persist) | Высокий |
+| 3 | Дизайн по ТЗ (цвета, радиусы) | 8 | 0 | 8 | — | Высокий |
+| 4 | Checkout + «Примерить» кнопки | 13 | 3 | 10 | — | Средний |
+| 5 | ЛК + авторизация пробелы | 14 | 3 | 11 | Фаза 1 (Redis) | Средний |
+| 6 | Контентные страницы | 12 | 0 | 12 | — | Средний |
+| 7 | Визуализатор: быстрые доработки | 11 | 0 | 11 | Фаза 4.3 | Средний |
+| 8 | 152-ФЗ (ПД, политика) | 5 | 0 | 5 | — | Средний |
+| 9 | Безопасность бэкенда | 10 | 10 | 0 | Фаза 1 | Средний |
+| 10 | Инфраструктура и деплой | 10 | 4 | 6 | Фазы 1, 9 | Низкий |
+| 11 | Мобильная адаптация | 10 | 0 | 10 | Фазы 3, 7 | Низкий |
+| 12 | Подписка: площадь (м²) ✅ | 14 | 6 | 8 | Решение заказчика | Выполнено |
+| **ИТОГО** | | **~120** | **~37** | **~82** | | |
+
+### Граф зависимостей
+
+```
+Фаза 1 (PostgreSQL) ──┬──→ Фаза 2 (Отзывы/Фильтры)
+                       ├──→ Фаза 5 (ЛК/Auth, Redis)
+                       ├──→ Фаза 9 (Безопасность)
+                       └──→ Фаза 10 (Деплой)
+
+Фаза 3 (Дизайн) ─────────→ Фаза 11 (Мобильная)
+
+Фаза 4 (Checkout/Примерить) → Фаза 7 (Визуализатор)
+
+Фаза 12 (Подписка) ────────→ Блокирует: ничего (изолирована)
+
+Параллельно (без зависимостей): Фаза 3, Фаза 4, Фаза 6, Фаза 8
+```
+
+### Рекомендуемый порядок выполнения
+
+```
+Спринт 1:  Фаза 1 (PostgreSQL)  +  Фаза 3 (Дизайн)      — параллельно
+Спринт 2:  Фаза 2 (Отзывы)     +  Фаза 4 (Checkout)     — параллельно
+Спринт 3:  Фаза 5 (ЛК/Auth)    +  Фаза 6 (Контент)      — параллельно
+Спринт 4:  Фаза 7 (Визуализатор)+  Фаза 8 (152-ФЗ)      — параллельно
+Спринт 5:  Фаза 9 (Безопасность)+  Фаза 10 (Деплой)     — последовательно
+Спринт 6:  Фаза 11 (Мобильная)  +  Фаза 12 (Подписка*)  — параллельно
+
+* Фаза 12 начинается когда заказчик примет решение по модели тарифов
+```

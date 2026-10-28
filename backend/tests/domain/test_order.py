@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 from app.domain.order.entities import Order, OrderItem
 from app.domain.order.value_objects import OrderStatus, Address, Money
@@ -71,6 +73,15 @@ class TestOrder:
         order = Order()
         order.add_item(OrderItem(design_name="Test", unit_price=1000))
         assert len(order.items) == 1
+
+    def test_installation_date_default_none(self):
+        order = Order()
+        assert order.installation_date is None
+
+    def test_installation_date_set(self):
+        dt = datetime(2026, 5, 15, 14, 0)
+        order = Order(installation_date=dt)
+        assert order.installation_date == dt
 
 
 class TestPricingService:

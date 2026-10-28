@@ -46,6 +46,12 @@ class Design:
     reviews_count: int = 0
     is_new: bool = False
     is_popular: bool = False
+    # Phase 7A — admin-controlled soft-hide.
+    is_published: bool = True
+    # Phase 12 — white silhouette image for the forms catalog grid.
+    preview_image: str = ""
+    # PC-CARD-GALLERY — список URL дополнительных фото для слайдера на странице товара.
+    gallery_images: list[str] = field(default_factory=list)
     created_at: datetime = field(default_factory=datetime.utcnow)
 
     def add_review(self, review: DesignReview) -> None:

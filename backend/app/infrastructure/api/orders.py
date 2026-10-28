@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, Field, field_validator
 
 from app.application.order.use_cases import CreateOrder, GetOrderHistory, GetOrderDetails, CalculateWallCost
-from app.container import order_repo
+from app.container import get_order_repo, get_panel_variant_repo, get_panel_repo
 from app.utils.dependencies import get_current_user_id
 
 router = APIRouter()
@@ -11,13 +13,18 @@ router = APIRouter()
 # ─── Schemas ─────────────────────────────────────────────────────────
 
 class OrderItemRequest(BaseModel):
+    variant_id: str = ""
+    execution_name: str = ""
     design_id: str
     design_name: str
     design_image: str = ""
     size_key: str
     color: str = ""
-    quantity: int = 1
-    unit_price: int = 0
+    quantity: int = Field(default=1, gt=0)
+    unit_price: int = Field(default=0, ge=0)
+    texture_name: str = ""
+    texture_id: str = ""
+    color_id: str = ""
 
 
 class AddressRequest(BaseModel):
@@ -31,9 +38,23 @@ class AddressRequest(BaseModel):
 class CreateOrderRequest(BaseModel):
     items: list[OrderItemRequest]
     address: AddressRequest
+    installation_date: datetime | None = None
+
+    @field_validator("installation_date")
+    @classmethod
+    def validate_installation_date(cls, v: datetime | None) -> datetime | None:
+        if v is None:
+            return v
+        if v <= datetime.utcnow():
+            raise ValueError("installation_date must be in the future")
+        if v.hour < 9 or v.hour > 20 or (v.hour == 20 and v.minute > 0):
+            raise ValueError("installation_date must be within working hours (09:00–20:00)")
+        return v
 
 
 class OrderItemSchema(BaseModel):
+    variant_id: str = ""
+    execution_name: str = ""
     id: str
     design_name: str
     design_image: str
@@ -41,6 +62,9 @@ class OrderItemSchema(BaseModel):
     color: str
     quantity: int
     unit_price: int
+    texture_name: str = ""
+    texture_id: str = ""
+    color_id: str = ""
 
 
 class OrderSchema(BaseModel):
@@ -49,6 +73,7 @@ class OrderSchema(BaseModel):
     status: str
     total: int
     address: str
+    installation_date: str | None = None
     items: list[OrderItemSchema]
     created_at: str
 
@@ -61,25 +86,33 @@ class CalculateRequest(BaseModel):
 # ─── Endpoints ───────────────────────────────────────────────────────
 
 @router.post("", response_model=OrderSchema, status_code=201)
-async def create_order(body: CreateOrderRequest, user_id: str = Depends(get_current_user_id)):
-    uc = CreateOrder(order_repo)
+async def create_order(
+    request: Request,
+    body: CreateOrderRequest,
+    user_id: str = Depends(get_current_user_id),
+    order_repo=Depends(get_order_repo),
+    variant_repo=Depends(get_panel_variant_repo),
+    panel_repo=Depends(get_panel_repo),
+):
+    uc = CreateOrder(order_repo, variant_repo=variant_repo, panel_repo=panel_repo)
     order = await uc.execute(
         user_id=user_id,
         items=[item.model_dump() for item in body.items],
         address=body.address.model_dump(),
+        installation_date=body.installation_date,
     )
     return _order_to_response(order)
 
 
 @router.get("", response_model=list[OrderSchema])
-async def list_orders(user_id: str = Depends(get_current_user_id)):
+async def list_orders(request: Request, user_id: str = Depends(get_current_user_id), order_repo=Depends(get_order_repo)):
     uc = GetOrderHistory(order_repo)
     orders = await uc.execute(user_id)
     return [_order_to_response(o) for o in orders]
 
 
 @router.get("/{order_id}", response_model=OrderSchema)
-async def get_order(order_id: str, user_id: str = Depends(get_current_user_id)):
+async def get_order(request: Request, order_id: str, user_id: str = Depends(get_current_user_id), order_repo=Depends(get_order_repo)):
     uc = GetOrderDetails(order_repo)
     order = await uc.execute(order_id, user_id)
     if not order:
@@ -88,7 +121,7 @@ async def get_order(order_id: str, user_id: str = Depends(get_current_user_id)):
 
 
 @router.post("/calculate")
-async def calculate_cost(body: CalculateRequest):
+async def calculate_cost(request: Request, body: CalculateRequest):
     uc = CalculateWallCost()
     return await uc.execute(body.panels, body.has_subscription)
 
@@ -102,10 +135,13 @@ def _order_to_response(order) -> dict:
         "address": order.address.full if hasattr(order.address, "full") else str(order.address),
         "items": [
             {
+                "variant_id": i.variant_id, "execution_name": i.execution_name,
                 "id": i.id, "design_name": i.design_name, "design_image": i.design_image,
                 "size_key": i.size_key, "color": i.color, "quantity": i.quantity, "unit_price": i.unit_price,
+                "texture_name": i.texture_name, "texture_id": i.texture_id, "color_id": i.color_id,
             }
             for i in order.items
         ],
+        "installation_date": order.installation_date.isoformat() if order.installation_date else None,
         "created_at": order.created_at.isoformat(),
     }

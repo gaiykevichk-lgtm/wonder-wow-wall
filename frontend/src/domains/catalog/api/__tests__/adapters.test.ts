@@ -12,12 +12,14 @@ describe('Catalog API Adapters', () => {
       category_id: 'wood',
       style: 'Классика',
       image: 'https://example.com/img.jpg',
+      preview_image: '/uploads/forms/oak-white.png',
       description: 'Beautiful oak design',
       price: 1200,
       colors: [
         { hex: '#8B4513', name: 'Дуб' },
         { hex: '#D2B48C', name: 'Светлый дуб' },
       ],
+      default_colors: [],
       rating: 4.5,
       reviews_count: 23,
       is_new: true,
@@ -72,10 +74,38 @@ describe('Catalog API Adapters', () => {
       expect(result.sizes[0]).toHaveProperty('label');
     });
 
+    it('maps previewImage from preview_image', () => {
+      const result = apiDesignToProduct(apiDesign);
+      expect(result.previewImage).toBe('/uploads/forms/oak-white.png');
+
+      const noPreview = { ...apiDesign, preview_image: '' };
+      expect(apiDesignToProduct(noPreview).previewImage).toBe('');
+    });
+
     it('sets inStock to true and priceUnit', () => {
       const result = apiDesignToProduct(apiDesign);
       expect(result.inStock).toBe(true);
       expect(result.priceUnit).toBe('/шт');
+    });
+
+    it('uses default_colors when available, falling back to colors', () => {
+      const withDefaultColors: ApiDesign = {
+        ...apiDesign,
+        default_colors: [
+          { hex: '#FFFFFF', name: 'Белый' },
+          { hex: '#000000', name: 'Чёрный' },
+        ],
+      };
+      const result = apiDesignToProduct(withDefaultColors);
+      expect(result.colors).toHaveLength(2);
+      expect(result.colors[0]).toEqual({ hex: '#FFFFFF', name: 'Белый' });
+      expect(result.colors[1]).toEqual({ hex: '#000000', name: 'Чёрный' });
+    });
+
+    it('falls back to legacy colors when default_colors is empty', () => {
+      const result = apiDesignToProduct(apiDesign);
+      expect(result.colors).toHaveLength(2);
+      expect(result.colors[0]).toEqual({ hex: '#8B4513', name: 'Дуб' });
     });
   });
 

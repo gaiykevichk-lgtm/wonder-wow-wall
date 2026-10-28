@@ -11,6 +11,7 @@ alembic==1.16.2
 python-jose[cryptography]==3.5.0
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.20
+slowapi==0.1.9
 
 # Validation
 pydantic==2.11.4
@@ -21,6 +22,27 @@ email-validator==2.2.0
 pytest==8.4.1
 pytest-asyncio==1.0.0
 httpx==0.28.1
+# aiosqlite — used by tests/infrastructure/test_alembic.py to apply migrations
+# against an in-memory SQLite DB without a postgres server. Production still
+# uses asyncpg + postgres (see DATABASE_URL).
+aiosqlite==0.20.0
 
 # Redis (optional, for caching)
 redis==6.2.0
+
+# S3 uploads and signed media URLs (Timeweb Cloud, S3-compatible).
+boto3==1.40.1
+
+# Image validation (Phase 6 admin uploads). Pillow re-decodes the file to
+# verify it's a real image and to read pixel dimensions — see
+# `app/application/media/use_cases.py`. 10.x is the current stable line
+# with security backports; pin major to avoid surprise breakage on minor
+# upgrades that occasionally rename PIL.Image API.
+Pillow==10.4.0
+
+# Panorama stitching for the configurator (TZ 07 CFG-01). Optional at
+# runtime: the /api/configurator/stitch endpoint degrades with
+# 503 code=stitch_unavailable when the import fails, so lean test images
+# without OpenCV keep working.
+opencv-python-headless==4.10.0.84
+numpy==1.26.4

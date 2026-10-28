@@ -1,6 +1,12 @@
 /**
  * Cost calculator for visualizer projects.
  * Reuses shared pricing constants.
+ *
+ * Phase 8D — `overlayPrice` is now a parameter (was the hardcoded
+ * `DESIGN_OVERLAY_PRICE` constant). Callers resolve the live value from
+ * `useShopSettings().designOverlayPrice` at the React layer and pass it
+ * down. Default kept as the legacy constant so existing tests keep
+ * passing without forcing a parameter on every callsite.
  */
 
 import { BASE_PANEL_PRICES, DESIGN_OVERLAY_PRICE } from '../../../shared/config/constants';
@@ -26,10 +32,14 @@ function sizeKeyToAreaM2(sizeKey: PanelSizeKey): number {
  * Calculate full cost breakdown for a panel layout.
  * @param panels - placed panels
  * @param hasSubscription - whether user has active subscription
+ * @param overlayPrice - per-overlay price (Phase 8D — admin-editable
+ *   via `useShopSettings`). Defaults to the legacy constant for tests
+ *   and CLI scripts that don't have repo access.
  */
 export function calculateCost(
   panels: PlacedPanel[],
   hasSubscription: boolean,
+  overlayPrice: number = DESIGN_OVERLAY_PRICE,
 ): CostBreakdown {
   const panelsBySize: Record<PanelSizeKey, number> = {
     '30x30': 0,
@@ -48,7 +58,7 @@ export function calculateCost(
   }
 
   const totalPanels = panels.length;
-  const overlaysCostFull = totalPanels * DESIGN_OVERLAY_PRICE;
+  const overlaysCostFull = totalPanels * overlayPrice;
   const overlayDiscount = hasSubscription ? overlaysCostFull : 0;
   const overlaysCost = overlaysCostFull - overlayDiscount;
   const totalCost = basePanelsCost + overlaysCost;

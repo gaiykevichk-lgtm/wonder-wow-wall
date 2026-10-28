@@ -61,12 +61,23 @@ export interface PhotoAsset {
 export type SegmentationStatus =
   | 'idle'
   | 'uploading'
+  | 'loading-model'
+  | 'segmenting'
   | 'processing'
+  | 'detecting-perspective'
   | 'ready'
   | 'error';
 
 export interface ScaleCalibration {
-  method: 'reference' | 'manual';
+  /**
+   * How `pixelsPerCm` was obtained:
+   * - `'reference'` — user clicked two points on a known-cm distance (high trust).
+   * - `'manual'`   — user typed `pixelsPerCm` directly (high trust).
+   * - `'auto'`     — heuristic placeholder set on photo upload (low trust);
+   *                  perspective auto-fill refuses to use this and the UI
+   *                  surfaces a banner asking the user to calibrate.
+   */
+  method: 'reference' | 'manual' | 'auto';
   pixelsPerCm: number;
   wallWidthCm?: number;
   wallHeightCm?: number;
@@ -122,6 +133,27 @@ export interface Scene {
   calibration: ScaleCalibration | null;
   segmentationStatus: SegmentationStatus;
   segmentationError?: string;
+  /**
+   * `true` when Phase-3 vanishing-point detection produced the current
+   * perspective corners. Cleared the moment the user drags a corner
+   * (manual override). Drives the green inline "Перспектива определена
+   * автоматически" banner in `PhotoEditorPage` (data-testid
+   * `perspective-auto-banner`).
+   */
+  perspectiveAutoDetected?: boolean;
+  /**
+   * Phase-4 reference candidates surfaced by `referenceDetector`. UI displays
+   * them in `CalibrationOverlay` so the user can apply one-click calibration.
+   * Empty array (or undefined) means detection ran and found nothing OR the
+   * stub adapter is in place. Not persisted: this is a runtime-only ML output.
+   */
+  referenceCandidates?: import('../lib/scaleEstimator').ReferenceCandidate[];
+  /**
+   * `true` when the current `calibration` was produced by applying one of
+   * `referenceCandidates`. Cleared by manual `applyCalibration` /
+   * `setCalibration`. Drives the "Масштаб: ✓ автоматически" status chip.
+   */
+  calibrationAutoDetected?: boolean;
 }
 
 export interface PanelLayout {
@@ -152,6 +184,21 @@ export interface VisualizationProject {
   createdAt: string;
   updatedAt: string;
 }
+
+// ─── Perspective & Calibration ──────────────────────────────────────────────
+
+/** Calibration mode for the editor: mask editing, calibrating scale, or adjusting perspective */
+export type EditorMode = 'default' | 'calibrating' | 'perspective';
+
+/** Two calibration points on the photo for scale reference */
+export interface CalibrationPoints {
+  start: Point | null;
+  end: Point | null;
+  referenceCm: number;
+}
+
+/** Four corner points defining wall perspective (TL, TR, BR, BL) */
+export type PerspectiveCorners = [Point, Point, Point, Point];
 
 // ─── Mask editing ────────────────────────────────────────────────────────────
 

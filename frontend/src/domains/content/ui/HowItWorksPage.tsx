@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card, Collapse } from 'antd';
+import { PageMeta } from '../../../shared/ui/PageMeta';
 import {
   SearchOutlined,
   AppstoreOutlined,
@@ -15,10 +16,10 @@ import { motion } from 'framer-motion';
 
 // ─── Style constants ──────────────────────────────────────────────────────────
 
-const BLUE = '#0071e3';
-const DARK = '#1d1d1f';
-const GRAY_TEXT = '#86868b';
-const FONT = 'Inter, sans-serif';
+const ACCENT = '#4CAF50';
+const DARK = '#2D2D2D';
+const GRAY_TEXT = '#6B7280';
+const FONT = "'SF Pro Display', sans-serif";
 const SECTION_PAD: React.CSSProperties = { padding: '120px 24px' };
 const MAX_WIDTH: React.CSSProperties = { maxWidth: 1080, margin: '0 auto' };
 
@@ -73,22 +74,22 @@ const processSteps = [
 
 const guarantees = [
   {
-    icon: <SafetyCertificateOutlined style={{ fontSize: 26, color: BLUE }} />,
+    icon: <SafetyCertificateOutlined style={{ fontSize: 26, color: ACCENT }} />,
     title: '5 лет гарантии',
     desc: 'На все материалы и монтажные работы. При любом дефекте производства устраним бесплатно.',
   },
   {
-    icon: <GiftOutlined style={{ fontSize: 26, color: BLUE }} />,
+    icon: <GiftOutlined style={{ fontSize: 26, color: ACCENT }} />,
     title: 'Бесплатный монтаж',
     desc: 'При заказе от 20 м² монтаж включён в стоимость. Никаких скрытых платежей.',
   },
   {
-    icon: <TeamOutlined style={{ fontSize: 26, color: BLUE }} />,
+    icon: <TeamOutlined style={{ fontSize: 26, color: ACCENT }} />,
     title: 'Опытные мастера',
     desc: 'Каждый монтажник имеет не менее 3 лет опыта и прошёл нашу сертификацию.',
   },
   {
-    icon: <CarOutlined style={{ fontSize: 26, color: BLUE }} />,
+    icon: <CarOutlined style={{ fontSize: 26, color: ACCENT }} />,
     title: 'Быстрая доставка',
     desc: 'Доставка по Москве за 1 день, по России за 3–7 рабочих дней.',
   },
@@ -147,8 +148,9 @@ const faqItems = [
 
 const HowItWorksPage: React.FC = () => (
   <div style={{ fontFamily: FONT, paddingTop: 72 }}>
+    <PageMeta title="Как это работает" description="Узнайте как работает сервис модульной отделки стен Wonder Wow Wall." />
     {/* Hero */}
-    <section style={{ background: '#F5F5F7', padding: '120px 24px 120px' }}>
+    <section style={{ background: '#F5F5F5', padding: '120px 24px 120px' }}>
       <div style={{ ...MAX_WIDTH, textAlign: 'center' }}>
         <motion.div
           variants={stagger}
@@ -280,7 +282,7 @@ const HowItWorksPage: React.FC = () => (
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 8,
-                    background: '#F5F5F7',
+                    background: '#F5F5F5',
                     borderRadius: 8,
                     padding: '8px 14px',
                     alignSelf: 'flex-start',
@@ -297,8 +299,74 @@ const HowItWorksPage: React.FC = () => (
       </div>
     </section>
 
+    {/* Video */}
+    <section style={{ background: '#F5F5F5', ...SECTION_PAD }}>
+      <div style={{ ...MAX_WIDTH }}>
+        <motion.div
+          variants={stagger}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.15 }}
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 32 }}
+        >
+          <motion.h2
+            variants={fadeUp}
+            custom={0}
+            style={{
+              fontFamily: FONT,
+              fontSize: 'clamp(28px, 3vw, 36px)',
+              fontWeight: 600,
+              color: DARK,
+              margin: 0,
+              textAlign: 'center',
+              letterSpacing: '-0.03em',
+            }}
+          >
+            Посмотрите, как это выглядит
+          </motion.h2>
+          <motion.p
+            variants={fadeUp}
+            custom={1}
+            style={{
+              fontFamily: FONT,
+              fontSize: 16,
+              color: GRAY_TEXT,
+              margin: 0,
+              textAlign: 'center',
+              maxWidth: 520,
+              lineHeight: 1.65,
+            }}
+          >
+            Короткое видео о процессе установки панелей — от распаковки до результата.
+          </motion.p>
+          <motion.div
+            variants={fadeUp}
+            custom={2}
+            style={{
+              width: '100%',
+              borderRadius: 16,
+              overflow: 'hidden',
+              aspectRatio: '16 / 9',
+              background: '#000',
+            }}
+          >
+            <iframe
+              title="Монтаж панелей Wonder Wow Wall"
+              src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+              width="100%"
+              height="100%"
+              style={{ border: 'none', display: 'block' }}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              loading="lazy"
+            />
+          </motion.div>
+        </motion.div>
+      </div>
+    </section>
+
     {/* Guarantees */}
-    <section style={{ background: '#F5F5F7', ...SECTION_PAD }}>
+    <section style={{ background: '#F5F5F5', ...SECTION_PAD }}>
       <div style={{ ...MAX_WIDTH }}>
         <motion.div
           variants={stagger}
@@ -356,7 +424,7 @@ const HowItWorksPage: React.FC = () => (
               >
                 <Card
                   style={{
-                    borderRadius: 20,
+                    borderRadius: 16,
                     border: '1px solid rgba(0,0,0,0.04)',
                     boxShadow: 'none',
                     height: '100%',
@@ -426,7 +494,7 @@ const HowItWorksPage: React.FC = () => (
           <motion.div variants={fadeUp} custom={1}>
             <Collapse
               items={faqItems}
-              style={{ borderRadius: 20, border: '1px solid rgba(0,0,0,0.04)', background: '#fff' }}
+              style={{ borderRadius: 16, border: '1px solid rgba(0,0,0,0.04)', background: '#fff' }}
               expandIconPosition="end"
               defaultActiveKey={['1']}
             />

@@ -1,8 +1,48 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.infrastructure.persistence.models import PanelAvailabilityStatusModel
 
 from app.application.catalog.use_cases import ListDesigns, GetDesignDetails, ListCategories, AddReview, ListReviews
-from app.container import design_repo, category_repo, review_repo
+from app.application.catalog.panel_use_cases import ListPanelsPublic
+from app.application.catalog.recommendation_fallback import (
+    DesignSimilarityFallback,
+)
+from app.application.catalog.recommendation_use_cases import (
+    GetPublicRecommendations,
+)
+from app.application.catalog.texture_use_cases import (
+    ListTexturesPublic,
+    ListTextureColorsPublic,
+)
+from app.application.catalog.panel_variant_use_cases import (
+    ListPanelVariantsPublic,
+)
+from app.application.catalog.variant_image_use_cases import (
+    GetVariantImage,
+    ListVariantImagesByDesign,
+)
+from app.application.catalog.texture_visualization_use_cases import (
+    GetTextureVisualizationPublic,
+)
+from app.container import (
+    get_db_session,
+    get_design_repo,
+    get_category_repo,
+    get_review_repo,
+    get_panel_repo,
+    get_recommendation_repo,
+    get_texture_repo,
+    get_texture_color_repo,
+    get_texture_visualization_repo,
+    get_variant_image_repo,
+    get_panel_variant_repo,
+)
+from app.domain.catalog.recommendation import (
+    DEFAULT_RECOMMENDATIONS_LIMIT,
+    RecommendationSourceType,
+)
 from app.utils.dependencies import get_current_user_id, get_optional_user_id
 
 router = APIRouter()
@@ -22,13 +62,16 @@ class DesignSchema(BaseModel):
     category_id: str
     style: str
     image: str
+    preview_image: str = ""
     description: str
     price: int
     colors: list[ColorSchema]
+    default_colors: list[ColorSchema] = Field(default_factory=list)
     rating: float
     reviews_count: int
     is_new: bool
     is_popular: bool
+    gallery_images: list[str] = Field(default_factory=list)
 
 
 class DesignListResponse(BaseModel):
@@ -54,61 +97,240 @@ class ReviewSchema(BaseModel):
 
 
 class AddReviewRequest(BaseModel):
-    rating: int
-    text: str
+    rating: int = Field(ge=1, le=5)
+    text: str = Field(min_length=1, max_length=500)
+
+
+class PanelSchema(BaseModel):
+    """Phase 7B — public catalog panel SKU.
+
+    Mirrors `PanelResponse` in `admin/panels.py` so the frontend can
+    share the type. The two endpoints differ only in scope (admin sees
+    inactive panels too) — same payload shape.
+    """
+    id: str
+    name: str
+    slug: str
+    width_mm: int
+    height_mm: int
+    size_label: str
+    base_price: int
+    stock_quantity: int = 0
+    availability_status_id: str | None = None
+    availability_status_name: str | None = None
+    availability_status_color: str | None = None
+    description: str
+    photo_path: str
+    # Ordered catalog gallery (up to 2 shots). Always non-empty when the
+    # panel has any photo at all, with `photo_paths[0] == photo_path`, so
+    # clients can render the gallery without falling back to the scalar.
+    photo_paths: list[str] = Field(default_factory=list)
+    # Базовый силуэт формы (белый PNG) для превью в карточках каталога.
+    form_preview_path: str = ""
+    is_active: bool
+    # ТЗ 16.09 — динамическая толщина панели в мм.
+    thickness_mm: int = 3
+
+
+class PanelListResponse(BaseModel):
+    items: list[PanelSchema] = Field(default_factory=list)
+    total: int
+
+
+class RecommendationTargetSchema(BaseModel):
+    """Phase 10 — public recommendation target.
+
+    Flat shape (`target_type`/`target_id`) so the frontend can map
+    directly to its existing `Design`/`Panel` query keys without
+    re-derivation. The catalog UI does the lookup against its already
+    cached entities (TanStack Query) — the API stays minimal.
+    """
+    target_type: str
+    target_id: str
+
+
+class RecommendationListResponse(BaseModel):
+    """Always returns `items` — possibly empty, never null.
+
+    The consumer renders the rail unconditionally; an empty list means
+    "show nothing" rather than triggering a hard error in the UI.
+    """
+    items: list[RecommendationTargetSchema] = Field(default_factory=list)
+
+
+class TextureColorPublicSchema(BaseModel):
+    id: str
+    name: str
+    hex: str
+    swatch_image: str
+
+
+class TextureWithColorsSchema(BaseModel):
+    id: str
+    name: str
+    slug: str
+    swatch_image: str
+    colors: list[TextureColorPublicSchema] = Field(default_factory=list)
+
+
+class TextureVisualizationPublicSchema(BaseModel):
+    """Public schema for TextureVisualization — блок WWW в дизайне."""
+    id: str
+    texture_id: str
+    media_type: str
+    media_url: str
+    poster_url: str
+    bg_image_url: str
+    title: str
+    subtitle: str
+    scroll_hint: str
+    description: str
+
+
+class VariantImageSchema(BaseModel):
+    image_path: str
+
+
+class FullConfigTextureSchema(BaseModel):
+    id: str
+    name: str
+    slug: str
+    swatch_image: str
+    colors: list[TextureColorPublicSchema] = Field(default_factory=list)
+
+
+class FullConfigResponse(BaseModel):
+    id: str
+    name: str
+    slug: str
+    preview_image: str
+    description: str
+    price: int
+    textures: list[FullConfigTextureSchema] = Field(default_factory=list)
+    variant_images: list[dict] = Field(default_factory=list)
+
+
+# ─── Helpers ─────────────────────────────────────────────────────────
+
+
+async def _compute_default_colors_batch(
+    design_ids: list[str],
+    texture_repo,
+    color_repo,
+    variant_repo,
+) -> dict[str, list[dict]]:
+    """Return {design_id: [{hex, name}, ...]} from the first texture per design."""
+    all_textures = await ListTexturesPublic(texture_repo).execute()
+    if not all_textures:
+        return {}
+
+    texture_by_id = {t.id: t for t in all_textures}
+    texture_order = {t.id: i for i, t in enumerate(all_textures)}
+
+    result: dict[str, list[dict]] = {}
+    for design_id in design_ids:
+        variants = await ListVariantImagesByDesign(variant_repo).execute(design_id)
+        if not variants:
+            continue
+        texture_ids_for_design = {v.texture_id for v in variants if v.texture_id in texture_by_id}
+        if not texture_ids_for_design:
+            continue
+        first_texture_id = min(texture_ids_for_design, key=lambda tid: texture_order.get(tid, 9999))
+        colors = await ListTextureColorsPublic(color_repo).execute(first_texture_id)
+        if colors:
+            result[design_id] = [{"hex": c.hex, "name": c.name} for c in colors]
+
+    return result
+
+
+def _serialize_design(d, default_colors: list[dict] | None = None) -> dict:
+    return {
+        "id": d.id, "name": d.name, "slug": d.slug, "category_id": d.category_id,
+        "style": d.style, "image": d.image, "preview_image": d.preview_image,
+        "gallery_images": list(getattr(d, "gallery_images", []) or []),
+        "description": d.description,
+        "price": d.price, "colors": [{"hex": c.hex, "name": c.name} for c in d.colors],
+        "default_colors": default_colors or [],
+        "rating": d.rating, "reviews_count": d.reviews_count,
+        "is_new": d.is_new, "is_popular": d.is_popular,
+    }
 
 
 # ─── Endpoints ───────────────────────────────────────────────────────
 
 @router.get("/designs", response_model=DesignListResponse)
 async def list_designs(
+    request: Request,
     category: str | None = None,
     search: str | None = None,
     sort: str = "name",
     offset: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
+    color: str | None = None,
+    style: str | None = None,
+    is_new: bool | None = None,
+    design_repo=Depends(get_design_repo),
+    texture_repo=Depends(get_texture_repo),
+    color_repo=Depends(get_texture_color_repo),
+    variant_repo=Depends(get_variant_image_repo),
 ):
     uc = ListDesigns(design_repo)
-    designs, total = await uc.execute(category, search, sort, offset, limit)
+    designs, total = await uc.execute(
+        category, search, sort, offset, limit,
+        color=color, style=style, is_new=is_new,
+    )
+    dc_map = await _compute_default_colors_batch(
+        [d.id for d in designs], texture_repo, color_repo, variant_repo,
+    )
     return {
-        "items": [
-            {
-                "id": d.id, "name": d.name, "slug": d.slug, "category_id": d.category_id,
-                "style": d.style, "image": d.image, "description": d.description,
-                "price": d.price, "colors": [{"hex": c.hex, "name": c.name} for c in d.colors],
-                "rating": d.rating, "reviews_count": d.reviews_count,
-                "is_new": d.is_new, "is_popular": d.is_popular,
-            }
-            for d in designs
-        ],
+        "items": [_serialize_design(d, dc_map.get(d.id)) for d in designs],
         "total": total,
     }
 
 
 @router.get("/designs/{design_id}", response_model=DesignSchema)
-async def get_design(design_id: str):
+async def get_design(
+    request: Request,
+    design_id: str,
+    design_repo=Depends(get_design_repo),
+    texture_repo=Depends(get_texture_repo),
+    color_repo=Depends(get_texture_color_repo),
+    variant_repo=Depends(get_variant_image_repo),
+):
     uc = GetDesignDetails(design_repo)
     d = await uc.execute(design_id)
-    if not d:
+    if not d or not d.is_published:
         raise HTTPException(status_code=404, detail="Design not found")
-    return {
-        "id": d.id, "name": d.name, "slug": d.slug, "category_id": d.category_id,
-        "style": d.style, "image": d.image, "description": d.description,
-        "price": d.price, "colors": [{"hex": c.hex, "name": c.name} for c in d.colors],
-        "rating": d.rating, "reviews_count": d.reviews_count,
-        "is_new": d.is_new, "is_popular": d.is_popular,
-    }
+    dc_map = await _compute_default_colors_batch(
+        [d.id], texture_repo, color_repo, variant_repo,
+    )
+    return _serialize_design(d, dc_map.get(d.id))
 
 
 @router.get("/categories", response_model=list[CategorySchema])
-async def list_categories():
+async def list_categories(request: Request, category_repo=Depends(get_category_repo)):
     uc = ListCategories(category_repo)
     cats = await uc.execute()
     return [{"id": c.id, "name": c.name, "slug": c.slug, "image": c.image, "count": c.count} for c in cats]
 
 
 @router.get("/designs/{design_id}/reviews", response_model=list[ReviewSchema])
-async def get_reviews(design_id: str, offset: int = 0, limit: int = 20):
+async def get_reviews(
+    request: Request,
+    design_id: str,
+    offset: int = 0,
+    limit: int = 20,
+    design_repo=Depends(get_design_repo),
+    review_repo=Depends(get_review_repo),
+):
+    # Phase 7A C2 — reviews of an unpublished design must not leak
+    # either. Same 404-on-hidden posture as `get_design` so the
+    # existence of the parent row is not disclosed via a 200 with an
+    # empty list. Cheap pre-check (one indexed PK lookup); the admin
+    # has dedicated endpoints if it needs unpublished review access.
+    parent = await design_repo.get_by_id(design_id)
+    if parent is None or not parent.is_published:
+        raise HTTPException(status_code=404, detail="Design not found")
     uc = ListReviews(review_repo)
     reviews = await uc.execute(design_id, offset, limit)
     return [
@@ -118,8 +340,123 @@ async def get_reviews(design_id: str, offset: int = 0, limit: int = 20):
     ]
 
 
+@router.get("/panels", response_model=PanelListResponse)
+async def list_panels_public(
+    request: Request,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+    panel_repo=Depends(get_panel_repo),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """Public catalog — active panels only.
+
+    Use case hard-codes `include_inactive=False`; no `include_inactive`
+    query param is accepted so this endpoint cannot be coerced into
+    leaking hidden SKUs.
+    """
+    items, total = await ListPanelsPublic(panel_repo).execute(
+        offset=offset, limit=limit,
+    )
+    status_ids = {p.availability_status_id for p in items if p.availability_status_id}
+    statuses = {}
+    if status_ids:
+        rows = (await session.execute(select(PanelAvailabilityStatusModel).where(PanelAvailabilityStatusModel.id.in_(status_ids)))).scalars().all()
+        statuses = {row.id: row for row in rows}
+    return {
+        "items": [
+            {
+                "id": p.id,
+                "name": p.name,
+                "slug": p.slug,
+                "width_mm": p.size.width_mm,
+                "height_mm": p.size.height_mm,
+                "size_label": p.size.label,
+                "base_price": p.base_price,
+                "stock_quantity": p.stock_quantity,
+                "availability_status_id": p.availability_status_id,
+                "availability_status_name": statuses[p.availability_status_id].name if p.availability_status_id in statuses else None,
+                "availability_status_color": statuses[p.availability_status_id].color if p.availability_status_id in statuses else None,
+                "description": p.description,
+                "photo_path": p.photo_path,
+                "photo_paths": list(p.photo_paths),
+                "form_preview_path": p.form_preview_path,
+                "is_active": p.is_active,
+                "thickness_mm": p.thickness_mm,
+            }
+            for p in items
+        ],
+        "total": total,
+    }
+
+
+@router.get(
+    "/recommendations/{source_type}/{source_id}",
+    response_model=RecommendationListResponse,
+)
+async def get_public_recommendations(
+    source_type: str,
+    source_id: str,
+    response: Response,
+    limit: int = Query(
+        DEFAULT_RECOMMENDATIONS_LIMIT, ge=1, le=50,
+        description="Cap on returned items; clamped against the admin "
+                    "limit by the use case as well.",
+    ),
+    rec_repo=Depends(get_recommendation_repo),
+    design_repo=Depends(get_design_repo),
+):
+    """Public read for the «с этим покупают» rail on a product page.
+
+    Composition: admin curated targets first (in admin order), then the
+    `DesignSimilarityFallback` heuristic tops the list up to `limit`.
+    Always returns 200 + a list — a missing source returns the
+    fallback-only list rather than 404 so the catalog UI renders the
+    rail uniformly.
+
+    `source_type` validation maps a bad value to a uniform 422 via the
+    same `_parse_source_type` pattern used by the admin route.
+    """
+    try:
+        st = RecommendationSourceType(source_type)
+    except ValueError:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Unknown source_type {source_type!r}; "
+                f"expected one of "
+                f"{[s.value for s in RecommendationSourceType]}"
+            ),
+        )
+
+    fallback = DesignSimilarityFallback(design_repo)
+    targets = await GetPublicRecommendations(rec_repo, fallback).execute(
+        source_type=st,
+        source_id=source_id,
+        limit=limit,
+    )
+    # Cache for 5 minutes — admin curation changes are rare and the
+    # fallback heuristic is deterministic against the design catalog.
+    # `public` lets shared caches (CDN, nginx) serve hits; an admin
+    # who just edited the rail can hard-refresh the product page.
+    response.headers["Cache-Control"] = "public, max-age=300"
+    return RecommendationListResponse(
+        items=[
+            RecommendationTargetSchema(
+                target_type=t.target_type.value,
+                target_id=t.target_id,
+            )
+            for t in targets
+        ],
+    )
+
+
 @router.post("/designs/{design_id}/reviews", response_model=ReviewSchema, status_code=201)
-async def add_review(design_id: str, body: AddReviewRequest, user_id: str = Depends(get_current_user_id)):
+async def add_review(
+    request: Request, design_id: str, body: AddReviewRequest,
+    user_id: str = Depends(get_current_user_id),
+    design_repo=Depends(get_design_repo),
+    review_repo=Depends(get_review_repo),
+):
     uc = AddReview(design_repo, review_repo)
     try:
         r = await uc.execute(design_id, user_id, "Пользователь", body.rating, body.text)
@@ -129,3 +466,218 @@ async def add_review(design_id: str, body: AddReviewRequest, user_id: str = Depe
         "id": r.id, "design_id": r.design_id, "user_name": r.user_name,
         "rating": r.rating, "text": r.text, "created_at": r.created_at.isoformat(),
     }
+
+
+# ─── Phase 2 — Texture / Variant Image endpoints ───────────────────
+
+
+@router.get("/textures", response_model=list[TextureWithColorsSchema])
+async def list_textures_public(
+    request: Request,
+    texture_repo=Depends(get_texture_repo),
+    color_repo=Depends(get_texture_color_repo),
+):
+    textures = await ListTexturesPublic(texture_repo).execute()
+    result = []
+    for t in textures:
+        colors = await ListTextureColorsPublic(color_repo).execute(t.id)
+        result.append({
+            "id": t.id,
+            "name": t.name,
+            "slug": t.slug,
+            "swatch_image": t.swatch_image,
+            "colors": [
+                {"id": c.id, "name": c.name, "hex": c.hex, "swatch_image": c.swatch_image}
+                for c in colors
+            ],
+        })
+    return result
+
+
+@router.get("/textures/{texture_id}/colors", response_model=list[TextureColorPublicSchema])
+async def list_texture_colors_public(
+    request: Request,
+    texture_id: str,
+    color_repo=Depends(get_texture_color_repo),
+):
+    colors = await ListTextureColorsPublic(color_repo).execute(texture_id)
+    return [
+        {"id": c.id, "name": c.name, "hex": c.hex, "swatch_image": c.swatch_image}
+        for c in colors
+    ]
+
+
+@router.get(
+    "/textures/{texture_id}/visualization",
+    response_model=TextureVisualizationPublicSchema | None,
+)
+async def get_texture_visualization_public(
+    texture_id: str,
+    viz_repo=Depends(get_texture_visualization_repo),
+):
+    """GET /api/catalog/textures/{texture_id}/visualization — визуализация фактуры.
+
+    Returns null (204) if no visualization is configured for this texture.
+    """
+    viz = await GetTextureVisualizationPublic(viz_repo).execute(texture_id)
+    if viz is None:
+        return None
+    return TextureVisualizationPublicSchema(
+        id=viz.id,
+        texture_id=viz.texture_id,
+        media_type=viz.media_type,
+        media_url=viz.media_url,
+        poster_url=viz.poster_url,
+        bg_image_url=viz.bg_image_url,
+        title=viz.title,
+        subtitle=viz.subtitle,
+        scroll_hint=viz.scroll_hint,
+        description=viz.description,
+    )
+
+
+@router.get("/designs/{design_id}/textures", response_model=list[TextureWithColorsSchema])
+async def list_design_textures(
+    request: Request,
+    design_id: str,
+    design_repo=Depends(get_design_repo),
+    texture_repo=Depends(get_texture_repo),
+    color_repo=Depends(get_texture_color_repo),
+    variant_repo=Depends(get_variant_image_repo),
+):
+    design = await design_repo.get_by_id(design_id)
+    if not design or not design.is_published:
+        raise HTTPException(status_code=404, detail="Design not found")
+    textures = await ListTexturesPublic(texture_repo).execute()
+    variants = await ListVariantImagesByDesign(variant_repo).execute(design_id)
+    texture_ids_with_variants = {v.texture_id for v in variants}
+    result = []
+    for t in textures:
+        if t.id not in texture_ids_with_variants:
+            continue
+        colors = await ListTextureColorsPublic(color_repo).execute(t.id)
+        if not colors:
+            continue
+        result.append({
+            "id": t.id,
+            "name": t.name,
+            "slug": t.slug,
+            "swatch_image": t.swatch_image,
+            "colors": [
+                {"id": c.id, "name": c.name, "hex": c.hex, "swatch_image": c.swatch_image}
+                for c in colors
+            ],
+        })
+    return result
+
+
+@router.get("/designs/{design_id}/variant-image", response_model=VariantImageSchema)
+async def get_variant_image(
+    request: Request,
+    design_id: str,
+    texture_id: str = Query(...),
+    color_id: str = Query(...),
+    design_repo=Depends(get_design_repo),
+    variant_repo=Depends(get_variant_image_repo),
+):
+    design = await design_repo.get_by_id(design_id)
+    if not design or not design.is_published:
+        raise HTTPException(status_code=404, detail="Design not found")
+    vi = await GetVariantImage(variant_repo).execute(design_id, texture_id, color_id)
+    if vi is None:
+        raise HTTPException(status_code=404, detail="Variant image not found")
+    return {"image_path": vi.image_path}
+
+
+@router.get("/designs/{design_id}/full-config", response_model=FullConfigResponse)
+async def get_full_config(
+    request: Request,
+    design_id: str,
+    design_repo=Depends(get_design_repo),
+    texture_repo=Depends(get_texture_repo),
+    color_repo=Depends(get_texture_color_repo),
+    variant_repo=Depends(get_variant_image_repo),
+):
+    design = await design_repo.get_by_id(design_id)
+    if not design or not design.is_published:
+        raise HTTPException(status_code=404, detail="Design not found")
+    all_textures = await ListTexturesPublic(texture_repo).execute()
+    all_variants = await ListVariantImagesByDesign(variant_repo).execute(design_id)
+    texture_ids_with_variants = {v.texture_id for v in all_variants}
+    textures_out = []
+    for t in all_textures:
+        if t.id not in texture_ids_with_variants:
+            continue
+        colors = await ListTextureColorsPublic(color_repo).execute(t.id)
+        if not colors:
+            continue
+        textures_out.append({
+            "id": t.id,
+            "name": t.name,
+            "slug": t.slug,
+            "swatch_image": t.swatch_image,
+            "colors": [
+                {"id": c.id, "name": c.name, "hex": c.hex, "swatch_image": c.swatch_image}
+                for c in colors
+            ],
+        })
+    variant_images_out = [
+        {
+            "design_id": v.design_id,
+            "texture_id": v.texture_id,
+            "color_id": v.color_id,
+            "image_path": v.image_path,
+        }
+        for v in all_variants
+    ]
+    return {
+        "id": design.id,
+        "name": design.name,
+        "slug": design.slug,
+        "preview_image": design.preview_image,
+        "description": design.description,
+        "price": design.price,
+        "textures": textures_out,
+        "variant_images": variant_images_out,
+    }
+
+
+# ─── Public Panel Variants ──────────────────────────────────────────
+
+
+class PanelVariantPublicSchema(BaseModel):
+    id: str
+    name: str = ""
+    slug: str = ""
+    panel_id: str
+    panel_name: str
+    panel_size: str
+    texture_id: str
+    texture_name: str
+    color_id: str | None
+    color_hex: str | None
+    image_paths: list[str]
+    design_image_paths: list[str] = Field(default_factory=list)
+    recommendation_image_paths: list[str] = Field(default_factory=list)
+    sort_order: int = 0
+    is_active: bool
+
+
+@router.get("/panel-variants", response_model=list[PanelVariantPublicSchema])
+async def list_panel_variants_public(
+    panel_id: str | None = Query(None, description="Filter by panel ID"),
+    texture_id: str | None = Query(None, description="Filter by texture ID"),
+    variant_repo=Depends(get_panel_variant_repo),
+    panel_repo=Depends(get_panel_repo),
+    texture_repo=Depends(get_texture_repo),
+):
+    """List active panel variants for public catalog.
+    
+    Returns variants with joined panel and texture data.
+    """
+    use_case = ListPanelVariantsPublic(variant_repo, panel_repo, texture_repo)
+    items, _ = await use_case.execute(
+        panel_id=panel_id,
+        texture_id=texture_id,
+    )
+    return items

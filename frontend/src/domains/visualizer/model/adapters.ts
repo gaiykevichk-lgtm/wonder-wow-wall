@@ -60,6 +60,10 @@ export function placedPanelsToCartItems(
       area: sizeKeyToArea(panel.sizeKey),
       color: panel.color,
       colorName: panel.colorName,
+      colorId: '',
+      textureName: '',
+      textureId: '',
+      sizeKey: panel.sizeKey,
       size: panel.sizeKey,
     });
   }

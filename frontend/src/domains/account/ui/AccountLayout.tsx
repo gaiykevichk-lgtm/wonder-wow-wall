@@ -6,20 +6,23 @@ import {
   HeartOutlined,
   CrownOutlined,
   AppstoreOutlined,
+  BellOutlined,
   LogoutOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../auth/model/authStore';
 
 const { Title, Text } = Typography;
-const BLUE = '#0071e3';
+const ACCENT = '#4CAF50';
 
 const MENU_ITEMS = [
   { key: '/account', icon: <UserOutlined />, label: 'Профиль' },
   { key: '/account/orders', icon: <ShoppingOutlined />, label: 'Мои заказы' },
   { key: '/account/projects', icon: <ProjectOutlined />, label: 'Мои проекты' },
-  { key: '/account/constructor', icon: <AppstoreOutlined />, label: 'Конструктор' },
+  { key: '/configurator', icon: <AppstoreOutlined />, label: 'Конфигуратор' },
   { key: '/account/favorites', icon: <HeartOutlined />, label: 'Избранное' },
+  { key: '/account/notifications', icon: <BellOutlined />, label: 'Уведомления' },
   { key: '/account/subscription', icon: <CrownOutlined />, label: 'Подписка' },
 ];
 
@@ -27,6 +30,8 @@ export default function AccountLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  const isAuth = useAuthStore((s) => s.isAuth);
+  const showCatalogShortcut = isAuth && user?.role === 'ADMIN' && user.email.trim().toLowerCase() === 'admin@wow.ru';
   const logout = useAuthStore((s) => s.logout);
 
   const handleLogout = () => {
@@ -36,6 +41,7 @@ export default function AccountLayout() {
 
   return (
     <div
+      className="account-layout"
       style={{
         maxWidth: 1280,
         margin: '0 auto',
@@ -47,11 +53,12 @@ export default function AccountLayout() {
     >
       {/* Sidebar */}
       <aside
+        className="account-sidebar"
         style={{
           width: 260,
           flexShrink: 0,
-          background: '#F5F5F7',
-          borderRadius: 20,
+          background: '#F5F5F5',
+          borderRadius: 16,
           padding: '24px 0',
           height: 'fit-content',
           position: 'sticky',
@@ -59,14 +66,27 @@ export default function AccountLayout() {
         }}
       >
         {/* User info */}
-        <div style={{ padding: '0 24px 20px', borderBottom: '1px solid rgba(0,0,0,0.06)', textAlign: 'center' }}>
+        <div className="user-info-block" style={{ padding: '0 24px 20px', borderBottom: '1px solid rgba(0,0,0,0.06)', textAlign: 'center' }}>
           <Avatar
             size={64}
             icon={<UserOutlined />}
-            style={{ background: BLUE, marginBottom: 12 }}
+            style={{ background: ACCENT, marginBottom: 12 }}
           />
-          <Title level={5} style={{ margin: 0, color: '#1d1d1f', fontWeight: 600 }}>{user?.name || 'Пользователь'}</Title>
-          <Text type="secondary" style={{ fontSize: 13, color: '#86868b' }}>{user?.email}</Text>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+            <Title level={5} style={{ margin: 0, color: '#2D2D2D', fontWeight: 600 }}>{user?.name || 'Пользователь'}</Title>
+            {showCatalogShortcut && (
+              <Button
+                type="text"
+                size="small"
+                aria-label="Открыть каталог админ-панели"
+                title="Каталог админ-панели"
+                icon={<SettingOutlined />}
+                onClick={() => navigate('/admin/catalog')}
+                style={{ color: '#9CA3AF', width: 24, height: 24, minWidth: 24, padding: 0, fontSize: 13 }}
+              />
+            )}
+          </div>
+          <Text type="secondary" style={{ fontSize: 13, color: '#6B7280' }}>{user?.email}</Text>
         </div>
 
         <Menu
@@ -87,7 +107,7 @@ export default function AccountLayout() {
             icon={<LogoutOutlined />}
             onClick={handleLogout}
             block
-            style={{ textAlign: 'left', justifyContent: 'flex-start', fontSize: 14, borderRadius: 980 }}
+            style={{ textAlign: 'left', justifyContent: 'flex-start', fontSize: 14, borderRadius: 8 }}
           >
             Выйти
           </Button>

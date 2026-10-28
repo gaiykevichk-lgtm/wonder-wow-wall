@@ -7,9 +7,11 @@ import {
   applyStrokeToMask,
   countWallPixelsInRect,
   wallCoverageInRect,
+  wallCoverageInQuad,
   invertMask,
   totalWallFraction,
 } from '../lib/maskUtils';
+import type { Point } from '../model/types';
 
 describe('maskUtils', () => {
   describe('createEmptyMask', () => {
@@ -134,6 +136,54 @@ describe('maskUtils', () => {
     it('returns 0 for zero-size rect', () => {
       const mask = createEmptyMask(10, 10, 255);
       expect(wallCoverageInRect(mask, 0, 0, 0, 0)).toBe(0);
+    });
+  });
+
+  describe('wallCoverageInQuad', () => {
+    const quad = (
+      tl: Point, tr: Point, br: Point, bl: Point,
+    ): [Point, Point, Point, Point] => [tl, tr, br, bl];
+
+    it('returns ≈1.0 for axis-aligned quad fully inside wall', () => {
+      const mask = createEmptyMask(100, 100, 255);
+      const q = quad({ x: 10, y: 10 }, { x: 90, y: 10 }, { x: 90, y: 90 }, { x: 10, y: 90 });
+      expect(wallCoverageInQuad(mask, q)).toBe(1);
+    });
+
+    it('returns 0 for axis-aligned quad fully outside mask', () => {
+      const mask = createEmptyMask(100, 100, 0);
+      const q = quad({ x: 10, y: 10 }, { x: 90, y: 10 }, { x: 90, y: 90 }, { x: 10, y: 90 });
+      expect(wallCoverageInQuad(mask, q)).toBe(0);
+    });
+
+    it('returns ≈0.5 when half the quad is on wall, half off', () => {
+      // Left half wall, right half empty
+      const mask = createEmptyMask(100, 100, 0);
+      for (let y = 0; y < 100; y++) {
+        for (let x = 0; x < 50; x++) {
+          mask.data[y * 100 + x] = 255;
+        }
+      }
+      const q = quad({ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 });
+      const cov = wallCoverageInQuad(mask, q);
+      expect(cov).toBeGreaterThan(0.4);
+      expect(cov).toBeLessThan(0.6);
+    });
+
+    it('counts out-of-bounds samples toward denominator (penalises overflow)', () => {
+      const mask = createEmptyMask(100, 100, 255);
+      // Quad extends past the right edge.
+      const q = quad({ x: 50, y: 0 }, { x: 200, y: 0 }, { x: 200, y: 100 }, { x: 50, y: 100 });
+      const cov = wallCoverageInQuad(mask, q);
+      expect(cov).toBeLessThan(1);
+      expect(cov).toBeGreaterThan(0);
+    });
+
+    it('returns 0 for invalid samplesPerSide', () => {
+      const mask = createEmptyMask(10, 10, 255);
+      const q = quad({ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 });
+      expect(wallCoverageInQuad(mask, q, 0)).toBe(0);
+      expect(wallCoverageInQuad(mask, q, NaN)).toBe(0);
     });
   });
 

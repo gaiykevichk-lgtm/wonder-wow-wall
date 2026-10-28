@@ -9,8 +9,18 @@ class ListDesigns:
     async def execute(
         self, category_id: str | None = None, search: str | None = None,
         sort_by: str = "name", offset: int = 0, limit: int = 20,
+        *, color: str | None = None, style: str | None = None, is_new: bool | None = None,
     ) -> tuple[list[Design], int]:
-        return await self.repo.list_designs(category_id, search, sort_by, offset, limit)
+        # Phase 7A — public catalog must see only published designs. The
+        # repository's `is_published=True` default would already filter
+        # this if the admin path didn't exist; we pass it explicitly so
+        # a future API caller cannot accidentally widen the scope by
+        # routing through `ListDesigns`.
+        return await self.repo.list_designs(
+            category_id, search, sort_by, offset, limit,
+            color=color, style=style, is_new=is_new,
+            is_published=True,
+        )
 
 
 class GetDesignDetails:
@@ -36,7 +46,11 @@ class AddReview:
 
     async def execute(self, design_id: str, user_id: str, user_name: str, rating: int, text: str) -> DesignReview:
         design = await self.design_repo.get_by_id(design_id)
-        if not design:
+        # Phase 7A C2 audit follow-up — treat unpublished designs as
+        # not-found here too. Without this, an attacker who knows a
+        # hidden UUID could attach reviews to it; once republished,
+        # those reviews would surface on the public detail page.
+        if not design or not design.is_published:
             raise ValueError(f"Design {design_id} not found")
 
         review = DesignReview(
@@ -47,6 +61,7 @@ class AddReview:
             text=text,
         )
         design.add_review(review)
+        await self.design_repo.update(design)
         return await self.review_repo.add(review)
 
 

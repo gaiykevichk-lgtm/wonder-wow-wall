@@ -1,0 +1,19 @@
+# Uploaded files (served by nginx/backend, not tracked in git)
+uploads/
+
+# Vite / test caches (generated, not project source)
+frontend/.vite-cache/
+frontend/.vite-new-cache/
+frontend/node_modules/
+node_modules/
+
+# Large binaries
+frontend/public/opencv.js
+
+# Generated release/preview workspaces and build outputs
+.deploy/
+frontend/dist/
+frontend/.preview-panels/
+
+# Operational data backups; retain locally, never publish via git
+backups/

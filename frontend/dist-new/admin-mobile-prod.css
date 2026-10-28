@@ -1,0 +1,43 @@
+/* Production-compatible responsive overrides for the existing admin build.
+   This file intentionally does not change JavaScript bundles or SKU data. */
+@media (max-width: 768px) {
+  .ant-layout:has(> .admin-desktop-sider) { width: 100%; min-width: 0; overflow-x: clip; }
+  .ant-layout:has(> .admin-desktop-sider) > .ant-layout { min-width: 0; width: 100%; }
+  .ant-layout:has(> .admin-desktop-sider) .admin-desktop-sider { display: none !important; }
+  .ant-layout:has(> .admin-desktop-sider) .admin-mobile-menu-btn { display: inline-flex !important; width: 40px; min-width: 40px; height: 40px; align-items: center; justify-content: center; padding: 0; }
+  .ant-layout:has(> .admin-desktop-sider) > .ant-layout > .ant-layout-header {
+    height: 56px !important; padding: 0 12px !important; gap: 8px;
+  }
+  .ant-layout:has(> .admin-desktop-sider) > .ant-layout > .ant-layout-header > div:first-child { min-width: 0; gap: 6px !important; }
+  .ant-layout:has(> .admin-desktop-sider) > .ant-layout > .ant-layout-header > div:first-child .ant-typography { font-size: 16px !important; white-space: nowrap; }
+  .ant-layout:has(> .admin-desktop-sider) > .ant-layout > .ant-layout-header > div:last-child { flex: none; gap: 4px !important; }
+  .ant-layout:has(> .admin-desktop-sider) > .ant-layout > .ant-layout-header > div:last-child > div { display: none !important; }
+  .ant-layout:has(> .admin-desktop-sider) > .ant-layout > .ant-layout-header > div:last-child > .ant-btn {
+    width: 40px; min-width: 40px; height: 40px; padding: 0 !important; display: inline-flex; align-items: center; justify-content: center;
+  }
+  .ant-layout:has(> .admin-desktop-sider) > .ant-layout > .ant-layout-header > div:last-child > .ant-btn > span:not(.ant-btn-icon) { display: none; }
+  .ant-layout:has(> .admin-desktop-sider) > .ant-layout > .ant-layout-content {
+    padding: 12px !important; min-width: 0; overflow-x: clip;
+  }
+  .ant-layout:has(> .admin-desktop-sider) .ant-layout-content > * { min-width: 0; max-width: 100%; }
+  .ant-layout:has(> .admin-desktop-sider) .ant-layout-content > div[style*="padding: 24px 32px"] { padding: 8px 0 24px !important; }
+  .ant-layout:has(> .admin-desktop-sider) .ant-layout-content .ant-tabs { min-width: 0; max-width: 100%; }
+  .ant-layout:has(> .admin-desktop-sider) .ant-layout-content .ant-tabs-content-holder,
+  .ant-layout:has(> .admin-desktop-sider) .ant-layout-content .ant-tabs-tabpane { min-width: 0; max-width: 100%; }
+  .ant-layout:has(> .admin-desktop-sider) .ant-layout-content .ant-tabs-nav-wrap { overflow-x: auto; }
+  .ant-layout:has(> .admin-desktop-sider) .ant-layout-content .ant-card,
+  .ant-layout:has(> .admin-desktop-sider) .ant-layout-content .ant-card-body,
+  .ant-layout:has(> .admin-desktop-sider) .ant-layout-content .ant-table-wrapper { min-width: 0; max-width: 100%; }
+  .ant-layout:has(> .admin-desktop-sider) .ant-layout-content .ant-table-container,
+  .ant-layout:has(> .admin-desktop-sider) .ant-layout-content .ant-table-content { overflow-x: auto !important; overscroll-behavior-inline: contain; }
+  .ant-layout:has(> .admin-desktop-sider) .ant-layout-content .ant-table-content table { min-width: 740px; }
+  .ant-layout:has(> .admin-desktop-sider) .ant-layout-content .ant-pagination { flex-wrap: wrap; justify-content: center; gap: 6px; }
+  .ant-layout:has(> .admin-desktop-sider) .ant-layout-content .ant-tabs-tabpane .ant-space { max-width: 100%; }
+  .ant-layout:has(> .admin-desktop-sider) .ant-layout-content .ant-tabs-tabpane .ant-space:has(> .ant-space-item > .ant-select) { width: 100%; }
+  .ant-layout:has(> .admin-desktop-sider) .ant-layout-content .ant-tabs-tabpane .ant-space:has(> .ant-space-item > .ant-select) > .ant-space-item { width: 100%; }
+  .ant-layout:has(> .admin-desktop-sider) .ant-layout-content .ant-tabs-tabpane .ant-space > .ant-space-item > .ant-select,
+  .ant-layout:has(> .admin-desktop-sider) .ant-layout-content .ant-tabs-tabpane .ant-space > .ant-space-item > .ant-input-search { width: 100% !important; min-width: 0 !important; }
+}
+@media (max-width: 380px) {
+  .ant-layout:has(> .admin-desktop-sider) > .ant-layout > .ant-layout-header > div:first-child .ant-typography { font-size: 14px !important; }
+}

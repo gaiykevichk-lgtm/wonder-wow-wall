@@ -1,20 +1,22 @@
-import { Form, Input, Button, Card, Typography, Divider, message } from 'antd';
-import { UserOutlined, MailOutlined, LockOutlined, PhoneOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Card, Typography, Divider, message, Tooltip, Checkbox } from 'antd';
+import { UserOutlined, MailOutlined, LockOutlined, PhoneOutlined, GoogleOutlined } from '@ant-design/icons';
+import { PageMeta } from '../../../shared/ui/PageMeta';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useRegisterMutation } from '../api/authApi';
 import { ApiError } from '../../../shared/api';
 
 const { Title, Text } = Typography;
-const BLUE = '#0071e3';
+const ACCENT = '#4CAF50';
 
 export default function RegisterPage() {
   const registerMutation = useRegisterMutation();
   const navigate = useNavigate();
 
-  const onFinish = async (values: { name: string; email: string; phone: string; password: string }) => {
+  const onFinish = async (values: { name: string; email: string; phone: string; password: string; confirmPassword: string; privacyConsent: boolean }) => {
     try {
-      await registerMutation.mutateAsync(values);
+      const { name, email, phone, password } = values;
+      await registerMutation.mutateAsync({ name, email, phone, password });
       message.success('Аккаунт создан!');
       navigate('/account');
     } catch (err) {
@@ -30,10 +32,11 @@ export default function RegisterPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#FBFBFD',
+        background: '#FAFAFA',
         padding: '96px 16px 48px',
       }}
     >
+      <PageMeta title="Регистрация" />
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
@@ -42,15 +45,15 @@ export default function RegisterPage() {
       >
         <Card
           style={{
-            borderRadius: 20,
+            borderRadius: 16,
             boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
             border: 'none',
           }}
         >
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
             <img src="/logo.png" alt="Wonder Wow Wall" style={{ height: 48, marginBottom: 16 }} />
-            <Title level={3} style={{ margin: 0, fontWeight: 600, color: '#1d1d1f' }}>Регистрация</Title>
-            <Text style={{ color: '#86868b' }}>Создайте аккаунт для сохранения проектов</Text>
+            <Title level={3} style={{ margin: 0, fontWeight: 600, color: '#2D2D2D' }}>Регистрация</Title>
+            <Text style={{ color: '#6B7280' }}>Создайте аккаунт для сохранения проектов</Text>
           </div>
 
           <Form layout="vertical" onFinish={onFinish} size="large" requiredMark={false}>
@@ -104,24 +107,68 @@ export default function RegisterPage() {
               <Input.Password prefix={<LockOutlined />} placeholder="Подтвердите пароль" />
             </Form.Item>
 
+            <Form.Item
+              name="privacyConsent"
+              valuePropName="checked"
+              rules={[
+                {
+                  validator: (_, value) =>
+                    value ? Promise.resolve() : Promise.reject(new Error('Необходимо дать согласие')),
+                },
+              ]}
+            >
+              <Checkbox>
+                <span style={{ fontSize: 13, color: '#6B7280' }}>
+                  Я даю согласие на{' '}
+                  <Link to="/privacy-policy" target="_blank" style={{ color: ACCENT }}>
+                    обработку персональных данных
+                  </Link>
+                </span>
+              </Checkbox>
+            </Form.Item>
+
             <Form.Item>
               <Button
                 type="primary"
                 htmlType="submit"
                 block
                 loading={registerMutation.isPending}
-                style={{ background: BLUE, borderColor: BLUE, borderRadius: 980, height: 44 }}
+                style={{ background: ACCENT, borderColor: ACCENT, borderRadius: 8, height: 44 }}
               >
                 Создать аккаунт
               </Button>
             </Form.Item>
           </Form>
 
-          <Divider style={{ margin: '16px 0', fontSize: 13, color: '#999' }}>или</Divider>
+          <Divider style={{ margin: '16px 0', fontSize: 13, color: '#545B66' }}>или</Divider>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+            <Tooltip title="Скоро">
+              <Button
+                disabled
+                block
+                size="large"
+                style={{ borderRadius: 8, height: 44, fontWeight: 500, color: '#6B7280', borderColor: '#E5E7EB' }}
+                icon={<GoogleOutlined />}
+              >
+                Войти через Google
+              </Button>
+            </Tooltip>
+            <Tooltip title="Скоро">
+              <Button
+                disabled
+                block
+                size="large"
+                style={{ borderRadius: 8, height: 44, fontWeight: 500, color: '#6B7280', borderColor: '#E5E7EB' }}
+              >
+                Войти через VK
+              </Button>
+            </Tooltip>
+          </div>
 
           <div style={{ textAlign: 'center' }}>
-            <Text style={{ color: '#86868b' }}>Уже есть аккаунт? </Text>
-            <Link to="/login" style={{ color: BLUE, fontWeight: 600 }}>
+            <Text style={{ color: '#6B7280' }}>Уже есть аккаунт? </Text>
+            <Link to="/login" style={{ color: ACCENT, fontWeight: 600 }}>
               Войти
             </Link>
           </div>

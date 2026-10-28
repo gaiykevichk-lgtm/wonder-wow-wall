@@ -4,7 +4,7 @@ export interface SubscriptionPlan {
   desc: string;
   price: number;
   period: string;
-  overlaysPerMonth: number; // 0 = unlimited
+  areaLimitM2: number; // 0 = unlimited
   features: string[];
   popular: boolean;
 }

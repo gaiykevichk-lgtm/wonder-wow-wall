@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 from httpx import AsyncClient, ASGITransport
 from app.main import app
@@ -107,6 +109,36 @@ class TestCatalog:
         assert resp.status_code == 200
         assert resp.json()["total"] == 1
 
+    @pytest.mark.asyncio
+    async def test_filter_by_style(self, client):
+        resp = await client.get("/api/designs?style=Природа")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] >= 1
+        assert all(item["style"] == "Природа" for item in data["items"])
+
+    @pytest.mark.asyncio
+    async def test_filter_by_is_new(self, client):
+        resp = await client.get("/api/designs?is_new=true")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] >= 1
+        assert all(item["is_new"] is True for item in data["items"])
+
+    @pytest.mark.asyncio
+    async def test_filter_by_color(self, client):
+        resp = await client.get("/api/designs?color=Зелёный")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] >= 1
+
+    @pytest.mark.asyncio
+    async def test_combined_filters(self, client):
+        resp = await client.get("/api/designs?style=Природа&is_new=true")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert all(item["style"] == "Природа" and item["is_new"] is True for item in data["items"])
+
 
 class TestSubscriptions:
     @pytest.mark.asyncio
@@ -169,6 +201,60 @@ class TestOrders:
         assert len(resp.json()) >= 1
 
 
+    @pytest.mark.asyncio
+    async def test_create_order_with_installation_date(self, client):
+        from datetime import timedelta
+        token = await _register_and_get_token(client)
+        headers = {"Authorization": f"Bearer {token}"}
+        future_date = (datetime.utcnow() + timedelta(days=7)).replace(hour=14, minute=0, second=0, microsecond=0)
+
+        resp = await client.post("/api/orders", json={
+            "items": [{"design_id": "d-1", "design_name": "Test", "size_key": "300x300", "quantity": 1, "unit_price": 1000}],
+            "address": {"city": "Москва", "street": "Тверская", "building": "10"},
+            "installation_date": future_date.isoformat(),
+        }, headers=headers)
+        assert resp.status_code == 201
+        assert resp.json()["installation_date"] is not None
+
+    @pytest.mark.asyncio
+    async def test_create_order_past_installation_date_rejected(self, client):
+        token = await _register_and_get_token(client)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        resp = await client.post("/api/orders", json={
+            "items": [{"design_id": "d-1", "design_name": "Test", "size_key": "300x300", "quantity": 1, "unit_price": 1000}],
+            "address": {"city": "Москва", "street": "Тверская", "building": "10"},
+            "installation_date": "2020-01-01T14:00:00",
+        }, headers=headers)
+        assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_create_order_off_hours_installation_date_rejected(self, client):
+        from datetime import timedelta
+        token = await _register_and_get_token(client)
+        headers = {"Authorization": f"Bearer {token}"}
+        future_date = (datetime.utcnow() + timedelta(days=7)).replace(hour=3, minute=0, second=0, microsecond=0)
+
+        resp = await client.post("/api/orders", json={
+            "items": [{"design_id": "d-1", "design_name": "Test", "size_key": "300x300", "quantity": 1, "unit_price": 1000}],
+            "address": {"city": "Москва", "street": "Тверская", "building": "10"},
+            "installation_date": future_date.isoformat(),
+        }, headers=headers)
+        assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_create_order_without_installation_date(self, client):
+        token = await _register_and_get_token(client)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        resp = await client.post("/api/orders", json={
+            "items": [{"design_id": "d-1", "design_name": "Test", "size_key": "300x300", "quantity": 1, "unit_price": 1000}],
+            "address": {"city": "Москва", "street": "Тверская", "building": "10"},
+        }, headers=headers)
+        assert resp.status_code == 201
+        assert resp.json()["installation_date"] is None
+
+
 class TestCalculator:
     @pytest.mark.asyncio
     async def test_calculate(self, client):
@@ -190,3 +276,54 @@ class TestContacts:
         })
         assert resp.status_code == 200
         assert resp.json()["status"] == "sent"
+
+
+class TestForgotPassword:
+    @pytest.mark.asyncio
+    async def test_forgot_password_returns_sent(self, client):
+        # Register a user first
+        await client.post("/api/auth/register", json={
+            "name": "Test", "email": "forgot@test.com", "phone": "+7999", "password": "pass123",
+        })
+        resp = await client.post("/api/auth/forgot-password", json={"email": "forgot@test.com"})
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "sent"
+
+    @pytest.mark.asyncio
+    async def test_forgot_password_nonexistent_email_still_sent(self, client):
+        resp = await client.post("/api/auth/forgot-password", json={"email": "noone@test.com"})
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "sent"
+
+    @pytest.mark.asyncio
+    async def test_reset_password_full_flow(self, client):
+        from app.application.user.use_cases import ForgotPassword as FP
+        # Register
+        await client.post("/api/auth/register", json={
+            "name": "Reset", "email": "reset@test.com", "phone": "+7999", "password": "oldpass",
+        })
+        # Request token
+        await client.post("/api/auth/forgot-password", json={"email": "reset@test.com"})
+        # Get token from memory
+        token = FP._tokens.get("reset@test.com", {}).get("token", "")
+        assert token != ""
+        # Reset
+        resp = await client.post("/api/auth/reset-password", json={
+            "email": "reset@test.com", "token": token, "new_password": "newpass123",
+        })
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "reset"
+        # Login with new password
+        resp = await client.post("/api/auth/login", json={"email": "reset@test.com", "password": "newpass123"})
+        assert resp.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_reset_password_invalid_token(self, client):
+        await client.post("/api/auth/register", json={
+            "name": "Bad", "email": "bad@test.com", "phone": "+7999", "password": "pass123",
+        })
+        await client.post("/api/auth/forgot-password", json={"email": "bad@test.com"})
+        resp = await client.post("/api/auth/reset-password", json={
+            "email": "bad@test.com", "token": "000000", "new_password": "newpass",
+        })
+        assert resp.status_code == 400

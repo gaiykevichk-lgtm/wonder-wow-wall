@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 from app.application.order.use_cases import CreateOrder, GetOrderHistory, GetOrderDetails, CalculateWallCost
 from app.infrastructure.persistence.repositories.memory import InMemoryOrderRepository
@@ -38,6 +40,29 @@ class TestCreateOrder:
         )
         assert len(order.items) == 2
         assert order.total == 3000 + 2000
+
+
+    @pytest.mark.asyncio
+    async def test_create_with_installation_date(self, order_repo):
+        uc = CreateOrder(order_repo)
+        dt = datetime(2026, 5, 20, 14, 0)
+        order = await uc.execute(
+            user_id="user-1",
+            items=[{"design_id": "d1", "design_name": "Test", "size_key": "300x300", "quantity": 1, "unit_price": 1000}],
+            address={"city": "Москва", "street": "Тверская", "building": "10"},
+            installation_date=dt,
+        )
+        assert order.installation_date == dt
+
+    @pytest.mark.asyncio
+    async def test_create_without_installation_date(self, order_repo):
+        uc = CreateOrder(order_repo)
+        order = await uc.execute(
+            user_id="user-1",
+            items=[{"design_id": "d1", "design_name": "Test", "size_key": "300x300", "quantity": 1, "unit_price": 1000}],
+            address={"city": "Москва", "street": "Тверская", "building": "10"},
+        )
+        assert order.installation_date is None
 
 
 class TestGetOrderHistory:

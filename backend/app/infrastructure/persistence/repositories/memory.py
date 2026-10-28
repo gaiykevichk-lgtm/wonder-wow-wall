@@ -4,16 +4,54 @@ These will be replaced by SQLAlchemy implementations when connected to PostgreSQ
 """
 
 from datetime import datetime
+from typing import Callable
 from uuid import uuid4
+from uuid import UUID
 
 from app.domain.catalog.entities import Design, Category, DesignReview
-from app.domain.catalog.repositories import DesignRepository, CategoryRepository, ReviewRepository
-from app.domain.order.entities import Order
+from app.domain.catalog.panel import Panel
+from app.domain.catalog.value_objects import PanelSize
+from app.domain.catalog.texture import Texture
+from app.domain.catalog.texture_color import TextureColor
+from app.domain.catalog.variant_image import VariantImage
+from app.domain.catalog.panel_variant import PanelVariant
+from app.domain.catalog.texture_visualization import TextureVisualization
+from app.domain.catalog.recommendation import (
+    Recommendation,
+    RecommendationSourceType,
+    RecommendationTargetType,
+)
+from app.domain.catalog.repositories import (
+    DesignRepository, CategoryRepository, ReviewRepository, PanelRepository,
+    TextureRepository, TextureColorRepository, VariantImageRepository,
+    RecommendationFilters, RecommendationRepository, PanelVariantRepository,
+    TextureVisualizationRepository,
+)
+from app.domain.order.entities import Order, OrderNote
+from app.domain.order.filters import OrderFilters
 from app.domain.order.repositories import OrderRepository
 from app.domain.subscription.entities import Subscription
 from app.domain.subscription.repositories import SubscriptionRepository
 from app.domain.user.entities import User
+from app.domain.user.filters import UserFilters
 from app.domain.user.repositories import UserRepository
+from app.domain.user.value_objects import UserRole
+from app.domain.media.entities import MediaAsset
+from app.domain.media.repositories import MediaAssetRepository
+from app.domain.shop.banner import Banner, BannerPosition
+from app.domain.shop.repositories import (
+    BannerRepository,
+    ShopSettingsRepository,
+)
+from app.domain.shop.settings import ShopSettings
+from app.domain.subscription.entities import SubscriptionPlan
+from app.domain.subscription.repositories import SubscriptionPlanRepository
+from app.domain.audit.entities import AuditEntry
+from app.domain.audit.filters import AuditFilters
+from app.domain.audit.repositories import AuditEntryRepository
+
+# Import PanelVariant repository
+from app.infrastructure.persistence.panel_variant_repo import InMemoryPanelVariantRepository
 
 
 # ─── Catalog ─────────────────────────────────────────────────────────
@@ -24,13 +62,28 @@ class InMemoryDesignRepository(DesignRepository):
 
     async def list_designs(
         self, category_id=None, search=None, sort_by="name", offset=0, limit=20,
+        *, color=None, style=None, is_new=None, is_published=True,
     ):
         result = list(self._designs)
+        # Phase 7A — public catalog passes `is_published=True`; admin
+        # passes `None` to see everything. Filter is applied first so
+        # subsequent count/sort work on the visible-set, mirroring the
+        # SQL repo's `WHERE is_published = ?` clause.
+        if is_published is not None:
+            result = [d for d in result if d.is_published == is_published]
         if category_id:
             result = [d for d in result if d.category_id == category_id]
         if search:
             q = search.lower()
             result = [d for d in result if q in d.name.lower() or q in d.description.lower()]
+        if color:
+            color_lower = color.lower()
+            result = [d for d in result if any(c.name.lower() == color_lower for c in d.colors)]
+        if style:
+            style_lower = style.lower()
+            result = [d for d in result if d.style.lower() == style_lower]
+        if is_new is not None:
+            result = [d for d in result if d.is_new == is_new]
         if sort_by == "price":
             result.sort(key=lambda d: d.price)
         elif sort_by == "rating":
@@ -46,16 +99,77 @@ class InMemoryDesignRepository(DesignRepository):
     async def get_by_slug(self, slug):
         return next((d for d in self._designs if d.slug == slug), None)
 
+    async def update(self, design):
+        self._designs = [d if d.id != design.id else design for d in self._designs]
+        return design
+
+    async def create(self, design):
+        # Defence-in-depth — match the SQL `UNIQUE(slug)` so a test
+        # passing in-memory cannot surprise postgres. Same pattern as
+        # `InMemoryPanelRepository.create` (Phase 7B).
+        if any(d.slug == design.slug for d in self._designs):
+            raise ValueError(f"Design.slug collision: {design.slug}")
+        self._designs.append(design)
+        return design
+
+    async def delete(self, design_id):
+        before = len(self._designs)
+        self._designs = [d for d in self._designs if d.id != design_id]
+        return len(self._designs) != before
+
 
 class InMemoryCategoryRepository(CategoryRepository):
-    def __init__(self, categories: list[Category] | None = None):
+    def __init__(
+        self,
+        categories: list[Category] | None = None,
+        # Optional callback returning the live design list for
+        # `count_designs` — mirrors the `users_source` trick on
+        # `InMemoryOrderRepository`. Allows the singleton container
+        # to wire counts without coupling the repo to another repo.
+        designs_source: Callable[[], list[Design]] | None = None,
+    ):
         self._categories: list[Category] = categories or []
+        self._designs_source = designs_source
 
     async def list_all(self):
         return list(self._categories)
 
     async def get_by_id(self, category_id):
         return next((c for c in self._categories if c.id == category_id), None)
+
+    async def get_by_slug(self, slug):
+        return next((c for c in self._categories if c.slug == slug), None)
+
+    async def create(self, category):
+        if any(c.slug == category.slug for c in self._categories):
+            raise ValueError(f"Category.slug collision: {category.slug}")
+        self._categories.append(category)
+        return category
+
+    async def update(self, category):
+        for i, c in enumerate(self._categories):
+            if c.id == category.id:
+                if any(
+                    other.slug == category.slug and other.id != category.id
+                    for other in self._categories
+                ):
+                    raise ValueError(f"Category.slug collision: {category.slug}")
+                self._categories[i] = category
+                return category
+        raise LookupError(f"Category {category.id} not found")
+
+    async def delete(self, category_id):
+        before = len(self._categories)
+        self._categories = [c for c in self._categories if c.id != category_id]
+        return len(self._categories) != before
+
+    async def count_designs(self, category_id):
+        # If a designs_source was wired in, use the live list. Otherwise
+        # fall back to 0 — tests that don't care about cascade-guard
+        # behaviour shouldn't be forced to seed designs.
+        if self._designs_source is None:
+            return 0
+        return sum(1 for d in self._designs_source() if d.category_id == category_id)
 
 
 class InMemoryReviewRepository(ReviewRepository):
@@ -75,9 +189,15 @@ class InMemoryReviewRepository(ReviewRepository):
 # ─── Order ───────────────────────────────────────────────────────────
 
 class InMemoryOrderRepository(OrderRepository):
-    def __init__(self):
+    def __init__(self, users_source: Callable[[], list[User]] | None = None):
         self._orders: list[Order] = []
         self._counter = 0
+        # Optional callback returning the live user list. Used ONLY by
+        # `find_paginated` when the admin searches by email/name — the
+        # SQL repo achieves the same via a JOIN. Keeping it optional means
+        # existing constructions (`InMemoryOrderRepository()`) keep working
+        # and customer-facing methods stay free of user-repo coupling.
+        self._users_source = users_source
 
     async def create(self, order):
         self._orders.append(order)
@@ -95,9 +215,54 @@ class InMemoryOrderRepository(OrderRepository):
         self._orders = [o if o.id != order.id else order for o in self._orders]
         return order
 
+    async def add_note(self, order_id: str, note: OrderNote) -> OrderNote:
+        # In-memory variant: locate the parent and append to its `notes`
+        # list. SQL repo persists into a separate table; semantics are
+        # equivalent — the next `get_by_id` returns the order with the
+        # new note attached.
+        parent = next((o for o in self._orders if o.id == order_id), None)
+        if parent is None:
+            raise ValueError(f"Order {order_id} not found")
+        # `Order.add_note` already populated the parent's notes list when
+        # the use case called it; the SQL repo needs an explicit insert.
+        # Avoid duplicating the entry if it's already there.
+        if not any(n.id == note.id for n in parent.notes):
+            parent.notes.append(note)
+        return note
+
     async def generate_order_number(self):
         self._counter += 1
         return f"WW-{datetime.utcnow().year}-{self._counter:03d}"
+
+    async def find_paginated(self, filters: OrderFilters, page: int = 1, size: int = 50):
+        result = list(self._orders)
+        if filters.status is not None:
+            result = [o for o in result if o.status == filters.status]
+        if filters.user_id is not None:
+            result = [o for o in result if o.user_id == filters.user_id]
+        if filters.date_from is not None:
+            result = [o for o in result if o.created_at >= filters.date_from]
+        if filters.date_to is not None:
+            result = [o for o in result if o.created_at < filters.date_to]
+        if filters.search is not None:
+            q = filters.search.lower()
+            matching_user_ids: set[str] = set()
+            if self._users_source is not None:
+                for u in self._users_source():
+                    if q in u.email.lower() or q in u.name.lower():
+                        matching_user_ids.add(u.id)
+            result = [
+                o for o in result
+                if q in o.number.lower() or o.user_id in matching_user_ids
+            ]
+        # Stable newest-first ordering — the SQL repo uses the same
+        # `ORDER BY created_at DESC`. Equality of `created_at` falls back
+        # to insertion order via Python's stable sort, which is fine for
+        # tests since fakes typically use distinct timestamps.
+        result.sort(key=lambda o: o.created_at, reverse=True)
+        total = len(result)
+        offset = (page - 1) * size
+        return result[offset:offset + size], total
 
 
 # ─── Subscription ────────────────────────────────────────────────────
@@ -120,12 +285,30 @@ class InMemorySubscriptionRepository(SubscriptionRepository):
         self._subs = [s if s.id != subscription.id else subscription for s in self._subs]
         return subscription
 
+    async def count_active_by_plan(self, plan_id: str) -> int:
+        # Phase 8C — `DeleteSubscriptionPlanAdmin` cascade-guard.
+        # Mirrors the SQL `SELECT COUNT(*) WHERE plan_id = ? AND status = 'active'`.
+        return sum(
+            1 for s in self._subs
+            if s.plan_id == plan_id and s.status.value == "active"
+        )
+
 
 # ─── User ────────────────────────────────────────────────────────────
 
 class InMemoryUserRepository(UserRepository):
     def __init__(self):
         self._users: list[User] = []
+        # Seed test admin user for development
+        self._users.append(User(
+            id="admin-root",
+            email="admin@wow.ru",
+            password_hash="$2b$12$97qs4Zbp/G.T7GJ3FEBYc.ayTINN6YmIPVC/jiPJ6iWqPO8HR8dta",  # admin123
+            name="Admin",
+            phone="",
+            role=UserRole.ADMIN,
+            is_blocked=False,
+        ))
 
     async def create(self, user):
         self._users.append(user)
@@ -140,3 +323,706 @@ class InMemoryUserRepository(UserRepository):
     async def update(self, user):
         self._users = [u if u.id != user.id else user for u in self._users]
         return user
+
+    async def count_admins(self):
+        return sum(1 for u in self._users if u.role == UserRole.ADMIN)
+
+    # ─── Phase 5 — admin user list ───────────────────────────────────
+
+    async def count_active_admins(self):
+        # `is_blocked` defaults to False on legacy seeded users so the
+        # count stays accurate even before the migration runs in tests.
+        return sum(
+            1 for u in self._users
+            if u.role == UserRole.ADMIN and not u.is_blocked
+        )
+
+    async def find_paginated(self, filters: UserFilters, page: int = 1, size: int = 50):
+        result = list(self._users)
+        if filters.role is not None:
+            result = [u for u in result if u.role == filters.role]
+        if filters.is_blocked is not None:
+            result = [u for u in result if u.is_blocked == filters.is_blocked]
+        if filters.search is not None:
+            q = filters.search.lower()
+            result = [
+                u for u in result
+                if q in u.email.lower()
+                or q in u.name.lower()
+                or q in (u.phone or "").lower()
+            ]
+        # Newest-first — matches orders. Stable sort preserves insertion
+        # order for ties (test fixtures usually use distinct timestamps).
+        result.sort(key=lambda u: u.created_at, reverse=True)
+        total = len(result)
+        offset = (page - 1) * size
+        return result[offset:offset + size], total
+
+
+# ─── Media (Phase 6) ─────────────────────────────────────────────────
+
+class InMemoryMediaAssetRepository(MediaAssetRepository):
+    """List-backed mirror of `SqlMediaAssetRepository`.
+
+    Used by the test suite (`USE_MEMORY_REPOS=true`) so admin-media
+    endpoint tests can run without a postgres instance. Mutations operate
+    on the same singleton as the API (see `container.py`); tests reset
+    `_assets` per-test to avoid cross-pollution — same pattern as
+    `_mem_user_repo._users.clear()`.
+    """
+
+    def __init__(self):
+        self._assets: list[MediaAsset] = []
+
+    async def create(self, asset: MediaAsset) -> MediaAsset:
+        # Defend the UNIQUE(path) constraint that the SQL repo enforces
+        # at the DB level — keeps the two implementations behaviourally
+        # equivalent so a test that passes in-memory doesn't surprise
+        # the postgres deployment.
+        if any(a.path == asset.path for a in self._assets):
+            raise ValueError(f"MediaAsset.path collision: {asset.path}")
+        self._assets.append(asset)
+        return asset
+
+    async def get_by_id(self, asset_id: str) -> MediaAsset | None:
+        return next((a for a in self._assets if a.id == asset_id), None)
+
+    async def delete(self, asset_id: str) -> bool:
+        before = len(self._assets)
+        self._assets = [a for a in self._assets if a.id != asset_id]
+        return len(self._assets) != before
+
+
+# ─── Panels (Phase 7B) ──────────────────────────────────────────────
+
+class InMemoryPanelRepository(PanelRepository):
+    """List-backed mirror of `SqlPanelRepository`.
+
+    Allows repeated form slugs; only the panel ID must be unique.
+    """
+
+    def __init__(self, panels: list[Panel] | None = None):
+        self._panels: list[Panel] = panels if panels is not None else []
+        # Seed test panels for Phase 12
+        if panels is None:
+            self._panels = [
+                Panel(
+                    id="panel-30x30",
+                    name="Квадрат 30×30",
+                    slug="kvadrat-30x30",
+                    size=PanelSize(300, 300, "30×30 см"),
+                    base_price=1200,
+                    description="Квадратная панель 30×30 см",
+                    is_active=True,
+                ),
+                Panel(
+                    id="panel-30x60",
+                    name="Прямоугольник 30×60",
+                    slug="pryamougolnik-30x60",
+                    size=PanelSize(300, 600, "30×60 см"),
+                    base_price=1800,
+                    description="Прямоугольная панель 30×60 см",
+                    is_active=True,
+                ),
+                Panel(
+                    id="panel-60x60",
+                    name="Квадрат 60×60",
+                    slug="kvadrat-60x60",
+                    size=PanelSize(600, 600, "60×60 см"),
+                    base_price=2400,
+                    description="Квадратная панель 60×60 см",
+                    is_active=True,
+                ),
+            ]
+
+    async def list_panels(
+        self,
+        *,
+        include_inactive: bool = False,
+        is_active: bool | None = None,
+        search: str | None = None,
+        offset: int = 0,
+        limit: int = 100,
+    ) -> tuple[list[Panel], int]:
+        rows = self._panels if include_inactive else [
+            p for p in self._panels if p.is_active
+        ]
+        # Phase 7B remediation 2 (FE-B) — explicit `is_active=True/False`
+        # narrows further on top of `include_inactive`. Mutually consistent:
+        # the admin's «Inactive only» tab passes `include_inactive=True`
+        # (use case keeps that hard-coded) AND `is_active=False`.
+        if is_active is not None:
+            rows = [p for p in rows if p.is_active == is_active]
+        if search:
+            needle = search.lower()
+            rows = [
+                p for p in rows
+                if needle in p.name.lower() or needle in p.slug.lower()
+            ]
+        # Newest-first matches the admin table default sort. Stable sort
+        # preserves insertion order for ties.
+        ordered = sorted(rows, key=lambda p: p.created_at, reverse=True)
+        total = len(ordered)
+        return ordered[offset:offset + limit], total
+
+    async def get_by_id(self, panel_id: str) -> Panel | None:
+        return next((p for p in self._panels if p.id == panel_id), None)
+
+    async def get_for_update(self, panel_id: str) -> Panel | None:
+        return await self.get_by_id(panel_id)
+
+    async def list_all(self, is_active=None, offset=0, limit=100):
+        rows = list(self._panels)
+        if is_active is not None:
+            rows = [panel for panel in rows if panel.is_active == is_active]
+        return rows[offset:offset + limit], len(rows)
+
+    async def list_active(self):
+        return [panel for panel in self._panels if panel.is_active]
+
+    async def get_by_slug(self, slug: str) -> Panel | None:
+        return next((p for p in sorted(self._panels, key=lambda item: (item.created_at, item.id)) if p.slug == slug), None)
+
+    async def create(self, panel: Panel) -> Panel:
+        if any(p.id == panel.id for p in self._panels):
+            raise ValueError(f"Panel.id collision: {panel.id}")
+        self._panels.append(panel)
+        return panel
+
+    async def update(self, panel: Panel) -> Panel:
+        # Replace by id; raise if not present so callers can rely on the
+        # postcondition "the row I asked to update is now stored".
+        for i, p in enumerate(self._panels):
+            if p.id == panel.id:
+                self._panels[i] = panel
+                return panel
+        raise LookupError(f"Panel {panel.id} not found")
+
+    async def delete(self, panel_id: str) -> bool:
+        before = len(self._panels)
+        self._panels = [p for p in self._panels if p.id != panel_id]
+        return len(self._panels) != before
+
+
+# ─── Textures (Phase 12) ────────────────────────────────────────────
+
+class InMemoryTextureRepository(TextureRepository):
+    def __init__(self, textures: list[Texture] | None = None):
+        self._textures: list[Texture] = textures or []
+        # Seed test textures for Phase 12
+        if not textures:
+            self._textures = [
+                Texture(id="tex-1", name="Дуб", slug="dub", swatch_image="", sort_order=1, is_active=True),
+                Texture(id="tex-2", name="Сосна", slug="sosna", swatch_image="", sort_order=2, is_active=True),
+                Texture(id="tex-3", name="Орех", slug="orekh", swatch_image="", sort_order=3, is_active=True),
+                Texture(id="tex-4", name="Мрамор", slug="mramor", swatch_image="", sort_order=4, is_active=True),
+                Texture(id="tex-5", name="Бетон", slug="beton", swatch_image="", sort_order=5, is_active=True),
+            ]
+
+    async def get_by_id(self, texture_id: str) -> Texture | None:
+        return next((t for t in self._textures if t.id == texture_id), None)
+
+    async def get_by_slug(self, slug: str) -> Texture | None:
+        return next((t for t in self._textures if t.slug == slug), None)
+
+    async def list_all(self, *, include_inactive: bool = False) -> list[Texture]:
+        rows = self._textures if include_inactive else [
+            t for t in self._textures if t.is_active
+        ]
+        return sorted(rows, key=lambda t: t.sort_order)
+
+    async def create(self, texture: Texture) -> Texture:
+        if any(t.slug == texture.slug for t in self._textures):
+            raise ValueError(f"Texture.slug collision: {texture.slug}")
+        self._textures.append(texture)
+        return texture
+
+    async def update(self, texture: Texture) -> Texture:
+        for i, t in enumerate(self._textures):
+            if t.id == texture.id:
+                if any(
+                    other.slug == texture.slug and other.id != texture.id
+                    for other in self._textures
+                ):
+                    raise ValueError(f"Texture.slug collision: {texture.slug}")
+                self._textures[i] = texture
+                return texture
+        raise LookupError(f"Texture {texture.id} not found")
+
+    async def delete(self, texture_id: str) -> bool:
+        before = len(self._textures)
+        self._textures = [t for t in self._textures if t.id != texture_id]
+        return len(self._textures) != before
+
+
+class InMemoryTextureColorRepository(TextureColorRepository):
+    def __init__(self, colors: list[TextureColor] | None = None):
+        self._colors: list[TextureColor] = colors or []
+
+    async def get_by_id(self, color_id: str) -> TextureColor | None:
+        return next((c for c in self._colors if c.id == color_id), None)
+
+    async def list_by_texture(
+        self, texture_id: str, *, include_inactive: bool = False,
+    ) -> list[TextureColor]:
+        rows = [c for c in self._colors if c.texture_id == texture_id]
+        if not include_inactive:
+            rows = [c for c in rows if c.is_active]
+        return sorted(rows, key=lambda c: c.sort_order)
+
+    async def create(self, color: TextureColor) -> TextureColor:
+        self._colors.append(color)
+        return color
+
+    async def update(self, color: TextureColor) -> TextureColor:
+        for i, c in enumerate(self._colors):
+            if c.id == color.id:
+                self._colors[i] = color
+                return color
+        raise LookupError(f"TextureColor {color.id} not found")
+
+    async def delete(self, color_id: str) -> bool:
+        before = len(self._colors)
+        self._colors = [c for c in self._colors if c.id != color_id]
+        return len(self._colors) != before
+
+
+class InMemoryVariantImageRepository(VariantImageRepository):
+    def __init__(self, variants: list[VariantImage] | None = None):
+        self._variants: list[VariantImage] = variants or []
+
+    async def get_by_combination(
+        self, design_id: str, texture_id: str, color_id: str,
+    ) -> VariantImage | None:
+        return next(
+            (v for v in self._variants
+             if v.design_id == design_id
+             and v.texture_id == texture_id
+             and v.color_id == color_id),
+            None,
+        )
+
+    async def list_by_design(self, design_id: str) -> list[VariantImage]:
+        return [v for v in self._variants if v.design_id == design_id]
+
+    async def list_by_texture(self, texture_id: str) -> list[VariantImage]:
+        return [v for v in self._variants if v.texture_id == texture_id]
+
+    async def create(self, variant: VariantImage) -> VariantImage:
+        existing = await self.get_by_combination(
+            variant.design_id, variant.texture_id, variant.color_id,
+        )
+        if existing:
+            raise ValueError(
+                f"VariantImage combination collision: "
+                f"({variant.design_id}, {variant.texture_id}, {variant.color_id})"
+            )
+        self._variants.append(variant)
+        return variant
+
+    async def delete(self, variant_id: str) -> bool:
+        before = len(self._variants)
+        self._variants = [v for v in self._variants if v.id != variant_id]
+        return len(self._variants) != before
+
+
+# ─── Panel Variant (Phase 12) ─────────────────────────────────────
+
+class InMemoryPanelVariantRepository(PanelVariantRepository):
+    """In-memory store for PanelVariant entities."""
+
+    def __init__(self) -> None:
+        self._variants: list[PanelVariant] = []
+
+    async def create(self, variant: PanelVariant) -> PanelVariant:
+        # Check for duplicate combination
+        for existing in self._variants:
+            if (
+                existing.panel_id == variant.panel_id
+                and existing.texture_id == variant.texture_id
+                and self._color_match(existing, variant)
+            ):
+                raise ValueError(
+                    f"Panel variant already exists for "
+                    f"panel={variant.panel_id}, texture={variant.texture_id}, "
+                    f"color={variant.color_id or variant.color_hex}"
+                )
+        self._variants.append(variant)
+        return variant
+
+    async def get_by_id(self, variant_id: str) -> PanelVariant | None:
+        for v in self._variants:
+            if v.id == variant_id:
+                return v
+        return None
+
+    async def list_by_panel(
+        self, panel_id: str, is_active: bool | None = None,
+    ) -> list[PanelVariant]:
+        results = [v for v in self._variants if v.panel_id == panel_id]
+        if is_active is not None:
+            results = [v for v in results if v.is_active == is_active]
+        return results
+
+    async def list_all(
+        self, is_active: bool | None = None, offset: int = 0, limit: int = 100,
+    ) -> tuple[list[PanelVariant], int]:
+        results = list(self._variants)
+        if is_active is not None:
+            results = [v for v in results if v.is_active == is_active]
+        total = len(results)
+        return results[offset : offset + limit], total
+
+    async def update(self, variant: PanelVariant) -> PanelVariant:
+        for i, existing in enumerate(self._variants):
+            if existing.id == variant.id:
+                self._variants[i] = variant
+                return variant
+        raise ValueError(f"PanelVariant {variant.id} not found")
+
+    async def delete(self, variant_id: str) -> bool:
+        for i, v in enumerate(self._variants):
+            if v.id == variant_id:
+                self._variants.pop(i)
+                return True
+        return False
+
+    async def delete_by_panel(self, panel_id: str) -> int:
+        original_count = len(self._variants)
+        self._variants = [v for v in self._variants if v.panel_id != panel_id]
+        return original_count - len(self._variants)
+
+    def _color_match(self, a: PanelVariant, b: PanelVariant) -> bool:
+        if a.color_id and b.color_id:
+            return a.color_id == b.color_id
+        if a.color_hex and b.color_hex:
+            return a.color_hex.lower() == b.color_hex.lower()
+        return False
+
+
+# ─── Shop settings (Phase 8A) ─────────────────────────────────────────
+
+class InMemoryShopSettingsRepository(ShopSettingsRepository):
+    """Singleton-row mirror of `SqlShopSettingsRepository`.
+
+    Holds exactly one `ShopSettings` instance; default-constructed if
+    not seeded explicitly. Test fixtures can mutate the row in-place
+    via the public `_settings` attribute (mirroring the other repos
+    where tests poke `_panels.append(...)` etc.).
+    """
+
+    def __init__(self, settings: ShopSettings | None = None):
+        self._settings: ShopSettings = settings or ShopSettings()
+
+    async def get(self) -> ShopSettings:
+        return self._settings
+
+    async def update(self, settings: ShopSettings) -> ShopSettings:
+        # Replace in place so other holders of the singleton see the new
+        # values (the SQL counterpart has no such issue — Postgres is
+        # the single source of truth).
+        self._settings = settings
+        return self._settings
+
+
+# ─── Banners (Phase 8B) ─────────────────────────────────────────────
+
+
+class InMemoryBannerRepository(BannerRepository):
+    """List-backed mirror of `SqlBannerRepository`.
+
+    Uses a singleton `_banners` list (mutated in place) so test fixtures
+    can poke `_mem_banner_repo._banners.append(...)` and the API sees
+    the new row — same pattern as `_mem_panel_repo`.
+    """
+
+    def __init__(self, banners: list[Banner] | None = None):
+        self._banners: list[Banner] = banners or []
+
+    async def list_banners(
+        self,
+        *,
+        position: BannerPosition | None = None,
+        active_only: bool = False,
+    ) -> list[Banner]:
+        rows = list(self._banners)
+        if position is not None:
+            rows = [b for b in rows if b.position == position]
+        if active_only:
+            rows = [b for b in rows if b.is_active]
+        # Stable sort: priority asc, then created_at asc (insertion order
+        # for ties). Matches the SQL `ORDER BY priority, created_at`.
+        rows.sort(key=lambda b: (b.priority, b.created_at))
+        return rows
+
+    async def get_by_id(self, banner_id: str) -> Banner | None:
+        return next((b for b in self._banners if b.id == banner_id), None)
+
+    async def create(self, banner: Banner) -> Banner:
+        self._banners.append(banner)
+        return banner
+
+    async def update(self, banner: Banner) -> Banner:
+        for i, b in enumerate(self._banners):
+            if b.id == banner.id:
+                self._banners[i] = banner
+                return banner
+        raise LookupError(f"Banner {banner.id} not found")
+
+    async def delete(self, banner_id: str) -> bool:
+        before = len(self._banners)
+        self._banners = [b for b in self._banners if b.id != banner_id]
+        return len(self._banners) != before
+
+
+# ─── Subscription plans (Phase 8C) ──────────────────────────────────
+
+
+class InMemorySubscriptionPlanRepository(SubscriptionPlanRepository):
+    """List-backed mirror of `SqlSubscriptionPlanRepository`.
+
+    Defends the SQL `PRIMARY KEY (id)` with an explicit collision check
+    in `create` so test seeding cannot surprise postgres. Same posture
+    as `InMemoryPanelRepository.create` (Phase 7B).
+    """
+
+    def __init__(self, plans: list[SubscriptionPlan] | None = None):
+        self._plans: list[SubscriptionPlan] = plans or []
+
+    async def list_plans(
+        self, *, active_only: bool = False,
+    ) -> list[SubscriptionPlan]:
+        rows = list(self._plans)
+        if active_only:
+            rows = [p for p in rows if p.is_active]
+        rows.sort(key=lambda p: p.sort_order)
+        return rows
+
+    async def get_by_id(self, plan_id: str) -> SubscriptionPlan | None:
+        return next((p for p in self._plans if p.id == plan_id), None)
+
+    async def create(self, plan: SubscriptionPlan) -> SubscriptionPlan:
+        if any(p.id == plan.id for p in self._plans):
+            raise ValueError(f"SubscriptionPlan id collision: {plan.id}")
+        self._plans.append(plan)
+        return plan
+
+    async def update(self, plan: SubscriptionPlan) -> SubscriptionPlan:
+        for i, p in enumerate(self._plans):
+            if p.id == plan.id:
+                self._plans[i] = plan
+                return plan
+        raise LookupError(f"SubscriptionPlan {plan.id} not found")
+
+    async def delete(self, plan_id: str) -> bool:
+        before = len(self._plans)
+        self._plans = [p for p in self._plans if p.id != plan_id]
+        return len(self._plans) != before
+
+
+# ─── Audit log (Phase 9) ────────────────────────────────────────────
+
+class InMemoryAuditEntryRepository(AuditEntryRepository):
+    """List-backed mirror of `SqlAuditEntryRepository`.
+
+    `_entries` is the seed/inspection backdoor mirrored across the
+    other in-memory repos in this file. The filter implementation
+    mirrors the SQL one literally so a regression in either is caught
+    by the shared use-case tests.
+    """
+
+    def __init__(self, entries: list[AuditEntry] | None = None):
+        self._entries: list[AuditEntry] = entries or []
+
+    async def append(self, entry: AuditEntry) -> AuditEntry:
+        self._entries.append(entry)
+        return entry
+
+    async def find_paginated(
+        self,
+        filters: AuditFilters,
+        *,
+        offset: int = 0,
+        limit: int = 50,
+    ) -> tuple[list[AuditEntry], int]:
+        rows = list(self._entries)
+        if filters.action is not None:
+            rows = [r for r in rows if r.action == filters.action]
+        if filters.actor_id is not None:
+            rows = [r for r in rows if r.actor_id == filters.actor_id]
+        if filters.target_type is not None:
+            rows = [r for r in rows if r.target_type == filters.target_type]
+        if filters.target_id is not None:
+            rows = [r for r in rows if r.target_id == filters.target_id]
+        if filters.date_from is not None:
+            rows = [r for r in rows if r.created_at >= filters.date_from]
+        if filters.date_to is not None:
+            rows = [r for r in rows if r.created_at <= filters.date_to]
+        # `created_at desc` matches the SQL composite-index sort.
+        rows.sort(key=lambda r: r.created_at, reverse=True)
+        total = len(rows)
+        return rows[offset:offset + limit], total
+
+
+# ─── Recommendations (Phase 10) ─────────────────────────────────────
+
+
+class InMemoryRecommendationRepository(RecommendationRepository):
+    """List-backed mirror of `SqlRecommendationRepository`.
+
+    Holds full `Recommendation` aggregates (parent + targets) in a
+    single list so filter/find calls don't have to reassemble across
+    structures the way the SQL layer does. Mutations replace the entry
+    by id (the natural-key uniqueness check happens before the swap).
+
+    Defends the SQL UNIQUE(source_type, source_id) constraint with an
+    explicit collision check in `save` so a test passing in-memory
+    cannot surprise the postgres deployment — same defence-in-depth
+    pattern as `InMemoryPanelRepository.create`.
+    """
+
+    def __init__(self, recommendations: list[Recommendation] | None = None):
+        self._recs: list[Recommendation] = recommendations or []
+
+    async def find_by_source(
+        self,
+        source_type: RecommendationSourceType,
+        source_id: str,
+    ) -> Recommendation | None:
+        return next(
+            (
+                r for r in self._recs
+                if r.source_type == source_type and r.source_id == source_id
+            ),
+            None,
+        )
+
+    async def save(self, recommendation: Recommendation) -> Recommendation:
+        # Upsert by (source_type, source_id). The aggregate carries its
+        # own uuid which we keep stable across saves so any external
+        # holder of the id (e.g., audit log) keeps resolving.
+        for i, r in enumerate(self._recs):
+            if (
+                r.source_type == recommendation.source_type
+                and r.source_id == recommendation.source_id
+            ):
+                # Same row — replace in place. Defend the natural-key
+                # uniqueness against any *other* row having sneaked in
+                # under the same key (shouldn't happen but cheap).
+                if any(
+                    other is not r
+                    and other.source_type == recommendation.source_type
+                    and other.source_id == recommendation.source_id
+                    for other in self._recs
+                ):
+                    raise ValueError(
+                        "Recommendation source uniqueness violated"
+                    )
+                self._recs[i] = recommendation
+                return recommendation
+        # Fresh insert — pre-check natural-key uniqueness across all
+        # existing rows.
+        if any(
+            r.source_type == recommendation.source_type
+            and r.source_id == recommendation.source_id
+            for r in self._recs
+        ):
+            raise ValueError("Recommendation source uniqueness violated")
+        self._recs.append(recommendation)
+        return recommendation
+
+    async def delete(
+        self,
+        source_type: RecommendationSourceType,
+        source_id: str,
+    ) -> bool:
+        before = len(self._recs)
+        self._recs = [
+            r for r in self._recs
+            if not (r.source_type == source_type and r.source_id == source_id)
+        ]
+        return len(self._recs) != before
+
+    async def list_paginated(
+        self,
+        filters: RecommendationFilters,
+        *,
+        offset: int = 0,
+        limit: int = 50,
+    ) -> tuple[list[Recommendation], int]:
+        rows = list(self._recs)
+        if filters.source_type is not None:
+            rows = [r for r in rows if r.source_type == filters.source_type]
+        if filters.has_manual is not None:
+            if filters.has_manual:
+                rows = [r for r in rows if len(r.targets) > 0]
+            else:
+                rows = [r for r in rows if len(r.targets) == 0]
+        if filters.search:
+            # Phase 10 LOW-6 + REC-N1 — substring match on `source_id`
+            # OR on any `target_id` of the aggregate. Mirrors the SQL
+            # `OR EXISTS (...)` predicate so the in-memory and Postgres
+            # paths agree on filtered totals.
+            needle = filters.search.lower()
+            rows = [
+                r for r in rows
+                if needle in r.source_id.lower()
+                or any(needle in t.target_id.lower() for t in r.targets)
+            ]
+        # Newest-first matches the SQL repo's ORDER BY updated_at DESC —
+        # keeps the admin table consistent across implementations.
+        rows.sort(key=lambda r: r.updated_at, reverse=True)
+        total = len(rows)
+        return rows[offset:offset + limit], total
+
+    async def find_by_target(
+        self,
+        target_type: RecommendationTargetType,
+        target_id: str,
+    ) -> list[Recommendation]:
+        # Cascade-cleanup hook — return every aggregate that lists this
+        # (target_type, target_id) among its targets. Returning a list
+        # (not an iterator) so the caller can see len() upfront for
+        # report-building.
+        return [
+            r for r in self._recs
+            if any(
+                t.target_type == target_type and t.target_id == target_id
+                for t in r.targets
+            )
+        ]
+
+
+# ─── TextureVisualization (WWW в дизайне) ───────────────────────────
+
+class InMemoryTextureVisualizationRepository(TextureVisualizationRepository):
+    """In-memory store for TextureVisualization entities."""
+
+    def __init__(self, vizs: list[TextureVisualization] | None = None) -> None:
+        self._vizs: list[TextureVisualization] = vizs or []
+
+    async def create(self, viz: TextureVisualization) -> None:
+        self._vizs.append(viz)
+
+    async def get_by_id(self, viz_id: str) -> TextureVisualization | None:
+        return next((v for v in self._vizs if v.id == viz_id), None)
+
+    async def get_by_texture(self, texture_id: str) -> TextureVisualization | None:
+        return next(
+            (v for v in self._vizs
+             if v.texture_id == texture_id and v.is_active),
+            None,
+        )
+
+    async def list_all(self) -> list[TextureVisualization]:
+        return list(self._vizs)
+
+    async def update(self, viz: TextureVisualization) -> TextureVisualization:
+        for i, existing in enumerate(self._vizs):
+            if existing.id == viz.id:
+                self._vizs[i] = viz
+                return viz
+        raise ValueError(f"TextureVisualization {viz.id!r} not found")
+
+    async def delete(self, viz_id: str) -> None:
+        self._vizs = [v for v in self._vizs if v.id != viz_id]

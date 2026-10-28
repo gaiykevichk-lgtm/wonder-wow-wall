@@ -158,7 +158,8 @@ wonder-wow-wall/
 - [x] Личный кабинет — профиль, заказы, проекты, конструктор, избранное, подписка
 - [x] Фото-редактор стен (Visualizer MVP) — загрузка фото, маски, размещение панелей, расчёт стоимости, корзина
 - [x] Backend API (FastAPI + DDD) — 4 bounded contexts, 29 маршрутов, JWT auth, in-memory repos
-- [x] Тестовое покрытие — Frontend: 156 тестов (vitest), Backend: 97 тестов (pytest)
+- [x] «Пространства» (Spaces) — интерьеры с URL-фильтрами, модалкой «переодевания» фактур (одна сцена, SPC-08), контекстным переходом в карточку (`interiorId`/`variantId`) и a11y/reduced-motion
+- [x] Тестовое покрытие — Frontend: 781 тест (vitest), Backend: 97 тестов (pytest)
 
 ## Дальнейшая документация
 

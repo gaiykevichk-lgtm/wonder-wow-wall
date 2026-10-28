@@ -1,4 +1,6 @@
 export interface CartItem {
+  variantId?: string;
+  executionName?: string;
   id: string;
   productId: string;
   name: string;
@@ -8,5 +10,16 @@ export interface CartItem {
   area: number;
   color: string;
   colorName: string;
+  colorId: string;
+  textureName: string;
+  textureId: string;
+  sizeKey: string;
   size: string;
 }
+
+export type CartItemInput = Omit<CartItem, 'quantity' | 'colorId' | 'textureName' | 'textureId' | 'sizeKey'> & {
+  colorId?: string;
+  textureName?: string;
+  textureId?: string;
+  sizeKey?: string;
+};

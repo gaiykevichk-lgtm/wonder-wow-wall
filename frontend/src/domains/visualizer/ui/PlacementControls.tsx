@@ -72,20 +72,24 @@ export function PlacementControls({
           icon={<AppstoreOutlined />}
           onClick={onAutoFill}
           style={{
-            background: '#0071e3',
-            borderColor: '#0071e3',
-            borderRadius: 980,
+            background: '#2D2D2D',
+            borderColor: '#2D2D2D',
+            borderRadius: 8,
+            height: 36,
           }}
         >
           Заполнить стену
         </Button>
         <Tooltip title="Удалить все панели">
           <Button
-            danger
+            type="text"
             icon={<DeleteOutlined />}
             onClick={onClearAll}
             disabled={panelCount === 0}
-            style={{ borderRadius: 980 }}
+            style={{
+              borderRadius: 8,
+              color: panelCount > 0 ? '#EF4444' : undefined,
+            }}
           />
         </Tooltip>
       </div>

@@ -1,0 +1,143 @@
+{
+  "scenes": 14,
+  "uniqueImages": 7,
+  "issues": [
+    {
+      "code": "missing_renders",
+      "id": "home-living-tv-1"
+    },
+    {
+      "code": "missing_catalog_bindings",
+      "id": "home-living-tv-1"
+    },
+    {
+      "code": "missing_renders",
+      "id": "home-living-sofa-1"
+    },
+    {
+      "code": "missing_catalog_bindings",
+      "id": "home-living-sofa-1"
+    },
+    {
+      "code": "missing_renders",
+      "id": "home-bedroom-headboard-1"
+    },
+    {
+      "code": "missing_catalog_bindings",
+      "id": "home-bedroom-headboard-1"
+    },
+    {
+      "code": "missing_renders",
+      "id": "home-kitchen-dining-1"
+    },
+    {
+      "code": "missing_catalog_bindings",
+      "id": "home-kitchen-dining-1"
+    },
+    {
+      "code": "missing_renders",
+      "id": "home-wc-vanity-1"
+    },
+    {
+      "code": "missing_catalog_bindings",
+      "id": "home-wc-vanity-1"
+    },
+    {
+      "code": "missing_renders",
+      "id": "biz-office-1"
+    },
+    {
+      "code": "missing_catalog_bindings",
+      "id": "biz-office-1"
+    },
+    {
+      "code": "missing_renders",
+      "id": "biz-hotel-1"
+    },
+    {
+      "code": "missing_catalog_bindings",
+      "id": "biz-hotel-1"
+    },
+    {
+      "code": "missing_renders",
+      "id": "biz-cafe-1"
+    },
+    {
+      "code": "missing_catalog_bindings",
+      "id": "biz-cafe-1"
+    },
+    {
+      "code": "missing_renders",
+      "id": "biz-retail-1"
+    },
+    {
+      "code": "missing_catalog_bindings",
+      "id": "biz-retail-1"
+    },
+    {
+      "code": "missing_renders",
+      "id": "social-school-1"
+    },
+    {
+      "code": "missing_catalog_bindings",
+      "id": "social-school-1"
+    },
+    {
+      "code": "missing_renders",
+      "id": "social-kindergarten-1"
+    },
+    {
+      "code": "missing_catalog_bindings",
+      "id": "social-kindergarten-1"
+    },
+    {
+      "code": "missing_renders",
+      "id": "social-hospital-1"
+    },
+    {
+      "code": "missing_catalog_bindings",
+      "id": "social-hospital-1"
+    },
+    {
+      "code": "missing_renders",
+      "id": "social-mfc-1"
+    },
+    {
+      "code": "missing_catalog_bindings",
+      "id": "social-mfc-1"
+    },
+    {
+      "code": "missing_renders",
+      "id": "social-transport-1"
+    },
+    {
+      "code": "missing_catalog_bindings",
+      "id": "social-transport-1"
+    },
+    {
+      "code": "duplicate_scene_bytes",
+      "ids": [
+        "home-living-sofa-1",
+        "biz-hotel-1",
+        "biz-retail-1",
+        "social-kindergarten-1"
+      ]
+    },
+    {
+      "code": "duplicate_scene_bytes",
+      "ids": [
+        "home-bedroom-headboard-1",
+        "social-hospital-1",
+        "social-mfc-1"
+      ]
+    },
+    {
+      "code": "duplicate_scene_bytes",
+      "ids": [
+        "home-kitchen-dining-1",
+        "biz-cafe-1",
+        "social-transport-1"
+      ]
+    }
+  ]
+}

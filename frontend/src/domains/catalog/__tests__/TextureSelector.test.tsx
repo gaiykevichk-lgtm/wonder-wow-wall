@@ -1,0 +1,100 @@
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import TextureSelector from '../ui/TextureSelector';
+import type { Texture } from '../model/types';
+
+const makeTexture = (overrides?: Partial<Texture>): Texture => ({
+  id: 'tex-1',
+  name: 'Бетон',
+  slug: 'concrete',
+  swatchImage: '/img/concrete.jpg',
+  colors: [],
+  ...overrides,
+});
+
+describe('TextureSelector', () => {
+  it('returns null when textures array is empty', () => {
+    const { container } = render(
+      <TextureSelector textures={[]} activeId="tex-1" onChange={vi.fn()} />,
+    );
+    expect(container.innerHTML).toBe('');
+  });
+
+  it('renders texture names', () => {
+    const textures: Texture[] = [
+      makeTexture({ id: 'tex-1', name: 'Бетон' }),
+      makeTexture({ id: 'tex-2', name: 'Дерево', slug: 'wood' }),
+    ];
+
+    render(
+      <TextureSelector textures={textures} activeId="tex-1" onChange={vi.fn()} />,
+    );
+
+    expect(screen.getByText('Текстура')).toBeInTheDocument();
+    // Активная текстура выводится дважды: подписью над сеткой и подписью кнопки.
+    expect(screen.getAllByText('Бетон').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole('radio', { name: 'Бетон' })).toBeInTheDocument();
+    expect(screen.getByText('Дерево')).toBeInTheDocument();
+  });
+
+  it('PC-105 — при наведении показывает текстуру и цену за м²', async () => {
+    const textures: Texture[] = [
+      makeTexture({ id: 'tex-1', name: 'Бетон' }),
+      makeTexture({ id: 'tex-2', name: 'Дерево', slug: 'wood' }),
+    ];
+
+    render(
+      <TextureSelector
+        textures={textures}
+        activeId="tex-1"
+        onChange={vi.fn()}
+        pricePerM2={23222}
+      />,
+    );
+
+    // Цена видна уже для активной текстуры.
+    expect(screen.getByText(/Бетон · от 23 222 ₽\/м²/)).toBeInTheDocument();
+
+    // React реализует onMouseEnter через делегирование mouseover. Подпись
+    // меняется через AnimatePresence mode="wait" — то есть асинхронно.
+    fireEvent.mouseOver(screen.getByRole('radio', { name: 'Дерево' }));
+    await waitFor(() =>
+      expect(screen.getByText(/Дерево · от 23 222 ₽\/м²/)).toBeInTheDocument(),
+    );
+  });
+
+  it('calls onChange when a texture is clicked', () => {
+    const onChange = vi.fn();
+    const textures: Texture[] = [
+      makeTexture({ id: 'tex-1', name: 'Бетон' }),
+      makeTexture({ id: 'tex-2', name: 'Дерево', slug: 'wood' }),
+    ];
+
+    render(
+      <TextureSelector textures={textures} activeId="tex-1" onChange={onChange} />,
+    );
+
+    fireEvent.click(screen.getByText('Дерево'));
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith('tex-2');
+  });
+
+  it('shows swatch image when available, fallback emoji when not', () => {
+    const textures: Texture[] = [
+      makeTexture({ id: 'tex-1', name: 'Бетон', swatchImage: '/img/concrete.jpg' }),
+      makeTexture({ id: 'tex-2', name: 'Дерево', slug: 'wood', swatchImage: '' }),
+    ];
+
+    render(
+      <TextureSelector textures={textures} activeId="tex-1" onChange={vi.fn()} />,
+    );
+
+    const betonButton = screen.getByRole('radio', { name: 'Бетон' });
+    const img = betonButton.querySelector('img');
+    expect(img).toBeInTheDocument();
+    expect(img).toHaveAttribute('src', '/img/concrete.jpg');
+
+    // slug `wood` без swatchImage отрисовывается эмодзи-фолбэком.
+    expect(screen.getByText('🪵')).toBeInTheDocument();
+  });
+});
